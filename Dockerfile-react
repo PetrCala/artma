@@ -1,5 +1,5 @@
 # Use a Node base image
-FROM node:21-alpine
+FROM node:20-alpine
 
 # Set the working directory in the container
 WORKDIR /client
@@ -13,6 +13,22 @@ RUN npm install
 # Copy the client directory contents into the container at /client
 COPY client/ .
 
+ARG BUILD_ENV
+
+# Development build
+
+FROM base as development
+
+ENV BUILD_ENV=development
+
+CMD ["npm", "run", "dev"]
+
+## Production build
+
+FROM base as production
+
+ENV BUILD_ENV=production
+
 # Build the app
 RUN npm run build
 
@@ -24,3 +40,6 @@ EXPOSE 3000
 
 # Run the app
 CMD ["serve", "-s", "build"]
+
+# Final stage: Select the build environment based on the BUILD_ENV argument
+FROM ${BUILD_ENV} as final

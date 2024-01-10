@@ -32,13 +32,15 @@ export FLASK_IMAGE_NAME="$repository_name/$image_name/flask:v$package_version"
 export REACT_IMAGE_NAME="$repository_name/$image_name/react:v$package_version"
 export R_IMAGE_NAME="$repository_name/$image_name/r:v$package_version"
 
-# Set the flask environment
+# Set the application environments
 if [ "$ENVIRONMENT" = "prod" ]; then
     export FLASK_ENV="production"
+    export BUILD_ENV="production" # For react
 elif [ "$ENVIRONMENT" = "dev" ]; then
     export FLASK_ENV="development"
+    export BUILD_ENV="development" # For react
 else
-    error "Invalid flask environment. Exiting..."
+    error "Invalid application environment. Exiting..."
     exit 1
 fi
 

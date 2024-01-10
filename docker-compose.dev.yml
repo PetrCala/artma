@@ -1,0 +1,50 @@
+version: '3.8'
+services:
+  flask:
+    image: ${FLASK_IMAGE_NAME}
+    build:
+      context: .
+      dockerfile: ${BUILD_FLASK_IMAGE}
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_ENV=${FLASK_ENV}
+
+  react-dev:
+    image: ${REACT_IMAGE_NAME}
+    build:
+      context: .
+      dockerfile: ${BUILD_REACT_IMAGE}
+      target: development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./client:/client
+    environment:
+      - BUILD_ENV=development
+      - REACT_APP_API_URL=http://flask_api:8080
+    # command: ["npm", "run", "dev"]
+
+  react-prod:
+    image: ${REACT_IMAGE_NAME}
+    build:
+      context: .
+      dockerfile: ${BUILD_REACT_IMAGE}
+      target: production
+    ports:
+      - "3000:3000"
+    environment:
+      - BUILD_ENV=production
+      - REACT_APP_API_URL=http://flask_api:8080
+
+  r:
+    image: ${R_IMAGE_NAME}
+    build:
+      context: .
+      dockerfile: ${BUILD_R_IMAGE}
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./r_scripts:/r_scripts

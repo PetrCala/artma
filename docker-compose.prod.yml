@@ -12,17 +12,32 @@ services:
     environment:
       - FLASK_ENV=${FLASK_ENV}
 
-  react:
+  react-dev:
     image: ${REACT_IMAGE_NAME}
     build:
       context: .
       dockerfile: ${BUILD_REACT_IMAGE}
+      target: development
     ports:
       - "3000:3000"
     volumes:
       - ./client:/client
     environment:
-     - REACT_APP_API_URL=http://flask_api:8080 # URL to the Flask API
+      - BUILD_ENV=development
+      - REACT_APP_API_URL=http://flask_api:8080
+    # command: ["npm", "run", "dev"]
+
+  react-prod:
+    image: ${REACT_IMAGE_NAME}
+    build:
+      context: .
+      dockerfile: ${BUILD_REACT_IMAGE}
+      target: production
+    ports:
+      - "3000:3000"
+    environment:
+      - BUILD_ENV=production
+      - REACT_APP_API_URL=http://flask_api:8080
 
   r:
     image: ${R_IMAGE_NAME}
