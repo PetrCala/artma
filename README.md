@@ -14,11 +14,11 @@
   - [Notes](#notes)
 - [Handling images containers](#handling-images-containers)
   - [Scripts](#scripts)
-- [Useful notes](#useful-notes)
-    - [Technical choices](#technical-choices)
+- [Technical choices](#technical-choices)
     - [Front-end](#front-end)
     - [Back end](#back-end)
     - [CI/CD](#cicd)
+- [Useful notes](#useful-notes)
 - [Useful resources](#useful-resources)
 
 # How to run
@@ -35,8 +35,8 @@
 - Run `npm run start:dev`. This will build all necessary images, and start up relevant containers in a development environment. For production environment, execute `npm run start:prod` instead.
 - Individual parts of the application can be accessed from your browser or from the terminal under these domains:
   - **React application:** `127.0.0.1:3000`
-  - **Flask application:** `127.0.0.1:8080`
-  - **R:** `127.0.0.1:8787`
+  - **Flask API endpoint:** `127.0.0.1:8080`
+  - **R API endpoint:** `127.0.0.1:8787`
   
 ## Notes
 
@@ -59,21 +59,7 @@ There are several pre-defined node scripts which should help you work with image
 - `start:prod`: Very similar to `start:dev`, but builds and starts the containers in a production environment.
 - `stop`: Stops and removes all existing containers.
 
-# Useful notes
-
-- Remove empty images
-
-  ```bash
-  podman images --format "{{.ID}}: {{.Repository}}:{{.Tag}}" | grep '<none>' | awk -F: '{print $1}' | xargs -I {} podman rmi {}
-  ```
-
-- Get logs of a container that is running in a detached mode
-
-  ```bash
-  podman logs -f <container-name>
-  ```
-
-### Technical choices
+# Technical choices
 
 ### Front-end
 
@@ -87,6 +73,20 @@ There are several pre-defined node scripts which should help you work with image
 ### CI/CD
 
 - Containers using Podman (or Docker)
+
+# Useful notes
+
+- Remove empty images
+
+  ```bash
+  podman images --format "{{.ID}}: {{.Repository}}:{{.Tag}}" | grep '<none>' | awk -F: '{print $1}' | xargs -I {} podman rmi {}
+  ```
+
+- Get logs of a container that is running in a detached mode
+
+  ```bash
+  podman logs -f <container-name>
+  ```
 
 # Useful resources
 
