@@ -23,32 +23,21 @@ else
     exit 1
 fi
 
+# Static
+package_version=$(get_package_version)
 repository_name=${REPOSITORY_NAME:-"localhost"}
 image_name=${IMAGE_NAME:-"artma"}
-package_version=$(get_package_version)
 
-# Static
+# Set the application environment variables for docker compose
 export FLASK_IMAGE_NAME="$repository_name/$image_name/flask:v$package_version"
 export REACT_IMAGE_NAME="$repository_name/$image_name/react:v$package_version"
 export R_IMAGE_NAME="$repository_name/$image_name/r:v$package_version"
 
-# Set the application environment variables
-if [ "$ENVIRONMENT" = "prod" ]; then
-    export FLASK_ENV="production"
-    export FLASK_RUN_HOST="flask-host" # Modify in the future - add secret manager
-    export FLASK_RUN_PORT="8080" # Possibly move these to the .env file?
-    export R_HOST="r-host"
-    export R_PORT="8787"
-elif [ "$ENVIRONMENT" = "dev" ]; then
-    export FLASK_ENV="development"
-    export FLASK_RUN_HOST="0.0.0.0"
-    export FLASK_RUN_PORT="8080"
-    export R_HOST="0.0.0.0"
-    export R_PORT="8787"
-else
-    error "Invalid flask environment. Exiting..."
-    exit 1
-fi
+export FLASK_ENV=${FLASK_ENV}
+export FLASK_RUN_HOST=${FLASK_RUN_HOST}
+export FLASK_RUN_PORT=${FLASK_RUN_PORT}
+export R_HOST=${R_HOST}
+export R_PORT=${R_PORT}
 
 # Check if images exist
 image_names=("$FLASK_IMAGE_NAME" "$REACT_IMAGE_NAME" "$R_IMAGE_NAME")
