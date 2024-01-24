@@ -39,8 +39,17 @@ export FLASK_RUN_PORT=${FLASK_RUN_PORT}
 export R_HOST=${R_HOST}
 export R_PORT=${R_PORT}
 
-# Check if images exist
 image_names=("$FLASK_IMAGE_NAME" "$REACT_IMAGE_NAME" "$R_IMAGE_NAME")
+prod_services=("flask_prod" "react_prod" "r_prod")
+dev_services=("flask_dev" "react_dev" "r_dev")
+
+if [[ "$ENVIRONMENT" == "prod" ]]; then
+    services=("${prod_services[@]}")
+else
+    services=("${dev_services[@]}")
+fi
+
+# Check if images exist
 missing_images=()
 build_required=false
 
@@ -85,6 +94,6 @@ trap cleanup SIGINT
 
 info "Running all containers for version $package_version in $ENVIRONMENT environment..."
 
-podman-compose up
+podman-compose up "${services[@]}" # Only the relevant services
 
 exit 0

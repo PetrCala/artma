@@ -42,13 +42,23 @@ RUN npm install -g serve
 # Make port 3000 available to the world outside this container
 EXPOSE 3000
 
+#
+# ---- Dev ----
+FROM release AS dev
+
 # Run the app in dev mode
 CMD ["npm", "run", "start"]
-# CMD ["serve", "-s", "build"] # for production
-# CMD ["npm", "run", "dev"] # for hot-reloading
+
+#
+# ---- Prod ----
+FROM release AS prod
+
+# Run the app in production mode
+CMD ["serve", "-s", "build"]
 
 
 # ---- Other ----
+
 # Copy files as a non-root user. The `node` user is built in the Node image.
 # RUN chown node:node ./
 # USER node
@@ -60,3 +70,4 @@ CMD ["npm", "run", "start"]
 # RUN compass compile
 # Output: css/app.css
 
+# Possibly consider npm run dev, nginx, etc. in the future.
