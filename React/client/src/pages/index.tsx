@@ -4,6 +4,8 @@ import Link from 'next/link'
 import Header from '@/components/header'
 import styles from '@/pages/styles/Home.module.css'
 
+import ROUTES from '@/ROUTES';
+
 export default function Home() {
   return (
     <div className={styles.container}>
@@ -30,7 +32,7 @@ export default function Home() {
             <h2>NextAuth.js Docs</h2>
             <p>next-auth documentation</p>
           </a>
-          <a className={styles.card} href="/" rel="noreferrer" target="_blank">
+          <a className={styles.card} href={ROUTES.HOME} rel="noreferrer" target="_blank">
             <h2>ARTMA</h2>
             <p>Home page</p>
             {/* <h2>Next.js Docs</h2>

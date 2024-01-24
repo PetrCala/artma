@@ -1,7 +1,7 @@
 import type {IsEqual, ValueOf} from 'type-fest';
 
 const ROUTES = {
-    HOME: '/',
+    HOME: '/dashboard',
     ABOUT: '/about',
     HELP: '/help',
     DATA: '/data',
