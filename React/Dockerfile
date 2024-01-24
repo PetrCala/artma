@@ -22,5 +22,7 @@ RUN npm install -g serve
 # Make port 3000 available to the world outside this container
 EXPOSE 3000
 
-# Run the app
-CMD ["serve", "-s", "build"]
+# Run the app in dev mode
+CMD ["npm", "run", "dev"]
+# CMD ["serve", "-s", "build"] # for production
+# CMD ["npm", "run", "start"] # for production
