@@ -34,7 +34,8 @@ services:
     image: ${REACT_IMAGE_NAME}
     build:
       context: ./React
-      dockerfile: dev
+      dockerfile: Dockerfile
+      target: dev
     ports:
       - "3000:3000"
     volumes:
@@ -47,7 +48,8 @@ services:
     image: ${REACT_IMAGE_NAME}
     build:
       context: ./React
-      dockerfile: prod
+      dockerfile: Dockerfile
+      target: prod
     ports:
       - "3000:3000"
     volumes:

@@ -29,9 +29,9 @@ repository_name=${REPOSITORY_NAME:-"localhost"}
 image_name=${IMAGE_NAME:-"artma"}
 
 # Set the application environment variables for docker compose
-export FLASK_IMAGE_NAME="$repository_name/$image_name/flask:v$package_version"
-export REACT_IMAGE_NAME="$repository_name/$image_name/react:v$package_version"
-export R_IMAGE_NAME="$repository_name/$image_name/r:v$package_version"
+export FLASK_IMAGE_NAME="$repository_name/$image_name/flask_$ENVIRONMENT:v$package_version"
+export REACT_IMAGE_NAME="$repository_name/$image_name/react_$ENVIRONMENT:v$package_version"
+export R_IMAGE_NAME="$repository_name/$image_name/r_$ENVIRONMENT:v$package_version"
 
 export FLASK_ENV=${FLASK_ENV}
 export FLASK_RUN_HOST=${FLASK_RUN_HOST}
