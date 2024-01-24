@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 services:
   flask:
     image: ${FLASK_IMAGE_NAME}
@@ -13,7 +13,7 @@ services:
       - FLASK_ENV=${FLASK_ENV}
       - FLASK_RUN_HOST=${FLASK_RUN_HOST}
       - FLASK_RUN_PORT=${FLASK_RUN_PORT}
-      - R_API_URL=http://r:${R_PORT} # URL to the R API
+      - R_API_URL=http://r:${R_PORT}
 
   react:
     image: ${REACT_IMAGE_NAME}
@@ -25,7 +25,8 @@ services:
     volumes:
       - ./React/client:/client
     environment:
-     - REACT_APP_API_URL=http://flask:${FLASK_RUN_PORT} # URL to the Flask API
+      - FLASK_API_URL=http://flask:${FLASK_RUN_PORT} # URL to the Flask API
+      - R_API_URL=http://r:${R_PORT}
 
   r:
     image: ${R_IMAGE_NAME}
