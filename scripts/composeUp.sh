@@ -50,8 +50,10 @@ export PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
 export PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
 
 image_names=("$FLASK_IMAGE_NAME" "$REACT_IMAGE_NAME" "$R_IMAGE_NAME")
-prod_services=("flask_prod" "react_prod" "r_prod" "postgres" "pgadmin")
-dev_services=("flask_dev" "react_dev" "r_dev" "postgres" "pgadmin")
+# prod_services=("flask_prod" "react_prod" "r_prod" "postgres" "pgadmin")
+# dev_services=("flask_dev" "react_dev" "r_dev" "postgres" "pgadmin")
+prod_services=("flask_prod" "react_prod" "r_prod") # Temp until we get postgres/pgadmin working
+dev_services=("flask_dev" "react_dev" "r_dev")
 
 if [[ "$ENVIRONMENT" == "prod" ]]; then
     services=("${prod_services[@]}")
