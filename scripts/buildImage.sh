@@ -38,7 +38,7 @@ function buildImage() {
     environment=$APP_ENVIRONMENT
 
     new_image_tag="$image_name/${image_key}_${environment}:v$version" # e.g. artma/flask-dev:v1
-    target_stage="${image_key}_${environment}"
+    target_stage="${environment}"
 
     if [ "$other_arg" == "force-rebuild" ]; then
         info "Deleting $new_image_tag"

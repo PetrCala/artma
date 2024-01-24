@@ -1,5 +1,10 @@
-# Use an official Python runtime as a parent image
-FROM python:3.12
+#
+# ---- Base ----
+FROM python:3.12 AS base
+
+#
+# ---- Release ----
+FROM base AS release
 
 # Set the working directory in the container to /app
 WORKDIR /usr/src/app
@@ -16,5 +21,13 @@ EXPOSE 8080
 # Define environment variable
 # ENV NAME World
 
-# Run app.py when the container launches
+#
+# ---- Dev ----
+FROM release AS dev
 CMD ["python", "app.py"]
+
+#
+# ---- Prod ----
+FROM release AS prod
+CMD ["python", "app.py"]
+# TBA
