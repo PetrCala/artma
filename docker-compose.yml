@@ -1,6 +1,35 @@
 version: "3.8"
 services:
+  postgres:
+    container_name: postgres
+    build:
+      context: ./Database
+      dockerfile: Dockerfile
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./Database:/docker-entrypoint-initdb.d
+      - pgdata:/var/lib/postgresql/data # Make data persistent across container restarts
+    restart: unless-stopped
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4:latest
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
+    restart: unless-stopped
+
   flask_dev:
+    container_name: flask_dev
     image: ${FLASK_IMAGE_NAME}
     build:
       context: ./Flask
@@ -16,6 +45,7 @@ services:
       - R_API_URL=http://r:${R_PORT}
 
   flask_prod:
+    container_name: flask_prod
     image: ${FLASK_IMAGE_NAME}
     build:
       context: ./Flask
@@ -31,6 +61,7 @@ services:
       - R_API_URL=http://r:${R_PORT}
 
   react_dev:
+    container_name: react_dev
     image: ${REACT_IMAGE_NAME}
     build:
       context: ./React
@@ -45,6 +76,7 @@ services:
       - R_API_URL=http://r:${R_PORT}
 
   react_prod:
+    container_name: react_prod
     image: ${REACT_IMAGE_NAME}
     build:
       context: ./React
@@ -59,6 +91,7 @@ services:
       - R_API_URL=http://r:${R_PORT}
 
   r_dev:
+    container_name: r_dev
     image: ${R_IMAGE_NAME}
     build:
       context: ./R
@@ -72,6 +105,7 @@ services:
       - R_PORT=${R_PORT}
 
   r_prod:
+    container_name: r_prod
     image: ${R_IMAGE_NAME}
     build:
       context: ./R
@@ -83,3 +117,6 @@ services:
     environment:
       - R_HOST=${R_HOST}
       - R_PORT=${R_PORT}
+
+volumes:
+  pgdata:

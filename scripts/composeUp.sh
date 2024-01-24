@@ -28,20 +28,30 @@ package_version=$(get_package_version)
 repository_name=${REPOSITORY_NAME:-"localhost"}
 image_name=${IMAGE_NAME:-"artma"}
 
-# Set the application environment variables for docker compose
+# Image environmental variables
 export FLASK_IMAGE_NAME="$repository_name/$image_name/flask_$ENVIRONMENT:v$package_version"
 export REACT_IMAGE_NAME="$repository_name/$image_name/react_$ENVIRONMENT:v$package_version"
 export R_IMAGE_NAME="$repository_name/$image_name/r_$ENVIRONMENT:v$package_version"
 
+# Container environmental variables
 export FLASK_ENV=${FLASK_ENV}
 export FLASK_RUN_HOST=${FLASK_RUN_HOST}
 export FLASK_RUN_PORT=${FLASK_RUN_PORT}
 export R_HOST=${R_HOST}
 export R_PORT=${R_PORT}
 
+# Database environment variables
+export POSTGRES_USER=${POSTGRES_USER}
+export POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+export POSTGRES_DB=${POSTGRES_DB}
+export POSTGRES_HOST=${POSTGRES_HOST}
+export POSTGRES_PORT=${POSTGRES_PORT}
+export PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+export PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+
 image_names=("$FLASK_IMAGE_NAME" "$REACT_IMAGE_NAME" "$R_IMAGE_NAME")
-prod_services=("flask_prod" "react_prod" "r_prod")
-dev_services=("flask_dev" "react_dev" "r_dev")
+prod_services=("flask_prod" "react_prod" "r_prod" "postgres" "pgadmin")
+dev_services=("flask_dev" "react_dev" "r_dev" "postgres" "pgadmin")
 
 if [[ "$ENVIRONMENT" == "prod" ]]; then
     services=("${prod_services[@]}")
@@ -83,7 +93,7 @@ fi
 # Function to clean up containers on Ctrl+C
 cleanup() {
     info "Stopping containers..."
-    podman-compose down
+    podman-compose down "${services[@]}"
     info "Successfully stopped and removed all containers."
     success "Done."
     exit 0
