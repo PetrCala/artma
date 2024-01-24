@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import Image from 'next/image'
 import Link from 'next/link'
-// import Header from '@/components/header'
+import Header from '@/components/header'
 import styles from '@/pages/styles/Home.module.css'
 
 export default function Home() {
@@ -30,9 +30,11 @@ export default function Home() {
             <h2>NextAuth.js Docs</h2>
             <p>next-auth documentation</p>
           </a>
-          <a className={styles.card} href="https://nextjs.org/docs" rel="noreferrer" target="_blank">
-            <h2>Next.js Docs</h2>
-            <p>next documentation</p>
+          <a className={styles.card} href="/" rel="noreferrer" target="_blank">
+            <h2>ARTMA</h2>
+            <p>Home page</p>
+            {/* <h2>Next.js Docs</h2>
+            <p>next documentation</p> */}
           </a>
           <a className={styles.card} href="https://github.com/nextauthjs/next-auth" rel="noreferrer" target="_blank">
             <h2>NextAuth.js Repo</h2>
