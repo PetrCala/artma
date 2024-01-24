@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='artma',
-    version='0.0.7-4',
+    version='0.0.7-5',
     description='Automatic Replication Tools for Meta-Analysis',
     packages=find_packages(),
     install_requires=[
