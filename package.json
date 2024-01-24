@@ -16,6 +16,7 @@
     "images:rebuild-react": "./scripts/buildImage.sh react force-rebuild",
     "images:rebuild-r": "./scripts/buildImage.sh r force-rebuild",
     "images:rename": "./scripts/renameImages.sh",
+    "lint": "cd React/client && npm run lint",
     "start:dev": "./scripts/composeUp.sh dev",
     "start:prod": "./scripts/composeUp.sh prod",
     "stop": "podman-compose down",
