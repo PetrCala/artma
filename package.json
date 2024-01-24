@@ -20,6 +20,7 @@
     "images:rebuild-react": "./scripts/buildImage.sh react force-rebuild",
     "images:rebuild-r": "./scripts/buildImage.sh r force-rebuild",
     "images:rename": "./scripts/renameImages.sh",
+    "merge": "./scripts/mergeAndPush.sh",
     "remove-empty-images": "podman images --format '{{.ID}}: {{.Repository}}:{{.Tag}}' | grep '<none>' | awk -F: '{print $1}' | xargs -I {} podman rmi {}",
     "react:install": "cd React/client && bun install",
     "react:lint": "cd React/client && bun run lint",
