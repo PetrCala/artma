@@ -8,6 +8,9 @@ const CONST = {
   EMPTY_OBJECT,
   APP_NAME_SHORT: "ARTMA",
   APP_NAME_LONG: "Automatic Replication Tools for Meta-Analysis",
+  APP_DESCRIPTION: "A tool for researchers to automate the process of replication in meta-analysis",
+  // APP_MOTTO: "Automate the process of replication in meta-analysis",
+  APP_MOTTO: "Meta-analysis, at your fingertips",
   IMAGES: {
     ARTMA_LOGO: "/images/ARTMA_logo.png",
     HOME: "/images/home.png",
