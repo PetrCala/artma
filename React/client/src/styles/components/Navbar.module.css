@@ -6,12 +6,12 @@
 }
 
 .navigation {
-  /* background-color: #4b5563; */
   padding: 1rem;
-  position: sticky;
+  position: fixed;
   top: 0;
-  box-shadow: 0 0 1rem rgba(0, 0, 0, 0.15);
-  z-index: 10;
+  width:100%;
+  box-shadow: 0 0 0.3rem;
+  z-index: 1000;
 }
 
 .container {
