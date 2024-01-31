@@ -24,6 +24,7 @@ export default function Footer() {
           <Link className="text-white/90 hover:text-white" href="https://twitter.com/yesdavidgray">
               <FaTwitter />
           </Link>
+          
         </div>
       </div>
     </footer>
