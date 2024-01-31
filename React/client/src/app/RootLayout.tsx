@@ -1,6 +1,7 @@
 import { SessionProvider } from "next-auth/react"
 import type { Metadata } from "next"
 import { Session } from "next-auth"
+import { ThemeProvider } from "@/context/ThemeContext"
 
 // Include shared components, SEO components, and global providers here
 
@@ -17,8 +18,10 @@ export default function RootLayout({
   session: Session
 }) {
   return (
-    <SessionProvider session={session}>
-      {children}
-    </SessionProvider>
+    <ThemeProvider>
+      <SessionProvider session={session}>
+        {children}
+      </SessionProvider>
+    </ThemeProvider>
   )
 }
