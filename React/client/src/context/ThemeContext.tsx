@@ -3,7 +3,7 @@ import CONST from "@/CONST"
 
 // Create a Context for the theme
 export const ThemeContext = createContext({
-  theme: CONST.THEME.LIGHT as string, // Default theme
+  theme: CONST.THEME.DARK as string, // Default theme (later synch with database)
   toggleTheme: () => {}, // Placeholder function for toggling the theme
 })
 
@@ -13,7 +13,7 @@ type ThemeProviderProps = {
 
 // Create a Provider Component
 export const ThemeProvider = ({ children }: ThemeProviderProps) => {
-  const [theme, setTheme] = useState(CONST.THEME.LIGHT as string) // Default to light theme
+  const [theme, setTheme] = useState(CONST.THEME.DARK as string) // Default to dark theme
 
   // Function to toggle between dark and light themes
   const toggleTheme = () => {
