@@ -10,9 +10,9 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  height: 4rem; /* You can adjust the height as needed */
-  max-width: 48rem; /* You can adjust the max-width as needed */
-  padding: 1rem; /* You can adjust the padding as needed */
+  height: 4rem;
+  max-width: 90%;
+  padding: 1rem;
   margin: 0 auto;
 }
 
