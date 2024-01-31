@@ -39,30 +39,26 @@
   flex-direction: row;
   align-items: center;
   justify-content: flex-end;
-  gap: 1rem;
+  /* gap: 0.3rem; */
   width: 20%;
-  height: 80%;
-  background-color: pink;
+  /* height: 80%; */
 }
-
-/* 
-.rightContainer > * {
-  padding: 10px;
+  
+.rightContainerIconWrapper {
+  padding: 0.8em;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: aqua;
+  cursor: pointer;
+  border-radius: 50%;
 }
 
-.rightContainer > * > *{
+.rightContainerIconWrapper:hover {
+  background-color: gray;
   transition: border-color 0.3s ease;
-  background-color: purple;
+}
+
+.rightContainerIcon {
   width:1em;
   height:1em;
-} */
-
-.rightContainer > *:hover {
-  /* border: 2px solid #000; */
-  border-radius: 50%;
-  background-color: gray;
 }

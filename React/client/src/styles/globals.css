@@ -11,6 +11,23 @@ a {
   text-decoration: none;
 }
 
+
+button {
+    background: inherit;
+    /* padding: 0; */
+    border: none;
+    cursor: pointer; /* Changes cursor to the hand icon, like a link */
+    font-family: inherit; /* To ensure it matches the site's font */
+    font-size: inherit; /* To match the size of surrounding text */
+}
+
+button:hover,
+button:focus {
+    text-decoration: none; /* Optional: changes style on hover/focus */
+    /* color: darkblue; */
+}
+
+
 * {
   box-sizing: border-box;
 }

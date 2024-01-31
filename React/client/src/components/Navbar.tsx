@@ -9,11 +9,14 @@ import {
 } from "react-icons/fa"
 import styles from "@/styles/components/Navbar.module.css"
 import commonStyles from "@/styles/commonStyles.module.css"
-import ThemeSwitch from "./ui/ThemeSwitch"
+import { ThemeSwitch, ThemeSwitchRef } from "./ui/ThemeSwitch"
 import CONST from "@/CONST"
 import Image from "next/image"
+import { useRef } from "react"
 
 export default function Navbar() {
+  const themeSwitchRef = useRef<ThemeSwitchRef>(null)
+
   return (
     <nav className={styles.navigation}>
       <div className={styles.container}>
@@ -23,9 +26,9 @@ export default function Navbar() {
             width={36}
             height={36}
             sizes="36x36"
-            alt="Loading Light/Dark Toggle"
+            alt="Application Logo"
             priority={false}
-            title="Loading Light/Dark Toggle"
+            title="Application Logo"
           />
           <Link
             href="/dashboard"
@@ -37,11 +40,20 @@ export default function Navbar() {
         <div className={styles.rightContainer}>
           <Link
             href="https://www.youtube.com/@DaveGrayTeachesCode"
-            className={commonStyles.clickableIconWrapper}
+            className={styles.rightContainerIconWrapper}
           >
-            <FaBook className={commonStyles.clickableIcon} />
+            <FaBook className={styles.rightContainerIcon} />
           </Link>
-          <ThemeSwitch />
+
+          <button
+            onClick={() => themeSwitchRef.current?.toggleTheme()}
+            className={styles.rightContainerIconWrapper}
+          >
+            <ThemeSwitch
+              className={styles.rightContainerIcon}
+              ref={themeSwitchRef}
+            />
+          </button>
         </div>
       </div>
     </nav>
