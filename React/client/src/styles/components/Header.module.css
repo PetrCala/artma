@@ -14,6 +14,19 @@
   max-width: 48rem; /* You can adjust the max-width as needed */
   padding: 1rem; /* You can adjust the padding as needed */
   margin: 0 auto;
-  /* background-color: #000; */
+}
+
+.leftContainer {
+  display: flex;
+  align-items: center;
+  width: 80%;
+  height: 80%;
 }
   
+.rightContainer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 20%;
+  height: 80%;
+}

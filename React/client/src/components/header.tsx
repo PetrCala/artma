@@ -4,14 +4,29 @@ import { MainNav } from "./main-nav"
 import styles from "@/styles/components/Header.module.css"
 import commonStyles from "@/styles/commonStyles.module.css"
 import CONST from "@/CONST"
-import ThemeSwitch from "./ThemeSwitch"
+import ThemeSwitch from "./ui/ThemeSwitch"
+import PlaceholderImage from "./ui/PlaceholderImage"
 
 export default function Header() {
 
   return (
     <header className={styles.header}>
       <div className={styles.container}>
-        <ThemeSwitch/>
+        <div className={styles.leftContainer}>
+          Left Container
+          {/* <a href={CONST.ROUTES.HOME}>
+            <img
+              src={CONST.LOGO}
+              alt="Logo"
+              className={commonStyles.logo}
+            />
+          </a> */}
+        </div>
+        <div className={styles.rightContainer}>
+          <PlaceholderImage/>
+          <PlaceholderImage/>
+          <ThemeSwitch/>
+        </div>
         {/* <MainNav /> */}
         {/* <UserButton /> Implement this later */}
       </div>
