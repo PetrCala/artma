@@ -1,12 +1,12 @@
 import React, { ReactElement } from "react"
-import Header from "@/components/header"
+import Footer from "@/components/footer"
 
 const Dashboard: React.FC = (): ReactElement => {
   return (
     <div>
-      <Header />
       <h1>Dashboard</h1>
       <p>Welcome to the dashboard page!</p>
+      <Footer />
     </div>
   )
 }

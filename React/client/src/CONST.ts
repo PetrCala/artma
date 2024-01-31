@@ -6,6 +6,12 @@ const EMPTY_OBJECT = Object.freeze({})
 const CONST = {
   EMPTY_ARRAY,
   EMPTY_OBJECT,
+  APP_NAME_SHORT: "ARTMA",
+  APP_NAME_LONG: "Automatic Replication Tools for Meta-Analysis",
+  IMAGES: {
+    ARTMA_LOGO: "/images/ARTMA_logo.png",
+    HOME: "/images/home.png",
+  },
   THEME: {
     LIGHT: "light",
     DARK: "dark",

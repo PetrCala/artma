@@ -1,1 +1,22 @@
 /* commonStyles.modules.css */
+
+.clickableIconWrapper {
+  padding: 1em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.clickableIconWrapper:hover {
+  border: 2px solid #000;
+  /* background-color: gray; */
+}
+
+.clickableIcon {
+  transition: border-color 0.3s ease;
+  background-color: purple;
+  width:2em;
+  height:2em;
+}

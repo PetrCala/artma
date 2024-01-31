@@ -1,16 +1,31 @@
-import CustomLink from "./custom-link"
+import Link from "next/link"
+import { FaYoutube, FaTwitter, FaGithub, FaLaptop } from "react-icons/fa"
+import styles from "@/styles/components/Footer.module.css"
+import commonStyles from "@/styles/commonStyles.module.css"
+import CONST from "@/CONST"
 
 export default function Footer() {
   return (
-    <footer className="flex flex-col w-full px-4 mx-0 my-4 space-y-1 text-sm md:max-w-3xl md:my-12 md:mx-auto sm:px-6 md:h-5 md:items-center md:space-y-0 md:space-x-4 md:flex-row">
-      <CustomLink href="https://nextjs.authjs.dev">Documentation</CustomLink>
-      <CustomLink href="https://www.npmjs.com/package/next-auth">
-        NPM
-      </CustomLink>
-      <CustomLink href="https://github.com/nextauthjs/next-auth/tree/main/apps/examples/nextjs">
-        Source on GitHub
-      </CustomLink>
-      <CustomLink href="/policy">Policy</CustomLink>
+    <footer className={styles.header}>
+      <div className={styles.container}>
+        <div className={styles.leftContainer}>
+          Left Container
+        </div>
+        <div className={styles.rightContainer}>
+          <Link className="text-white/90 hover:text-white" href="https://www.youtube.com/@DaveGrayTeachesCode">
+              <FaYoutube />
+          </Link>
+          <Link className="text-white/90 hover:text-white" href="https://courses.davegray.codes/">
+              <FaLaptop />
+          </Link>
+          <Link className="text-white/90 hover:text-white" href="https://github.com/gitdagray">
+              <FaGithub />
+          </Link>
+          <Link className="text-white/90 hover:text-white" href="https://twitter.com/yesdavidgray">
+              <FaTwitter />
+          </Link>
+        </div>
+      </div>
     </footer>
   )
 }

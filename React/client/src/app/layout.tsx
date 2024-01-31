@@ -3,6 +3,8 @@ import type { Metadata } from "next"
 import { Session } from "next-auth"
 // import { ThemeProvider } from "@/context/ThemeContext"
 import { Providers } from "@/context/providers"
+import Navbar from "@/components/Navbar"
+import MyProfilePic from "@/components/MyProfilePic"
 
 // Include shared components, SEO components, and global providers here
 
@@ -22,9 +24,8 @@ export default function RootLayout({
     // <html lang="en" suppressHydrationWarning> {/* className={"something"}*/}
     //   <body className="bg-gray-50">
         <Providers session={session}> {/* ideally remove the session from here */}
-          {/* <Navbar />
-          <main className="container mx-auto px-4">{children}</main> */}
-          {children}
+          <Navbar />
+          <main className="container mx-auto px-4">{children}</main>
         </Providers>
     //   </body>
     // </html>
