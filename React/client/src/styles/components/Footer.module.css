@@ -1,14 +1,7 @@
 .footer {
   margin-top: 2rem;
-  background-color: pink;
+  border-top: 1px solid;
 }
-
-/* .header {
-  position: sticky;
-  display: flex;
-  justify-content: center;
-  border-bottom: 1px solid #000;
-} */
 
 .container {
   display: flex;

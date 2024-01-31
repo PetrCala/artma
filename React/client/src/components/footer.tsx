@@ -9,7 +9,7 @@ export default function Footer() {
     <footer className={styles.footer}>
       <div className={styles.container}>
         <div className={styles.leftContainer}>
-          Left Container
+          &copy; {new Date().getFullYear()} {CONST.APP_NAME_SHORT}
         </div>
         <div className={styles.rightContainer}>
           <Link className="text-white/90 hover:text-white" href="https://www.youtube.com/@DaveGrayTeachesCode">
