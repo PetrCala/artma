@@ -11,7 +11,7 @@ type ProvidersProps = {
 
 export function Providers({ children, session }: ProvidersProps) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem> {/* def...system*/}
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <SessionProvider session={session}>
         {children}
       </SessionProvider>
