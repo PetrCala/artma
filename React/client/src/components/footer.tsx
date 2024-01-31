@@ -6,7 +6,7 @@ import CONST from "@/CONST"
 
 export default function Footer() {
   return (
-    <footer className={styles.header}>
+    <footer className={styles.footer}>
       <div className={styles.container}>
         <div className={styles.leftContainer}>
           Left Container

@@ -17,9 +17,9 @@
 .container {
   display: flex;
   align-items: center;
-  height: 4rem;
+  height: 2rem;
   width: 100%;
-  max-width: 95%;
+  max-width: 100%;
   justify-content: space-between;
   margin: 0 auto;
   padding: 1rem;

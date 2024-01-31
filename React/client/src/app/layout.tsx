@@ -5,6 +5,7 @@ import { Session } from "next-auth"
 import { Providers } from "@/context/providers"
 import Navbar from "@/components/Navbar"
 import MyProfilePic from "@/components/MyProfilePic"
+import Footer from "@/components/footer"
 
 // Include shared components, SEO components, and global providers here
 
@@ -26,6 +27,7 @@ export default function RootLayout({
         <Providers session={session}> {/* ideally remove the session from here */}
           <Navbar />
           <main className="container mx-auto px-4">{children}</main>
+          <Footer />
         </Providers>
     //   </body>
     // </html>
