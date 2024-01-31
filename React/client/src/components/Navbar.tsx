@@ -1,10 +1,7 @@
+"use client"
+
 import Link from "next/link"
 import {
-  FaYoutube,
-  FaTwitter,
-  FaGithub,
-  FaLaptop,
-  FaQuestion,
   FaBook,
 } from "react-icons/fa"
 import styles from "@/styles/components/Navbar.module.css"
@@ -13,6 +10,7 @@ import { ThemeSwitch, ThemeSwitchRef } from "./ui/ThemeSwitch"
 import CONST from "@/CONST"
 import Image from "next/image"
 import { useRef } from "react"
+import ROUTES from "@/ROUTES"
 
 export default function Navbar() {
   const themeSwitchRef = useRef<ThemeSwitchRef>(null)
@@ -39,7 +37,7 @@ export default function Navbar() {
         </h1>
         <div className={styles.rightContainer}>
           <Link
-            href="https://www.youtube.com/@DaveGrayTeachesCode"
+            href={ROUTES.HELP}
             className={styles.rightContainerIconWrapper}
           >
             <FaBook className={styles.rightContainerIcon} />
