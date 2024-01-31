@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/header'
 import styles from '@/pages/styles/Home.module.css'
+import commonStyles from '@/styles/commonStyles.module.css'
 
 import ROUTES from '@/ROUTES';
 

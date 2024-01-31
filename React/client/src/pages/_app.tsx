@@ -1,12 +1,14 @@
-import { SessionProvider } from "next-auth/react"
-import type { AppProps } from 'next/app';
+import type { AppProps } from "next/app"
+import "./globals.css"
+import RootLayout from "@/app/RootLayout"
 
 function MyApp({ Component, pageProps }: AppProps) {
+  const { session, ...otherPageProps } = pageProps
   return (
-    <SessionProvider session={pageProps.session}>
+    <RootLayout session={session}>
       <Component {...pageProps} />
-    </SessionProvider>
-  );
+    </RootLayout>
+  )
 }
 
-export default MyApp;
+export default MyApp
