@@ -1,7 +1,7 @@
 import { signIn, getCsrfToken, getProviders } from 'next-auth/react'
 import Image from 'next/image'
 import Header from '@/components/header'
-import styles from '@/styles/Signin.module.css'
+import styles from '@/styles/pages/Signin.module.css'
 
 const Signin = ({ csrfToken, providers }) => {
   return (
