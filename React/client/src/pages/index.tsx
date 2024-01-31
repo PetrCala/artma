@@ -1,8 +1,7 @@
 import Head from 'next/head'
 import Image from 'next/image'
 import Link from 'next/link'
-import styles from '@/styles/pages/Home.module.css'
-import commonStyles from '@/styles/commonStyles.module.css'
+import styles from './index.module.scss'
 
 import ROUTES from '@/ROUTES';
 

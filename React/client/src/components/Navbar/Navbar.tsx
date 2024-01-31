@@ -4,13 +4,12 @@ import Link from "next/link"
 import {
   FaBook,
 } from "react-icons/fa"
-import styles from "@/styles/components/Navbar.module.css"
-import commonStyles from "@/styles/commonStyles.module.css"
-import { ThemeSwitch, ThemeSwitchRef } from "./ui/ThemeSwitch"
+import { ThemeSwitch, ThemeSwitchRef } from "../ui/ThemeSwitch"
 import CONST from "@/CONST"
 import Image from "next/image"
 import { useRef } from "react"
 import ROUTES from "@/ROUTES"
+import styles from "./Navbar.module.scss"
 
 export default function Navbar() {
   const themeSwitchRef = useRef<ThemeSwitchRef>(null)
@@ -18,7 +17,7 @@ export default function Navbar() {
   return (
     <nav className={styles.navigation}>
       <div className={styles.container}>
-        <h1 className={styles.leftContainer}>
+        <h6 className={styles.leftContainer}>
           <Image
             src={CONST.IMAGES.ARTMA_LOGO}
             width={36}
@@ -34,7 +33,7 @@ export default function Navbar() {
           >
             {CONST.APP_NAME_SHORT}
           </Link>
-        </h1>
+        </h6>
         <div className={styles.rightContainer}>
           <Link
             href={ROUTES.HELP}

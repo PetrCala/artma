@@ -1,5 +1,5 @@
-import { signIn, signOut } from "auth"
-import { Button } from "./ui/button"
+// import { signIn, signOut } from "auth"
+import { Button } from "../ui/button"
 
 export function SignIn({
   provider,
@@ -9,7 +9,7 @@ export function SignIn({
     <form
       action={async () => {
         "use server"
-        await signIn(provider)
+        // await signIn(provider)
       }}
     >
       <Button {...props}>Sign In</Button>
@@ -22,7 +22,7 @@ export function SignOut(props: React.ComponentPropsWithRef<typeof Button>) {
     <form
       action={async () => {
         "use server"
-        await signOut()
+        // await signOut()
       }}
       className="w-full"
     >

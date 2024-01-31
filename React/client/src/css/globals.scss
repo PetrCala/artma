@@ -1,0 +1,169 @@
+@use "@/css/queries.scss" as *;
+@use "@/css/colors.scss" as *;
+@use "@/css/type.scss" as *;
+
+// :root {
+//   --breakpoint-xs-width: #{$breakpoint-xs-width};
+//   --breakpoint-s-width: #{$breakpoint-s-width};
+//   --breakpoint-m-width: #{$breakpoint-m-width};
+//   --breakpoint-l-width: #{$breakpoint-l-width};
+//   --scrollbar-width: 17px;
+
+//   --base: 24px;
+//   --font-body: system-ui;
+//   --font-mono: "Roboto Mono", monospace;
+
+//   --gutter-h: 180px;
+//   --block-padding: 120px;
+
+//   --header-z-index: 100;
+//   --modal-z-index: 90;
+
+//   @include large-break {
+//     --gutter-h: 144px;
+//     --block-padding: 96px;
+//   }
+
+//   @include mid-break {
+//     --gutter-h: 24px;
+//     --block-padding: 60px;
+//   }
+// }
+
+:root {
+  --font-mono: "Roboto Mono", monospace;
+
+}
+
+// :root[color-scheme="light"] {
+//   @import 'light-theme.scss';
+// }
+
+// :root[color-scheme="dark"] {
+//   @import 'dark-theme.scss';
+// }
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  @extend %body;
+  // background: var(--color-base-0);
+}
+
+// html,
+// body,
+// #app {
+//   height: 100%;
+// }
+
+body {
+  // font-family: var(--font-body);
+  // color: var(--color-base-1000);
+  padding: 0;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
+    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+}
+
+
+
+// body[color-scheme="light"] {
+//   @include theme($light-theme);
+// }
+
+// body[color-scheme="dark"] {
+//   @include theme($dark-theme);
+// }
+
+
+// // Use the mixin with the theme map
+// body.light {
+//   @include theme($light-theme);
+// }
+
+// body.dark {
+//   @include theme($dark-theme);
+// }
+
+h1 {
+  @extend %h1;
+}
+
+h2 {
+  @extend %h2;
+}
+
+h3 {
+  @extend %h3;
+}
+
+h4 {
+  @extend %h4;
+}
+
+h5 {
+  @extend %h5;
+}
+
+h6 {
+  @extend %h6;
+}
+
+a {
+  color: inherit; // currentColor;
+  text-decoration: none;
+  // &:focus {
+  //   opacity: 0.8;
+  //   outline: none;
+  // }
+
+  // &:active {
+  //   opacity: 0.7;
+  //   outline: none;
+  // }
+}
+
+// svg {
+//   vertical-align: middle;
+// }
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+// p {
+//   margin: var(--base) 0;
+
+//   @include mid-break {
+//     margin: calc(var(--base) * 0.75) 0;
+//   }
+// }
+
+// ul,
+// ol {
+//   padding-left: var(--base);
+//   margin: 0 0 var(--base);
+// }
+
+
+button {
+    background: inherit;
+    /* padding: 0; */
+    border: none;
+    cursor: pointer; /* Changes cursor to the hand icon, like a link */
+    font-family: inherit; /* To ensure it matches the site's font */
+    font-size: inherit; /* To match the size of surrounding text */
+}
+
+button:hover,
+button:focus {
+    text-decoration: none; /* Optional: changes style on hover/focus */
+    /* color: darkblue; */
+}
+
+
+

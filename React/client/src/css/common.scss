@@ -1,6 +1,7 @@
-/* commonStyles.modules.css */
+@forward "@/css/queries.scss";
+@forward "@/css/type.scss";
 
-.pageContainer {
+.commonPageContainer {
     display: flex;
     flex-direction: column;
     align-items: center;

@@ -3,9 +3,9 @@ import type { Metadata } from "next"
 import { Session } from "next-auth"
 // import { ThemeProvider } from "@/context/ThemeContext"
 import { Providers } from "@/context/providers"
-import Navbar from "@/components/Navbar"
-import MyProfilePic from "@/components/MyProfilePic"
-import Footer from "@/components/footer"
+import Navbar from "@/components/Navbar/Navbar"
+import MyProfilePic from "@/components/various/MyProfilePic"
+import Footer from "@/components/Footer/Footer"
 
 // Include shared components, SEO components, and global providers here
 

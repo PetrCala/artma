@@ -1,3 +1,5 @@
+@use "@/css/common.scss" as *;
+
 .header {
   position: sticky;
   display: flex;
@@ -54,9 +56,11 @@
 }
 
 .rightContainerIconWrapper:hover {
+  // background-color: var(--color-base-0);
   background-color: gray;
   transition: border-color 0.3s ease;
 }
+
 
 .rightContainerIcon {
   width:1em;

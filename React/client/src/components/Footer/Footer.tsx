@@ -1,7 +1,6 @@
 import Link from "next/link"
 import { FaYoutube, FaTwitter, FaGithub, FaLaptop } from "react-icons/fa"
-import styles from "@/styles/components/Footer.module.css"
-import commonStyles from "@/styles/commonStyles.module.css"
+import styles from "@/components/Footer/Footer.module.scss"
 import CONST from "@/CONST"
 
 export default function Footer() {

@@ -1,11 +1,11 @@
 import React, { ReactElement } from "react"
-import Footer from "@/components/footer"
-import commonStyles from "@/styles/commonStyles.module.css"
+import Footer from "@/components/Footer/Footer"
+import styles from "./index.module.scss"
 
 const Dashboard: React.FC = (): ReactElement => {
   return (
-    <div className={commonStyles.pageContainer}>
-      <h1>Dashboard</h1>
+    <div className={styles.commonPageContainer}>
+      <h3>Dashboard</h3>
       <p>Welcome to the dashboard page!</p>
     </div>
   )
