@@ -66,3 +66,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/deploym
     Sample text
   </p>
   ```
+
+### Icons
+
+- For icons, we use the extensive [`react-icons` library](https://react-icons.github.io/react-icons/). Each icon there has instructions on how to add it to the project, so feel free to refer to those.
