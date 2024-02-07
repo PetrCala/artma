@@ -1,1 +1,15 @@
 @use "@/css/common.scss" as *;
+// @use "@/css/themes.scss" as *;
+//
+// @include theme
+// @use "@/css/themes/dark-theme.scss" as darkTheme;
+
+.themeTest {
+  width: 100px;
+  height: 100px;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 2;
+  border-width: 1px;
+}

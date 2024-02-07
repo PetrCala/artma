@@ -1,0 +1,14 @@
+@use "@/css/themes/light-theme.scss";
+@use "@/css/themes/dark-theme.scss";
+
+@mixin theme($theme-name) {
+  @if $theme-name == "light" {
+    @each $name, $color in light-theme.$light-theme {
+      #{$name}: #{$color};
+    }
+  } @else if $theme-name == "dark" {
+    @each $name, $color in dark-theme.$dark-theme {
+      #{$name}: #{$color};
+    }
+  }
+}

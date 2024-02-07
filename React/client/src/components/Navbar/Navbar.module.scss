@@ -11,7 +11,7 @@
   padding: 1rem;
   position: fixed;
   top: 0;
-  width:100%;
+  width: 100%;
   box-shadow: 0 0 0.3rem;
   z-index: 1000;
 }
@@ -45,7 +45,7 @@
   width: 20%;
   /* height: 80%; */
 }
-  
+
 .rightContainerIconWrapper {
   padding: 0.8em;
   display: inline-flex;
@@ -56,13 +56,11 @@
 }
 
 .rightContainerIconWrapper:hover {
-  // background-color: var(--color-base-0);
-  background-color: gray;
+  background-color: var(--color-hover-0);
   transition: border-color 0.3s ease;
 }
 
-
 .rightContainerIcon {
-  width:1em;
-  height:1em;
+  width: 1em;
+  height: 1em;
 }

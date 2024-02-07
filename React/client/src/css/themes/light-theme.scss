@@ -1,6 +1,26 @@
-:root {
-    --color-base-0-light: rgb(255, 255, 255);
-    --color-base-50-light: rgb(245, 245, 245);
-    --color-base-1000-light: rgb(0, 0, 0);
-    // ... other light theme colors
-  }
+// light-theme.scss
+$light-theme: (
+  --color-base-0: rgb(255, 255, 255),
+  --color-base-50: rgb(245, 245, 245),
+  --color-base-100: rgb(235, 235, 235),
+  --color-base-150: rgb(221, 221, 221),
+  --color-base-200: rgb(208, 208, 208),
+  --color-base-250: rgb(195, 195, 195),
+  --color-base-300: rgb(181, 181, 181),
+  --color-base-350: rgb(168, 168, 168),
+  --color-base-400: rgb(154, 154, 154),
+  --color-base-450: rgb(141, 141, 141),
+  --color-base-500: rgb(128, 128, 128),
+  --color-base-550: rgb(114, 114, 114),
+  --color-base-600: rgb(101, 101, 101),
+  --color-base-650: rgb(87, 87, 87),
+  --color-base-700: rgb(74, 74, 74),
+  --color-base-750: rgb(60, 60, 60),
+  --color-base-800: rgb(47, 47, 47),
+  --color-base-850: rgb(34, 34, 34),
+  --color-base-900: rgb(20, 20, 20),
+  --color-base-950: rgb(7, 7, 7),
+  --color-base-1000: rgb(0, 0, 0),
+  --color-hover-0: rgb(185, 185, 185),
+  --color-hover-1000: rgb(70, 70, 70),
+);
