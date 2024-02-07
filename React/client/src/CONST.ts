@@ -14,10 +14,6 @@ const CONST = {
   APP_MOTTO: "Meta-analysis, at your fingertips",
   IMAGES: {
     ARTMA_LOGO: "/images/ARTMA_logo.png",
-    EXPLORE_DATA: "/images/explore_data.png",
-    HOME: "/images/home.png",
-    MODELS: "/images/models.png",
-    UPLOAD: "/images/upload.png",
   },
   IMAGE_SIZE: {
     EXTRA_SMALL_IMAGE: {
