@@ -1,12 +1,8 @@
 import React, { ReactElement } from "react"
-import Footer from "@/components/Footer/Footer"
 import styles from "./index.module.scss"
 import CONST from "@/CONST"
-import { useTheme } from "next-themes"
-import classNames from "classnames"
 
 const Dashboard: React.FC = (): ReactElement => {
-  let { theme } = useTheme()
   return (
     <div className={styles.commonPageContainer}>
       <h3>{CONST.APP_NAME_SHORT}</h3>
