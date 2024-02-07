@@ -1,9 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import {
-  FaBook,
-} from "react-icons/fa"
+import { FaBook } from "react-icons/fa"
 import { ThemeSwitch, ThemeSwitchRef } from "../ui/ThemeSwitch"
 import CONST from "@/CONST"
 import Image from "next/image"
@@ -35,10 +33,7 @@ export default function Navbar() {
           </Link>
         </h6>
         <div className={styles.rightContainer}>
-          <Link
-            href={ROUTES.HELP}
-            className={styles.rightContainerIconWrapper}
-          >
+          <Link href={ROUTES.HELP} className={styles.rightContainerIconWrapper}>
             <FaBook className={styles.rightContainerIcon} />
           </Link>
 
