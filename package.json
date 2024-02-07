@@ -24,6 +24,7 @@
     "remove-empty-images": "podman images --format '{{.ID}}: {{.Repository}}:{{.Tag}}' | grep '<none>' | awk -F: '{print $1}' | xargs -I {} podman rmi {}",
     "react:dev": "cd React/client && bun run dev",
     "react:install": "cd React/client && bun install",
+    "react:uninstall": "cd React/client && bun uninstall",
     "react:lint": "cd React/client && bun run lint",
     "start:dev": "./scripts/composeUp.sh dev",
     "start:prod": "./scripts/composeUp.sh prod",

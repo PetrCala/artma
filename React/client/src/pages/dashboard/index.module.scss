@@ -1,9 +1,42 @@
-.themeTest {
-  width: 100px;
-  height: 100px;
-  justify-content: center;
+.mainItemsContainer {
+  display: flex;
+  // background-color: pink;
+  width: 40%;
+  height: auto;
+  margin-top: 2em;
+  justify-content: space-around;
+  flex-direction: row;
   align-items: center;
+}
+
+.mainItem {
+  display: flex;
+  padding: 0.8em;
+  height: 7em;
+  width: 7em;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%;
+  // background-color: blue;
+}
+
+.mainItem:hover {
+  background-color: var(--color-hover-0);
+  transition: border-color 0.3s ease;
+}
+
+.mainItemIcon {
+  width: 3em;
+  height: 3em;
+  // background-color: pink;
+}
+
+.mainItemText {
+  // background-color: pink;
+  font-size: 1em;
+  color: var(--color-text-0);
+  top: 0.5em;
   text-align: center;
-  padding: 2;
-  border-width: 1px;
 }
