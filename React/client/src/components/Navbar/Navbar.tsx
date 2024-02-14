@@ -6,6 +6,7 @@ import { ThemeSwitch, ThemeSwitchRef } from "@components/ui/ThemeSwitch"
 import CONST from "@src/CONST"
 import Image from "next/image"
 import { useRef } from "react"
+import classNames from "classnames"
 import ROUTES from "@src/ROUTES"
 import styles from "@styles/components/Navbar/Navbar.module.scss"
 
@@ -16,19 +17,22 @@ export default function Navbar() {
     <nav className={styles.navigation}>
       <div className={styles.container}>
         <h6 className={styles.leftContainer}>
-          <Image
-            src={CONST.IMAGES.ARTMA_LOGO}
-            width={36}
-            height={36}
-            sizes="36x36"
-            alt="Application Logo"
-            priority={false}
-            title="Application Logo"
-          />
           <Link
-            href="/dashboard"
-            className="text-white/90 no-underline hover:text-white"
+            href={ROUTES.HOME}
+            className={classNames(
+              "horizontallyCenter linkContainer",
+              styles.leftContainerLinkContainer
+            )}
           >
+            <Image
+              src={CONST.IMAGES.ARTMA_LOGO}
+              width={36}
+              height={36}
+              sizes="36x36"
+              alt="Application Logo"
+              priority={false}
+              title="Application Logo"
+            />
             {CONST.APP_NAME_SHORT}
           </Link>
         </h6>

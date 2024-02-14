@@ -46,6 +46,13 @@
   /* height: 80%; */
 }
 
+.leftContainerLinkContainer {
+  gap: 0.5rem;
+  text-decoration: none;
+  color: var(--color-text-0);
+  padding: 0.1em;
+}
+
 .rightContainerIconWrapper {
   padding: 0.8em;
   display: inline-flex;

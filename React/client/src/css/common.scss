@@ -8,3 +8,26 @@
   justify-content: center;
   height: 100vh;
 }
+
+.horizontallyCenter {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: row;
+}
+
+.linkContainer {
+  color: var(--color-base-0); // text-white/90
+  text-decoration: none; // no-underline
+
+  // &:hover {
+  //   color: var(--color-hover-0);
+  // }
+}
+
+.verticallyCenter {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
