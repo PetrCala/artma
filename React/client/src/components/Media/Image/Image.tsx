@@ -5,7 +5,7 @@ import cssVariables from "@cssVariables"
 
 const { breakpoints } = cssVariables
 
-type Props = {
+type ImageProps = {
   src?: StaticImageData // for static media
   alt?: string
   resource?: any // MediaType - for Payload media
@@ -21,7 +21,7 @@ type Props = {
   ref?: Ref<null | HTMLImageElement | HTMLVideoElement>
 }
 
-export const Image: React.FC<Props> = (props) => {
+const Image: React.FC<ImageProps> = (props) => {
   const {
     imgClassName,
     onClick,
@@ -84,3 +84,5 @@ export const Image: React.FC<Props> = (props) => {
     />
   )
 }
+
+export default Image

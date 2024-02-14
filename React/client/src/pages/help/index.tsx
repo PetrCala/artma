@@ -1,8 +1,8 @@
 import React, { ReactElement } from "react"
 import Footer from "@components/Footer/Footer"
-import styles from "@styles/help/HelpPage.module.scss"
+import styles from "@styles/help/index.module.scss"
 
-const Help: React.FC = (): ReactElement => {
+const HelpPage: React.FC = (): ReactElement => {
   return (
     <div className={styles.commonPageContainer}>
       <h1>Help</h1>
@@ -11,4 +11,4 @@ const Help: React.FC = (): ReactElement => {
   )
 }
 
-export default Help
+export default HelpPage
