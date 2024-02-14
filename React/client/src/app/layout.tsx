@@ -1,11 +1,11 @@
 import { SessionProvider } from "next-auth/react"
 import type { Metadata } from "next"
 import { Session } from "next-auth"
-// import { ThemeProvider } from "@/context/ThemeContext"
-import { Providers } from "@/context/providers"
-import Navbar from "@/components/Navbar/Navbar"
-import MyProfilePic from "@/components/various/MyProfilePic"
-import Footer from "@/components/Footer/Footer"
+// import { ThemeProvider } from "@context/ThemeContext"
+import { Providers } from "@context/providers"
+import Navbar from "@components/Navbar/Navbar"
+import MyProfilePic from "@components/various/MyProfilePic"
+import Footer from "@components/Footer/Footer"
 
 // Include shared components, SEO components, and global providers here
 
@@ -24,11 +24,12 @@ export default function RootLayout({
   return (
     // <html lang="en" suppressHydrationWarning> {/* className={"something"}*/}
     //   <body className="bg-gray-50">
-        <Providers session={session}> {/* ideally remove the session from here */}
-          <Navbar />
-          <main className="container mx-auto px-4">{children}</main>
-          <Footer />
-        </Providers>
+    <Providers session={session}>
+      {/* ideally remove the session from here */}
+      <Navbar />
+      <main className="container mx-auto px-4">{children}</main>
+      <Footer />
+    </Providers>
     //   </body>
     // </html>
   )

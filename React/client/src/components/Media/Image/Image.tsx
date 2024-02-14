@@ -1,25 +1,25 @@
-import React, { Ref } from "react";
-import NextImage, { StaticImageData } from "next/image";
-import classes from "./index.module.scss";
-import cssVariables from "@/cssVariables";
+import React, { Ref } from "react"
+import NextImage, { StaticImageData } from "next/image"
+import classes from "@styles/components/Media/Image/Image.module.scss"
+import cssVariables from "@cssVariables"
 
-const { breakpoints } = cssVariables;
+const { breakpoints } = cssVariables
 
 type Props = {
-  src?: StaticImageData; // for static media
-  alt?: string;
-  resource?: any; // MediaType - for Payload media
-  size?: string; // for NextImage only
-  priority?: boolean; // for NextImage only
-  fill?: boolean; // for NextImage only
-  className?: string;
-  imgClassName?: string;
-  videoClassName?: string;
-  htmlElement?: any | null; // ElementType
-  onClick?: () => void;
-  onLoad?: () => void;
-  ref?: Ref<null | HTMLImageElement | HTMLVideoElement>;
-};
+  src?: StaticImageData // for static media
+  alt?: string
+  resource?: any // MediaType - for Payload media
+  size?: string // for NextImage only
+  priority?: boolean // for NextImage only
+  fill?: boolean // for NextImage only
+  className?: string
+  imgClassName?: string
+  videoClassName?: string
+  htmlElement?: any | null // ElementType
+  onClick?: () => void
+  onLoad?: () => void
+  ref?: Ref<null | HTMLImageElement | HTMLVideoElement>
+}
 
 export const Image: React.FC<Props> = (props) => {
   const {
@@ -31,14 +31,14 @@ export const Image: React.FC<Props> = (props) => {
     fill,
     src: srcFromProps,
     alt: altFromProps,
-  } = props;
+  } = props
 
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isLoading, setIsLoading] = React.useState(true)
 
-  let width: number | undefined;
-  let height: number | undefined;
-  let alt = altFromProps;
-  let src: StaticImageData | string = srcFromProps || "";
+  let width: number | undefined
+  let height: number | undefined
+  let alt = altFromProps
+  let src: StaticImageData | string = srcFromProps || ""
 
   if (!src && resource && typeof resource !== "string") {
     const {
@@ -46,21 +46,21 @@ export const Image: React.FC<Props> = (props) => {
       height: fullHeight,
       filename: fullFilename,
       alt: altFromResource,
-    } = resource;
+    } = resource
 
-    width = fullWidth;
-    height = fullHeight;
-    alt = altFromResource;
+    width = fullWidth
+    height = fullHeight
+    alt = altFromResource
 
-    let filename = fullFilename;
+    let filename = fullFilename
 
-    src = `https://${process.env.NEXT_PUBLIC_S3_HOSTNAME}/${process.env.NEXT_PUBLIC_S3_BUCKET}/${filename}`;
+    src = `https://${process.env.NEXT_PUBLIC_S3_HOSTNAME}/${process.env.NEXT_PUBLIC_S3_BUCKET}/${filename}`
   }
 
   // NOTE: this is used by the browser to determine which image to download at different screen sizes
   const sizes = Object.entries(breakpoints)
     .map(([, value]) => `(max-width: ${value}px) ${value}px`)
-    .join(", ");
+    .join(", ")
 
   return (
     <NextImage
@@ -71,9 +71,9 @@ export const Image: React.FC<Props> = (props) => {
       alt={alt || ""}
       onClick={onClick}
       onLoad={() => {
-        setIsLoading(false);
+        setIsLoading(false)
         if (typeof onLoadFromProps === "function") {
-          onLoadFromProps();
+          onLoadFromProps()
         }
       }}
       fill={fill}
@@ -82,5 +82,5 @@ export const Image: React.FC<Props> = (props) => {
       sizes={sizes}
       priority={priority}
     />
-  );
-};
+  )
+}

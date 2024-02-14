@@ -1,10 +1,10 @@
-@forward "@/css/queries.scss";
-@forward "@/css/type.scss";
+@forward "@css/queries.scss";
+@forward "@css/type.scss";
 
 .commonPageContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
 }

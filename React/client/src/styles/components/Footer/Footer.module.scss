@@ -1,4 +1,4 @@
-@use "@/css/common.scss" as *;
+@use "@css/common.scss" as *;
 
 .footer {
   margin-top: 2rem;
@@ -23,7 +23,7 @@
   width: 80%;
   height: 80%;
 }
-  
+
 .rightContainer {
   display: flex;
   align-items: center;

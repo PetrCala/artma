@@ -1,5 +1,5 @@
-@use "@/css/themes/light-theme.scss";
-@use "@/css/themes/dark-theme.scss";
+@use "@css/themes/light-theme.scss";
+@use "@css/themes/dark-theme.scss";
 
 @mixin theme($theme-name) {
   @if $theme-name == "light" {

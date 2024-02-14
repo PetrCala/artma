@@ -1,6 +1,6 @@
 import React, { ReactElement } from "react"
-import Footer from "@/components/Footer/Footer"
-import styles from "./index.module.scss"
+import Footer from "@components/Footer/Footer"
+import styles from "@styles/help/HelpPage.module.scss"
 
 const Help: React.FC = (): ReactElement => {
   return (
@@ -12,4 +12,3 @@ const Help: React.FC = (): ReactElement => {
 }
 
 export default Help
-

@@ -1,6 +1,5 @@
 .mainItemsContainer {
   display: flex;
-  // background-color: pink;
   width: 40%;
   height: auto;
   margin-top: 2em;
@@ -19,7 +18,6 @@
   justify-content: center;
   cursor: pointer;
   border-radius: 50%;
-  // background-color: blue;
 }
 
 .mainItem:hover {
@@ -30,11 +28,9 @@
 .mainItemIcon {
   width: 3em;
   height: 3em;
-  // background-color: pink;
 }
 
 .mainItemText {
-  // background-color: pink;
   font-size: 1em;
   color: var(--color-text-0);
   top: 0.5em;

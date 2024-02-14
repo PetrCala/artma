@@ -2,12 +2,12 @@
 
 import Link from "next/link"
 import { FaBook } from "react-icons/fa"
-import { ThemeSwitch, ThemeSwitchRef } from "../ui/ThemeSwitch"
-import CONST from "@/CONST"
+import { ThemeSwitch, ThemeSwitchRef } from "@components/ui/ThemeSwitch"
+import CONST from "@src/CONST"
 import Image from "next/image"
 import { useRef } from "react"
-import ROUTES from "@/ROUTES"
-import styles from "./Navbar.module.scss"
+import ROUTES from "@src/ROUTES"
+import styles from "@styles/components/Navbar/Navbar.module.scss"
 
 export default function Navbar() {
   const themeSwitchRef = useRef<ThemeSwitchRef>(null)

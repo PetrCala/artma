@@ -1,6 +1,6 @@
-import "@/css/globals.scss"
+import "@css/globals.scss"
 import type { AppProps } from "next/app"
-import RootLayout from "@/app/layout"
+import RootLayout from "@app/layout"
 
 function MyApp({ Component, pageProps }: AppProps) {
   const { session, ...otherPageProps } = pageProps

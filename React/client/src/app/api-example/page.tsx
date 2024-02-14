@@ -1,5 +1,5 @@
 "use client"
-import CustomLink from "@/components/various/custom-link"
+import CustomLink from "@components/various/custom-link"
 import { useEffect, useState } from "react"
 
 export default function Page() {
