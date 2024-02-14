@@ -6,8 +6,8 @@
     </h1>
 </div>
 
-
 #### Table of Contents
+
 - [How to run](#how-to-run)
   - [Prerequisites](#prerequisites)
   - [Steps](#steps)
@@ -15,9 +15,9 @@
 - [Handling images containers](#handling-images-containers)
   - [Scripts](#scripts)
 - [Technical choices](#technical-choices)
-    - [Front-end](#front-end)
-    - [Back end](#back-end)
-    - [CI/CD](#cicd)
+  - [Front-end](#front-end)
+  - [Back end](#back-end)
+  - [CI/CD](#cicd)
 - [Useful notes](#useful-notes)
 - [Useful resources](#useful-resources)
 
@@ -37,7 +37,7 @@
   - **React application:** `127.0.0.1:3000`
   - **Flask API endpoint:** `127.0.0.1:8080`
   - **R API endpoint:** `127.0.0.1:8787`
-  
+
 ## Notes
 
 - You can check that the containers are up and running by calling `podman ps -a` from another terminal instance.
@@ -69,6 +69,7 @@ There are several pre-defined node scripts which should help you work with image
 
 - Flask
 - R API endpoint through [Plumber](https://www.rplumber.io)
+- [Dropzone](https://docs.dropzone.dev) for file upload
 
 ### CI/CD
 

@@ -4,9 +4,10 @@ import styles from "@styles/pages/data/upload/index.module.scss"
 
 const DataUploadPage: React.FC = (): ReactElement => {
   return (
-    <div className={styles.commonPageContainer}>
-      <h1>Help</h1>
-      <p>Welcome to the data upload page!</p>
+    <div className="commonPageContainer">
+      {/* <h1>Help</h1> */}
+      {/* <p>Welcome to the data upload page!</p> */}
+      {/* <form action="/target" className="dropzone"></form> */}
     </div>
   )
 }
