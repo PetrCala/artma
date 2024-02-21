@@ -12,11 +12,11 @@ const CONST = {
     "A tool for researchers to automate the process of replication in meta-analysis",
   // APP_MOTTO: "Automate the process of replication in meta-analysis",
   APP_MOTTO: "Meta-analysis, at your fingertips",
-  ATTACHMENT_FILE_TYPE: {
-    FILE: "file",
-    IMAGE: "image",
-    VIDEO: "video",
-  },
+  // ATTACHMENT_FILE_TYPE: {
+  //   FILE: "file",
+  //   IMAGE: "image",
+  //   VIDEO: "video",
+  // },
   BROWSER: {
     CHROME: "chrome",
     FIREFOX: "firefox",
@@ -32,6 +32,20 @@ const CONST = {
     PRESSED: "pressed",
     COMPLETE: "complete",
     DISABLED: "disabled",
+  },
+  DATA_UPLOAD: {
+    ACCEPTED_FILE_TYPES: {
+      CSV: ".csv",
+      XLSX: ".xlsx",
+      XLSM: ".xlsm",
+      JSON: ".json",
+      XML: ".xml",
+      ZIP: ".zip",
+    },
+    FILE_MAX_SIZE: 1000, // Size in MB
+    MAX_FILES: 5, // Max number of files to upload at once
+    PARALLEL_UPLOADS: 5,
+    DEFAULT_MESSAGE: "Drop files here to upload",
   },
   DATE: {
     SQL_DATE_TIME: "YYYY-MM-DD HH:mm:ss",

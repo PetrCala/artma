@@ -1,4 +1,4 @@
-import { cn } from "@libs/utils"
+import { cn } from "@src/libs/StylesUtils"
 import { ExternalLink } from "lucide-react"
 import Link from "next/link"
 

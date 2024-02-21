@@ -1,5 +1,5 @@
 import Link from "next/link"
-import getFormattedDate from "@libs/getFormattedDate"
+import { getFormattedDate } from "@src/libs/DateUtils"
 
 type Props = {
   post: any // BlogPost

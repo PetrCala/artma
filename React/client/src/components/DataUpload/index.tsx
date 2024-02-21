@@ -1,14 +1,17 @@
 import React, { useEffect, useRef } from "react"
 import Dropzone from "dropzone"
-import classNames from "classnames"
-import Footer from "@components/Footer/Footer"
-import { cn } from "@libs/utils"
+import { cn } from "@src/libs/StylesUtils"
 import styles from "./index.module.scss"
 import type { DataUploadProps } from "./types"
+import { constructAcceptedFilesString } from "@src/libs/DataUtils"
+import CONST from "@src/CONST"
 
 const DataUpload = React.forwardRef<HTMLFormElement, DataUploadProps>(
   ({ className, ...props }, ref) => {
     const dropzoneRef = useRef<HTMLFormElement>(null) // Local dropzone ref
+    const acceptedFiles = constructAcceptedFilesString(
+      CONST.DATA_UPLOAD.ACCEPTED_FILE_TYPES
+    )
 
     useEffect(() => {
       let dataUploadZone: Dropzone | null = null
@@ -17,16 +20,14 @@ const DataUpload = React.forwardRef<HTMLFormElement, DataUploadProps>(
       if (dropzoneRef.current) {
         dataUploadZone = new Dropzone(dropzoneRef.current, {
           url: "/target",
-          autoProcessQueue: false,
+          autoProcessQueue: true,
           uploadMultiple: true,
-          parallelUploads: 100,
-          maxFiles: 100,
-          maxFilesize: 100, // Size in MB
-          acceptedFiles: "image/*",
+          parallelUploads: CONST.DATA_UPLOAD.PARALLEL_UPLOADS,
+          maxFiles: CONST.DATA_UPLOAD.MAX_FILES,
+          maxFilesize: CONST.DATA_UPLOAD.FILE_MAX_SIZE,
+          acceptedFiles: acceptedFiles,
           addRemoveLinks: true,
-          // dictDefaultMessage: "Drop files here to upload",
-          dictDefaultMessage: "Drop files here to upload",
-          // "<span class='dropzoneMessage'>Drop files here to upload</span>",
+          dictDefaultMessage: CONST.DATA_UPLOAD.DEFAULT_MESSAGE,
 
           accept: function (file: any, done: any) {
             if (file.name == "justinbieber.jpg") {
