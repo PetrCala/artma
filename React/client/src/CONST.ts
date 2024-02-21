@@ -15,33 +15,6 @@ const CONST = {
   IMAGES: {
     ARTMA_LOGO: "/images/ARTMA_logo.png",
   },
-  IMAGE_SIZE: {
-    EXTRA_SMALL_IMAGE: {
-      WIDTH: 24,
-      HEIGHT: 24,
-      SIZES: "24x24",
-    },
-    SMALL_IMAGE: {
-      WIDTH: 36,
-      HEIGHT: 36,
-      SIZES: "36x36",
-    },
-    MEDIUM_IMAGE: {
-      WIDTH: 48,
-      HEIGHT: 48,
-      SIZES: "48x48",
-    },
-    LARGE_IMAGE: {
-      WIDTH: 64,
-      HEIGHT: 64,
-      SIZES: "64x64",
-    },
-    EXTRA_LARGE_IMAGE: {
-      WIDTH: 96,
-      HEIGHT: 96,
-      SIZES: "96x96",
-    },
-  },
   THEME: {
     LIGHT: "light",
     DARK: "dark",

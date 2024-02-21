@@ -6,24 +6,10 @@ const ROUTES = {
   HELP: "/help",
   DATA: "/data",
   DATA_UPLOAD: "/data/upload",
-  // DATA_UPLOAD_CSV: "/data/upload/csv",
-  // DATA_UPLOAD_JSON: "/data/upload/json",
-  // DATA_UPLOAD_XML: "/data/upload/xml",
-  // DATA_UPLOAD_XLSX: "/data/upload/xlsx",
-  // DATA_UPLOAD_ZIP: "/data/upload/zip",
-  // DATA_UPLOAD_ZIP_CSV: "/data/upload/zip/csv",
-  // DATA_UPLOAD_ZIP_JSON: "/data/upload/zip/json",
-  // DATA_UPLOAD_ZIP_XML: "/data/upload/zip/xml",
-  // DATA_UPLOAD_ZIP_XLSX: "/data/upload/zip/xlsx",
-  // DATA_UPLOAD_ZIP_XLS: "/data/upload/zip/xls",
-  // DATA_UPLOAD_ZIP_XLSM: "/data/upload/zip/xlsm",
-  // DATA_UPLOAD_ZIP_ODS: "/data/upload/zip/ods",
-  // DATA_UPLOAD_ZIP_ODT: "/data/upload/zip/odt",
   DATA_STORAGE: "/data/storage",
-  // DATA_VIEW: "/data/view",
   USER_VIEW: {
     route: "/user/:uid/view",
-    getRoute: (uid: string) => `/user/${uid}/view`,
+    getRoute: (uid: string) => `/user/${uid}/view` as const,
   },
   MODELS: "/models",
   EXPLORATION: "/exploration",
@@ -44,6 +30,12 @@ type AllRoutes = {
 
 type RouteIsPlainString = IsEqual<AllRoutes, string>
 
+/**
+ * Represents all routes in the app as a union of literal strings.
+ *
+ * If this type resolves to `never`, it implies that one or more routes defined within `ROUTES` have not correctly used
+ * `as const` in their `getRoute` function return value.
+ */
 type Route = RouteIsPlainString extends true ? never : AllRoutes
 
 export type { Route }
