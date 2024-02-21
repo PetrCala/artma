@@ -58,13 +58,17 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/deploym
 - We use the `classnames` module to define multiple style object. You can do so by passing the `classNames` method to the `className` attribute. See the following example:
 
   ```tsx
-  <p
-    className={classNames(styles.themeOne, {
-      [styles.themeTwo]: someVariable === 1,
-    })}
-  >
-    Sample text
-  </p>
+  import { cn } from "@libs/utils"
+
+  return (
+    <p
+      className={cn("some-class", styles.themeOne, {
+        [styles.themeTwo]: someVariable === 1,
+      })}
+    >
+      Sample text
+    </p>
+  )
   ```
 
 ### Icons
