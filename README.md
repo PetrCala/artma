@@ -70,6 +70,7 @@ There are several pre-defined node scripts which should help you work with image
 - Flask
 - R API endpoint through [Plumber](https://www.rplumber.io)
 - [Dropzone](https://docs.dropzone.dev) for file upload
+- [HeadlessUI](https://headlessui.com) for several UI components
 
 ### CI/CD
 
