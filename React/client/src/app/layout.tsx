@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { Session } from "next-auth"
 // import { ThemeProvider } from "@context/ThemeContext"
 import { Providers } from "@context/providers"
-import Navbar from "@components/Navbar/Navbar"
+import Navbar from "@src/components/Navbar"
 import MyProfilePic from "@components/various/MyProfilePic"
 import Footer from "@components/Footer/Footer"
 

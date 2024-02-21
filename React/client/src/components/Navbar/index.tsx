@@ -8,15 +8,17 @@ import Image from "next/image"
 import { useRef } from "react"
 import classNames from "classnames"
 import ROUTES from "@src/ROUTES"
-import styles from "@styles/components/Navbar/Navbar.module.scss"
+import LeftNavbar from "@src/components/LeftNavbar"
+import styles from "./index.module.scss"
 
-export default function Navbar() {
+function Navbar() {
   const themeSwitchRef = useRef<ThemeSwitchRef>(null)
 
   return (
     <nav className={styles.navigation}>
       <div className={styles.container}>
         <h6 className={styles.leftContainer}>
+          <LeftNavbar />
           <Link
             href={ROUTES.HOME}
             className={classNames(
@@ -55,3 +57,6 @@ export default function Navbar() {
     </nav>
   )
 }
+Navbar.displayName = "Navbar"
+
+export default Navbar

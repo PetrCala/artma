@@ -2,8 +2,8 @@ import * as React from "react"
 import * as NavigationMenuPrimitive from "@radix-ui/react-navigation-menu"
 import { cva } from "class-variance-authority"
 import { ChevronDown } from "lucide-react"
-
 import { cn } from "@src/libs/StylesUtils"
+import styles from "./index.module.scss"
 
 const NavigationMenu = React.forwardRef<
   React.ElementRef<typeof NavigationMenuPrimitive.Root>,
@@ -11,10 +11,7 @@ const NavigationMenu = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <NavigationMenuPrimitive.Root
     ref={ref}
-    className={cn(
-      "relative z-10 flex max-w-max flex-1 items-center justify-center",
-      className
-    )}
+    className={cn(styles.navigationMenu, className)}
     {...props}
   >
     {children}
@@ -29,10 +26,7 @@ const NavigationMenuList = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <NavigationMenuPrimitive.List
     ref={ref}
-    className={cn(
-      "group flex flex-1 list-none items-center justify-center space-x-1",
-      className
-    )}
+    className={cn(styles.navigationMenuList, className)}
     {...props}
   />
 ))
