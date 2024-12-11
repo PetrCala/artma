@@ -1,14 +1,16 @@
-# source("R/utils/options.R")
-
 #' @export
-artma <- function() {
+artma <- function(config_file = NULL, args = commandArgs(trailingOnly = TRUE)) {
   box::use(
-    modules / options[load_options]
+    modules / options[load_options],
+    modules / const[CONST]
   )
 
+  config_file <- config_file %||% glue::glue("modules/static/{CONST$OPTIONS_FILE_NAME}")
 
-
-  load_options()
+  # load_options(glue::glue("modules/static/{CONST$OPTIONS_FILE_NAME}"), args = args)
+  # load_options(glue::glue("abc.{CONST$OPTIONS_FILE_NAME}"))
+  # print(glue::glue("abc.{CONST$OPTIONS_FILE_NAME}"))
   # Usage
-  print(getOption("artma"))
+  print(config_file)
+  # print(getOption("artma"))
 }
