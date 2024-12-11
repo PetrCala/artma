@@ -1,12 +1,13 @@
 <div align="center">
-      <img src="assets/logo/artma_logo.png" 
-      width="64" height="64" alt="Artma Logo" style="border-radius: 15%!important;">
     <h1>
-        Meta Facilitator
+        Automatic Replication Tools for Meta-analysis
     </h1>
+    <h4>
+    Data in, models out, with ease
+    <!-- Effortlessly bridging the gap between data and models -->
+    </h4>
 </div>
 
-- [Description](#description)
 - [Prerequisites](#prerequisites)
 - [How to run](#how-to-run)
   - [Using the `run.sh` sript](#using-the-runsh-sript)
@@ -23,10 +24,6 @@
   - [Installation](#installation)
   - [Usage](#usage)
   - [Automate Linting (Optional)](#automate-linting-optional)
-
-# Description
-
-Streamline data preprocessing for meta-analysis exploration
 
 # Prerequisites
 
@@ -53,13 +50,13 @@ To run the analysis, you must have several applications installed on your device
 1. Clone the repository using
 
    ```bash
-   git clone https://github.com/PetrCala/meta-facilitator.git
+   git clone https://github.com/PetrCala/artma.git
    ```
 
 1. Navigate to the project root
 
    ```bash
-   cd meta-facilitator
+   cd artma
    ```
 
 1. Set up the local environment by executing
