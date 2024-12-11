@@ -5,6 +5,8 @@ set -e
 SCRIPTS_DIR=$(dirname "${BASH_SOURCE[0]}")
 . "$SCRIPTS_DIR/shellUtils.sh"
 
+PKG_NAME="artma"
+
 # Direcotry names - _DIR_NAME
 VENV_NAME="venv"
 CACHE_DIR_NAME="_cache"
