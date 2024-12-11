@@ -1,11 +1,27 @@
-Package: metafacilitator
-Type: Package
-Title: Meta Facilitator
+Package: artma
+Title: Automatic Replication Tools for Meta-analysis
 Version: 0.1.0
-Author: PetrCala
+Maintainer: Petr Čala <61505008@fsv.cuni.cz>
+Authors@R: c(
+  person("Petr", "Čala", email = "61505008@fsv.cuni.cz", role = c("aut", "cre"))
+
+)
 Maintainer: Petr Čala <cala.p@seznam.cz>
 Description: Streamline data preprocessing for meta-analysis exploration
-License: MIT
+URL: https://github.com/PetrCala/artma
+BugReports: https://github.com/PetrCala/artma/issues
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
+SystemRequirements: JAGS >= 4.3.1 (https://mcmc-jags.sourceforge.io/)
+Depends:
+  R (>= 4.0.0)
+Imports:
+  tidyverse
+Suggests:
+  knitr,
+  rmarkdown,
+  testthat
+VignetteBuilder: knitr
+Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
