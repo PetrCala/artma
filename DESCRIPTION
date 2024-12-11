@@ -15,6 +15,7 @@ SystemRequirements: JAGS >= 4.3.1 (https://mcmc-jags.sourceforge.io/)
 Depends:
   R (>= 4.0.0)
 Imports:
+  box,
   optparse,
   rlang,
   tidyverse
