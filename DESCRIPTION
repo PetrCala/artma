@@ -1,4 +1,6 @@
+Encoding: UTF-8
 Package: artma
+Type: Package
 Title: Automatic Replication Tools for Meta-analysis
 Version: 0.1.0
 Maintainer: Petr Čala <61505008@fsv.cuni.cz>
@@ -9,7 +11,6 @@ Description: Streamline data preprocessing for meta-analysis exploration
 URL: https://github.com/PetrCala/artma
 BugReports: https://github.com/PetrCala/artma/issues
 License: GPL-3
-Encoding: UTF-8
 LazyData: true
 SystemRequirements: JAGS >= 4.3.1 (https://mcmc-jags.sourceforge.io/)
 Depends:
