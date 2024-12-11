@@ -41,9 +41,7 @@ To run the analysis, you must have several applications installed on your device
 
   This command should print out the version of the relevant executable. If not, refer to the R installation guides.
 
-- `yq`: [install here](https://github.com/mikefarah/yq)
-
-  Lightweight software for `.yaml` file preprocessing
+- devtools: [install here](https://devtools.r-lib.org)
 
 # How to run
 

@@ -1,69 +1,45 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Function to display help
-show_help() {
-  echo "Usage: $0 <command> [args]"
-  echo
-  echo "Commands:"
-  echo "  R               Invoke the R run script"
-  echo "  config           Configurate the project"
-  echo "  clear-cache     Clear the cache"
-  echo "  lint            Lint all files in the R folder"
-  echo "  merge           Merge the currently checked out git branch with another one, and push the changes to the remote repository"
-  echo "  setup           Setup the environment"
-  echo "  test            Run all tests"
-  echo "  help            Display this help message"
+help() {
+  cat <<EOF
+Usage: $0 <command> [args]
+  
+Commands:
+  R               Invoke the R run script
+  config           Configurate the project
+  clear-cache     Clear the cache
+  deps            Install all dependencies
+  lint            Lint all files in the R folder
+  merge           Merge the currently checked out git branch with another one, and push the changes to the remote repository
+  setup           Setup the environment
+  test            Run all tests
+  help            Display this help message
+EOF
 }
-
-# Check if yq is installed
-
-if ! command -v yq &>/dev/null; then
-  echo "yq is not installed. Please install yq to use this script."
-  exit 1
-fi
 
 # Check if no arguments were provided
 if [ $# -eq 0 ]; then
-  show_help
+  help
   exit 1
 fi
 
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
 # Main switch-case to handle commands
 case "$1" in
-[Rr])
-  shift
-  sh scripts/runR.sh "$@"
-  ;;
-config)
-  shift
-  sh scripts/config.sh "$@"
-  ;;
-clear-cache)
-  shift
-  sh scripts/clearCache.sh "$@"
-  ;;
-lint)
-  shift
-  sh scripts/lintAll.sh "$@"
-  ;;
-merge)
-  shift
-  sh scripts/mergeAndPush.sh "$@"
-  ;;
-setup)
-  shift
-  sh scripts/setup.sh "$@"
-  ;;
-test)
-  shift
-  sh scripts/test.sh "$@"
-  ;;
-help)
-  show_help
-  ;;
+[Rr]) sh scripts/runR.sh "${@:2}" ;;
+config) sh scripts/config.sh "${@:2}" ;;
+clear-cache) sh scripts/clearCache.sh "${@:2}" ;;
+deps) Rscript -e "devtools::install_deps(dependencies = TRUE)" ;;
+lint) sh scripts/lintAll.sh "${@:2}" ;;
+merge) sh scripts/mergeAndPush.sh "${@:2}" ;;
+setup) sh scripts/setup.sh "${@:2}" ;;
+test) sh scripts/test.sh "${@:2}" ;;
+help) help ;;
 *)
   echo "Error: Unknown command: $1"
-  show_help
+  help
   exit 1
   ;;
 esac
