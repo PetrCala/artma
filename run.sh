@@ -8,7 +8,7 @@ Usage: $0 <command> [args]
 Commands:
   R               Invoke the R run script
   clear-cache     Clear the cache
-  config           Configurate the project
+  config          Configure the project
   deps            Install all dependencies
   help            Display this help message
   lint            Lint all files in the R folder
