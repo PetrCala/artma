@@ -1,8 +1,8 @@
 #' @export
 artma <- function(config_file = NULL, args = commandArgs(trailingOnly = TRUE)) {
   box::use(
-    mod / options[load_options],
-    mod / const[CONST]
+    . / src / options[load_options],
+    . / src / const[CONST]
   )
 
   config_file <- config_file %||% glue::glue("modules/static/{CONST$OPTIONS_FILE_NAME}")
