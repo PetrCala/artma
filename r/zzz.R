@@ -1,3 +1,4 @@
+#' @keywords internal
 ensure_valid_boxpath <- function() {
   current_box_path <- getOption("box.path", character(0))
   pkg_box_path <- find.package("artma")
