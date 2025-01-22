@@ -1,7 +1,8 @@
+source(system.file("R", "config.R", package = "artma"))
+
 #' @export
 artma <- function(config_file = NULL, args = commandArgs(trailingOnly = TRUE)) {
   box::use(
-    config,
     R / artma / options[load_options],
     R / artma / const[CONST]
   )
