@@ -17,6 +17,7 @@ Commands:
   package         Invoke an R function from this package
   setup           Setup the environment
   test            Run all tests
+  test-e2e        Run all end-to-end tests
 EOF
 }
 
@@ -43,6 +44,7 @@ namespace) Rscript -e "roxygen2::roxygenize()" ;;
 package) sh scripts/package.sh "$@" ;;
 setup) sh scripts/setup.sh "$@" ;;
 test) sh scripts/test.sh "$@" ;;
+test-e2e) sh scripts/testE2E.sh "$@" ;;
 help) help ;;
 *)
   echo "Error: Unknown command: $1"

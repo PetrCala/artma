@@ -11,5 +11,4 @@ artma <- function(
   options_file_path <- options_file_path %||% CONST$OPTIONS_FILE_PATH
 
   load_options(path = options_file_path, args = args)
-  print("Options loaded.")
 }

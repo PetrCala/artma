@@ -8,7 +8,6 @@ SCRIPTS_DIR=$(dirname "${BASH_SOURCE[0]}")
 PKG_NAME="artma"
 
 # Direcotry names - _DIR_NAME
-VENV_NAME="venv"
 CACHE_DIR_NAME="_cache"
 R_DIR_NAME="R"
 OUTPUT_DIR_NAME="output"
@@ -16,6 +15,7 @@ CONFIG_DIR_NAME="config"
 CONFIG_SRC_DIR_NAME="$R_DIR_NAME/libs/config"
 LINT_DIR_NAME="R" # Name of the directory to lint
 TEST_DIR_NAME="tests/testthat"
+E2E_TEST_DIR_NAME="tests/E2E"
 
 # File names - _FILE_NAME
 RUN_FILE_NAME="run.R"
