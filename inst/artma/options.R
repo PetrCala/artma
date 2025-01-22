@@ -1,24 +1,38 @@
 #' Recursively flatten nested options into a single list of option definitions
+#' with flattened destination names (e.g., x.y.z).
 #' @keywords internal
-flatten_options <- function(x) {
-  # If `x` is a list of entries where each entry contains a `short` field,
-  # we consider this a list of final option definitions.
+flatten_options <- function(x, parent = NULL) {
+  # Define a helper to recognize a final option definition.
   is_option_def <- function(e) {
     is.list(e) && "short" %in% names(e) && "long" %in% names(e)
   }
 
-  # If x itself is a list of options
+  flattened <- list()
+
+  # If x itself is a list of final option definitions.
   if (is.list(x) && all(sapply(x, is_option_def))) {
-    return(x)
+    for (i in seq_along(x)) {
+      # If there's a parent path, update the destination.
+      if (!is.null(parent)) {
+        # Concatenate parent path with the current dest value.
+        # If dest isn't already provided, we might derive it from the long option.
+        base_dest <- if (!is.null(x[[i]]$dest)) x[[i]]$dest else sub("^--", "", x[[i]]$long)
+        x[[i]]$dest <- paste(parent, base_dest, sep = ".")
+      }
+      flattened[[length(flattened) + 1]] <- x[[i]]
+    }
+    return(flattened)
   }
 
-  # Otherwise, x is expected to be a named list of subcategories
-  flattened <- list()
+  # If not a list of option definitions, x should be a list of subcategories.
   if (is.list(x)) {
     for (name in names(x)) {
-      flattened <- c(flattened, flatten_options(x[[name]]))
+      # Build the new parent path by appending the current name.
+      new_parent <- if (is.null(parent)) name else paste(parent, name, sep = ".")
+      flattened <- c(flattened, flatten_options(x[[name]], new_parent))
     }
   }
+
   flattened
 }
 
@@ -50,6 +64,8 @@ load_options <- function(path, args) {
     rlang::abort(glue::glue("Options file '{path}' does not exist."))
   }
 
+  box::use(artma / const[CONST])
+
   args_is_character_vector <- is.vector(args) && all(sapply(args, is.character))
   args_is_empty <- length(args) == 0
   if (!(args_is_character_vector || args_is_empty)) {
@@ -57,12 +73,19 @@ load_options <- function(path, args) {
   }
 
   raw_options <- yaml::read_yaml(path)
+  # Use the new flatten_options that builds flattened dest values.
   options_def <- flatten_options(raw_options)
   parser <- build_parser(options_def)
 
-  args <- optparse::parse_args(parser, args = args)
+  # Parse command line arguments with the built parser.
+  parsed_args <- optparse::parse_args(parser, args = args)
 
-  options(artma = args)
+  # Prepare a list of options with names prefixed by "artma."
+  # This will transform each element so that, for example, a parsed_args element
+  # named "x.y.z" becomes an R option named "artma.x.y.z".
+  prefixed_options <- stats::setNames(parsed_args, paste0(CONST$PACKAGE_NAME, ".", names(parsed_args)))
+
+  options(prefixed_options)
 }
 
 #' Retrieve a subset of options from the global options namespace.

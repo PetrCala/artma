@@ -171,12 +171,10 @@ For any imports within the project, we use [the **box** package](https://klmr.me
 - Accessing this option in R would then be done as follows:
 
   ```R
-  box::use(base / options[get_option])
-
-  option_value <- get_option("general.specific.option1") # Stores 'value1'
+  option_value <- getOption("artma.general.specific.option1") # Stores 'value1'
   ```
 
-  Notice that the **package prefix is not needed when accessing the options**.
+  Notice that the **package prefix is necessary when accessing the options**.
 
 # Validating Conditions
 
