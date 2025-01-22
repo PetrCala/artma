@@ -38,7 +38,6 @@ flush_log_files <- function(logger_name = NULL) {
 #'
 #' @export
 setup_logging <- function() {
-  browser()
   log_to_console_only <- getOption("artma.general.log_to_console_only")
   logger_name <- getOption("artma.general.log_file_name")
   log_level <- getOption("artma.dynamic_options.log_level")
