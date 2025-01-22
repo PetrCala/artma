@@ -42,12 +42,12 @@ build_parser <- function(options_def) {
 }
 
 #' Load options from a YAML file and command line arguments. Store the options in the global environment.
-#' @param file_name [character(1)] The path to the YAML file containing the options.
+#' @param path [character] Full path to the YAML file containing the options.
 #' @param args [vector(character)] Command line arguments to parse.
 #' @export
-load_options <- function(file_name, args) {
-  if (!file.exists(file_name)) {
-    rlang::abort(glue::glue("Options file '{file_name}' does not exist."))
+load_options <- function(path, args) {
+  if (!file.exists(path)) {
+    rlang::abort(glue::glue("Options file '{path}' does not exist."))
   }
 
   args_is_character_vector <- is.vector(args) && all(sapply(args, is.character))
@@ -56,7 +56,7 @@ load_options <- function(file_name, args) {
     rlang::abort("Arguments must be a character vector or an empty character.")
   }
 
-  raw_options <- yaml::read_yaml(file)
+  raw_options <- yaml::read_yaml(path)
   options_def <- flatten_options(raw_options)
   parser <- build_parser(options_def)
 

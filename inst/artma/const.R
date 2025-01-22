@@ -16,6 +16,7 @@ get_pkg_path <- function() {
 
 PACKAGE_PATH <- get_pkg_path()
 PROJECT_ROOT <- glue::glue("{PACKAGE_PATH}/{PACKAGE_NAME}")
+OPTIONS_DIR_PATH <- glue::glue("{PROJECT_ROOT}/options")
 
 #' @export
 CONST <- list(
@@ -24,7 +25,8 @@ CONST <- list(
   PACKAGE_NAME_VERBOSE = PACKAGE_NAME_VERBOSE,
   PACKAGE_PATH = PACKAGE_PATH,
   PROJECT_ROOT = PROJECT_ROOT, # Where the package modules are located
+  OPTIONS_DIR_PATH = OPTIONS_DIR_PATH,
 
-  # File names
-  OPTIONS_FILE_NAME = glue::glue("{PROJECT_ROOT}/options.yaml")
+  # File paths
+  OPTIONS_FILE_PATH = glue::glue("{OPTIONS_DIR_PATH}/options.yaml")
 )
