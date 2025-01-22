@@ -1,5 +1,7 @@
 #' @export
-artma <- function(options_file_path = NULL, args = commandArgs(trailingOnly = TRUE)) {
+artma <- function(
+    options_file_path = NULL,
+    args = commandArgs(trailingOnly = TRUE)) {
   ensure_valid_boxpath()
   box::use(
     artma / options[load_options],
