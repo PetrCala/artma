@@ -1,0 +1,27 @@
+# DO NOT DELETE THIS FILE
+# Shows the format in which the current option parser expects the options
+
+general:
+  - short: "-v"
+    long: "--verbose"
+    action: "store_true"
+    default: true
+    dest: "verbose"
+    help: "Print extra output [default]"
+
+quiet:
+  - short: "-q"
+    long: "--quietly"
+    action: "store_false"
+    dest: "verbose"
+    help: "Print little output"
+
+counting:
+  number:
+    - short: "-c"
+      long: "--count"
+      type: "integer"
+      default: 5
+      metavar: "number"
+      help: "Number of random normals to generate [default %default]"
+

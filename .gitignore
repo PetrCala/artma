@@ -9,7 +9,7 @@ metadata.json
 output/*
 config/*
 !config/demo.yaml
-logs/*
+**/*.log
 R/config.yaml
 
 # R files

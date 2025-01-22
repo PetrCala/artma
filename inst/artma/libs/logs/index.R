@@ -38,9 +38,9 @@ flush_log_files <- function(logger_name = NULL) {
 #'
 #' @export
 setup_logging <- function() {
-  log_to_console_only <- getOption("artma.general.log_to_console_only")
-  logger_name <- getOption("artma.general.log_file_name")
-  log_level <- getOption("artma.dynamic_options.log_level")
+  log_to_console <- getOption("artma.logging.log_to_console")
+  logger_name <- getOption("artma.logging.log_file_name")
+  log_level <- getOption("artma.logging.log_level")
 
   # Set the logging threshold based on the input string
   if (log_level %in% names(CONST$LOG_LEVEL_MAP)) {
@@ -49,15 +49,19 @@ setup_logging <- function() {
     rlang::abort("Invalid log level specified. Choose from 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'.")
   }
 
-  logger::log_appender(logger::appender_console) # Console logger
+  if (!isTRUE(log_to_console)) {
+    logger::log_appender(NULL) # Disable console logging
+  } else {
+    logger::log_appender(logger::appender_console) # Enable console logging
+  }
 
-  # Set the file appender if logging to file is enabled
-  if (!log_to_console_only && !is.null(logger_name)) {
+  # Set the file appender if a logger name is provided
+  if (!is.null(logger_name)) {
     log_file <- get_logger_path(logger_name = logger_name)
     logger::log_appender(logger::appender_file(log_file, max_files = 1L), index = 2)
   }
 
-  if (getOption("general.log_flush_on_setup")) {
+  if (getOption("artma.logging.flush_logs_on_setup")) {
     flush_log_files(logger_name = logger_name)
   }
 

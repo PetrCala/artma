@@ -1,23 +1,25 @@
-general:
-  - short: "-v"
-    long: "--verbose"
+logging:
+  - long: "--log-file-name"
+    type: "character"
+    default: "artma.log"
+    dest: "log_file_name"
+    help: "The name of the log file [default %default]"
+
+  - long: "--log-level"
+    type: "character"
+    default: "INFO"
+    dest: "log_level"
+    help: "The level of logging [default %default]"
+  
+  - long: "--log-to-console"
     action: "store_true"
+    dest: "log_to_console"
     default: true
-    dest: "verbose"
-    help: "Print extra output [default]"
+    help: "Log to console too (not just to the log file) [default %default]"
 
-quiet:
-  - short: "-q"
-    long: "--quietly"
-    action: "store_false"
-    dest: "verbose"
-    help: "Print little output"
+  - long: "--flush-logs-on-setup"
+    action: "store_true"
+    dest: "flush_logs_on_setup"
+    default: false
+    help: "Flush logs on setup [default %default]"
 
-counting:
-  number:
-    - short: "-c"
-      long: "--count"
-      type: "integer"
-      default: 5
-      metavar: "number"
-      help: "Number of random normals to generate [default %default]"

@@ -4,7 +4,9 @@
 flatten_options <- function(x, parent = NULL) {
   # Define a helper to recognize a final option definition.
   is_option_def <- function(e) {
-    is.list(e) && "short" %in% names(e) && "long" %in% names(e)
+    is.list(e) &&
+      # "short" %in% names(e) &&
+      "long" %in% names(e)
   }
 
   flattened <- list()
