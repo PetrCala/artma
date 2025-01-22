@@ -1,5 +1,6 @@
 #' @title Ensure valid box path
 #'
+#' @usage Should be called at the top of every exported function
 #' @description
 #' Ensure that box imports throughout the projects work. This is done by adding the package path to the box path option if it is not already there.
 #'
