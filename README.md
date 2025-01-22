@@ -20,6 +20,7 @@
     - [Valid Conditions](#valid-conditions)
     - [Invalid Conditions](#invalid-conditions)
 - [Formatting code](#formatting-code)
+- [Understanding the folder structure](#understanding-the-folder-structure)
 - [Using `lintr` for Code Quality](#using-lintr-for-code-quality)
   - [Installation](#installation)
   - [Usage](#usage)
@@ -208,6 +209,12 @@ validate("not a condition")
 We use `styler` for code formatting. See [the package website here](https://github.com/r-lib/styler?tab=readme-ov-file).
 
 Depending on your IDE of choice, the setup for using _styler_ may differ, so we highly recommend you read through the documentation.
+
+# Understanding the folder structure
+
+This package is structured with most files located in the `inst/artma` folder, following the design principles encouraged by the box package. This setup allows for a modular and clean organization of the package's components. By keeping the R directory focused on exported functions and placing the core logic and internal scripts in the `inst/pkgname folder`, the package leverages box's module-based approach to encapsulate functionality. This structure promotes better code reuse, easier debugging, and improved separation of concerns, aligning with modern software development practices.
+
+During the package installation, the `inst` folder gets bundled too, and becomes thus available fox `box` imports.
 
 # Using `lintr` for Code Quality
 
