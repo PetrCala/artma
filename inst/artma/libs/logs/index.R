@@ -38,7 +38,6 @@ flush_log_files <- function(logger_name = NULL) {
 #'
 #' @export
 setup_logging <- function() {
-  log_to_console <- getOption("artma.logging.log_to_console")
   logger_name <- getOption("artma.logging.log_file_name")
   log_level <- getOption("artma.logging.log_level")
 
@@ -49,7 +48,7 @@ setup_logging <- function() {
     rlang::abort("Invalid log level specified. Choose from 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'.")
   }
 
-  if (!isTRUE(log_to_console)) {
+  if (!isTRUE(getOption("artma.logging.log_to_console"))) {
     logger::log_appender(NULL) # Disable console logging
   } else {
     logger::log_appender(logger::appender_console) # Enable console logging
