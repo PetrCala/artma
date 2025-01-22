@@ -64,3 +64,30 @@ load_options <- function(path, args) {
 
   options(artma = args)
 }
+
+#' Retrieve a subset of options from the global options namespace.
+#'
+#' This function retrieves all options that match a specified prefix
+#' from the global options list and returns them as a named list.
+#' The prefix is assumed to represent a hierarchical grouping of options
+#' (e.g., `x.y` for options like `x.y.z` or `x.y.a`).
+#'
+#' @param prefix A string representing the prefix of the options to retrieve.
+#'               The prefix should match the hierarchical group (e.g., `x.y`).
+#' @return A named list of options under the specified prefix, with the prefix removed from the names.
+#' @examples
+#' options(x.y.z = "value1", x.y.a = "value2", x.b = "value3")
+#' get_option_group("x.y")
+#' # Returns:
+#' # $z
+#' # [1] "value1"
+#' # $a
+#' # [1] "value2"
+#'
+#' @export
+get_option_group <- function(prefix) {
+  options <- options()
+  group_keys <- grep(paste0("^", prefix, "\\."), names(options), value = TRUE)
+  group <- setNames(lapply(group_keys, getOption), gsub(paste0("^", prefix, "\\."), "", group_keys))
+  return(group)
+}

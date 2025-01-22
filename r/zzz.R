@@ -15,13 +15,3 @@ ensure_valid_boxpath <- function() {
     options(box.path = c(current_box_path, pkg_box_path, dev_box_path))
   }
 }
-
-
-#' @title Setup
-#'
-#' @description
-#' A function to be called at the beginning of each exported function function to ensure crucial fucntionality, such as imports, logging, etc., all work as expected.
-#' @keywords internal
-artma_setup <- function() {
-  ensure_valid_boxpath()
-}

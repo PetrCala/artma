@@ -1,7 +1,6 @@
 box::use(
-  base / paths[PATHS],
-  base / const[CONST],
-  base / options[get_option],
+  artma / paths[PATHS],
+  artma / const[CONST]
 )
 
 #' Get the path to the logger file
@@ -39,9 +38,9 @@ flush_log_files <- function(logger_name = NULL) {
 #'
 #' @export
 setup_logging <- function() {
-  log_to_console_only <- get_option("general.log_to_console_only")
-  logger_name <- get_option("general.log_file_name")
-  log_level <- get_option("dynamic_options.log_level")
+  log_to_console_only <- getOption("artma.general.log_to_console_only")
+  logger_name <- getOption("artma.general.log_file_name")
+  log_level <- getOption("artma.dynamic_options.log_level")
 
   # Set the logging threshold based on the input string
   if (log_level %in% names(CONST$LOG_LEVEL_MAP)) {
@@ -58,9 +57,11 @@ setup_logging <- function() {
     logger::log_appender(logger::appender_file(log_file, max_files = 1L), index = 2)
   }
 
-  if (get_option("general.log_flush_on_setup")) {
+  if (getOption("general.log_flush_on_setup")) {
     flush_log_files(logger_name = logger_name)
   }
+
+  logger::log_debug("Logging setup complete")
 }
 
 #' Teardown the logger and remove the log file
