@@ -1,3 +1,8 @@
+#' @title Ensure valid box path
+#'
+#' @description
+#' Ensure that box imports throughout the projects work. This is done by adding the package path to the box path option if it is not already there.
+#'
 #' @keywords internal
 ensure_valid_boxpath <- function() {
   current_box_path <- getOption("box.path", character(0))
