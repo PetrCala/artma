@@ -1,4 +1,4 @@
-source(system.file("R", "config.R", package = "artma"))
+source(file.path(dirname(normalizePath(sys.frame(1)$ofile)), "config.R"))
 
 #' @export
 artma <- function(config_file = NULL, args = commandArgs(trailingOnly = TRUE)) {
