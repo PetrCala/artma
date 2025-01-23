@@ -3,9 +3,16 @@
 #' @param path [character] A path to create the
 #' @export
 create_user_options_file <- function(parsed_options, path) {
-  # if (file.exists(path)) {
-  #   logger::log_info(glue::glue("An options file already exists under the path {path}. Overwriting this file..."))
-  # }
+  if (!is.list(parsed_options)) {
+    rlang::abort("Invalid parsed options - must be a list.")
+  }
+  if (!is.character(path) || length(path) <= 0) {
+    rlang::abort(glue::glue("Invalid path: {path}"))
+  }
+  if (file.exists(path)) {
+    logger::log_info(glue::glue("An options file already exists under the path {path}. Overwriting this file..."))
+  }
+
   box::use(
     artma / options / utils[flat_to_nested],
     artma / libs / file_utils[ensure_folder_existence]
@@ -21,6 +28,7 @@ create_user_options_file <- function(parsed_options, path) {
     path
   )
 }
+
 #' Load options from a user options YAML file and command line arguments. Store the options in the global environment.
 #' @param path [character] Full path to the YAML file containing the options.
 #' @param args [vector(character)] Command line arguments to parse.
