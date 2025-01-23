@@ -44,6 +44,7 @@ runtime_setup <- function(
     artma / libs / logs / index[setup_logging]
   )
 
+  # TODO Here, the code should ideally select the default options if nothing is provided, else it should points to the user specified options/dir
   if (is.null(options_dir)) options_dir <- PATHS$DIR_USER_OPTIONS
   if (is.null(options)) options <- CONST$DEFAULT_OPTIONS_FILE_NAME
 
