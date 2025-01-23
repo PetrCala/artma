@@ -12,7 +12,7 @@ artma_setup <- function(
     artma / libs / logs / index[setup_logging]
   )
 
-  options_file_path <- options_file_path %||% PATHS$FILE_OPTIONS
+  options_file_path <- options_file_path %||% PATHS$FILE_OPTIONS_TEMPLATE
 
   load_options(path = options_file_path, args = args)
   setup_logging()

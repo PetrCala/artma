@@ -30,12 +30,11 @@ PATHS <- list(
   PROJECT_ROOT = PROJECT_ROOT,
   DIR_CONFIG = DIR_CONFIG,
   DIR_OPTIONS = DIR_OPTIONS,
-
   DIR_LOGS = file.path(DIR_TEMP, "logs"),
   DIR_CACHE = file.path(DIR_TEMP, "cache"),
 
   # Files
-  FILE_OPTIONS = file.path(DIR_OPTIONS, "options.yaml")
+  FILE_OPTIONS_TEMPLATE = file.path(DIR_OPTIONS, "options_template.yaml")
 
   # Config files
   # FILE_CONFIG = file.path(DIR_R, "config.yaml"),
