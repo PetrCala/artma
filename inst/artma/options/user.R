@@ -43,7 +43,7 @@ load_user_options_file <- function(path) {
     rlang::abort(glue::glue("Invalid path: {path}"))
   }
   if (!file.exists(path)) {
-    logger::abort(glue::glue("The following user options file does not exist: {path}.\nYou can create a user options file using 'artma::options.create'."))
+    rlang::abort(glue::glue("The following user options file does not exist: {path}.\nYou can create a user options file using 'artma::options.create'."))
   }
 
   box::use(
