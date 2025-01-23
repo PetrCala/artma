@@ -139,7 +139,7 @@ artma lint
 You can use the [\*devtools\*\*](https://devtools.r-lib.org) package to install this project locally as a package. To do so, simply call
 
 ```R
-devtools::install_local(path=<path-to-the-artma-package>)
+devtools::load_all()
 ```
 
 ## From GitHub

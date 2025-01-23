@@ -1,4 +1,15 @@
-# Utils
+- [Installing R](#installing-r)
+- [VSCode](#vscode)
+  - [Invoking the run script](#invoking-the-run-script)
+    - [Interactively](#interactively)
+    - [Non-interactively](#non-interactively)
+  - [Closing an open interactive script](#closing-an-open-interactive-script)
+  - [Useful settings](#useful-settings)
+- [Aliases](#aliases)
+- [Rprofile](#rprofile)
+- [.Renviron](#renviron)
+- [Installing various R packages](#installing-various-r-packages)
+  - [`systemfonts` on MacOS](#systemfonts-on-macos)
 
 ## Installing R
 
@@ -33,7 +44,7 @@ In `settings.json`, add the following:
       {
         "command": "workbench.action.terminal.sendSequence",
         "args": {
-          "text": "source('<path-to-the-project>/meta-facilitator/R/run.R')\u000D"
+          "text": "source('<path-to-the-project>/artma/R/run.R')\u000D"
         }
       }
     ]
@@ -172,9 +183,18 @@ suppressWarnings(suppressMessages({
 }))
 ```
 
-# Installing various R packages
+## .Renviron
 
-## `systemfonts` on MacOS
+To correctly specify installation paths, you may want to add the following to your `~/.Renviron` file:
+
+```
+R_LIBS_USER=/opt/homebrew/lib/R/4.4/site-library
+_R_CHECK_USE_CODETOOLS_=FALSE
+```
+
+## Installing various R packages
+
+### `systemfonts` on MacOS
 
 Add the following to `~/.R/Makevars` for _systemfonts_ package installation to succeed:
 
