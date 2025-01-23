@@ -1,8 +1,9 @@
 #' @title Create user options file
+#' @param options_name [character] Name of the options file. Is used only for logging purposes.
 #' @param parsed_options [list] A list of parsed options from the template file
-#' @param path [character] A path to create the
+#' @param path [character] A path to create the options file.
 #' @export
-create_user_options_file <- function(parsed_options, path) {
+create_user_options_file <- function(options_name, parsed_options, path) {
   if (!is.list(parsed_options)) {
     rlang::abort("Invalid parsed options - must be a list.")
   }
@@ -23,13 +24,15 @@ create_user_options_file <- function(parsed_options, path) {
 
   nested_options <- flat_to_nested(parsed_options)
 
-  logger::log_debug(glue::glue("Writing a user options file to {path}..."))
+  logger::log_info(glue::glue("Creating a new user options file: '{options_name}'"))
 
   ensure_folder_existence(dirname(path))
   yaml::write_yaml(
     nested_options,
     path
   )
+
+  logger::log_success("User options file created.")
 }
 
 #' Load options from a user options YAML file. Store the options in the global environment.

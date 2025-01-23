@@ -2,22 +2,31 @@
 #' options template - full path to the options template file
 #' @export
 options.create <- function(
-    options_template_path = NULL,
+    options_name,
+    options_dir = NULL,
+    template_path = NULL,
     args = commandArgs(trailingOnly = TRUE)) {
   static_setup()
+
+  if (grepl(".yaml$", options_name)) {
+    rlang::abort(glue::glue("Please pass the options file name without the .yaml suffix."))
+  }
 
   box::use(
     artma / paths[PATHS],
     artma / options / index[parse_options_from_template, create_user_options_file]
   )
 
-  options_template_path <- options_template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
-  parsed_options <- parse_options_from_template(path = options_template_path, args = args)
+  if (is.null(options_dir)) options_dir <- PATHS$DIR_USER_OPTIONS
+  options_file_name <- paste0(options_name, ".yaml")
+  options_file_path <- file.path(options_dir, options_file_name)
 
-  out_path <- file.path(PATHS$DIR_TEMP, "options", "some_file.yaml")
+  template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
+  parsed_options <- parse_options_from_template(path = template_path, args = args)
 
   create_user_options_file(
+    options_name = options_name,
     parsed_options = parsed_options,
-    path = out_path
+    path = options_file_path
   )
 }

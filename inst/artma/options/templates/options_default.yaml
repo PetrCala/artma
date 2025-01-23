@@ -1,0 +1,8 @@
+general:
+  name: default
+help: no
+logging:
+  log_file_name: artma.log
+  log_level: INFO
+  log_to_console: yes
+  flush_logs_on_setup: no
