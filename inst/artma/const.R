@@ -11,6 +11,9 @@ CONST <- list(
   DATE_FORMAT = "%Y-%m-%d %H:%M:%S",
   DATE_ONLY_FORMAT = "%Y-%m-%d",
 
+  # Options
+  DEFAULT_OPTIONS_FILE_NAME = "default.yaml",
+
   # Logger
   LOG_PATTERN = "^(INFO|WARN|ERROR|DEBUG|FATAL)\\s+\\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\\]\\s*",
   LOG_LEVEL_MAP = list(

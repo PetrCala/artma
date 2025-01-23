@@ -1,9 +1,11 @@
 #' This function is about creating a user options file from the template
 #' options template - full path to the options template file
+#' @export
 options.create <- function(
     options_template_path = NULL,
     args = commandArgs(trailingOnly = TRUE)) {
   static_setup()
+
   box::use(
     artma / paths[PATHS],
     artma / options / index[parse_options_from_template, create_user_options_file]

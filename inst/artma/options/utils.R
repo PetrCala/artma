@@ -56,3 +56,33 @@ flat_to_nested <- function(flat_option_list) {
 
   nested_list
 }
+
+#' @title Nested to flat
+#' @description Convert a list of nested options to a flat one
+#' @param nested [list] A list of nested options
+#' @param parent_key [character, optional] Parent key for the nested options. Defaults to NULL.
+#' @param sep [character, optional] Separator to use when concatenating the level names. Defaulst to '.'.
+#' @export
+nested_to_flat <- function(nested, parent_key = NULL, sep = ".") {
+  if (!is.list(nested)) {
+    rlang::abort("The options must be passed as a nested list.")
+  }
+
+  flat <- list()
+
+  for (name in names(nested)) {
+    if (is.null(parent_key)) {
+      new_key <- name
+    } else {
+      new_key <- paste(parent_key, name, sep = sep)
+    }
+
+    if (is.list(nested[[name]])) {
+      flat <- c(flat, nested_to_flat(nested[[name]], new_key, sep))
+    } else {
+      flat[[new_key]] <- nested[[name]]
+    }
+  }
+
+  flat
+}

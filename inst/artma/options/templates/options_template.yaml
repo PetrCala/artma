@@ -1,3 +1,10 @@
+general:
+  - dest: "name"
+    long: "--name"
+    type: "character"
+    default: null
+    help: "The name of the current option file [default %default]"
+
 logging:
   - dest: "log_file_name"
     long: "--log-file-name"

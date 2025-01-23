@@ -29,13 +29,26 @@ static_setup <- function() {
 #'
 #' @description
 #' A function to be called at the beginning of each exported runtime function to ensure crucial fucntionality, such as imports, logging, etc., all work as expected.
+#'
+#' @param options [character, optional] Name of the user options file to use. Defaults to the default options file name in CONST.
+#' @param options_dir [character, optional] Path to the directory that contains user options. Defaults to the directory specified in PATHS.
 #' @keywords internal
-runtime_setup <- function() {
+runtime_setup <- function(
+    options = NULL,
+    options_dir = NULL) {
   static_setup()
   box::use(
+    artma / const[CONST],
+    artma / paths[PATHS],
+    artma / options / index[load_user_options_file],
     artma / libs / logs / index[setup_logging]
   )
+
+  if (is.null(options_dir)) options_dir <- PATHS$DIR_USER_OPTIONS
+  if (is.null(options)) options <- CONST$DEFAULT_OPTIONS_FILE_NAME
+
   # Here, there should possibly be validations that options have been set up, and the runtime functions are ready
 
+  load_user_options_file(path = file.path(options_dir, options))
   setup_logging()
 }

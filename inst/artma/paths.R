@@ -33,6 +33,7 @@ PATHS <- list(
   DIR_TEMP = DIR_TEMP,
   DIR_LOGS = file.path(DIR_TEMP, "logs"),
   DIR_CACHE = file.path(DIR_TEMP, "cache"),
+  DIR_USER_OPTIONS = file.path(DIR_TEMP, "options"), # Store user options here by default
 
   # Files
   FILE_OPTIONS_TEMPLATE = file.path(DIR_OPTIONS, "templates", "options_template.yaml")
