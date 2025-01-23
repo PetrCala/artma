@@ -12,6 +12,9 @@
 - [How to run](#how-to-run)
   - [Using the `run.sh` sript](#using-the-runsh-sript)
     - [Creating an alias](#creating-an-alias)
+- [How to install](#how-to-install)
+  - [Locally](#locally)
+  - [From GitHub](#from-github)
 - [Importing modules](#importing-modules)
 - [Using options](#using-options)
 - [Validating Conditions](#validating-conditions)
@@ -129,25 +132,26 @@ artma lint
 # etc.
 ```
 
-<!-- # Available actions
+# How to install
 
-Here is a list of all the currently supported actions:
+## Locally
 
-- **`analyse`**: Run a full analysis of a dataset.
-  - _Args_:
-    - Analysis name - e.g., `Chris`,...
-  - _Example_:
-    - `python main.py analyse Chris`
-- **`r`**: Call an R script:
-  - _Args_:
-    - R action name - e.g., `add`, `subtract`,...
-    - Arguments passed to the R action
-  - _Example_:
-    - `python main.py r add 1 2`
+You can use the [\*devtools\*\*](https://devtools.r-lib.org) package to install this project locally as a package. To do so, simply call
 
-Here is a list of all currently available analyses is:
+```R
+devtools::install_local(path=<path-to-the-artma-package>)
+```
 
-- `Chris` -->
+## From GitHub
+
+To install the package from GitHub, leverage the **remotes** package and call
+
+```R
+GH_REPO_PATH <- "PetrCala/artma"
+remotes::install_github(GH_REPO_PATH)
+```
+
+Feel free to add any other arguments of the `install_github` function to install from different branches, tags, etc.
 
 # Importing modules
 
