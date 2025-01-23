@@ -6,8 +6,10 @@ set -e
 
 info "Setting up the R environment..."
 
-# Setup the R environment
-cd $R_DIR
-Rscript "$SETUP_ENV_FILE_PATH"
+Rscript -e "
+  source(\"$SCRIPTS_SRC_DIR/env.R\")
+  source(\"$SCRIPTS_SRC_DIR/packages.R\")
+  load_packages(PACKAGES)
+"
 
 info "Finished setting up the R environment."
