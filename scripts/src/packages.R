@@ -3,10 +3,13 @@
 #' This objects contains lists of local development packages that are used in the project.
 #' @keywords internal
 PACKAGES <- c(
-  "box",
-  "languageserver",
-  "pbapply",
-  "remotes",
-  "rstudioapi"
+  "box", # Package and module handling
+  "devtools", # Package development
+  "jsonlite", # VSCode interactive terminal
+  "languageserver", # Formatting and linting
+  "pbapply", # Package installation
+  "remotes", # Pacakge installation
+  "rstudioapi", # RStudio communication
+  "tidyverse" # Package installation
 )
 

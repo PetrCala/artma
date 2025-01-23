@@ -171,3 +171,13 @@ suppressWarnings(suppressMessages({
     library(base)
 }))
 ```
+
+# Installing various R packages
+
+## `systemfonts` on MacOS
+
+Add the following to `~/.R/Makevars` for _systemfonts_ package installation to succeed:
+
+```make
+OBJCXXFLAGS += ${CXX17STD}
+```
