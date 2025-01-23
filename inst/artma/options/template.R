@@ -1,7 +1,6 @@
-#' Recursively flatten nested options into a single list of option definitions
-#' with flattened destination names (e.g., x.y.z).
+#' Recursively flatten nested template options into a single list of option definitions with flattened destination names (e.g., x.y.z).
 #' @keywords internal
-flatten_options <- function(x, parent = NULL) {
+flatten_template_options <- function(x, parent = NULL) {
   # Define a helper to recognize a final option definition.
   is_option_def <- function(e) {
     is.list(e) &&
@@ -30,12 +29,13 @@ flatten_options <- function(x, parent = NULL) {
     for (name in names(x)) {
       # Build the new parent path by appending the current name.
       new_parent <- if (is.null(parent)) name else paste(parent, name, sep = ".")
-      flattened <- c(flattened, flatten_options(x[[name]], new_parent))
+      flattened <- c(flattened, flatten_template_options(x[[name]], new_parent))
     }
   }
 
   flattened
 }
+
 
 #' Build an optparse parser from a list of option definitions
 #' @keywords internal
@@ -56,11 +56,15 @@ build_parser <- function(options_def) {
   parser
 }
 
-#' Load options from a YAML file and command line arguments. Store the options in the global environment.
+
+#' Parse an options template file into a list of options and return this list
+#'
 #' @param path [character] Full path to the YAML file containing the options.
 #' @param args [vector(character)] Command line arguments to parse.
+#' @param add_prefix [bool, optional] Whether to add a package prefix to all. Defaults to FALSE.
+#' @returns [list] A list of options
 #' @export
-load_options <- function(path, args) {
+parse_options_from_template <- function(path, args, add_prefix = FALSE) {
   if (!file.exists(path)) {
     rlang::abort(glue::glue("Options file '{path}' does not exist."))
   }
@@ -73,45 +77,21 @@ load_options <- function(path, args) {
     rlang::abort("Arguments must be a character vector or an empty character.")
   }
 
-  raw_options <- yaml::read_yaml(path)
+  raw_template_options <- yaml::read_yaml(path)
+
   # Use the new flatten_options that builds flattened dest values.
-  options_def <- flatten_options(raw_options)
+  options_def <- flatten_template_options(raw_template_options)
   parser <- build_parser(options_def)
 
   # Parse command line arguments with the built parser.
-  parsed_args <- optparse::parse_args(parser, args = args)
+  parsed_options <- optparse::parse_args(parser, args = args)
 
-  # Prepare a list of options with names prefixed by "artma."
-  # This will transform each element so that, for example, a parsed_args element
-  # named "x.y.z" becomes an R option named "artma.x.y.z".
-  prefixed_options <- stats::setNames(parsed_args, paste0(CONST$PACKAGE_NAME, ".", names(parsed_args)))
+  if (add_prefix) {
+    # Prepare a list of options with names prefixed by "artma."
+    # This will transform each element so that, for example, a parsed_args element
+    # named "x.y.z" becomes an R option named "artma.x.y.z".
+    parsed_options <- stats::setNames(parsed_options, paste0(CONST$PACKAGE_NAME, ".", names(parsed_options)))
+  }
 
-  options(prefixed_options)
-}
-
-#' Retrieve a subset of options from the global options namespace.
-#'
-#' This function retrieves all options that match a specified prefix
-#' from the global options list and returns them as a named list.
-#' The prefix is assumed to represent a hierarchical grouping of options
-#' (e.g., `x.y` for options like `x.y.z` or `x.y.a`).
-#'
-#' @param prefix A string representing the prefix of the options to retrieve.
-#'               The prefix should match the hierarchical group (e.g., `x.y`).
-#' @return A named list of options under the specified prefix, with the prefix removed from the names.
-#' @examples
-#' options(x.y.z = "value1", x.y.a = "value2", x.b = "value3")
-#' get_option_group("x.y")
-#' # Returns:
-#' # $z
-#' # [1] "value1"
-#' # $a
-#' # [1] "value2"
-#'
-#' @export
-get_option_group <- function(prefix) {
-  options <- options()
-  group_keys <- grep(paste0("^", prefix, "\\."), names(options), value = TRUE)
-  group <- setNames(lapply(group_keys, getOption), gsub(paste0("^", prefix, "\\."), "", group_keys))
-  return(group)
+  parsed_options
 }
