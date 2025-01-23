@@ -11,6 +11,7 @@ config/*
 !config/demo.yaml
 **/*.log
 R/config.yaml
+**/temp/*
 
 # R files
 .Rproj.user/

@@ -18,8 +18,9 @@ get_pkg_path <- function() {
 
 PACKAGE_PATH <- get_pkg_path()
 PROJECT_ROOT <- file.path(PACKAGE_PATH, CONST$PACKAGE_NAME)
-DIR_OPTIONS <- file.path(PROJECT_ROOT, "options")
 DIR_CONFIG <- file.path(PROJECT_ROOT, "config")
+DIR_OPTIONS <- file.path(PROJECT_ROOT, "options")
+DIR_TEMP <- file.path(PROJECT_ROOT, "temp")
 
 #' A list of paths used in the project
 #'
@@ -29,10 +30,9 @@ PATHS <- list(
   PROJECT_ROOT = PROJECT_ROOT,
   DIR_CONFIG = DIR_CONFIG,
   DIR_OPTIONS = DIR_OPTIONS,
-  # DIR_DATA = file.path(PROJECT_ROOT, "data"),
-  # DIR_OUTPUT = file.path(PROJECT_ROOT, "output"),
-  # DIR_CACHE = file.path(PROJECT_ROOT, "_cache"),
-  DIR_LOGS = file.path(PROJECT_ROOT, "logs"),
+
+  DIR_LOGS = file.path(DIR_TEMP, "logs"),
+  DIR_CACHE = file.path(DIR_TEMP, "cache"),
 
   # Files
   FILE_OPTIONS = file.path(DIR_OPTIONS, "options.yaml")
