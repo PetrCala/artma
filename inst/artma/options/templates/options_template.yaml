@@ -2,8 +2,7 @@ general:
   - dest: "name"
     long: "--name"
     type: "character"
-    default: null
-    help: "The name of the current option file [default %default]"
+    help: "The name of the current option file"
 
 help: 
   - dest: "help"
