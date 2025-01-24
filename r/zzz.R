@@ -34,22 +34,16 @@ static_setup <- function() {
 #' @param options_dir [character, optional] Path to the directory that contains user options. Defaults to the directory specified in PATHS.
 #' @keywords internal
 runtime_setup <- function(
-    options = NULL,
+    options_name = NULL,
     options_dir = NULL) {
   static_setup()
   box::use(
     artma / const[CONST],
     artma / paths[PATHS],
-    artma / options / index[load_user_options_file],
+    artma / options / index[load_user_options],
     artma / libs / logs / index[setup_logging]
   )
 
-  # TODO Here, the code should ideally select the default options if nothing is provided, else it should points to the user specified options/dir
-  if (is.null(options_dir)) options_dir <- PATHS$DIR_USER_OPTIONS
-  if (is.null(options)) options <- CONST$DEFAULT_OPTIONS_FILE_NAME
-
-  # Here, there should possibly be validations that options have been set up, and the runtime functions are ready
-
-  load_user_options_file(path = file.path(options_dir, options))
+  load_user_options(options_name = options_name, options_dir = options_dir)
   setup_logging()
 }

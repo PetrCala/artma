@@ -12,7 +12,7 @@ CONST <- list(
   DATE_ONLY_FORMAT = "%Y-%m-%d",
 
   # Options
-  DEFAULT_OPTIONS_FILE_NAME = "default.yaml",
+  CURRENT_OPTIONS_FILE_NAME = "current.yaml",
 
   # Logger
   LOG_PATTERN = "^(INFO|WARN|ERROR|DEBUG|FATAL)\\s+\\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\\]\\s*",

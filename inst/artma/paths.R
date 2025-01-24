@@ -20,6 +20,7 @@ PACKAGE_PATH <- get_pkg_path()
 PROJECT_ROOT <- file.path(PACKAGE_PATH, CONST$PACKAGE_NAME)
 DIR_CONFIG <- file.path(PROJECT_ROOT, "config")
 DIR_OPTIONS <- file.path(PROJECT_ROOT, "options")
+DIR_OPTIONS_TEMPLATES <- file.path(DIR_OPTIONS, "templates")
 DIR_TEMP <- file.path(PROJECT_ROOT, "temp")
 
 #' A list of paths used in the project
@@ -30,15 +31,13 @@ PATHS <- list(
   PROJECT_ROOT = PROJECT_ROOT,
   DIR_CONFIG = DIR_CONFIG,
   DIR_OPTIONS = DIR_OPTIONS,
+  DIR_OPTIONS_TEMPLATES = DIR_OPTIONS_TEMPLATES,
   DIR_TEMP = DIR_TEMP,
   DIR_LOGS = file.path(DIR_TEMP, "logs"),
   DIR_CACHE = file.path(DIR_TEMP, "cache"),
   DIR_USER_OPTIONS = file.path(DIR_TEMP, "options"), # Store user options here by default
 
   # Files
-  FILE_OPTIONS_TEMPLATE = file.path(DIR_OPTIONS, "templates", "options_template.yaml")
-
-  # Config files
-  # FILE_CONFIG = file.path(DIR_R, "config.yaml"),
-  # FILE_CONFIG_SRC = file.path(DIR_CONFIG, "config_src.yaml"),
+  FILE_OPTIONS_TEMPLATE = file.path(DIR_OPTIONS_TEMPLATES, "options_template.yaml"),
+  FILE_OPTIONS_DEFAULT = file.path(DIR_OPTIONS_TEMPLATES, "options_default.yaml")
 )
