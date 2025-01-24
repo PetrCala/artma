@@ -59,7 +59,7 @@ options.apply <- function(
 
   apply_user_options_file(path = options_file_path)
 
-  logger::log_info(glue::glue("The following user options have been applied: ' {options_name}'."))
+  logger::log_info(glue::glue("The following user options have been applied: '{options_name}'."))
 }
 
 # #' @export
