@@ -5,6 +5,12 @@ general:
     default: null
     help: "The name of the current option file [default %default]"
 
+help: 
+  - dest: "help"
+    long: "--help"
+    default: false
+    help: "Whether to print help"
+
 logging:
   - dest: "log_file_name"
     long: "--log-file-name"
