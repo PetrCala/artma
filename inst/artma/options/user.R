@@ -139,6 +139,6 @@ apply_user_options_file <- function(path) {
   # We want to copy the desired options file to the 'current options file path'
   target_path <- file.path(dirname(path), CONST$CURRENT_OPTIONS_FILE_NAME)
 
-  logger::debug(glue::glue("Applying the user options from the following path: {path}"))
+  logger::log_debug(glue::glue("Applying the user options from the following path: {path}"))
   file.copy(from = path, to = target_path, overwrite = TRUE)
 }
