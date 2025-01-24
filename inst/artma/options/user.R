@@ -123,7 +123,7 @@ load_user_options <- function(options_name = NULL, options_dir = NULL) {
 #' @title Apply user options file
 #' @description Apply user options given their full path. This means overwriting any current options with a user options file located under the specified path.
 #' @param path [character] Full path to the user options file to apply.
-#' @keywords internal
+#' @export
 apply_user_options_file <- function(path) {
   if (!is.character(path) || length(path) <= 0) {
     rlang::abort(glue::glue("Invalid user options file path: {path}."))
