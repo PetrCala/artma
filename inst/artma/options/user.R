@@ -70,6 +70,7 @@ load_user_options_file <- function(path, should_return = FALSE) {
   return(invisible(NULL))
 }
 
+
 #' @title Load user options
 #' @description Load user options by their name.
 #' @details In case the options name is not passed, the function will attempt to load the current options configuration. If none is found, it will then attempt to load the default options. If that fails too, an error is raised.
@@ -117,4 +118,27 @@ load_user_options <- function(options_name = NULL, options_dir = NULL) {
   }
 
   rlang::abort("Could not load user options.")
+}
+
+#' @title Apply user options file
+#' @description Apply user options given their full path. This means overwriting any current options with a user options file located under the specified path.
+#' @param path [character] Full path to the user options file to apply.
+#' @keywords internal
+apply_user_options_file <- function(path) {
+  if (!is.character(path) || length(path) <= 0) {
+    rlang::abort(glue::glue("Invalid user options file path: {path}."))
+  }
+  if (!file.exists(path)) {
+    rlang::abort(glue::glue("The following user options file path does not exist: {path}."))
+  }
+
+  box::use(
+    artma / const[CONST]
+  )
+
+  # We want to copy the desired options file to the 'current options file path'
+  target_path <- file.path(dirname(path), CONST$CURRENT_OPTIONS_FILE_NAME)
+
+  logger::debug(glue::glue("Applying the user options from the following path: {path}"))
+  file.copy(from = path, to = target_path, overwrite = TRUE)
 }

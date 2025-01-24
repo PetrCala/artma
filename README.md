@@ -17,6 +17,7 @@
   - [From GitHub](#from-github)
 - [Importing modules](#importing-modules)
 - [Using options](#using-options)
+  - [How options are read and applied](#how-options-are-read-and-applied)
 - [Validating Conditions](#validating-conditions)
   - [How to Use the `validate` Function](#how-to-use-the-validate-function)
   - [Examples](#examples)
@@ -179,6 +180,12 @@ For any imports within the project, we use [the **box** package](https://klmr.me
   ```
 
   Notice that the **package prefix is necessary when accessing the options**.
+
+## How options are read and applied
+
+You can apply user options through the `load_user_options` function. Here, provide the name of the user options file, and optionally the directory to look for, and the function loads the relevant options.
+
+If no file name is provided, the function instead loads the current options, which are stored under the name `current.yaml`. If no such file exists, the function instead loads the default options, stored under a static template (`options_default.yaml`).
 
 # Validating Conditions
 
