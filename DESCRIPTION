@@ -16,6 +16,7 @@ Depends:
   R (>= 4.0.0)
 Imports:
   box,
+  fs,
   glue,
   here,
   optparse,
@@ -29,3 +30,10 @@ Suggests:
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
+Collate:
+  'AAA.R'
+  'setup.R'
+  'options.R'
+  'transformations.R'
+  'artma.R'
+  'linters.R'
