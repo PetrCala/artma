@@ -6,7 +6,7 @@ create_user_options_file <- function(options_name, parsed_options, path) {
   if (!is.list(parsed_options)) {
     rlang::abort("Invalid parsed options - must be a list.")
   }
-  if (!is.character(path) || length(path) <= 0) {
+  if (!is.character(path) || length(path) <= 0L) {
     rlang::abort(glue::glue("Invalid path: {path}"))
   }
   if (!grepl(".yaml$", path)) {
@@ -39,7 +39,7 @@ create_user_options_file <- function(options_name, parsed_options, path) {
 #' @param should_return [logical, optional] Whether or not the function should return the list of options. Defaults to FALSE.
 #' @keywords internal
 load_user_options_file <- function(path, should_return = FALSE) {
-  if (!is.character(path) || length(path) <= 0) {
+  if (!is.character(path) || length(path) <= 0L) {
     rlang::abort(glue::glue("Invalid path: {path}"))
   }
   if (!file.exists(path)) {
@@ -55,7 +55,7 @@ load_user_options_file <- function(path, should_return = FALSE) {
 
   prefixed_options <- nested_to_flat(nested = nested_options, parent_key = CONST$PACKAGE_NAME)
 
-  # TODO Here, there should possibly be options validation functions
+  # Here, there should possibly be options validation functions
 
   options_file_name <- prefixed_options[["artma.general.name"]] %||% ""
   logger::log_info(glue::glue("Applying the following options: '{options_file_name}'"))
@@ -122,7 +122,7 @@ load_user_options <- function(options_name = NULL, options_dir = NULL) {
 #' @description Apply user options given their full path. This means overwriting any current options with a user options file located under the specified path.
 #' @param path [character] Full path to the user options file to apply.
 apply_user_options_file <- function(path) {
-  if (!is.character(path) || length(path) <= 0) {
+  if (!is.character(path) || length(path) <= 0L) {
     rlang::abort(glue::glue("Invalid user options file path: {path}."))
   }
   if (!file.exists(path)) {

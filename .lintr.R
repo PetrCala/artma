@@ -25,7 +25,14 @@ linters <- c(
         # Disable the forbidden access through $ linter
         extraction_operator_linter = NULL,
         # Disable cyclocompexity linter
-        cyclocomp_linter = NULL
+        cyclocomp_linter = NULL,
+        # Turn off linting for several functions otherwise flagged as undesirable
+        undesirable_function_linter = lintr::undesirable_function_linter(
+            fun = lintr::modify_defaults(
+                defaults = lintr::default_undesirable_functions,
+                options = NULL # We use options extensively through ARTMA options
+            )
+        )
     ),
     # All default box linters
     box.linters::box_default_linters,
