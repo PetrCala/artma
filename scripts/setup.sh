@@ -20,4 +20,12 @@ fi
 
 source "$SCRIPTS_DIR/setupR.sh" # Prints verbose output
 
+# Validate box.path
+if ! grep -q "box.path" ~/.Rprofile; then
+    BOX_PATH_ERR_MSG="box.path is not set in ~/.Rprofile. Please add the following line to your ~/.Rprofile file:"
+    BOX_PATH_ERR_MSG+="options(box.path = \"$PROJECT_ROOT/inst\")"
+    error "$BOX_PATH_ERR_MSG"
+    exit 1
+fi
+
 success "Done."
