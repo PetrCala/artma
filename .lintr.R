@@ -1,6 +1,6 @@
-source("scripts/src/linters.R")
+source(file.path("scripts", "src", "linters.R"), local = TRUE) # nolint
 
-linters <- lintr::linters_with_defaults(
+linters <- lintr::all_linters(
     # https://lintr.r-lib.org/reference/index.html#individual-linters # nolint
     #
     # Set indentation to 8 spaces
@@ -20,7 +20,7 @@ linters <- lintr::linters_with_defaults(
     # Disable cyclocompexity linter
     cyclocomp_linter = NULL,
     pipe_call_linter = pipe_call_linter(),
-    disallow_dir_create_linter = disallow_dir_create_linter()
+    dir_create_linter = dir_create_linter()
 )
 ### Custom linters
 # dir_create_linter)
