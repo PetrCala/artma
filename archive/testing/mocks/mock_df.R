@@ -1,9 +1,3 @@
-box::use(
-  libs / number_utils[generate_random_vector],
-  testing / test_const[TEST_CONST],
-  testing / mocks / mock_utils[create_mock_study_names],
-)
-
 #' Create and return a mock meta-analysis data frame object
 #'
 #' @param effect_type A string indicating the type of effect to generate
@@ -11,10 +5,15 @@ box::use(
 #' @return A data frame object
 #' @export
 create_mock_df <- function(
-  effect_type = NULL,
-  nrow = NULL,
-  n_studies = NULL
-) {
+    effect_type = NULL,
+    nrow = NULL,
+    n_studies = NULL) {
+  box::use(
+    artma / libs / number_utils[generate_random_vector],
+    artma / testing / test_const[TEST_CONST],
+    artma / testing / mocks / mock_utils[create_mock_study_names],
+  )
+
   if (is.null(nrow)) {
     nrow <- TEST_CONST$MOCK_DF_NROWS
   }

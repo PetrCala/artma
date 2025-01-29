@@ -28,6 +28,7 @@
 - [Using `lintr` for Code Quality](#using-lintr-for-code-quality)
   - [Installation](#installation)
   - [Usage](#usage)
+  - [Set up box paths](#set-up-box-paths)
   - [Automate Linting (Optional)](#automate-linting-optional)
 
 # Prerequisites
@@ -249,6 +250,17 @@ To lint a specific file, run:
 
 ```r
 lintr::lint("path/to/your/file.R")
+```
+
+## Set up box paths
+
+To make the lints valid for the `box.linters` package, R expects `box.path` to be set to the `inst` folder base. This makes the relative box imports work correctly. During runtime, this is handled by the `ensure_valid_boxpath`, but in development, you must set this path manually.
+
+To do so, put the following into your `.Rprofile`:
+
+```.Rprofile
+# ~/.Rprofile
+option(box.path="<path-to-the-artma-package>/inst")
 ```
 
 ## Automate Linting (Optional)

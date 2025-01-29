@@ -1,6 +1,6 @@
 box::use(
-  base / paths[PATHS],
-  base / const[CONST]
+  artma / paths[PATHS],
+  artma / const[CONST]
 )
 
 #' @export

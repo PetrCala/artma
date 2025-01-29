@@ -1,31 +1,9 @@
 box::use(
-  base / options[get_option],
-  analyses / utils[get_analysis_options],
-  libs / utils[is_empty],
-  libs / validation[validate, assert, validate_columns],
-  libs / clean_data / fill[fill_missing_values, fill_dof_using_pcc],
-  libs / df_utils[get_number_of_studies, assign_na_col],
+  artma / libs / utils[is_empty],
+  artma / libs / validation[assert, validate_columns],
+  artma / libs / clean_data / fill[fill_missing_values],
+  artma / libs / df_utils[assign_na_col]
 )
-
-#' Return the list of column names for a given analysis
-#'
-#' @param analysis_name [character] The name of the analysis
-#' @example
-#' cols <- get_analysis_cols_list("chris")
-#' print(cols)
-#' # list(effect = "Effect", se = "Standard Error", ...)
-#' @export
-get_analysis_cols_list <- function(analysis_name) {
-  analysis_options <- get_analysis_options(analysis_name)
-  cols <- analysis_get_option("cols")
-  if (is_empty(cols)) {
-    rlang::abort(
-      paste("The analysis options does not contain any columns for analysis", analysis_name),
-      class = "missing_columns_error"
-    )
-  }
-  return(cols)
-}
 
 #' Check that a data frame contains all the expected columns
 #'
@@ -34,10 +12,9 @@ get_analysis_cols_list <- function(analysis_name) {
 #' @example
 #' check_for_missing_cols(df, c("Effect", "Standard Error", "Lower CI", "Upper CI"))
 #' # Throws an error if any of the columns are missing
-#' @export
 check_for_missing_cols <- function(df, expected_cols) {
   missing_cols <- setdiff(expected_cols, colnames(df))
-  if (length(missing_cols) > 0) {
+  if (length(missing_cols) > 0L) {
     rlang::abort(
       paste("The data frame is missing the following columns:", missing_cols),
       class = "missing_columns_error"
@@ -103,7 +80,6 @@ clean_names <- function(df) {
 #' @param clean_names [logical] Whether to clean the names of the studies and files. Defaults to TRUE
 #' @param recalculate_t_value [logical] Whether to recalculate the t-value based on the effect and se columns. Defaults to TRUE
 #' @param fill_dof [logical] Whether to fill missing degrees of freedom using the PCC method. Defaults to TRUE
-#' @export
 clean_data <- function(
     df,
     analysis_name,
@@ -111,7 +87,9 @@ clean_data <- function(
     recalculate_t_value = TRUE,
     fill_dof = TRUE) {
   logger::log_debug("Cleaning data...")
-  source_cols <- get_analysis_cols_list(analysis_name)
+  # source_cols <- get_analysis_cols_list(analysis_name)
+  rlang::abort("NOT IMPLEMENTED")
+  source_cols <- c()
 
   # Replace missing columns with NAs
   for (colname in names(source_cols)) {
@@ -151,3 +129,8 @@ clean_data <- function(
 
   return(df)
 }
+
+box::export(
+  check_for_missing_cols,
+  clean_data
+)

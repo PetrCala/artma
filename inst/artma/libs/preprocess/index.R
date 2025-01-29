@@ -1,7 +1,3 @@
-box::use(
-  libs / validation[validate]
-)
-
 #' Preprocess the raw excel data:
 #' - Adjust the source data dimensions
 #' - Transform ALL columns into the correct data type.
@@ -12,6 +8,10 @@ box::use(
 #' @return [data.frame] The preprocessed data
 #' @export
 preprocess_data <- function(input_data, input_var_list) {
+  box::use(
+    artma / libs / validation[validate]
+  )
+
   validate(
     is.data.frame(input_data),
     is.data.frame(input_var_list)

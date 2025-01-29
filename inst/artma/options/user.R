@@ -2,7 +2,6 @@
 #' @param options_name [character] Name of the options file. Is used only for logging purposes.
 #' @param parsed_options [list] A list of parsed options from the template file
 #' @param path [character] A path to create the options file.
-#' @export
 create_user_options_file <- function(options_name, parsed_options, path) {
   if (!is.list(parsed_options)) {
     rlang::abort("Invalid parsed options - must be a list.")
@@ -49,7 +48,7 @@ load_user_options_file <- function(path, should_return = FALSE) {
 
   box::use(
     artma / const[CONST],
-    artma / options / utils[nested_to_flat],
+    artma / options / utils[nested_to_flat]
   )
 
   nested_options <- yaml::read_yaml(path)
@@ -77,7 +76,6 @@ load_user_options_file <- function(path, should_return = FALSE) {
 #' @param options_name [character, optional] Name of the options to load, excluding the .yaml suffix. Defaults to NULL.
 #' @param options_dir [character, optional] Path to the folder in which to look for user options files. Defaults to NULL.
 #' @return NULL Loads the options into the options() namespace.
-#' @export
 load_user_options <- function(options_name = NULL, options_dir = NULL) {
   box::use(
     artma / const[CONST],
@@ -123,7 +121,6 @@ load_user_options <- function(options_name = NULL, options_dir = NULL) {
 #' @title Apply user options file
 #' @description Apply user options given their full path. This means overwriting any current options with a user options file located under the specified path.
 #' @param path [character] Full path to the user options file to apply.
-#' @export
 apply_user_options_file <- function(path) {
   if (!is.character(path) || length(path) <= 0) {
     rlang::abort(glue::glue("Invalid user options file path: {path}."))
@@ -142,3 +139,9 @@ apply_user_options_file <- function(path) {
   logger::log_debug(glue::glue("Applying the user options from the following path: {path}"))
   file.copy(from = path, to = target_path, overwrite = TRUE)
 }
+
+box::export(
+  apply_user_options_file,
+  create_user_options_file,
+  load_user_options
+)

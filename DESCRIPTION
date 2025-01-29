@@ -25,6 +25,7 @@ Imports:
   yaml
 Suggests:
   knitr,
+  box.linters,
   rmarkdown,
   testthat
 VignetteBuilder: knitr
@@ -35,5 +36,5 @@ Collate:
   'setup.R'
   'options.R'
   'transformations.R'
-  'artma.R'
+  'main.R'
   'linters.R'
