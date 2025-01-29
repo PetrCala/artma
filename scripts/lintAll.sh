@@ -1,20 +1,14 @@
 #!/bin/bash
 
+set -e
+
 # Check if a directory argument is provided
 if [ $# -gt 1 ]; then
     echo "Usage: $0 [<directory>]"
     exit 1
 fi
 
-COMMON_FILE_PATH=$(dirname "${BASH_SOURCE[0]}")/common.sh
-
-# Ensure that the shell script can find and use 'source' by using a portable syntax
-if [ -f "$COMMON_FILE_PATH" ]; then
-    . "$COMMON_FILE_PATH"
-else
-    echo "Error: shellUtils.sh not found"
-    exit 1
-fi
+. "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 # Use the provided directory if available in the argument
 if [ $# -eq 1 ]; then
