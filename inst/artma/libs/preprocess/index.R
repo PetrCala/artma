@@ -33,9 +33,9 @@ preprocess_data <- function(input_data, input_var_list) {
       paste(
         "Mismatching variable names. \n",
         "These variables are not a part of the variable list: ",
-        paste(missing_from_var_list, collapse = ", "), "\n",
+        glue::glue_collapse(missing_from_var_list, sep = ", "), "\n",
         "These variables are not a part of the main data frame columns: ",
-        paste(missing_from_data, collapse = ", "), "\n"
+        glue::glue_collapse(missing_from_data, sep = ", "), "\n"
       )
     )
   }

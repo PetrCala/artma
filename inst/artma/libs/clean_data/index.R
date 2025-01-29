@@ -24,7 +24,7 @@ check_for_missing_cols <- function(df, expected_cols) {
 
 #' Convert selected columns to numeric
 convert_columns_to_numeric <- function(df, cols) {
-  logger::log_info(paste("Converting the following columns to numeric values:", paste(cols, collapse = ", ")))
+  logger::log_info(glue::glue_collapse("Converting the following columns to numeric values:", paste(cols, sep = ", ")))
   for (col in cols) {
     if (col %in% names(df)) {
       df[[col]] <- as.numeric(as.character(df[[col]]))
@@ -45,7 +45,7 @@ drop_rows_with_missing_values <- function(df, cols = c("effect")) {
       missing_rows <- missing_rows | is.na(df[col])
     }
   }
-  logger::log_info(paste("Dropping", sum(missing_rows), "rows where at least one of these columns is missing a value:", paste(cols, collapse = ", ")))
+  logger::log_info(glue::glue_collapse("Dropping", sum(missing_rows), "rows where at least one of these columns is missing a value:", paste(cols, sep = ", ")))
 
   return(
     df[!missing_rows, ]

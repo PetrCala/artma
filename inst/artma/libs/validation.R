@@ -62,7 +62,7 @@ validate_columns <- function(df, columns) {
   }
 
   if (!all(columns %in% colnames(df))) {
-    rlang::abort(paste("Invalid column names:", paste(colnames(df), collapse = ", ")), "Expected to contain:", paste(columns, collapse = ", "))
+    rlang::abort(glue::glue_collapse("Invalid column names:", glue::glue_collapse(colnames(df), sep = ", ")), "Expected to contain:", paste(columns, sep = ", "))
   }
 }
 
