@@ -1,4 +1,4 @@
-#' @title Create user options
+#' @title #' Create user options
 #' @description Create a new user options file from an options template.
 #' @param options_name [character] Name of the new user options
 #' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
@@ -36,7 +36,7 @@ options.create <- function(
   )
 }
 
-#' @title
+#' @title Apply options
 #' @export
 options.apply <- function(
     options_name,

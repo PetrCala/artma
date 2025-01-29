@@ -24,9 +24,8 @@
 #'   linters = dir_create_linter()
 #' )
 #'
-#' @evalRd rd_tags("dir_create_linter")
 #' @seealso [linters] for a complete list of linters available in lintr.
-#' @export
+#' @keywords internal
 dir_create_linter <- lintr::make_linter_from_xpath(
   xpath = "expr[SYMBOL_FUNCTION_CALL[text() = 'dir.create']]",
   lint_message = "Usage of dir.create() is not allowed. Use fs::dir_create() instead.",

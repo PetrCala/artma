@@ -1,6 +1,8 @@
 # nolint start: indentation_linter, undesirable_function_linter.
 
-source(file.path("R", "linters.R"), local = TRUE)
+custom_linters_env <- new.env()
+
+source(file.path("R", "linters.R"), local = custom_linters_env)
 
 linters <- lintr::all_linters(
     # https://lintr.r-lib.org/reference/index.html#individual-linters
@@ -20,11 +22,16 @@ linters <- lintr::all_linters(
     cyclocomp_linter = NULL,
     ### Custom linters
     # Disable the usage of 'dir.create' in favor of 'fs::dir_create'
-    dir_create_linter = dir_create_linter()
+    dir_create_linter = custom_linters_env$dir_create_linter()
 )
 
 exclusions <- list(
     "tests/"
 )
+
+# Clean up imported linters
+rm(list = ls(custom_linters_env), envir = custom_linters_env)
+rm(custom_linters_env)
+gc() # Clean up memory
 
 # nolint end: indentation_linter, undesirable_function_linter.
