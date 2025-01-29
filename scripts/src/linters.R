@@ -102,7 +102,7 @@
 # }
 
 
-disallow_dir_create_linter <- lintr::make_linter_from_xpath(
+dir_create_linter <- lintr::make_linter_from_xpath(
   xpath = "expr[SYMBOL_FUNCTION_CALL[text() = 'dir.create']]",
   lint_message = "Usage of dir.create() is not allowed."
   # function_names = "dir.create",
