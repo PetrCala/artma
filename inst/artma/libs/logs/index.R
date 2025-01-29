@@ -9,12 +9,13 @@ box::use(
 #' @return [character] The path to the logger file
 #' @export
 get_logger_path <- function(logger_name) {
+  box::use(
+    artma / libs / file_utils[ensure_folder_existence]
+  )
   if (is.null(logger_name)) {
     rlang::abort("Logger name cannot be NULL")
   }
-  if (!dir.exists(PATHS$DIR_LOGS)) {
-    dir.create(PATHS$DIR_LOGS)
-  }
+  ensure_folder_existence(PATHS$DIR_LOGS)
   file.path(PATHS$DIR_LOGS, logger_name)
 }
 

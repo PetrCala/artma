@@ -6,7 +6,7 @@
 #'  Raise an error in case the folder does not exist.
 #' @export
 ensure_folder_existence <- function(folder_name, require_existence = FALSE) {
-  if (!file.exists(folder_name)) {
+  if (!dir.exists(folder_name)) {
     if (require_existence) {
       rlang::abort(
         paste("The folder", folder_name, "must exist in the working directory."),
