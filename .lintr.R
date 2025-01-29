@@ -18,6 +18,8 @@ linters <- lintr::all_linters(
     line_length_linter = lintr::line_length_linter(120L),
     # Disable commented code linter
     commented_code_linter = NULL,
+    # Disable the forbidden access through $ linter
+    extraction_operator_linter = NULL,
     # Disable cyclocompexity linter
     cyclocomp_linter = NULL,
     ### Custom linters
