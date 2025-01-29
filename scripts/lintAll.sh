@@ -36,17 +36,11 @@ if ! Rscript -e "if (!requireNamespace('lintr', quietly = TRUE)) quit(status = 1
 fi
 
 # Lint all R files in the directory
-LINT_OUTPUT=$(Rscript -e "lintr::lint_dir('$LINT_DIR')" 2>&1 | tee /dev/tty)
-
-# An option with custom linters
-# Rscript -e "source('$CUSTOM_LINTERS_FILE_PATH'); lintr::lint_dir('$LINT_DIR')"
+LINT_OUTPUT=$(Rscript -e "lintr::lint_package()" 2>&1 | tee /dev/tty)
 
 if [[ -n "$LINT_OUTPUT" ]]; then
     error "Linting failed"
     exit 1
 fi
-
-# Run custom linting functions
-# Rscript -e "source(\"$CUSTOM_LINTERS_FILE_PATH\")" "$LINT_DIR"
 
 success "Linting successful!"

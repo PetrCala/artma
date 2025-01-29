@@ -1,9 +1,9 @@
 # nolint start: indentation_linter
 
-source(file.path("R", "linters.R"), local = TRUE) # nolint
+source(file.path("R", "linters.R"), local = TRUE)
 
 linters <- lintr::all_linters(
-    # https://lintr.r-lib.org/reference/index.html#individual-linters # nolint
+    # https://lintr.r-lib.org/reference/index.html#individual-linters
     #
     # Set indentation to 8 spaces
     indentation_linter = lintr::indentation_linter(2L),
@@ -17,17 +17,14 @@ linters <- lintr::all_linters(
     # Disable commented code linter
     commented_code_linter = NULL,
     # Disable cyclocompexity linter
-    cyclocomp_linter = NULL,
+    cyclocomp_linter = NULL
     ### Custom linters
     # Disable the usage of 'dir.create' in favor of 'fs::dir_create'
-    dir_create_linter = dir_create_linter()
+    # dir_create_linter = dir_create_linter()
 )
-### Custom linters
-# dir_create_linter)
-# Disable the use of 'dir.create()' in favor of 'fs::dir_create()'
-# dir_create_linter = readRDS("custom_linters.rds")$dir_create_linter)
+
 exclusions <- list(
-    "tests/" # nolint
+    "tests/"
 )
 
 # nolint end: indentation_linter
