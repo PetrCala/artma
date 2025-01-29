@@ -6,11 +6,11 @@
 #'
 #' @keywords internal
 ensure_valid_boxpath <- function() {
-  current_box_path <- getOption("box.path", character(0))
+  current_box_path <- getOption("box.path", character(0L))
   pkg_box_path <- find.package("artma")
-  dev_box_path <- paste(pkg_box_path, "inst", sep = "/") # For local development
+  dev_box_path <- file.path(pkg_box_path, "inst") # For local development
 
-  if (!any(grepl("artma$", current_box_path))) {
+  if (!is.na(current_box_path) && base::endsWith(current_box_path, "artma")) {
     # Make the package available to the box options(
     options(box.path = c(current_box_path, pkg_box_path, dev_box_path))
   }
