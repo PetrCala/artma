@@ -10,11 +10,11 @@ get_pkg_path <- function() {
   box_path <- getOption("box.path")
   dev_path <- box_path[grepl(glue::glue("{package_name}/inst$"), box_path)]
 
-  is_dev <- ifelse(dir.exists(dev_path), TRUE, FALSE)
+  is_dev <- dir.exists(dev_path)
   if (is_dev) {
     return(dev_path)
   }
-  return(box_path[grepl(glue::glue("{package_name}$"), box_path)])
+  return(grep(glue::glue("{package_name}$"), box_path, value = TRUE))
 }
 
 PACKAGE_PATH <- get_pkg_path()
