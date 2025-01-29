@@ -17,11 +17,11 @@ CONST <- list(
   # Logger
   LOG_PATTERN = "^(INFO|WARN|ERROR|DEBUG|FATAL)\\s+\\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\\]\\s*",
   LOG_LEVEL_MAP = list(
-    "DEBUG" = logger::DEBUG,
-    "INFO"  = logger::INFO,
-    "WARN"  = logger::WARN,
-    "ERROR" = logger::ERROR,
-    "FATAL" = logger::FATAL
+    DEBUG = logger::DEBUG,
+    INFO  = logger::INFO,
+    WARN  = logger::WARN,
+    ERROR = logger::ERROR,
+    FATAL = logger::FATAL
   ),
 
   # Config

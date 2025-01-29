@@ -26,6 +26,8 @@ linters <- c(
         extraction_operator_linter = NULL,
         # Disable cyclocompexity linter
         cyclocomp_linter = NULL,
+        # Disable the string boundary linter - grepl usage, startsWith,...
+        string_boundary_linter = NULL,
         # Turn off linting for several functions otherwise flagged as undesirable
         undesirable_function_linter = lintr::undesirable_function_linter(
             fun = lintr::modify_defaults(

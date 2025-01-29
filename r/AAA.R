@@ -12,9 +12,9 @@ ensure_valid_boxpath <- function() {
   pkg_box_path <- find.package("artma")
   dev_box_path <- file.path(pkg_box_path, "inst") # For local development
 
-  if (!is.na(current_box_path) && base::endsWith(current_box_path, "artma")) {
-    # Make the package available to the box options(
-    options(box.path = c(current_box_path, pkg_box_path, dev_box_path))
+  if (!any(grepl("artma$", current_box_path))) { # should end with 'artma'
+    # Make the package available to the box options
+    options(box.path = unique(c(current_box_path, pkg_box_path, dev_box_path)))
   }
 }
 
