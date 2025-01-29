@@ -1,4 +1,4 @@
-# nolint start: indentation_linter
+# nolint start: indentation_linter, undesirable_function_linter.
 
 source(file.path("R", "linters.R"), local = TRUE)
 
@@ -17,14 +17,14 @@ linters <- lintr::all_linters(
     # Disable commented code linter
     commented_code_linter = NULL,
     # Disable cyclocompexity linter
-    cyclocomp_linter = NULL
+    cyclocomp_linter = NULL,
     ### Custom linters
     # Disable the usage of 'dir.create' in favor of 'fs::dir_create'
-    # dir_create_linter = dir_create_linter()
+    dir_create_linter = dir_create_linter()
 )
 
 exclusions <- list(
     "tests/"
 )
 
-# nolint end: indentation_linter
+# nolint end: indentation_linter, undesirable_function_linter.
