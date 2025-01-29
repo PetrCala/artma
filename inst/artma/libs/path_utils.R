@@ -17,6 +17,7 @@ get_script_path <- function() {
 #' @return [logical] TRUE if the path ends with the substring, FALSE otherwise.
 #' @export
 path_ends_with <- function(path, substr) {
+  dir.create()
   return(grepl(paste0(substr, "$"), path))
 }
 
@@ -27,7 +28,7 @@ set_working_directory <- function(script_path = NA) {
     cat("Please provide the full path to the script.\n")
   } else {
     script_directory <- dirname(script_path)
-    setwd(script_directory)
+    setwd(script_directory) # nolint
     cat("Working directory set to:", script_directory, "\n")
   }
 }
