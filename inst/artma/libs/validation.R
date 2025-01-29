@@ -18,19 +18,19 @@
 #' # validate("not a condition")
 #' @export
 validate <- function(...) {
-  options(
+  withr::with_options(
     rlang_backtrace_on_error = "full",
     error = rlang::entrace
   )
 
   conditions <- list(...)
-  conditions_expr <- as.list(substitute(list(...)))[-1]
+  conditions_expr <- as.list(substitute(list(...)))[-1L]
 
   # Validate each condition
   for (i in seq_along(conditions)) {
     cond <- conditions[[i]]
     cond_expr <- deparse(conditions_expr[[i]])
-    if (!is.logical(cond) || length(cond) != 1) {
+    if (!is.logical(cond) || length(cond) != 1L) {
       rlang::abort(
         message = paste("Condition must be a single logical value (TRUE or FALSE):", cond_expr),
         .subclass = "validation_error"
@@ -98,7 +98,7 @@ assert <- function(condition_to_validate, error_message = NULL) {
 #' @return boolean indicating whether or not x is a character vector or empty
 #' @export
 is_char_vector_or_empty <- function(x, throw_error = FALSE) {
-  is_empty <- is.vector(x) && (length(x) == 0 || is.character(x))
+  is_empty <- is.vector(x) && (length(x) == 0L || is.character(x))
   if (throw_error && !is_empty) {
     rlang::abort("The object is not a character vector or empty")
   }

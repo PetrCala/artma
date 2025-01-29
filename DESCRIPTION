@@ -22,6 +22,7 @@ Imports:
   optparse,
   rlang,
   tidyverse,
+  withr,
   yaml
 Suggests:
   knitr,
