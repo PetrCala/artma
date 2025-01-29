@@ -8,11 +8,9 @@ export TESTTHAT=true
 
 TEST_FOLDER_PATH="$PROJECT_ROOT/$TEST_DIR_NAME"
 
-cd $R_DIR
-
 Rscript -e "
-source('$RUN_FILE_NAME');
-" test
+testthat::test_dir("tests")
+"
 
 unset TESTTHAT
 
