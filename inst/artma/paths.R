@@ -8,7 +8,7 @@ box::use(
 get_pkg_path <- function() {
   package_name <- CONST$PACKAGE_NAME
   box_path <- getOption("box.path")
-  dev_path <- box_path[grepl(glue::glue("{package_name}/inst$"), box_path)]
+  dev_path <- grep(file.path(package_name, "inst$"), box_path, value = TRUE)
 
   is_dev <- dir.exists(dev_path)
   if (is_dev) {
