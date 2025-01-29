@@ -17,7 +17,6 @@ get_script_path <- function() {
 #' @return [logical] TRUE if the path ends with the substring, FALSE otherwise.
 #' @export
 path_ends_with <- function(path, substr) {
-  dir.create()
   return(grepl(paste0(substr, "$"), path))
 }
 

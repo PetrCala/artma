@@ -20,7 +20,7 @@
 #'
 #' # okay
 #' lint(
-#'   text = 'if (!dir.exists("path/to/dir")) { /* alternative code */ }',
+#'   text = 'if (!dir.exists("path/to/dir")) { fs::dir_create("path/to/dir") }',
 #'   linters = dir_create_linter()
 #' )
 #'
