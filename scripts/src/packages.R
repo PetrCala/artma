@@ -7,9 +7,9 @@ PACKAGES <- c(
   "devtools", # Package development
   "jsonlite", # VSCode interactive terminal
   "languageserver", # Formatting and linting
+  "lintr", # Linting and formatting
   "pbapply", # Package installation
   "remotes", # Pacakge installation
   "rstudioapi", # RStudio communication
   "tidyverse" # Package installation
 )
-
