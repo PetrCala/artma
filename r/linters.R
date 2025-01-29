@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
 
+# nolint start: unused_declared_object_linter.
+
 #' Disallow `dir.create()` Function Calls
 #'
 #' This linter flags any usage of the [dir.create()] function, which is not permitted in the codebase.
@@ -31,3 +33,6 @@ dir_create_linter <- lintr::make_linter_from_xpath(
   lint_message = "Usage of dir.create() is not allowed. Use fs::dir_create() instead.",
   type = "error"
 )
+
+
+# nolint end: unused_declared_object_linter.

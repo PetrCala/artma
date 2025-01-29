@@ -11,7 +11,7 @@ options.create <- function(
     options_dir = NULL,
     template_path = NULL,
     args = commandArgs(trailingOnly = TRUE)) {
-  static_setup()
+  static_setup() # nolint: box_usage_linter. # Imported on a package-level
 
   if (grepl(".yaml$", options_name)) {
     rlang::abort(glue::glue("Please pass the options file name without the .yaml suffix."))
@@ -41,7 +41,7 @@ options.create <- function(
 options.apply <- function(
     options_name,
     options_dir = NULL) {
-  static_setup()
+  static_setup() # nolint: box_usage_linter. # Imported on a package-level
 
   if (grepl(".yaml$", options_name)) {
     rlang::abort(glue::glue("Please pass the options file name without the .yaml suffix."))

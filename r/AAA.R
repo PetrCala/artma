@@ -1,3 +1,5 @@
+# nolint start: unused_declared_object_linter.
+
 #' @title Ensure valid box path
 #'
 #' @usage Should be called at the top of every exported function
@@ -47,3 +49,5 @@ runtime_setup <- function(
   load_user_options(options_name = options_name, options_dir = options_dir)
   setup_logging()
 }
+
+# nolint end: unused_declared_object_linter.
