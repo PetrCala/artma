@@ -49,16 +49,16 @@ setup_logging <- function() {
     rlang::abort("Invalid log level specified. Choose from 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'.")
   }
 
-  if (!isTRUE(getOption("artma.logging.log_to_console"))) {
-    logger::log_appender(NULL) # Disable console logging
-  } else {
+  if (isTRUE(getOption("artma.logging.log_to_console"))) {
     logger::log_appender(logger::appender_console) # Enable console logging
+  } else {
+    logger::log_appender(NULL) # Disable console logging
   }
 
   # Set the file appender if a logger name is provided
   if (!is.null(logger_name)) {
     log_file <- get_logger_path(logger_name = logger_name)
-    logger::log_appender(logger::appender_file(log_file, max_files = 1L), index = 2)
+    logger::log_appender(logger::appender_file(log_file, max_files = 1L), index = 2L)
   }
 
   if (getOption("artma.logging.flush_logs_on_setup")) {
@@ -73,6 +73,5 @@ setup_logging <- function() {
 #' @param logger_name [character] The name of the logger to teardown
 #' @export
 teardown_logger_file <- function(logger_name) {
-  # logger::remove_appender(logger_name) # This does not work
   flush_log_files(logger_name = logger_name)
 }
