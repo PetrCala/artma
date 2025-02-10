@@ -1,11 +1,6 @@
-box::use(
-  artma / paths[PATHS],
-  artma / const[CONST]
-)
-
 #' @export
 get_script_path <- function() {
-  script_path <- commandArgs(trailingOnly = TRUE)[1]
+  script_path <- commandArgs(trailingOnly = TRUE)[1L]
   return(script_path)
 }
 
@@ -36,6 +31,6 @@ set_working_directory <- function(script_path = NA) {
 #' @export
 get_full_path <- function(path) {
   path <- normalizePath(path)
-  path <- gsub("\\\\", "/", path)
+  path <- gsub("\\", "/", path, fixed = TRUE)
   path
 }

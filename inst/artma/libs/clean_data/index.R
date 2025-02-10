@@ -36,13 +36,13 @@ convert_columns_to_numeric <- function(df, cols) {
 }
 
 #' Drop observations with a missing effect
-drop_rows_with_missing_values <- function(df, cols = c("effect")) {
+drop_rows_with_missing_values <- function(df, cols = c("effect")) { # nolint: unnecessary_concatenation_linter.
   missing_rows <- rep(FALSE, nrow(df))
   for (col in cols) {
-    if (!col %in% colnames(df)) {
-      logger::log_warn(paste0("Unknown column name: ", col, ". Skipping NA values check..."))
-    } else {
+    if (col %in% colnames(df)) {
       missing_rows <- missing_rows | is.na(df[col])
+    } else {
+      logger::log_warn(paste0("Unknown column name: ", col, ". Skipping NA values check..."))
     }
   }
   logger::log_info(glue::glue_collapse("Dropping", sum(missing_rows), "rows where at least one of these columns is missing a value:", paste(cols, sep = ", ")))
@@ -56,8 +56,8 @@ drop_rows_with_missing_values <- function(df, cols = c("effect")) {
 recalculate_t_value <- function(df) {
   logger::log_debug("Recalculating t-values...")
   validate_columns(df, c("effect", "se"))
-  assert(sum(is.na(df$effect)) == 0, "The 'effect' column contains missing values")
-  assert(sum(is.na(df$se)) == 0, "The 'se' column contains missing values")
+  assert(sum(is.na(df$effect)) == 0L, "The 'effect' column contains missing values")
+  assert(sum(is.na(df$se)) == 0L, "The 'se' column contains missing values")
   t_values <- df$effect / df$se
   t_values[is.infinite(t_values)] <- NA
   df$t_value <- t_values
@@ -87,9 +87,8 @@ clean_data <- function(
     recalculate_t_value = TRUE,
     fill_dof = TRUE) {
   logger::log_debug("Cleaning data...")
-  # source_cols <- get_analysis_cols_list(analysis_name)
   rlang::abort("NOT IMPLEMENTED")
-  source_cols <- c()
+  source_cols <- c("a", "b", "c")
 
   # Replace missing columns with NAs
   for (colname in names(source_cols)) {
