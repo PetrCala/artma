@@ -1,7 +1,7 @@
 #' @title Packages
 #' @description
 #' This objects contains lists of local development packages that are used in the project.
-#' @keywords internal
+#' @export
 PACKAGES <- c(
   "box", # Package and module handling
   "box.linters", # Box linting

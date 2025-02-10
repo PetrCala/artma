@@ -1,9 +1,10 @@
 #' Set the CRAN mirror
+#' @keywords internal
 set_mirror <- function(mirror = NULL) {
   if (is.null(mirror)) {
     # Set the CRAN mirror to the first available mirror
     available_mirrors <- getCRANmirrors()
-    mirror <- available_mirrors$URL[1]
+    mirror <- available_mirrors$URL[1L]
   }
   options(repos = mirror)
 }
@@ -17,11 +18,13 @@ set_mirror <- function(mirror = NULL) {
 #' @param expr [expression] The expression to be executed quietly.
 #'
 #' @return The result of the executed expression without any messages, warnings, or package startup messages.
+#' @export
 quiet_packages <- function(expr) {
   suppressPackageStartupMessages(suppressWarnings(suppressMessages(expr)))
 }
 
 #' Function to install a package if it is not a part of the library yet
+#' @keywords internal
 install_and_check <- function(pkg, version = NA, verbose = TRUE) {
   if (verbose) {
     version_info <- ifelse(is.na(version), "", paste0(" (", version, ")"))
@@ -47,7 +50,7 @@ install_and_check <- function(pkg, version = NA, verbose = TRUE) {
 
   # Load the package - this is disabled, as no packages need to be sourced
   # if (!pkg %in% PACKAGES$NON_ATTACHED) {
-  #     suppressPackageStartupMessages(library(pkg, character.only = TRUE))
+  #     suppressPackageStartupMessages(library(pkg, character.only = TRUE)) p nolint: commented-code-linter
   # }
 
   # Reset the cursor to the start of the line for the progress bar
@@ -65,6 +68,7 @@ install_and_check <- function(pkg, version = NA, verbose = TRUE) {
 #' @param msg [character] An optional message to display before loading the packages.
 #' @param native [logical] A flag indicating whether to install the packages in an R-native way. This approach is less transparent, but requires no external packages.
 #' @return A message indicating that all packages were loaded successfully or an error message if the process fails.
+#' @export
 load_packages <- function(package_list, msg = NULL, native = FALSE) {
   print("Setting a mirror...")
   set_mirror()
@@ -86,7 +90,7 @@ load_packages <- function(package_list, msg = NULL, native = FALSE) {
     install_initial_pkg <- function(pkg) {
       if (!pkg %in% rownames(installed.packages())) install.packages(pkg)
     }
-    sapply(names(package_list), install_initial_pkg)
+    vapply(names(package_list), FUN.VALUE = install_initial_pkg())
   } else {
     # Applying the function to each package with a progress bar
     pbapply::pblapply(names(package_list), function(pkg) install_and_check(pkg, package_list[[pkg]], verbose))
