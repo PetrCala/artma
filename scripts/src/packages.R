@@ -4,6 +4,7 @@
 #' @keywords internal
 PACKAGES <- c(
   "box", # Package and module handling
+  "box.linters", # Box linting
   "devtools", # Package development
   "jsonlite", # VSCode interactive terminal
   "languageserver", # Formatting and linting
