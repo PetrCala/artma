@@ -6,7 +6,7 @@
 #' @param input_data [data.frame] Main data frame
 #' @param input_var_list [data.frame] Data frame with variable descriptions.
 #' @return [data.frame] The preprocessed data
-preprocess_data <- function(input_data, input_var_list) {
+preprocess_data <- function(input_data, input_var_list) { # nolint: cyclocomp_linter
   box::use(
     artma / libs / validation[validate]
   )
