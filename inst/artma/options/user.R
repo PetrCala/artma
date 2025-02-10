@@ -129,9 +129,7 @@ apply_user_options_file <- function(path) {
     rlang::abort(glue::glue("The following user options file path does not exist: {path}."))
   }
 
-  box::use(
-    artma / const[CONST]
-  )
+  box::use(artma / const[CONST])
 
   # We want to copy the desired options file to the 'current options file path'
   target_path <- file.path(dirname(path), CONST$CURRENT_OPTIONS_FILE_NAME)
