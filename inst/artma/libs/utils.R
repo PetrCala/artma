@@ -6,7 +6,7 @@
 #' @export
 is_function_call <- function(obj) {
   if (is.call(obj)) {
-    func_name <- as.character(obj[[1]])
+    func_name <- as.character(obj[[1L]])
     is_valid_function_call <- exists(func_name) && is.function(get(func_name))
     if (!(is_valid_function_call)) {
       return(FALSE)
@@ -24,14 +24,14 @@ is_empty <- function(obj) {
   type_obj <- typeof(obj)
 
   result <- switch(type_obj,
-    logical = all(!obj),
-    integer = length(obj) == 0 || all(is.na(obj)),
-    double = length(obj) == 0 || all(is.na(obj)), # Treat numeric as double
-    character = length(obj) == 0 || any(obj == ""),
-    list = length(obj) == 0,
+    logical = !any(obj),
+    integer = length(obj) == 0L || all(is.na(obj)),
+    double = length(obj) == 0L || all(is.na(obj)), # Treat numeric as double
+    character = length(obj) == 0L || any(obj == ""),
+    list = length(obj) == 0L,
     NULL = TRUE,
-    data.frame = is.data.frame(obj) && nrow(obj) == 0,
-    factor = length(obj) == 0 || all(is.na(obj)),
+    data.frame = is.data.frame(obj) && nrow(obj) == 0L,
+    factor = length(obj) == 0L || all(is.na(obj)),
     # Default case if none of the above types match
     {
       if (is.na(obj)) {
@@ -52,7 +52,7 @@ is_empty <- function(obj) {
 #' @return [character] The number as a percentage
 #' @export
 to_perc <- function(x) {
-  return(paste0(round(x * 100, 2), "%"))
+  return(paste0(round(x * 100L, 2L), "%"))
 }
 
 
@@ -67,11 +67,11 @@ nullable_lapply <- function(x, FUN) {
   out <- list()
   names <- names(x)
   argcount <- length(formals(FUN)) # Number of arguments
-  if (!argcount %in% c(1, 2)) rlang::abort("Your function must contain either one or two arguments.")
+  if (!argcount %in% c(1L, 2L)) rlang::abort("Your function must contain either one or two arguments.")
   for (i in seq_along(x)) {
     name <- names[[i]]
-    fun_ <- if (argcount == 2) "FUN(i, x[[name]])" else "FUN(x[[name]])"
+    fun_ <- if (argcount == 2L) "FUN(i, x[[name]])" else "FUN(x[[name]])"
     out[[name]] <- eval(parse(text = fun_)) # Assigns nothing if the return is NULL
   }
-  if (length(out) == 0) NULL else out
+  if (length(out) == 0L) NULL else out
 }
