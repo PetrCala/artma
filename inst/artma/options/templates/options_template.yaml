@@ -10,13 +10,6 @@ general:
     default: "0.1.0"
     help: "Version of the ARTMA package under which these options were generated [default %default]"
   
-
-help: 
-  - dest: "help"
-    long: "--help"
-    default: false
-    help: "Whether to print help"
-
 logging:
   - dest: "log_file_name"
     long: "--log-file-name"
