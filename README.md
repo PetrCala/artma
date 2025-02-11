@@ -30,6 +30,7 @@
   - [Usage](#usage)
   - [Set up box paths](#set-up-box-paths)
   - [Automate Linting (Optional)](#automate-linting-optional)
+- [Creating a new package version](#creating-a-new-package-version)
 
 # Prerequisites
 
@@ -282,3 +283,7 @@ Edit the `.pre-commit-config.yaml` file to include `lintr`:
 ```
 
 This setup will ensure that your R files are linted before every commit, helping you maintain consistent code quality.
+
+# Creating a new package version
+
+To create a new version of this package, run `./run.sh bump-version <semver-level>`.
