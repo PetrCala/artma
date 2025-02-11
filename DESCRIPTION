@@ -16,6 +16,7 @@ Depends:
   R (>= 4.0.0)
 Imports:
   box,
+  cli,
   fs,
   glue,
   here,
