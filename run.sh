@@ -7,8 +7,9 @@ Usage: $0 <command> [args]
   
 Commands:
   R               Invoke the R run script
+  bump-version    Create a new package version
   clear-cache     Clear the cache
-  config          Configure the project
+  config           Configure the project
   deps            Install all dependencies
   help            Display this help message
   lint            Lint all files in the R folder
@@ -35,6 +36,7 @@ shift
 # Main switch-case to handle commands
 case "$RUN_ARG" in
 [Rr]) sh scripts/runR.sh "$@" ;;
+bump-version) sh scripts/bumpVersion.sh "$@" ;;
 clear-cache) sh scripts/clearCache.sh "$@" ;;
 config) sh scripts/config.sh "$@" ;;
 deps) Rscript -e "devtools::install_deps(dependencies = TRUE)" ;;
