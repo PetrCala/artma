@@ -1,6 +1,6 @@
-general:
-  name: default
 help: no
+general:
+  artma_version: 0.1.0
 logging:
   log_file_name: artma.log
   log_level: INFO

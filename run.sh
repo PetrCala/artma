@@ -11,6 +11,7 @@ Commands:
   clear-cache     Clear the cache
   config           Configure the project
   deps            Install all dependencies
+  fix-options      Ensure that all option templates and default distributed files are valid.
   help            Display this help message
   lint            Lint all files in the R folder
   merge           Merge the currently checked out git branch with another one, and push the changes to the remote repository
@@ -40,6 +41,7 @@ bump-version) sh scripts/bumpVersion.sh "$@" ;;
 clear-cache) sh scripts/clearCache.sh "$@" ;;
 config) sh scripts/config.sh "$@" ;;
 deps) Rscript -e "devtools::install_deps(dependencies = TRUE)" ;;
+fix-options) Rscript -e "source(\"scripts/src/fix_options.R\")" ;;
 lint) sh scripts/lintAll.sh "$@" ;;
 merge) sh scripts/mergeAndPush.sh "$@" ;;
 namespace) Rscript -e "roxygen2::roxygenize()" ;;
