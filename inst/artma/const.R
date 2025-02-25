@@ -24,6 +24,26 @@ CONST <- list(
     FATAL = logger::FATAL
   ),
 
+  # A collection of all ARTMA supported methods
+  SUPPORTED_METHODS = c(
+    "variable_summary_stats", # Various summary statistics
+    "effect_summary_stats", # Effect summary statistics
+    "prima_facie_graphs", # Prima Facie graphs
+    "box_plot", # Box plots
+    "funnel_plot", # Funnel plot
+    "t_stat_histogram", # Histogram of t-statistics
+    "linear_tests", # Linear tests for publication bias
+    "nonlinear_tests", # Non-linear tests for publication bias
+    "exo_tests", # Exogeneity tests for publication bias
+    "p_hacking_tests", # P-hacking tests
+    "bma", # Bayesian Model Averaging
+    "fma", # Frequentist Model Averaging
+    "ma_variables_description_table", # Model Averaging variable descriptions
+    "bpe", # Best-practice estimate
+    "bpe_graphs", # Best-practice estimate graphs
+    "robma" # Robust Bayesian Model Averaging
+  ),
+
   # Config
   CONFIG_SPECIAL_KEYS = c("description", "details", "type", "optional", "default", "values")
 )
