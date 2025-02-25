@@ -55,7 +55,7 @@ load_user_options_file <- function(path, should_return = FALSE) {
 
   prefixed_options <- nested_to_flat(nested = nested_options, parent_key = CONST$PACKAGE_NAME)
 
-  # Here, there should possibly be options validation functions
+  # Here, add option file validation functions TODO
 
   options_file_name <- prefixed_options[["artma.general.name"]] %||% ""
   logger::log_info(glue::glue("Applying the following options: '{options_file_name}'"))
