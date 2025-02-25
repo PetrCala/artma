@@ -36,21 +36,21 @@ flat_to_nested <- function(flat_option_list) {
 
   # Function to recursively insert values into a nested list based on keys
   insert_nested <- function(lst, keys, value) {
-    key <- keys[1L]
-    if (length(keys) == 1L) {
+    key <- keys[1]
+    if (length(keys) == 1) {
       lst[[key]] <- value
     } else {
       if (is.null(lst[[key]])) {
         lst[[key]] <- list()
       }
-      lst[[key]] <- insert_nested(lst[[key]], keys[-1L], value)
+      lst[[key]] <- insert_nested(lst[[key]], keys[-1], value)
     }
     lst
   }
 
   nested_list <- list()
   for (full_key in names(flat_option_list)) {
-    keys <- strsplit(full_key, ".", fixed = TRUE)[[1L]] # Split the key by dots
+    keys <- strsplit(full_key, ".", fixed = TRUE)[[1]] # Split the key by dots
     nested_list <- insert_nested(nested_list, keys, flat_option_list[[full_key]])
   }
 

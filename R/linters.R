@@ -1,5 +1,3 @@
-#!/usr/bin/env Rscript
-
 # nolint start: unused_declared_object_linter.
 
 #' Disallow `dir.create()` Function Calls

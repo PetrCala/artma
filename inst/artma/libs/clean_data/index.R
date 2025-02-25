@@ -14,7 +14,7 @@ box::use(
 #' # Throws an error if any of the columns are missing
 check_for_missing_cols <- function(df, expected_cols) {
   missing_cols <- setdiff(expected_cols, colnames(df))
-  if (length(missing_cols) > 0L) {
+  if (length(missing_cols) > 0) {
     rlang::abort(
       paste("The data frame is missing the following columns:", missing_cols),
       class = "missing_columns_error"
@@ -56,8 +56,8 @@ drop_rows_with_missing_values <- function(df, cols = c("effect")) { # nolint: un
 recalculate_t_value <- function(df) {
   logger::log_debug("Recalculating t-values...")
   validate_columns(df, c("effect", "se"))
-  assert(sum(is.na(df$effect)) == 0L, "The 'effect' column contains missing values")
-  assert(sum(is.na(df$se)) == 0L, "The 'se' column contains missing values")
+  assert(sum(is.na(df$effect)) == 0, "The 'effect' column contains missing values")
+  assert(sum(is.na(df$se)) == 0, "The 'se' column contains missing values")
   t_values <- df$effect / df$se
   t_values[is.infinite(t_values)] <- NA
   df$t_value <- t_values

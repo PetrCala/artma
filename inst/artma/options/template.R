@@ -10,7 +10,7 @@ flatten_template_options <- function(x, parent = NULL) {
   flattened <- list()
 
   # If x itself is a list of final option definitions.
-  if (is.list(x) && all(vapply(x, FUN = is_option_def, FUN.VALUE = logical(1L)))) {
+  if (is.list(x) && all(vapply(x, FUN = is_option_def, FUN.VALUE = logical(1)))) {
     for (i in seq_along(x)) {
       # If there's a parent path, update the destination.
       if (!is.null(parent)) {
@@ -19,7 +19,7 @@ flatten_template_options <- function(x, parent = NULL) {
         base_dest <- if (!is.null(x[[i]]$dest)) x[[i]]$dest else sub("^--", "", x[[i]]$long)
         x[[i]]$dest <- paste(parent, base_dest, sep = ".")
       }
-      flattened[[length(flattened) + 1L]] <- x[[i]]
+      flattened[[length(flattened) + 1]] <- x[[i]]
     }
     return(flattened)
   }
@@ -71,8 +71,8 @@ parse_options_from_template <- function(path, args, add_prefix = FALSE) {
 
   box::use(artma / const[CONST])
 
-  args_is_character_vector <- is.vector(args) && all(vapply(args, FUN = is.character, FUN.VALUE = character(1L)))
-  args_is_empty <- length(args) == 0L
+  args_is_character_vector <- is.vector(args) && all(vapply(args, FUN = is.character, FUN.VALUE = character(1)))
+  args_is_empty <- length(args) == 0
   if (!(args_is_character_vector || args_is_empty)) {
     rlang::abort("Arguments must be a character vector or an empty character.")
   }

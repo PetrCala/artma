@@ -58,7 +58,7 @@ setup_logging <- function() {
   # Set the file appender if a logger name is provided
   if (!is.null(logger_name)) {
     log_file <- get_logger_path(logger_name = logger_name)
-    logger::log_appender(logger::appender_file(log_file, max_files = 1L), index = 2L)
+    logger::log_appender(logger::appender_file(log_file, max_files = 1), index = 2)
   }
 
   if (getOption("artma.logging.flush_logs_on_setup")) {

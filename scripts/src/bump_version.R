@@ -4,7 +4,7 @@ get_current_version <- function(pkg.repo) {
   desc <- readLines(file.path(pkg.repo, "DESCRIPTION"))
 
   current.ver <- substr(
-    grep("Version*", desc, value = TRUE), 10L,
+    grep("Version*", desc, value = TRUE), 10,
     nchar(grep("Version*", desc, value = TRUE))
   )
   current.ver
@@ -18,11 +18,11 @@ get_current_version <- function(pkg.repo) {
 generate_new_version <- function(current_version, semver_level) {
   old <- as.numeric(unlist(strsplit(current_version, ".", fixed = TRUE)))
   new.v <- switch(semver_level,
-    major = c(old[1L] + 1L, 0L, 0L),
-    minor = c(old[1L], old[2L] + 1L, 0L),
-    patch = c(old[1L], old[2L], old[3L] + 1L)
+    major = c(old[1] + 1, 0, 0),
+    minor = c(old[1], old[2] + 1, 0),
+    patch = c(old[1], old[2], old[3] + 1)
   )
-  new.ver <- paste(new.v[1L], new.v[2L], new.v[3L], sep = ".")
+  new.ver <- paste(new.v[1], new.v[2], new.v[3], sep = ".")
   new.ver
 }
 

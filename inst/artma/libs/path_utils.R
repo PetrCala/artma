@@ -1,6 +1,6 @@
 #' @export
 get_script_path <- function() {
-  script_path <- commandArgs(trailingOnly = TRUE)[1L]
+  script_path <- commandArgs(trailingOnly = TRUE)[1]
   return(script_path)
 }
 

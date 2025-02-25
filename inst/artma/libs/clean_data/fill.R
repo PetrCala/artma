@@ -24,7 +24,7 @@ fill_missing_values <- function(df, target_col, columns = NULL, missing_value_pr
     rlang::abort("The columns parameter must be a character vector or empty")
   }
   # No values to modify by
-  if (length(columns) == 0L) {
+  if (length(columns) == 0) {
     df[[target_col]] <- missing_value_prefix
     return(df)
   }
@@ -43,7 +43,7 @@ fill_missing_values <- function(df, target_col, columns = NULL, missing_value_pr
   df$change[is.na(df$change)] <- FALSE
 
   # Continue with the rest of the pipeline
-  df$change <- ifelse(seq_len(nrow(df)) == 1L, TRUE, df$change)
+  df$change <- ifelse(seq_len(nrow(df)) == 1, TRUE, df$change)
   df$change_count <- cumsum(df$change)
   na_indices <- is.na(df[[target_col]])
   df[[target_col]][na_indices] <- paste(missing_value_prefix, df$change_count[na_indices])
@@ -82,7 +82,7 @@ fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL,
     fillable_rows <- fillable_rows & is.na(dof) # Only missing values
   }
 
-  if (sum(fillable_rows) == 0L) {
+  if (sum(fillable_rows) == 0) {
     return(df)
   }
   df[fillable_rows, "dof"] <- dof_calc$calculate_dof(
@@ -94,7 +94,7 @@ fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL,
   #' A helper function to drop rows based on a condition
   drop_rows <- function(condition, message) {
     n_rows_to_drop <- sum(condition)
-    if (n_rows_to_drop > 0L) {
+    if (n_rows_to_drop > 0) {
       logger::log_info(paste("Dropping", n_rows_to_drop, message))
       return(df[!condition, ])
     }
@@ -106,11 +106,11 @@ fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL,
   }
 
   if (drop_negative) {
-    df <- drop_rows(df$dof < 0L, "rows with negative degrees of freedom.")
+    df <- drop_rows(df$dof < 0, "rows with negative degrees of freedom.")
   }
 
   if (drop_zero) {
-    df <- drop_rows(df$dof == 0L, "rows with zero degrees of freedom.")
+    df <- drop_rows(df$dof == 0, "rows with zero degrees of freedom.")
   }
 
   return(df)

@@ -4,7 +4,7 @@ set_mirror <- function(mirror = NULL) {
   if (is.null(mirror)) {
     # Set the CRAN mirror to the first available mirror
     available_mirrors <- getCRANmirrors()
-    mirror <- available_mirrors$URL[1L]
+    mirror <- available_mirrors$URL[1]
   }
   options(repos = mirror)
 }
@@ -90,7 +90,7 @@ load_packages <- function(package_list, msg = NULL, native = FALSE) {
     install_initial_pkg <- function(pkg) {
       if (!pkg %in% rownames(installed.packages())) install.packages(pkg)
     }
-    vapply(names(package_list), FUN = install_initial_pkg(), FUN.VALUE = character(1L))
+    vapply(names(package_list), FUN = install_initial_pkg(), FUN.VALUE = character(1))
   } else {
     # Applying the function to each package with a progress bar
     pbapply::pblapply(names(package_list), function(pkg) install_and_check(pkg, package_list[[pkg]], verbose))

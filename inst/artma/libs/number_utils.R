@@ -26,7 +26,7 @@ generate_random_vector <- function(from, to, length.out, replace = TRUE) {
     rlang::abort("Invalid range: 'from' should be less than or equal to 'to'.")
   }
 
-  if (!replace && length.out > (to - from + 1L)) {
+  if (!replace && length.out > (to - from + 1)) {
     rlang::abort("Invalid input: 'length.out' cannot be greater than the range size when sampling without replacement.")
   }
 

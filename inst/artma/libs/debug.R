@@ -4,5 +4,5 @@
 #'  FALSE otherwise.
 #' @export
 is_debugging <- function() {
-  any(vapply(sys.calls(), FUN = function(x) format(x)[[1L]] %in% c("browser", "debug"), FUN.VALUE = list(1L)))
+  any(vapply(sys.calls(), FUN = function(x) format(x)[[1]] %in% c("browser", "debug"), FUN.VALUE = list(1)))
 }
