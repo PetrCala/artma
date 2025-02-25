@@ -41,8 +41,9 @@ re <- function(df, effect = NULL, se = NULL, method = "DL") {
 
       re_data_ <- data.frame(yi = effect, sei = se, study = df$study)
 
-      suppressWarnings( # Sometimes the variances are large
-        re_ <- metafor::rma(yi = yi, sei = sei, data = re_data_, method = method)
+      # Sometimes the variances are large
+      re_ <- suppressWarnings(
+        metafor::rma(yi = yi, sei = sei, data = re_data_, method = method)
       )
       re_est <- re_$beta[1]
       re_se <- re_$se[1]
@@ -146,7 +147,7 @@ hsma <- function(df) {
   n_ <- df$dof
   effect <- df$effect
   r_avg <- sum(n_ * effect) / sum(n_)
-  sd_sq <- sum(n_ * ((effect - r_avg)^2)) / sum(n_) # SD_r^2
+  sd_sq <- sum(n_ * ((effect - r_avg)^2)) / sum(n_) # SD_r^2 # nolint
   assert(sd_sq >= 0, "Negative SD_r^2")
   se_r <- sqrt(sd_sq) / sqrt(nrow(df)) # SE_r
   t_value <- r_avg / se_r
@@ -161,12 +162,10 @@ fishers_z <- function(df, method = "ML") {
   meta <- unique(df$meta)
   n_ <- df$dof
 
-  suppressWarnings( # Sometimes the log produces NaNs - handled below
-    fishers_z_ <- 0.5 * log((1 + df$effect) / (1 - df$effect))
-  )
-  suppressWarnings( # Sometimes the negative sqrt produces NaNs - handled below
-    se_ <- 1 / sqrt(n_ - 3)
-  )
+
+  # Sometimes the log produces NaNs - handled below
+  fishers_z_ <- suppressWarnings(0.5 * log((1 + df$effect) / (1 - df$effect)))
+  se_ <- suppressWarnings(1 / sqrt(n_ - 3))
 
   re_data <- data.frame(effect = fishers_z_, se = se_, meta = df$meta, study = df$study)
   re_data <- re_data[!is.na(fishers_z_) & !is.na(se_), ] # Drop NA rows
