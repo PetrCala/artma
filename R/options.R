@@ -6,13 +6,13 @@ box::use(opts = artma / options / index)
 #' @title List available user options
 #' @description Retrieves the list of the existing options files and returns their names as a character vector. By default, this retrieves the names of the files including the yaml suffix, but can be modified to retrieve options verbose names instead.
 #' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
-#' @param should_read_verbose_names [logical, optional] If set to TRUE, the custom names of each of the options files are read and returned instead of file names. Defaults to FALSE.
+#' @param should_return_verbose_names [logical, optional] If set to TRUE, the custom names of each of the options files are read and returned instead of file names. Defaults to FALSE.
 #' @returns vector[character] A character vector with the names of the options available.
 #' @export
-options.list <- function(options_dir = NULL, should_read_verbose_names = FALSE) {
+options.list <- function(options_dir = NULL, should_return_verbose_names = FALSE) {
   opts$list_user_options_files(
     options_dir = options_dir,
-    should_read_verbose_names = should_read_verbose_names
+    should_return_verbose_names = should_return_verbose_names
   )
 }
 

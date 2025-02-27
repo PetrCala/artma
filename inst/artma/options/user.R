@@ -1,5 +1,5 @@
 #' This is a public package method. For more information, see 'options.R::options.list'.
-list_user_options_files <- function(options_dir = NULL, should_read_verbose_names = FALSE) {
+list_user_options_files <- function(options_dir = NULL, should_return_verbose_names = FALSE) {
   box::use(
     artma / paths[PATHS],
     artma / const[CONST]
@@ -15,12 +15,12 @@ list_user_options_files <- function(options_dir = NULL, should_read_verbose_name
     path = options_dir,
     pattern = CONST$REGEX$OPTIONS_FILE_SUFFIX,
     # If we are not going to read the file, full names are unnecessary
-    full.names = should_read_verbose_names
+    full.names = should_return_verbose_names
   )
 
   options_names <- vector(mode = "character")
   for (file_name in options_files) {
-    options_name <- if (should_read_verbose_names) {
+    options_name <- if (should_return_verbose_names) {
       tryCatch(
         {
           logger::log_debug(glue::glue("Reading the options file '{file_name}'"))
