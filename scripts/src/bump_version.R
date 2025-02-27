@@ -37,9 +37,11 @@ generate_new_version <- function(current_version, semver_level) {
 #'   to be bumped.
 #' @param pkg.repo Path to package repository folder. Default is current working
 #'   directory, i.e. `"."`.
+#' @return [character] The new version as a semver string
 #'
 #' @seealso
 #' \url{https://semver.org/}
+#'
 #'
 #' @export
 bump_version <- function(semver_level = "patch", pkg.repo = ".") {
@@ -79,4 +81,6 @@ bump_version <- function(semver_level = "patch", pkg.repo = ".") {
 
   print_info(file_name = "options template")
   writeLines(opt, options_file_path)
+
+  new.ver
 }
