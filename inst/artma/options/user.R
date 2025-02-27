@@ -1,8 +1,8 @@
 #' @title Create user options file
-#' @param options_name [character] Name of the options file. Is used only for logging purposes.
+#' @param options_file_name [character] Name of the options file. Is used only for logging purposes.
 #' @param parsed_options [list] A list of parsed options from the template file
 #' @param path [character] A path to create the options file.
-create_user_options_file <- function(options_name, parsed_options, path) {
+create_user_options_file <- function(options_file_name, parsed_options, path) {
   if (!is.list(parsed_options)) {
     rlang::abort("Invalid parsed options - must be a list.")
   }
@@ -23,7 +23,7 @@ create_user_options_file <- function(options_name, parsed_options, path) {
 
   nested_options <- flat_to_nested(parsed_options)
 
-  logger::log_info(glue::glue("Creating a new user options file: '{options_name}'"))
+  logger::log_info(glue::glue("Creating a new user options file: '{options_file_name}'"))
 
   ensure_folder_existence(dirname(path))
   yaml::write_yaml(
@@ -73,10 +73,10 @@ load_user_options_file <- function(path, should_return = FALSE) {
 #' @title Load user options
 #' @description Load user options by their name.
 #' @details In case the options name is not passed, the function will attempt to load the current options configuration. If none is found, it will then attempt to load the default options. If that fails too, an error is raised.
-#' @param options_name [character, optional] Name of the options to load, excluding the .yaml suffix. Defaults to NULL.
+#' @param options_file_name [character, optional] Name of the options to load, including the .yaml suffix. Defaults to NULL.
 #' @param options_dir [character, optional] Path to the folder in which to look for user options files. Defaults to NULL.
 #' @return NULL Loads the options into the options() namespace.
-load_user_options <- function(options_name = NULL, options_dir = NULL) {
+load_user_options <- function(options_file_name = NULL, options_dir = NULL) {
   box::use(
     artma / const[CONST],
     artma / paths[PATHS]
@@ -84,15 +84,14 @@ load_user_options <- function(options_name = NULL, options_dir = NULL) {
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
 
-  if (!is.null(options_name)) {
+  if (!is.null(options_file_name)) {
     # Search for the user-specified options file first
 
-    if (grepl(".yaml$", options_name)) {
-      rlang::abort(glue::glue("Please pass the name of the options to load without the .yaml suffix. Got: {options_name}."))
+    if (!grepl(".yaml$|.yml$", options_file_name)) {
+      rlang::abort(glue::glue("Please pass the name of the options to load with the .yaml suffix. Got: {options_file_name}."))
     }
 
-    file_name <- glue::glue("{options_name}.yaml")
-    file_path <- file.path(options_dir, file_name)
+    file_path <- file.path(options_dir, options_file_name)
     load_user_options_file(path = file_path)
     return(invisible(NULL))
   }
