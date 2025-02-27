@@ -39,4 +39,5 @@ Collate:
   'options.R'
   'transformations.R'
   'main.R'
+  'run.R'
   'linters.R'

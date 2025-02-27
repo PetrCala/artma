@@ -35,6 +35,7 @@ options.create <- function(
   )
 }
 
+
 #' @title List available user options
 #' @description Retrieves the list of the existing options files and returns their names as a character vector. By default, this retrieves the names of the files including the yaml suffix, but can be modified to retrieve options verbose names instead.
 #' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
@@ -43,43 +44,15 @@ options.create <- function(
 #' @export
 options.list <- function(options_dir = NULL, should_read_verbose_names = FALSE) {
   static_setup() # nolint: box_usage_linter. # Imported on a package-level
-  box::use(
-    artma / paths[PATHS],
-    artma / const[CONST]
+
+  box::use(opts = artma / options / index)
+
+  opts$options.list(
+    options_dir = options_dir,
+    should_read_verbose_names = should_read_verbose_names
   )
-
-  if (is.null(options_dir)) options_dir <- PATHS$DIR_USER_OPTIONS
-
-  if (!dir.exists(options_dir)) {
-    rlang::abort(glue::glue("The following options directory does not exist: {options_dir}"))
-  }
-
-  options_files <- list.files(
-    path = options_dir,
-    pattern = CONST$REGEX$OPTIONS_FILE_SUFFIX,
-    # If we are not going to read the file, full names are unnecessary
-    full.names = should_read_verbose_names
-  )
-
-  options_names <- vector(mode = "character")
-  for (file_name in options_files) {
-    options_name <- if (should_read_verbose_names) {
-      tryCatch(
-        {
-          logger::log_debug(glue::glue("Reading the options file '{file_name}'"))
-          options_name <- yaml::read_yaml(file_name)$general$name
-        },
-        error = function(cond) {
-          logger::log_warn(glue::glue("Failed to read the following options file: {file}"))
-        }
-      )
-    } else {
-      file_name
-    }
-    options_names <- append(options_names, options_name)
-  }
-  return(options_names)
 }
+
 
 # Copy an existing user options file
 # options.copy

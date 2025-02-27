@@ -2,6 +2,6 @@
 
 export(artma.setup)
 export(main)
-export(options.apply)
 export(options.create)
+export(options.list)
 export(run)

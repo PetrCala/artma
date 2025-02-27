@@ -1,3 +1,44 @@
+#' This is a public package method. For more information, see 'options.R'.
+options.list <- function(options_dir = NULL, should_read_verbose_names = FALSE) {
+  box::use(
+    artma / paths[PATHS],
+    artma / const[CONST]
+  )
+
+  if (is.null(options_dir)) options_dir <- PATHS$DIR_USER_OPTIONS
+
+  if (!dir.exists(options_dir)) {
+    rlang::abort(glue::glue("The following options directory does not exist: {options_dir}"))
+  }
+
+  options_files <- list.files(
+    path = options_dir,
+    pattern = CONST$REGEX$OPTIONS_FILE_SUFFIX,
+    # If we are not going to read the file, full names are unnecessary
+    full.names = should_read_verbose_names
+  )
+
+  options_names <- vector(mode = "character")
+  for (file_name in options_files) {
+    options_name <- if (should_read_verbose_names) {
+      tryCatch(
+        {
+          logger::log_debug(glue::glue("Reading the options file '{file_name}'"))
+          options_name <- yaml::read_yaml(file_name)$general$name
+        },
+        error = function(cond) {
+          logger::log_warn(glue::glue("Failed to read the following options file: {file}"))
+        }
+      )
+    } else {
+      file_name
+    }
+    options_names <- append(options_names, options_name)
+  }
+  return(options_names)
+}
+
+
 #' @title Create user options file
 #' @param options_file_name [character] Name of the options file. Is used only for logging purposes.
 #' @param parsed_options [list] A list of parsed options from the template file
@@ -85,14 +126,30 @@ load_user_options <- function(options_file_name = NULL, options_dir = NULL, crea
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
 
+
   if (is.null(options_file_name)) {
     if (!create_options_if_null) {
       rlang::abort("No user options file to load was provided. Exiting...")
     }
 
-    # prompt the user to create a new options file TODO
-    options_file_name <- "xxx" # prompt this
-    # Here, create the file TODO
+    existing_option_files <- options.list()
+
+    if (!!existing_options_files) {
+      action <- utils::select.list(
+        choices = c("Create a new options file", "Choose from existing options files"),
+        title = "You have not specified the options file name to load. Please choose one of the following:"
+      )
+      if (action == "Choose from existing options files") {
+        options_file_name <- utils::select.list(
+          choices = existing_option_files,
+          title = "Please choose an options file to load:"
+        )
+      } else if (action == "Create a new options file") {
+        print("TODO")
+      } else {
+        print("Raise an error")
+      }
+    }
   }
 
   if (!grepl(".yaml$|.yml$", options_file_name)) {
@@ -108,5 +165,6 @@ load_user_options <- function(options_file_name = NULL, options_dir = NULL, crea
 
 box::export(
   create_user_options_file,
-  load_user_options
+  load_user_options,
+  options.list
 )
