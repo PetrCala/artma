@@ -4,8 +4,7 @@ list_user_options_files <- function(options_dir = NULL, should_return_verbose_na
     artma / paths[PATHS],
     artma / const[CONST]
   )
-
-  if (is.null(options_dir)) options_dir <- PATHS$DIR_USER_OPTIONS
+  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
 
   if (!dir.exists(options_dir)) {
     rlang::abort(glue::glue("The following options directory does not exist: {options_dir}"))
@@ -39,6 +38,50 @@ list_user_options_files <- function(options_dir = NULL, should_return_verbose_na
 }
 
 
+#' @title Ask for options file name
+#' @description Ask the user to input a name of an options file. Clean the user's input and return it as a string.
+#' @param should_clean [logical, optional] Whether to clean the input string. Defaults to TRUE
+#' @param prompt [character, optional] The prompt to use. Defaults to a generic prompt.
+#' @return [character] The options file name.
+#' @keywords internal
+ask_for_options_file_name <- function(should_clean = TRUE, prompt = NULL) {
+  if (!interactive()) {
+    rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
+  }
+  box::use(artma / options / utils[flat_to_nested, parse_options_file_name])
+
+  prompt <- prompt %||% "Please provide the name for your options file, including the .yaml suffix: "
+  options_file_name <- readline(prompt = prompt)
+
+  if (should_clean) {
+    options_file_name <- parse_options_file_name(options_file_name)
+  }
+
+  return(options_file_name)
+}
+
+
+#' @title Ask for an existing options file name
+#' @description Prompt the user to select from an existing list of user options files. Return the name of the selected file as a character.
+#' @param options_dir [character, optional] Name of the directory to list the files from. Defaults to NULL.
+#' @param prompt [character, optional] The prompt to use when asking for the user options file name. Defaults to NULL.
+#' @return [character] Name of the selected file.
+#' @keywords internal
+ask_for_existing_options_file_name <- function(options_dir = NULL, prompt = NULL) { # nolint: object_length_linter.
+  if (!interactive()) {
+    rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
+  }
+  prompt <- prompt %||% "Please select the user options file name you would like to use."
+
+  user_options_file_names <- list_user_options_files(options_dir = options_dir)
+  selected_file_name <- utils::select.list(
+    title = prompt,
+    choices = user_options_file_names
+  )
+  return(selected_file_name)
+}
+
+
 #' This is a public package method. For more information, see 'options.R::options.create'.
 create_user_options_file <- function(
     options_file_name = NULL,
@@ -51,21 +94,12 @@ create_user_options_file <- function(
     artma / libs / file_utils[ensure_folder_existence]
   )
 
-  if (is.null(options_file_name)) {
-    if (!interactive()) {
-      rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
-    }
-    options_file_name <- readline(prompt = "Please provide the name for your options file, including the .yaml suffix: ")
-  }
+  options_file_name <- options_file_name %||% ask_for_options_file_name()
 
   # Ensure valid, constant, and parseable format for the options file names
   options_file_name <- parse_options_file_name(options_file_name)
 
-  if (!grepl(".yaml$|.yml$", options_file_name)) {
-    rlang::abort(glue::glue("Please pass the options file name with the .yaml suffix. Make sure the string is not surrounded by quotes or accidental whitespace."))
-  }
-
-  if (is.null(options_dir)) options_dir <- PATHS$DIR_USER_OPTIONS
+  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
   options_file_path <- file.path(options_dir, options_file_name)
   template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
 
@@ -95,6 +129,39 @@ create_user_options_file <- function(
   logger::log_info(glue::glue("User options file created: '{options_file_name}'"))
 
   return(options_file_name)
+}
+
+#' This is a public package method. For more information, see 'options.R::options.copy'.
+copy_user_options_file <- function(
+    options_file_name_from = NULL,
+    options_file_name_to = NULL,
+    options_dir = NULL) {
+  box::use(artma / paths[PATHS])
+
+  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
+  options_file_name_from <- options_file_name_from %||% ask_for_existing_options_file_name(prompt = "Please select the name of the user options file you wish to copy from: ")
+  options_file_path_from <- file.path(options_dir, options_file_name_from)
+
+  if (!file.exists(options_file_path_from)) {
+    rlang::abort(glue::glue("The source options file does not exist under the following path: {options_file_path_from}"))
+  }
+
+  options_file_name_to <- options_file_name_to %||% ask_for_options_file_name(prompt = "Please provide a name for your new options file, including the .yaml suffix: ")
+  options_file_path_to <- file.path(options_dir, options_file_name_to)
+
+  if (file.exists(options_file_path_to)) {
+    overwrite_permitted <- utils::select.list(
+      title = "An options file name already exists under the path {}. Do you wish to overwrite the contents of this file?",
+      choices = c("Yes", "No")
+    )
+    if (overwrite_permitted != "Yes") {
+      stop("Aborting the copying of a user options file.")
+    }
+  }
+
+  file.copy(options_file_path_from, options_file_path_to, overwrite = TRUE)
+
+  logger::log_info(glue::glue("The user options file '{options_file_name_from}' has been successfully copied over to '{options_file_name_to}'."))
 }
 
 #' @title Load user options
@@ -189,6 +256,7 @@ load_user_options <- function(
 
 
 box::export(
+  copy_user_options_file,
   create_user_options_file,
   list_user_options_files,
   load_user_options

@@ -109,5 +109,9 @@ parse_options_file_name <- function(input_string) {
     }
   )
 
+  if (!grepl(".yaml$|.yml$", str_out)) {
+    rlang::abort(glue::glue("Please provide the name of the options file with .yaml suffix. Got: {options_file_name}."))
+  }
+
   str_out
 }

@@ -44,10 +44,24 @@ options.print_default_dir <- function() { # nolint: object_name_linter.
   print(PATHS$DIR_USER_OPTIONS)
 }
 
+#' @title Copy user options
+#' @description Provide a name of a user options file to copy from, and a name of a file to copy to, and copy from the 'from' file to the 'to' file.
+#' @param options_file_name_from [character, optional] Name of the options file to copy from. If not provided, the user will be prompted. Defaults to NULL.
+#' @param options_file_name_to [character, optional] Name of the options file to copy to. If not provided, the user will be prompted. Defaults to NULL.
+#' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
+#' @return NULL
+#' @export
+options.copy <- function(
+    options_file_name_from = NULL,
+    options_file_name_to = NULL,
+    options_dir = NULL) {
+  opts$copy_user_options_file(
+    options_file_name_from = options_file_name_from,
+    options_file_name_to = options_file_name_to,
+    options_dir = options_dir
+  )
+}
 
-
-# Copy an existing user options file
-# options.copy
 
 # Delete an existing user options file
 # options.delete
