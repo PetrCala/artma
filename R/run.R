@@ -1,10 +1,10 @@
 #' @export
 run <- function(
     methods = NULL,
-    options = NULL,
+    options_file_name = NULL,
     options_dir = NULL) {
   runtime_setup( # nolint: box_usage_linter. # Imported on a package-level
-    options = options,
+    options_file_name = options_file_name,
     options_dir = options_dir
   )
 

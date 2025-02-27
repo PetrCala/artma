@@ -75,8 +75,9 @@ load_user_options_file <- function(path, should_return = FALSE) {
 #' @details In case the options name is not passed, the function will attempt to load the current options configuration. If none is found, it will then attempt to load the default options. If that fails too, an error is raised.
 #' @param options_file_name [character, optional] Name of the options to load, including the .yaml suffix. Defaults to NULL.
 #' @param options_dir [character, optional] Path to the folder in which to look for user options files. Defaults to NULL.
+#' @param create_options_if_null [logical, optional] If set to TRUE and the options file name is set to NULL, the function will prompt the user to create a new options file. Defaults to TRUE.
 #' @return NULL Loads the options into the options() namespace.
-load_user_options <- function(options_file_name = NULL, options_dir = NULL) {
+load_user_options <- function(options_file_name = NULL, options_dir = NULL, create_options_if_null = TRUE) {
   box::use(
     artma / const[CONST],
     artma / paths[PATHS]
@@ -84,61 +85,28 @@ load_user_options <- function(options_file_name = NULL, options_dir = NULL) {
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
 
-  if (!is.null(options_file_name)) {
-    # Search for the user-specified options file first
-
-    if (!grepl(".yaml$|.yml$", options_file_name)) {
-      rlang::abort(glue::glue("Please pass the name of the options to load with the .yaml suffix. Got: {options_file_name}."))
+  if (is.null(options_file_name)) {
+    if (!create_options_if_null) {
+      rlang::abort("No user options file to load was provided. Exiting...")
     }
 
-    file_path <- file.path(options_dir, options_file_name)
-    load_user_options_file(path = file_path)
-    return(invisible(NULL))
+    # prompt the user to create a new options file TODO
+    options_file_name <- "xxx" # prompt this
+    # Here, create the file TODO
   }
 
-  # Check whether there is a current options configuration. Load it if so.
-  current_options_file_path <- file.path(options_dir, CONST$CURRENT_OPTIONS_FILE_NAME)
-
-  if (file.exists(current_options_file_path)) {
-    load_user_options_file(path = current_options_file_path)
-    current_options_name <- getOption("artma.general.name") %||% ""
-    logger::log_info(glue::glue("Found an existing configuration: '{current_options_name}'. Loading the options from there..."))
-    return(invisible(NULL))
+  if (!grepl(".yaml$|.yml$", options_file_name)) {
+    rlang::abort(glue::glue("Please pass the name of the options to load with the .yaml suffix. Got: {options_file_name}."))
   }
 
-  default_options_file_path <- PATHS$FILE_OPTIONS_DEFAULT
+  file_path <- file.path(options_dir, options_file_name)
+  load_user_options_file(path = file_path)
 
-  if (file.exists(default_options_file_path)) {
-    logger::log_info("Loading default options...")
-    load_user_options_file(path = default_options_file_path)
-    return(invisible(NULL))
-  }
-
-  rlang::abort("Could not load user options.")
+  return(invisible(NULL))
 }
 
-#' @title Apply user options file
-#' @description Apply user options given their full path. This means overwriting any current options with a user options file located under the specified path.
-#' @param path [character] Full path to the user options file to apply.
-apply_user_options_file <- function(path) {
-  if (!is.character(path) || length(path) <= 0) {
-    rlang::abort(glue::glue("Invalid user options file path: {path}."))
-  }
-  if (!file.exists(path)) {
-    rlang::abort(glue::glue("The following user options file path does not exist: {path}."))
-  }
-
-  box::use(artma / const[CONST])
-
-  # We want to copy the desired options file to the 'current options file path'
-  target_path <- file.path(dirname(path), CONST$CURRENT_OPTIONS_FILE_NAME)
-
-  logger::log_debug(glue::glue("Applying the user options from the following path: {path}"))
-  file.copy(from = path, to = target_path, overwrite = TRUE)
-}
 
 box::export(
-  apply_user_options_file,
   create_user_options_file,
   load_user_options
 )

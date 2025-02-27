@@ -1,4 +1,4 @@
-#' @title #' Create user options
+#' @title Create user options
 #' @description Create a new user options file from an options template.
 #' @param options_file_name [character] Name of the new user options file, including the suffix.
 #' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
@@ -35,31 +35,6 @@ options.create <- function(
   )
 }
 
-#' @title Apply options
-#' @export
-options.apply <- function(
-    options_file_name,
-    options_dir = NULL) {
-  static_setup() # nolint: box_usage_linter. # Imported on a package-level
-
-  if (!grepl(".yaml$|.yml$", options_file_name)) {
-    rlang::abort(glue::glue("Please pass the options file name with the .yaml suffix."))
-  }
-
-  box::use(
-    artma / paths[PATHS],
-    artma / options / index[apply_user_options_file]
-  )
-
-  if (is.null(options_dir)) options_dir <- PATHS$DIR_USER_OPTIONS
-
-  options_file_path <- file.path(options_dir, options_file_name)
-
-  apply_user_options_file(path = options_file_path)
-
-  logger::log_info(glue::glue("The following user options have been applied: '{options_file_name}'."))
-}
-
 #' @title List available user options
 #' @description Retrieves the list of the existing options files and returns their names as a character vector. By default, this retrieves the names of the files including the yaml suffix, but can be modified to retrieve options verbose names instead.
 #' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
@@ -67,6 +42,7 @@ options.apply <- function(
 #' @returns vector[character] A character vector with the names of the options available.
 #' @export
 options.list <- function(options_dir = NULL, should_read_verbose_names = FALSE) {
+  static_setup() # nolint: box_usage_linter. # Imported on a package-level
   box::use(
     artma / paths[PATHS],
     artma / const[CONST]
@@ -104,3 +80,15 @@ options.list <- function(options_dir = NULL, should_read_verbose_names = FALSE) 
   }
   return(options_names)
 }
+
+# Copy an existing user options file
+# options.copy
+
+# Delete an existing user options file
+# options.delete
+
+# Inspect an existing user options file
+# options.inspect
+
+# Validate an existing user options file
+# options.validate
