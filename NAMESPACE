@@ -2,6 +2,7 @@
 
 export(artma.setup)
 export(main)
+export(methods.list)
 export(options.copy)
 export(options.create)
 export(options.list)
