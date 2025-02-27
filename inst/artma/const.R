@@ -45,5 +45,10 @@ CONST <- list(
   ),
 
   # Config
-  CONFIG_SPECIAL_KEYS = c("description", "details", "type", "optional", "default", "values")
+  CONFIG_SPECIAL_KEYS = c("description", "details", "type", "optional", "default", "values"),
+
+  # Regex
+  REGEX = list(
+    OPTIONS_FILE_SUFFIX = "\\.yaml|\\.yml"
+  )
 )

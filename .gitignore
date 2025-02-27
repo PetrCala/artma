@@ -8,6 +8,7 @@ cache/
 metadata.json
 output/*
 config/*
+local/*
 !config/demo.yaml
 **/*.log
 R/config.yaml

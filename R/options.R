@@ -62,5 +62,40 @@ options.apply <- function(
   logger::log_info(glue::glue("The following user options have been applied: '{options_name}'."))
 }
 
-# #' @export
-# options.list <- function()
+#' @title List available user options
+#' @description Retrieves the list of the existing options files and returns their custom names as a character vector
+#' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
+#' @returns vector[character] A character vector with the names of the options available.
+#' @export
+options.list <- function(options_dir = NULL) {
+  box::use(
+    artma / paths[PATHS],
+    artma / const[CONST]
+  )
+
+  if (is.null(options_dir)) options_dir <- PATHS$DIR_USER_OPTIONS
+
+  if (!dir.exists(options_dir)) {
+    rlang::abort(glue::glue("The following options directory does not exist: {options_dir}"))
+  }
+
+  options_files <- list.files(
+    path = options_dir,
+    pattern = CONST$REGEX$OPTIONS_FILE_SUFFIX,
+    full.names = TRUE
+  )
+
+  options_names <- vector(mode = "character")
+  for (file in options_files) {
+    tryCatch(
+      {
+        options_name <- yaml::read_yaml(file)$general$name
+        options_names <- append(options_names, options_name)
+      },
+      error = function(cond) {
+        logger::log_warn(glue::glue("Failed to read the following options file: {file}"))
+      }
+    )
+  }
+  return(options_names)
+}

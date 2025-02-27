@@ -1,5 +1,6 @@
 help: no
 general:
+  name: default
   artma_version: 0.1.0
 logging:
   log_file_name: artma.log

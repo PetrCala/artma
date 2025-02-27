@@ -16,5 +16,5 @@ run <- function(
     logger::log_debug("No runtime methods were provided. Running all available methods...")
     methods <- CONST$SUPPORTED_METHODS
   }
-  print(methods)
+  logger::log_success("Done.")
 }
