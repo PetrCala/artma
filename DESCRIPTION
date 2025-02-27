@@ -33,11 +33,3 @@ Suggests:
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
-Collate:
-  'aaa.R'
-  'setup.R'
-  'options.R'
-  'transformations.R'
-  'main.R'
-  'run.R'
-  'linters.R'
