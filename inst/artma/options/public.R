@@ -52,11 +52,14 @@ create_user_options_file <- function(
   )
 
   if (is.null(options_file_name)) {
+    if (!interactive()) {
+      rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
+    }
     options_file_name <- readline(prompt = "Please provide the name for your options file, including the .yaml suffix: ")
   }
 
   if (!grepl(".yaml$|.yml$", options_file_name)) {
-    rlang::abort(glue::glue("Please pass the options file name with the .yaml suffix."))
+    rlang::abort(glue::glue("Please pass the options file name with the .yaml suffix. Make sure the string is not surrounded by quotes or accidental whitespace."))
   }
 
   if (is.null(options_dir)) options_dir <- PATHS$DIR_USER_OPTIONS
@@ -155,7 +158,7 @@ load_user_options <- function(
 
   # Here, add option file validation functions TODO
   if (should_validate) {
-    print("Validating the options...")
+    logger::log_info("Validating the options...")
   }
 
   logger::log_info(glue::glue("Applying the following options: '{options_file_name}'"))

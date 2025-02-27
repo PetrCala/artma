@@ -45,14 +45,18 @@ find_string_using_substring <- function(vector_of_strings, substring) {
 #' @export
 clean_string <- function(input_string) {
   # Remove special characters
-  cleaned_string <- stringr::str_replace_all(input_string, "[^a-zA-Z0-9]", "_")
+  str_out <- stringr::str_replace_all(input_string, "[^a-zA-Z0-9]", "_")
 
   # Convert to lowercase
-  cleaned_string <- tolower(cleaned_string)
+  str_out <- tolower(str_out)
 
   # Remove leading or trailing underscores
-  cleaned_string <- stringr::str_trim(cleaned_string, side = "both")
-  cleaned_string <- stringr::str_replace_all(cleaned_string, "^_+|_+$", "")
+  str_out <- stringr::str_trim(str_out, side = "both")
+  str_out <- stringr::str_replace_all(str_out, "^_+|_+$", "")
 
-  return(cleaned_string)
+  # Remove quotes
+  str_out <- gsub('"', "", str_out, fixed = TRUE)
+  str_out <- gsub("'", "", str_out, fixed = TRUE)
+
+  return(str_out)
 }
