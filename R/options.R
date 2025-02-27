@@ -71,3 +71,6 @@ options.copy <- function(
 
 # Validate an existing user options file
 # options.validate
+
+# Copy an existing folder of options into another place
+# options.migrate
