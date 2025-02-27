@@ -9,12 +9,24 @@ run <- function(
   )
 
   box::use(
-    artma / const[CONST]
+    artma / const[CONST],
+    artma / libs / utils[is_empty]
   )
 
   if (is.null(methods)) {
-    logger::log_debug("No runtime methods were provided. Running all available methods...")
-    methods <- CONST$SUPPORTED_METHODS
+    methods <- utils::select.list(
+      title = "No runtime methods were provided. Please select the methods you would like to run: ",
+      choices = CONST$SUPPORTED_METHODS,
+      multiple = TRUE
+    )
+    if (is_empty(methods)) {
+      stop("No runtime methods were selected. Aborting...")
+    }
   }
+
+  if (!(is.character(methods) && all(methods %in% CONST$SUPPORTED_METHODS))) {
+    rlang::abort(paste("Invalid runtime methods selected:", paste(as.character(methods), collapse = ", "), "\nTo see a list of available methods, run 'artma::list_methods()'."))
+  }
+
   logger::log_success("Done.")
 }

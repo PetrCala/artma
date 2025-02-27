@@ -71,6 +71,8 @@ ask_for_existing_options_file_name <- function(options_dir = NULL, prompt = NULL
   if (!interactive()) {
     rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
   }
+  box::use(artma / libs / utils[is_empty])
+
   prompt <- prompt %||% "Please select the user options file name you would like to use."
 
   user_options_file_names <- list_user_options_files(options_dir = options_dir)
@@ -78,6 +80,9 @@ ask_for_existing_options_file_name <- function(options_dir = NULL, prompt = NULL
     title = prompt,
     choices = user_options_file_names
   )
+  if (is_empty(selected_file_name)) {
+    stop("No user options file was selected. Aborting...")
+  }
   return(selected_file_name)
 }
 
@@ -223,6 +228,9 @@ load_user_options <- function(
           title = "Please choose an options file to load:",
           choices = existing_options_files
         )
+        if (is_empty(options_file_name)) {
+          stop("No user options file was selected. Aborting...")
+        }
       } else {
         stop("No action was chosen for loading user options. Exiting...")
       }
