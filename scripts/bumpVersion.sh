@@ -18,7 +18,7 @@ Options:
 EOF
 }
 
-if [[ $print_help == true ]] || [[ $1 == "help" ]] || [[ $# -ne 1 ]]; then
+if [[ $print_help == true ]] || [[ $1 == "help" ]] || [[ $1 == "--help" ]] || [[ $# -ne 1 ]]; then
   print_help
   exit 0
 fi
