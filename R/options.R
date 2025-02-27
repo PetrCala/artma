@@ -35,6 +35,15 @@ options.create <- function(
   )
 }
 
+#' @title Print default user options directory
+#' @description Prints the full path to the directory where user options are stored by default
+#' @export
+options.print_default_dir <- function() { # nolint: object_name_linter.
+  box::use(artma / paths[PATHS])
+
+  print(PATHS$DIR_USER_OPTIONS)
+}
+
 
 
 # Copy an existing user options file
