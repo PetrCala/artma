@@ -41,7 +41,8 @@ options.create <- function(
 options.print_default_dir <- function() { # nolint: object_name_linter.
   box::use(artma / paths[PATHS])
 
-  print(PATHS$DIR_USER_OPTIONS)
+  cli::cli_text("By default, user option files are being stored under the following path:")
+  cat(cli::style_italic(PATHS$DIR_USER_OPTIONS), sep = "\n")
 }
 
 #' @title Copy user options
