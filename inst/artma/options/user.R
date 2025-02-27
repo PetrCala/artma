@@ -120,7 +120,7 @@ load_user_options <- function(
       rlang::abort("No user options file to load was provided. Exiting...")
     }
 
-    existing_options_files <- list_user_options_files()
+    existing_options_files <- list_user_options_files(options_dir = options_dir)
 
     if (!is_empty(existing_options_files)) {
       action <- utils::select.list(
@@ -129,7 +129,10 @@ load_user_options <- function(
       )
 
       if (action == "Create a new options file") {
-        options_file_name <- create_user_options_file()
+        options_file_name <- create_user_options_file(
+          options_file_name = options_file_name,
+          options_dir = options_dir
+        )
       } else if (action == "Choose from existing options files") {
         options_file_name <- utils::select.list(
           title = "Please choose an options file to load:",
