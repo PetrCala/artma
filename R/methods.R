@@ -2,7 +2,13 @@
 get_method_mapping <- function() {
   static_setup() # nolint: box_usage_linter. # Imported on a package-level
 
-  box::use(artma / const[CONST])
+  box::use(
+    artma / const[CONST],
+    artma / paths[PATHS],
+    artma / libs / modules[crawl_and_import_modules]
+  )
+
+  modules <- crawl_and_import_modules(PATHS$DIR_METHODS)
 
   default <- function() print("This method is not yet implemented.")
 
