@@ -47,7 +47,8 @@ linters <- c(
 
 exclusions <- list(
     "tests/",
-    "archive/"
+    "archive/",
+    "local/"
 )
 
 # Clean up imported linters
