@@ -39,6 +39,5 @@ PATHS <- list(
   DIR_USER_OPTIONS = file.path(DIR_TEMP, "options"), # Store user options here by default
 
   # Files
-  FILE_OPTIONS_TEMPLATE = file.path(DIR_OPTIONS_TEMPLATES, "options_template.yaml"),
-  FILE_OPTIONS_DEFAULT = file.path(DIR_OPTIONS_TEMPLATES, "options_default.yaml")
+  FILE_OPTIONS_TEMPLATE = file.path(DIR_OPTIONS_TEMPLATES, "options_template.yaml")
 )

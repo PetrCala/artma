@@ -1,39 +1,6 @@
-#' @title Create user options
-#' @description Create a new user options file from an options template.
-#' @param options_file_name [character] Name of the new user options file, including the suffix.
-#' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
-#' @param template_path [character, optional] Full path to the options template file.
-#' @param args Command line arguments to pass to the template parsing operation. This allows overwriting of the template with custom option values.
-#' @returns NULL Creates the options file.
-#' @export
-options.create <- function(
-    options_file_name,
-    options_dir = NULL,
-    template_path = NULL,
-    args = commandArgs(trailingOnly = TRUE)) {
-  static_setup() # nolint: box_usage_linter. # Imported on a package-level
+static_setup() # nolint: box_usage_linter. # Imported on a package-level
 
-  if (!grepl(".yaml$|.yml$", options_file_name)) {
-    rlang::abort(glue::glue("Please pass the options file name with the .yaml suffix."))
-  }
-
-  box::use(
-    artma / paths[PATHS],
-    artma / options / index[parse_options_from_template, create_user_options_file]
-  )
-
-  if (is.null(options_dir)) options_dir <- PATHS$DIR_USER_OPTIONS
-  options_file_path <- file.path(options_dir, options_file_name)
-
-  template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
-  parsed_options <- parse_options_from_template(path = template_path, args = args)
-
-  create_user_options_file(
-    options_file_name = options_file_name,
-    parsed_options = parsed_options,
-    path = options_file_path
-  )
-}
+box::use(opts = artma / options / index)
 
 
 #' @title List available user options
@@ -43,15 +10,31 @@ options.create <- function(
 #' @returns vector[character] A character vector with the names of the options available.
 #' @export
 options.list <- function(options_dir = NULL, should_read_verbose_names = FALSE) {
-  static_setup() # nolint: box_usage_linter. # Imported on a package-level
-
-  box::use(opts = artma / options / index)
-
-  opts$options.list(
+  opts$list_user_options_files(
     options_dir = options_dir,
     should_read_verbose_names = should_read_verbose_names
   )
 }
+
+
+#' @title Create user options
+#' @description Create a new user options file from an options template.
+#' @param options_file_name [character] Name of the new user options file, including the suffix.
+#' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
+#' @param template_path [character, optional] Full path to the options template file.
+#' @returns [character] Name of the newly created user options file.
+#' @export
+options.create <- function(
+    options_file_name = NULL,
+    options_dir = NULL,
+    template_path = NULL) {
+  opts$create_user_options_file(
+    options_file_name = options_file_name,
+    options_dir = options_dir,
+    template_path = template_path
+  )
+}
+
 
 
 # Copy an existing user options file
