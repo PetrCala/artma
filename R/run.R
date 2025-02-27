@@ -25,7 +25,7 @@ run <- function(
   }
 
   if (!(is.character(methods) && all(methods %in% CONST$SUPPORTED_METHODS))) {
-    rlang::abort(paste("Invalid runtime methods selected:", paste(as.character(methods), collapse = ", "), "\nTo see a list of available methods, run 'artma::list_methods()'."))
+    rlang::abort(paste("Invalid runtime methods selected:", paste(as.character(methods), collapse = ", "), "\nTo see a list of available methods, run 'artma::methods.list()'."))
   }
 
   logger::log_success("Done.")

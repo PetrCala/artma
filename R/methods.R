@@ -1,7 +1,7 @@
 #' @title List methods
 #' @description Print all runtime methods supported by ARTMA into the console.
 #' @export
-list_methods <- function() {
+methods.list <- function() {
   static_setup() # nolint: box_usage_linter. # Imported on a package-level
 
   box::use(artma / const[CONST])
