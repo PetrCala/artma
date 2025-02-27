@@ -125,7 +125,19 @@ load_user_options <- function(
 
     existing_options_files <- list_user_options_files(options_dir = options_dir)
 
-    if (!is_empty(existing_options_files)) {
+    if (is_empty(existing_options_files)) {
+      can_proceed <- utils::select.list(
+        title = "We have not found any option files to load for you. Would you like to create one now?",
+        choices = c("Yes", "No")
+      )
+      if (can_proceed != "Yes") {
+        stop("To load user options, you must create an options file first.")
+      }
+      options_file_name <- create_user_options_file(
+        options_file_name = options_file_name,
+        options_dir = options_dir
+      )
+    } else {
       action <- utils::select.list(
         title = "You have not specified the options file name to load. Please choose one of the following:",
         choices = c("Create a new options file", "Choose from existing options files")
