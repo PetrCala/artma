@@ -86,3 +86,28 @@ nested_to_flat <- function(nested, parent_key = NULL, sep = ".") {
 
   flat
 }
+
+#' @title Parse options file name
+#' @description Parse a string into one that can be used as an options file name. If this fails, raise an error.
+#' @export
+parse_options_file_name <- function(input_string) {
+  str_out <- rlang::duplicate(input_string)
+
+  logger::log_debug(glue::glue("Parsing the following string into a user options file name: {input_string}"))
+
+  tryCatch(
+    {
+      # Remove quotes
+      str_out <- gsub("'", "", str_out, fixed = TRUE)
+      str_out <- gsub('"', "", str_out, fixed = TRUE)
+
+      # Remove trailing and leading whitespace
+      str_out <- stringr::str_trim(str_out, side = "both")
+    },
+    error = function(e) {
+      rlang::abort(glue::glue("There was an error parsing the following into a valid user options file name: {input_string}"))
+    }
+  )
+
+  str_out
+}

@@ -47,7 +47,7 @@ create_user_options_file <- function(
   box::use(
     artma / paths[PATHS],
     artma / options / template[parse_options_from_template],
-    artma / options / utils[flat_to_nested],
+    artma / options / utils[flat_to_nested, parse_options_file_name],
     artma / libs / file_utils[ensure_folder_existence]
   )
 
@@ -57,6 +57,9 @@ create_user_options_file <- function(
     }
     options_file_name <- readline(prompt = "Please provide the name for your options file, including the .yaml suffix: ")
   }
+
+  # Ensure valid, constant, and parseable format for the options file names
+  options_file_name <- parse_options_file_name(options_file_name)
 
   if (!grepl(".yaml$|.yml$", options_file_name)) {
     rlang::abort(glue::glue("Please pass the options file name with the .yaml suffix. Make sure the string is not surrounded by quotes or accidental whitespace."))
@@ -89,7 +92,7 @@ create_user_options_file <- function(
     options_file_path
   )
 
-  logger::log_debug(glue::glue("User options file created: '{options_file_name}'"))
+  logger::log_info(glue::glue("User options file created: '{options_file_name}'"))
 
   return(options_file_name)
 }
@@ -170,10 +173,10 @@ load_user_options <- function(
 
   # Here, add option file validation functions TODO
   if (should_validate) {
-    logger::log_info("Validating the options...")
+    logger::log_info(glue::glue("Validating the following user options file: {options_file_name}"))
   }
 
-  logger::log_info(glue::glue("Applying the following options: '{options_file_name}'"))
+  logger::log_info(glue::glue("Loading options from the following user options file: '{options_file_name}'"))
 
   options(prefixed_options)
 
