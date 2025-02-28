@@ -1,33 +1,48 @@
+#' @title Crawl and import modules
+#' @description Provided a path to a directory, crawl this directory for .R files and import all of them as box modules. Each such module will be imported under its name.
+#' @details Assume you have a file 'my_custom_module.R' in a directory you want to import. Running this function on that directory loads a module named 'my_custom_module' into memory through box. Consequently, calls su
+#' @param dir_path [character] Path to the directory to crawl.
+#' @return [list] A list of box modules, accessible by their name.
+#'
+#' @usage
+#' # Assume you have a 'my_custom_module.R' inside the following directory
+#' custom_dir <- file.path('path', 'to', 'your', 'dir')
+#'
+#' modules <- crawl_and_import_modules(custom_dir)
+#' my_custom_module <- modules[['my_custom_module']]
+#'
+#' # The following calls will work
+#' my_custom_module$some_method()
+#' my_custom_module$another_method()
+#' modules$my_custom_module$some_method()
+#'
 #' @export
 crawl_and_import_modules <- function(dir_path) {
   if (!dir.exists(dir_path)) {
     rlang::abort(glue::glue("Non-existent directory when importing modules: {dir_path}"))
   }
 
-  # Create a list to hold the imported modules
+  box::use(artma / libs / path[turn_path_into_box_import])
+
   modules <- list()
 
-  # Temporarily switch to the target directory so that box::use() sees files as modules
-  withr::with_dir(dir_path, {
-    # TODO
-    # Find all .R files
-    r_files <- list.files(pattern = "\\.R$", full.names = FALSE)
+  # It is possible that the box imports may not work across all devices. Were that to be the case, consider using 'with_dir' to change the working dir temporarily for the following chunk of code.
 
-    # For each R file, import it via box::use and store the module
-    for (f in r_files) {
-      module_name <- tools::file_path_sans_ext(f) # Strip the .R extension
-      # Build a small expression like box::use(./my_module)
-      import_expr <- parse(text = sprintf("box::use(./%s)", module_name))
+  r_files <- list.files(path = dir_path, pattern = "\\.R$", full.names = FALSE)
+  for (f in r_files) {
+    module_name <- base::basename(tools::file_path_sans_ext(f))
+    module_path <- tools::file_path_as_absolute(file.path(dir_path, f))
 
-      # Evaluate the expression (imports the module)
-      mod <- eval(import_expr)
+    box_import_statement <- turn_path_into_box_import(module_path)
+    logger::log_debug(glue::glue("Running the following import statement: '{box_import_statement}'"))
+    eval(box_import_statement) # Imports the module
 
-      # Store in our modules list
-      modules[[module_name]] <- mod
+    # Calling the module name should now return the module itself
+    imported_module <- eval(parse(text = module_name))
+    if (!inherits(imported_module, "box$mod")) {
+      rlang::abort(glue::glue("Failed to import {module_name} as a box module. Aborting..."))
     }
-  })
-
-
-  # Return the named list of modules
-  return(modules)
+    modules[[module_name]] <- imported_module
+  }
+  modules
 }
