@@ -67,7 +67,7 @@ validate_runtime_method_modules <- function(modules) { # nolint: object_length_l
       {
         main_method <- modules[[module_name]]$run # Can throw an error
 
-        if (inherits(main_method, "function")) {
+        if (!inherits(main_method, "function")) {
           rlang::abort(glue::glue("Missing or invalid 'run' function in module '{module_name}'. Make sure your module contains this function."))
         }
       },
