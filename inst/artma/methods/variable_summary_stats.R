@@ -1,2 +1,2 @@
 #' @export
-run <- function() print("Running the variable_summary_stats method...")
+run <- function(df) print("Running the variable_summary_stats method...")
