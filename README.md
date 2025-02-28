@@ -211,7 +211,9 @@ To see what methods are available, you can run `artma::methods.list()`. The outp
 
 If you wish to use a custom method in the ARTMA package, it should be enough to add it to the `methods` folder. However, it must adhere to several principles in order to be parsed corretly:
 
-- Each method (module) recognized by ARTMA must have a `run` function. This serves as the entrypoint for the method. The function **can accept no parameters**, as it has to be invokable outside the box. If you wish to use any parameters for your function, define them through options. To understand how to do so, see the [Adding new options section](#adding-new-options).
+- Each method (module) recognized by ARTMA must have a `run` function. This serves as the entrypoint for the method. The function **must accept the several specific parameters**, common across all runtime methods. To see these, open the definition of any of the existing methods and search for non-default parameters. These are the ones you have to use in every case.
+
+If you wish to use any custom parameters for your function, you can define them through options. To understand how to do so, see the [Adding new options section](#adding-new-options).
 
 # Validating Conditions
 
