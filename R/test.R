@@ -1,8 +1,12 @@
+# nolint start: namespace_linter.
+
 #' @keywords internal
 test <- function() { # nolint: unused_declared_object_linter.
   # A development function for invoking various chunks of code
-  artma::run( # nolint: namespace_linter.
-    methods = c("funnel_plot", "bma", "robma"),
-    options_file_name = "default.yaml"
-  )
+  option_files <- c("default.yaml", "test.yaml", "test2.yaml")
+  for (file in option_files) {
+    artma::run(methods = "variable_summary_stats", options_file_name = file)
+  }
 }
+
+# nolint end: namespace_linter.
