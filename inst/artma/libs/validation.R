@@ -66,6 +66,22 @@ validate_columns <- function(df, columns) {
   }
 }
 
+#' @title Validate value type
+#' @description A helper function that checks if a value matches the expected type. Returns TRUE if it does, and FALSE otherwise.
+#' @param value [any] The value to check
+#' @param expected_type [character] The expected type.
+#' @returns [logical] TRUE if the value matches the expected type, FALSE otherwise.
+#' @export
+validate_value_type <- function(value, expected_type) {
+  switch(expected_type,
+    character = is.character(value),
+    numeric   = is.numeric(value),
+    integer   = is.numeric(value) && (floor(value) == value),
+    logical   = is.logical(value),
+    # Otherwise, we default to TRUE (or you can flag as unvalidated)
+    TRUE
+  )
+}
 
 #' Assert Conditions
 #'
