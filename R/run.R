@@ -4,7 +4,7 @@
 #' @param df [data.frame] The data frame to invoke the methods on.
 #' @return [list] Results of the invocations, indexed by method names.
 #'
-#' @example
+#' @examples
 #' df <- data.frame(...)
 #' invoke_runtime_methods(c("funnel_plot", "bma"), df)
 #'

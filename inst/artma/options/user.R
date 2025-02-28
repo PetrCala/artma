@@ -156,7 +156,7 @@ copy_user_options_file <- function(
 
   if (file.exists(options_file_path_to)) {
     overwrite_permitted <- utils::select.list(
-      title = "An options file name already exists under the path {}. Do you wish to overwrite the contents of this file?",
+      title = "An options file name already exists under the path {options_file_path_to}. Do you wish to overwrite the contents of this file?",
       choices = c("Yes", "No")
     )
     if (overwrite_permitted != "Yes") {
@@ -168,6 +168,35 @@ copy_user_options_file <- function(
 
   logger::log_info(glue::glue("The user options file '{options_file_name_from}' has been successfully copied over to '{options_file_name_to}'."))
 }
+
+#' This is a public package method. For more information, see 'options.R::options.delete'.
+delete_user_options_file <- function(
+    options_file_name = NULL,
+    options_dir = NULL) {
+  box::use(artma / paths[PATHS])
+
+  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
+  options_file_name <- options_file_name %||% ask_for_existing_options_file_name(prompt = "Please select the user options file you wish to delete: ")
+  options_file_path <- file.path(options_dir, options_file_name)
+
+  if (!file.exists(options_file_path)) {
+    rlang::abort(glue::glue("The user options file does not exist under the following path: {options_file_path}"))
+  }
+
+  deletion_confirmed <- utils::select.list(
+    title = glue::glue("Are you sure you wish to delete the file jsf
+    '{options_file_name}'?"),
+    choices = c("Yes, I am sure", "No, I want to keep the file")
+  )
+  if (deletion_confirmed != "Yes, I am sure") {
+    stop("Aborting the deletion of a user options file.")
+  }
+
+  base::file.remove(options_file_path)
+
+  logger::log_info(glue::glue("The user options file '{options_file_name}' has been deleted."))
+}
+
 
 #' @title Load user options
 #' @description Load user options by their name.
@@ -265,6 +294,7 @@ load_user_options <- function(
 
 box::export(
   copy_user_options_file,
+  delete_user_options_file,
   create_user_options_file,
   list_user_options_files,
   load_user_options

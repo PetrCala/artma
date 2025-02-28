@@ -63,9 +63,20 @@ options.copy <- function(
   )
 }
 
-
-# Delete an existing user options file
-# options.delete
+#' @title Delete user options
+#' @description Provide a name of a user options file to delete, and delete that file.
+#' @param options_file_name [character, optional] Name of the options file to delete. If not provided, the user will be prompted. Defaults to NULL.
+#' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
+#' @return NULL
+#' @export
+options.delete <- function(
+    options_file_name = NULL,
+    options_dir = NULL) {
+  opts$delete_user_options_file(
+    options_file_name = options_file_name,
+    options_dir = options_dir
+  )
+}
 
 # Inspect an existing user options file
 # options.inspect
