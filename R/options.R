@@ -71,10 +71,12 @@ options.copy <- function(
 #' @export
 options.delete <- function(
     options_file_name = NULL,
-    options_dir = NULL) {
+    options_dir = NULL,
+    ...) {
   opts$delete_user_options_file(
     options_file_name = options_file_name,
-    options_dir = options_dir
+    options_dir = options_dir,
+    ...
   )
 }
 

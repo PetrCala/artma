@@ -172,7 +172,8 @@ copy_user_options_file <- function(
 #' This is a public package method. For more information, see 'options.R::options.delete'.
 delete_user_options_file <- function(
     options_file_name = NULL,
-    options_dir = NULL) {
+    options_dir = NULL,
+    skip_confirmation = FALSE) {
   box::use(artma / paths[PATHS])
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
@@ -183,12 +184,14 @@ delete_user_options_file <- function(
     rlang::abort(glue::glue("The user options file does not exist under the following path: {options_file_path}"))
   }
 
-  deletion_confirmed <- utils::select.list(
-    title = glue::glue("Are you sure you wish to delete the file the user options file '{options_file_name}'?"),
-    choices = c("Yes, I am sure", "No, I want to keep the file")
-  )
-  if (deletion_confirmed != "Yes, I am sure") {
-    stop("Aborting the deletion of a user options file.")
+  if (!skip_confirmation) {
+    deletion_confirmed <- utils::select.list(
+      title = glue::glue("Are you sure you wish to delete the file the user options file '{options_file_name}'?"),
+      choices = c("Yes, I am sure", "No, I want to keep the file")
+    )
+    if (deletion_confirmed != "Yes, I am sure") {
+      stop("Aborting the deletion of a user options file.")
+    }
   }
 
   base::file.remove(options_file_path)
