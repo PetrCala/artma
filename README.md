@@ -18,6 +18,10 @@
 - [Importing modules](#importing-modules)
 - [Using options](#using-options)
   - [How options are read and applied](#how-options-are-read-and-applied)
+  - [Adding new options](#adding-new-options)
+- [Using methods](#using-methods)
+  - [Using available methods](#using-available-methods)
+  - [Defining custom methods](#defining-custom-methods)
 - [Validating Conditions](#validating-conditions)
   - [How to Use the `validate` Function](#how-to-use-the-validate-function)
   - [Examples](#examples)
@@ -188,6 +192,26 @@ For any imports within the project, we use [the **box** package](https://klmr.me
 You can apply user options through the `load_user_options` function. Here, provide the name of the user options file, and optionally the directory to look for, and the function loads the relevant options.
 
 If no file name is provided, the function instead loads the current options, which are stored under the name `current.yaml`. If no such file exists, the function instead loads the default options, stored under a static template (`options_default.yaml`).
+
+## Adding new options
+
+<!-- TODO -->
+
+# Using methods
+
+Methods (or _runtime methods_) is what we recognize as the main executable functionality of the package. In other words, these methods are what the package suppports and recognizes during its runtime.
+
+All of these are defined in `inst/artma/methods`. The contents of this folder, namely its `.R` scripts, are imported during runtime, and loaded as recognized methods. Consequently, the contents folder should ideally be used **exclusively to store the runtime methods**, and nothing else.
+
+## Using available methods
+
+To see what methods are available, you can run `artma::methods.list()`. The output of this function should mirror the contents of the `methods` folder.
+
+## Defining custom methods
+
+If you wish to use a custom method in the ARTMA package, it should be enough to add it to the `methods` folder. However, it must adhere to several principles in order to be parsed corretly:
+
+- Each method (module) recognized by ARTMA must have a `run` function. This serves as the entrypoint for the method. The function **can accept no parameters**, as it has to be invokable outside the box. If you wish to use any parameters for your function, define them through options. To understand how to do so, see the [Adding new options section](#adding-new-options).
 
 # Validating Conditions
 
