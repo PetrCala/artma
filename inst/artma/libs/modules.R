@@ -52,7 +52,32 @@ crawl_and_import_modules <- function(dir_path) {
 #' @param modules [list[box.module]] A list of modules to validate.
 #' @return [NULL] Validates the object structure
 validate_runtime_method_modules <- function(modules) { # nolint: object_length_linter.
+  if (!is.list(modules)) {
+    obj_class <- class(modules)
+    rlang::abort(glue::glue("Invalid runtime method modules object: {modules}. Class: '{obj_class}'. Expected: 'list'."))
+  }
+
+  if (length(modules) == 0) {
+    logger::log_warn("No runtime method modules to validate.")
+    return(NULL)
+  }
+
+  for (module_name in names(modules)) {
+    tryCatch(
+      {
+        main_method <- modules[[module_name]]$run # Can throw an error
+
+        if (inherits(main_method, "function")) {
+          rlang::abort(glue::glue("Missing or invalid 'run' function in module '{module_name}'. Make sure your module contains this function."))
+        }
+      },
+      error = function(e) {
+        rlang::abort(glue::glue("Error validating the '{module_name}' runtime methods module: {e}"))
+      }
+    )
+  }
 }
+
 
 
 box::export(
