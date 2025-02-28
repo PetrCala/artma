@@ -184,8 +184,7 @@ delete_user_options_file <- function(
   }
 
   deletion_confirmed <- utils::select.list(
-    title = glue::glue("Are you sure you wish to delete the file jsf
-    '{options_file_name}'?"),
+    title = glue::glue("Are you sure you wish to delete the file the user options file '{options_file_name}'?"),
     choices = c("Yes, I am sure", "No, I want to keep the file")
   )
   if (deletion_confirmed != "Yes, I am sure") {
