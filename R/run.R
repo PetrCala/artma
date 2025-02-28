@@ -13,10 +13,12 @@ run <- function(
     artma / libs / utils[is_empty]
   )
 
+  supported_methods <- names(RUNTIME_METHOD_MODULES)
+
   if (is.null(methods)) {
     methods <- utils::select.list(
       title = "No runtime methods were provided. Please select the methods you would like to run: ",
-      choices = CONST$SUPPORTED_METHODS,
+      choices = supported_methods,
       multiple = TRUE
     )
     if (is_empty(methods)) {
@@ -24,19 +26,18 @@ run <- function(
     }
   }
 
-  if (!(is.character(methods) && all(methods %in% CONST$SUPPORTED_METHODS))) {
+  if (!(is.character(methods) && all(methods %in% supported_methods))) {
     rlang::abort(paste("Invalid runtime methods selected:", glue::glue_collapse(as.character(methods), sep = ", "), "\nTo see a list of available methods, run 'artma::methods.list()'."))
   }
 
   logger::log_info("Running the main ARTMA function.")
   logger::log_info(glue::glue("Invoking {length(methods)} methods..."))
 
-  for (i in seq_along(names(METHOD_MAPPING))) {
+  for (i in seq_along(supported_methods)) {
     method_name <- methods[i]
     if (method_name %in% methods) {
       logger::log_info(glue::glue("Running the '{method_name}' method..."))
-      fun <- METHOD_MAPPING[[method_name]]
-      fun()
+      RUNTIME_METHOD_MODULES[[method_name]]$run()
     }
   }
   logger::log_success("Done.")

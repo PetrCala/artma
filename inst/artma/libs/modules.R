@@ -15,8 +15,6 @@
 #' my_custom_module$some_method()
 #' my_custom_module$another_method()
 #' modules$my_custom_module$some_method()
-#'
-#' @export
 crawl_and_import_modules <- function(dir_path) {
   if (!dir.exists(dir_path)) {
     rlang::abort(glue::glue("Non-existent directory when importing modules: {dir_path}"))
@@ -44,5 +42,20 @@ crawl_and_import_modules <- function(dir_path) {
     }
     modules[[module_name]] <- imported_module
   }
+
   modules
 }
+
+
+#' @title Validate runtime method modules
+#' @description Given a list of modules, validate that all of the components of this list are valid runtime method modules. This means ensuring they are proper module objects, contain the 'run' function, etc. Raise an error if any of these validations fail.
+#' @param modules [list[box.module]] A list of modules to validate.
+#' @return [NULL] Validates the object structure
+validate_runtime_method_modules <- function(modules) { # nolint: object_length_linter.
+}
+
+
+box::export(
+  crawl_and_import_modules,
+  validate_runtime_method_modules
+)
