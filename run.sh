@@ -9,7 +9,6 @@ Commands:
   R               Invoke the R run script
   bump-version    Create a new package version
   clear-cache     Clear the cache
-  config           Configure the project
   deps            Install all dependencies
   fix-options      Ensure that all option templates and default distributed files are valid.
   help            Display this help message
@@ -39,7 +38,6 @@ case "$RUN_ARG" in
 [Rr]) sh scripts/runR.sh "$@" ;;
 bump-version) sh scripts/bumpVersion.sh "$@" ;;
 clear-cache) sh scripts/clearCache.sh "$@" ;;
-config) sh scripts/config.sh "$@" ;;
 deps) Rscript -e "devtools::install_deps(dependencies = TRUE)" ;;
 fix-options) Rscript -e "source(\"scripts/src/fix_options.R\")" ;;
 lint) sh scripts/lintAll.sh "$@" ;;
