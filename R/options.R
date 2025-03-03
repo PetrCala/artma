@@ -1,4 +1,6 @@
-static_setup() # nolint: box_usage_linter. # Imported on a package-level
+# nolint start: box_usage_linter.
+
+static_setup()
 
 box::use(opts = artma / options / index)
 
@@ -89,3 +91,5 @@ options.delete <- function(
 
 # Copy an existing folder of options into another place
 # options.migrate
+
+# nolint end: box_usage_linter.
