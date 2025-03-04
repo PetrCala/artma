@@ -47,9 +47,6 @@ options.copy <- function(...) opts$copy_user_options_file(...)
 #' @export
 options.delete <- function(...) opts$delete_user_options_file(...)
 
-# Inspect an existing user options file
-# options.inspect
-
 #' Validate a user options file against an options template.
 #'
 #' This function reads a YAML template and an options file, flattens both structures,
@@ -66,6 +63,12 @@ options.delete <- function(...) opts$delete_user_options_file(...)
 #' @return [list] Invisibly returns a list of error messages (empty if no errors).
 #' @export
 options.validate <- function(...) opts$validate_user_options_file(...)
+
+# Inspect an existing user options file
+# options.inspect
+
+# Explain a single (or multiple?) option - its meaning, expected type, defaults, etc.
+# options.explain
 
 # Copy an existing folder of options into another place
 # options.migrate
