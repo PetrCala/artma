@@ -41,9 +41,7 @@ is_empty <- function(obj) {
       }
     }
   )
-
-  # Return the result
-  return(result)
+  result
 }
 
 #' Convert a number to a percentage
@@ -51,9 +49,7 @@ is_empty <- function(obj) {
 #' @param x [numeric] The number to convert
 #' @return [character] The number as a percentage
 #' @export
-to_perc <- function(x) {
-  return(paste0(round(x * 100, 2), "%"))
-}
+to_perc <- function(x) paste0(round(x * 100, 2), "%")
 
 
 #' @title Nullable lapply
