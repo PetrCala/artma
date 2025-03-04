@@ -5,9 +5,11 @@ custom_linters_env <- new.env()
 source(here::here("R", "linters.R"), local = custom_linters_env, chdir = TRUE)
 
 linters <- c(
-    lintr::all_linters(
+    lintr::linters_with_defaults(
         # https://lintr.r-lib.org/reference/index.html#individual-linters
         #
+        # All default box linters
+        defaults = box.linters::box_default_linters,
         # Set indentation to 8 spaces
         indentation_linter = lintr::indentation_linter(2),
         # Check that all commas are followed by spaces, but do not have spaces before them.
@@ -17,29 +19,23 @@ linters <- c(
             styles = c("snake_case", "SNAKE_CASE", "dotted.case")
         ),
         # Disable the default lintr object usage - replace with box imports
-        object_usage_linter = NULL,
+        # object_usage_linter = NULL,
         # All lines should be less than 120 characters
         line_length_linter = lintr::line_length_linter(NULL), # 120, 160,...
         # Disable commented code linter
         commented_code_linter = NULL,
-        # Disable the forbidden access through $ linter
-        extraction_operator_linter = NULL,
         # Disable cyclocompexity linter
         cyclocomp_linter = NULL,
-        # Disable the string boundary linter - grepl usage, startsWith,...
-        string_boundary_linter = NULL,
-        # We do not need to care about implicit integers for the sake of this package
-        implicit_integer_linter = NULL,
         # Turn off linting for several functions otherwise flagged as undesirable
         undesirable_function_linter = lintr::undesirable_function_linter(
             fun = lintr::modify_defaults(
                 defaults = lintr::default_undesirable_functions,
                 options = NULL # We use options extensively through ARTMA options
             )
-        )
+        ),
+        # Check for missing packages and symbols in namespace calls
+        namespace_linter = lintr::namespace_linter()
     ),
-    # All default box linters
-    box.linters::box_default_linters,
     # Custom linters
     # Disable the usage of 'dir.create' in favor of 'fs::dir_create'
     dir_create_linter = custom_linters_env$dir_create_linter()
