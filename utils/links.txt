@@ -1,0 +1,2 @@
+Building a Semantic CLI using the 'cli' package
+https://cli.r-lib.org/articles/semantic-cli.html
