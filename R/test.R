@@ -1,4 +1,4 @@
-# nolint start: namespace_linter.
+# nolint start: namespace_linter, box_usage_linter.
 
 #' @keywords internal
 test <- function() { # nolint: unused_declared_object_linter.
@@ -11,7 +11,9 @@ test <- function() { # nolint: unused_declared_object_linter.
   # }
 
   # Test various 'options' module related methods
-  options.validate("test.yaml")
+  filename <- "test123.yaml"
+  options.create(filename)
+  options.delete(filename)
 }
 
-# nolint end: namespace_linter.
+# nolint end: namespace_linter, box_usage_linter.
