@@ -199,33 +199,17 @@ validate_user_options_file <- function(
     }
   }
 
-  # Print the summary in a lint-style format.
   if (length(errors) > 0) {
-    cat("Validation errors found:\n")
+    cli::cli_h1("Validation errors found:")
     for (err in errors) {
-      cat("  - ", err, "\n")
+      cli::cli_alert_danger(err)
     }
   } else {
-    cat("All options are valid.\n")
+    cli::cli_alert_success("All options are valid.")
   }
 
   invisible(errors)
 }
-
-# --- Example improvements to existing utility functions ---
-#
-# 1. flatten_template_options: you might consider ensuring that every option definition has
-#    a 'dest' (or at least a derived one) even if the YAML template omits it.
-#
-# 2. parse_options_from_template: since you now pass arguments directly rather than via the command
-#    line, you could add a parameter (e.g., 'args') with a default value and possibly refactor the
-#    check to simplify the logic. (For example, if args is not supplied, default to an empty vector.)
-#
-# 3. The nested_to_flat and flat_to_nested functions work well. Just be sure to add tests to confirm
-#    that they handle edge cases (e.g., names that already include dots).
-#
-# Usage example:
-# validate_options_file("path/to/options_template.yaml", "path/to/options_file.yaml")
 
 
 #' @title Load user options
