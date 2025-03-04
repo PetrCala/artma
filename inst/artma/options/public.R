@@ -125,7 +125,8 @@ delete_user_options_file <- function(
 validate_user_options_file <- function(
     options_file_name = NULL,
     options_dir = NULL,
-    should_flag_redundant = FALSE) {
+    should_flag_redundant = FALSE,
+    should_fail = FALSE) {
   box::use(
     artma / paths[PATHS],
     artma / options / utils[
@@ -134,7 +135,7 @@ validate_user_options_file <- function(
       nested_to_flat
     ],
     artma / options / template[flatten_template_options],
-    artma / libs / validation[validate_value_type]
+    artma / libs / validation[validate_value_type, assert]
   )
 
   template_path <- PATHS$FILE_OPTIONS_TEMPLATE
@@ -142,6 +143,9 @@ validate_user_options_file <- function(
   if (!file.exists(template_path)) {
     stop(glue::glue("The options template file does not exist. Try reinstalling the 'artma' package, and if that does not help, please contact the package maintainer."))
   }
+
+  assert(is.logical(should_flag_redundant), glue::glue("'should_flag_redundant' should be a logical. Got '{should_flag_redundant}'."))
+  assert(is.logical(should_fail), glue::glue("'should_fail' should be a logical. Got '{should_fail}'."))
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
   if (!dir.exists(options_dir)) {
@@ -203,6 +207,9 @@ validate_user_options_file <- function(
     cli::cli_h1("Validation errors found:")
     for (err in errors) {
       cli::cli_alert_danger(err)
+    }
+    if (should_fail) {
+      rlang::abort(glue::glue("Validation failed for file {options_file_name}."))
     }
   } else {
     cli::cli_alert_success("All options are valid.")
