@@ -143,7 +143,7 @@ artma lint
 
 ## Locally
 
-You can use the [\*devtools\*\*](https://devtools.r-lib.org) package to install this project locally as a package. To do so, simply call
+You can use the [**devtools**](https://devtools.r-lib.org) package to install this project locally as a package. To do so, simply call
 
 ```R
 devtools::load_all()
