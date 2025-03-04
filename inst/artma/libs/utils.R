@@ -59,15 +59,22 @@ to_perc <- function(x) paste0(round(x * 100, 2), "%")
 #' @return A list
 #' @export
 nullable_lapply <- function(x, FUN) {
-  if (!is.function(FUN)) rlang::abort("FUN must be a function")
+  box::use(
+    artma / libs / validation[assert, validate]
+  )
+  validate(is.function(FUN))
+
   out <- list()
   names <- names(x)
   argcount <- length(formals(FUN)) # Number of arguments
-  if (!argcount %in% c(1, 2)) rlang::abort("Your function must contain either one or two arguments.")
+
+  assert(argcount %in% c(1, 2), "Your function must contain either one or two arguments.")
+
   for (i in seq_along(x)) {
     name <- names[[i]]
     fun_ <- if (argcount == 2) "FUN(i, x[[name]])" else "FUN(x[[name]])"
     out[[name]] <- eval(parse(text = fun_)) # Assigns nothing if the return is NULL
   }
+
   if (length(out) == 0) NULL else out
 }
