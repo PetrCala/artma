@@ -7,7 +7,7 @@ general:
   - dest: "artma_version"
     long: "--artma-version"
     type: "character"
-    default: "0.1.1"
+    default: "0.1.2"
     help: "Version of the ARTMA package under which these options were generated [default %default]"
   
 logging:
