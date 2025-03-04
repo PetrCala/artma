@@ -10,6 +10,7 @@ PACKAGES <- c(
   "jsonlite", # VSCode interactive terminal
   "languageserver", # Formatting and linting
   "lintr", # Linting and formatting
+  "mathjaxr", # Documentation preview
   "pbapply", # Package installation
   "remotes", # Pacakge installation
   "rstudioapi", # RStudio communication

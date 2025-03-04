@@ -16,6 +16,7 @@ Commands:
   merge           Merge the currently checked out git branch with another one, and push the changes to the remote repository
   namespace       Generate the NAMESPACE file
   package         Invoke an R function from this package
+  preview-docs    Open a preview of an exported object's documentation.
   setup           Setup the environment
   test            Run all tests
   test-e2e        Run all end-to-end tests
@@ -44,6 +45,7 @@ lint) sh scripts/lintAll.sh "$@" ;;
 merge) sh scripts/mergeAndPush.sh "$@" ;;
 namespace) Rscript -e "roxygen2::roxygenize()" ;;
 package) sh scripts/package.sh "$@" ;;
+preview-docs) sh scripts/previewDocs.sh "$@" ;;
 setup) sh scripts/setup.sh "$@" ;;
 test) sh scripts/test.sh "$@" ;;
 test-e2e) sh scripts/testE2E.sh "$@" ;;
