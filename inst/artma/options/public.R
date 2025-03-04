@@ -160,6 +160,8 @@ validate_user_options_file <- function(
 
   assert(file.exists(options_path), glue::glue("Options file '{options_path}' does not exist."))
 
+  logger::log_info(glue::glue("Validating the user options file '{options_file_name}'..."))
+
   # Load the YAML files
   template <- yaml::read_yaml(template_path)
   options_file <- yaml::read_yaml(options_path)
@@ -204,6 +206,8 @@ validate_user_options_file <- function(
   }
 
   if (length(errors) > 0) {
+    logger::log_error("Validation failed.")
+
     cli::cli_h1("Validation errors found:")
     for (err in errors) {
       cli::cli_alert_danger(err)
@@ -212,7 +216,7 @@ validate_user_options_file <- function(
       rlang::abort(glue::glue("Validation failed for file {options_file_name}."))
     }
   } else {
-    cli::cli_alert_success("All options are valid.")
+    logger::log_success(glue::glue("All options are valid."))
   }
 
   invisible(errors)
@@ -305,9 +309,12 @@ load_user_options <- function(
 
   prefixed_options <- nested_to_flat(nested = nested_options, parent_key = CONST$PACKAGE_NAME)
 
-  # Here, add option file validation functions TODO
   if (should_validate) {
-    logger::log_info(glue::glue("Validating the following user options file: {options_file_name}"))
+    validate_user_options_file(
+      options_file_name = options_file_name,
+      options_dir = options_dir,
+      should_fail = TRUE
+    )
   }
 
   logger::log_info(glue::glue("Loading options from the following user options file: '{options_file_name}'"))

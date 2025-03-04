@@ -11,8 +11,7 @@ test <- function() { # nolint: unused_declared_object_linter.
   # }
 
   # Test various 'options' module related methods
-  # options.validate("test.yaml")
-  options.delete("test2.yaml")
+  options.validate("test.yaml")
 }
 
 # nolint end: namespace_linter.
