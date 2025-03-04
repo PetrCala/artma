@@ -13,7 +13,7 @@ test <- function() { # nolint: unused_declared_object_linter.
   # Test various 'options' module related methods
   filename <- "test123.yaml"
   options.create(filename)
-  options.delete(filename)
+  options.delete(filename, skip_confirmation = TRUE)
 }
 
 # nolint end: namespace_linter, box_usage_linter.
