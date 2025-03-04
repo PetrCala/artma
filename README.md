@@ -3,8 +3,7 @@
         Automatic Replication Tools for Meta-analysis
     </h1>
     <h4>
-    Data in, models out, with ease
-    <!-- Effortlessly bridging the gap between data and models -->
+    Effortlessly bridging the gap between data and models
     </h4>
 </div>
 
