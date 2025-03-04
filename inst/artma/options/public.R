@@ -40,7 +40,7 @@ create_user_options_file <- function(
 
   nested_options <- flat_to_nested(parsed_options)
 
-  logger::log_info(glue::glue("Creating a new user options file: '{options_file_name}'"))
+  logger::log_info(glue::glue("Creating a new user options file: '{options_file_name}'..."))
 
   ensure_folder_existence(dirname(options_file_path))
   yaml::write_yaml(
