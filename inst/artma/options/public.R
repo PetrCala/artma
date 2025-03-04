@@ -121,25 +121,20 @@ delete_user_options_file <- function(
 }
 
 
-#' Validate a user options file against an options template.
-#'
-#' This function reads a YAML template and an options file, flattens both structures,
-#' and then checks that:
-#'  - Every option defined in the template is present in the options file.
-#'  - The value for each option is of the correct type.
-#'  - (Optionally) It warns about extra options in the file that are not defined in the template.
-#'
-#' For each problem found (missing option or type mismatch), an error message is printed.
-#'
-#' @param options_path [character] Path to the YAML file containing the actual options.
-#' @return Invisibly returns a list of error messages (empty if no errors).
-#' @export
-validate_user_options_file <- function(options_path) {
+#' This is a public package method. For more information, see 'options.R::options.'.
+validate_user_options_file <- function(
+    options_file_name = NULL,
+    options_dir = NULL,
+    should_flag_redundant = FALSE) {
   box::use(
     artma / paths[PATHS],
-    artma / options / utils[ask_for_existing_options_file_name, get_expected_type],
+    artma / options / utils[
+      ask_for_existing_options_file_name,
+      get_expected_type,
+      nested_to_flat
+    ],
     artma / options / template[flatten_template_options],
-    artma / libs / utils[validate_value_type]
+    artma / libs / validation[validate_value_type]
   )
 
   template_path <- PATHS$FILE_OPTIONS_TEMPLATE
@@ -168,6 +163,7 @@ validate_user_options_file <- function(options_path) {
   template_defs <- flatten_template_options(template) # Flatten the template
   flat_options <- nested_to_flat(options_file) # Flatten the options
 
+
   errors <- character(0)
 
   # Validate that every expected option is provided and has the correct type.
@@ -192,12 +188,14 @@ validate_user_options_file <- function(options_path) {
   }
 
   # Warn about extraneous options in the file.
-  for (opt_name in names(flat_options)) {
-    if (!any(vapply(template_defs, function(x) identical(x$dest, opt_name), logical(1)))) {
-      warning(paste0(
-        "Extraneous option: '", opt_name,
-        "' is not defined in the template."
-      ))
+  if (should_flag_redundant) {
+    for (opt_name in names(flat_options)) {
+      if (!any(vapply(template_defs, function(x) identical(x$dest, opt_name), logical(1)))) {
+        warning(paste0(
+          "Extraneous option: '", opt_name,
+          "' is not defined in the template."
+        ))
+      }
     }
   }
 

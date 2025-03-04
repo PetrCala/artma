@@ -48,7 +48,7 @@ validate <- function(...) {
 #' Check that a data frame contains specific columns
 #'
 #' @param df [data.frame] The data frame to check
-#' @param columns [vector[character]] A set of columns to check
+#' @param columns [vector, character] A set of columns to check
 #' @return NULL Checks that the columns exist in the data frame
 #' @example
 #' validate_columns(df, c("effect", "se"))
@@ -70,7 +70,7 @@ validate_columns <- function(df, columns) {
 #' @description A helper function that checks if a value matches the expected type. Returns TRUE if it does, and FALSE otherwise.
 #' @param value [any] The value to check
 #' @param expected_type [character] The expected type.
-#' @returns [logical] TRUE if the value matches the expected type, FALSE otherwise.
+#'  [logical] TRUE if the value matches the expected type, FALSE otherwise.
 #' @export
 validate_value_type <- function(value, expected_type) {
   switch(expected_type,

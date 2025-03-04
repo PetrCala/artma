@@ -1,5 +1,4 @@
 #' Recursively flatten nested template options into a single list of option definitions with flattened destination names (e.g., x.y.z).
-#' @keywords internal
 flatten_template_options <- function(x, parent = NULL) {
   # Define a helper to recognize a final option definition.
   is_option_def <- function(e) {
@@ -62,8 +61,7 @@ build_parser <- function(options_def) {
 #' @param path [character] Full path to the YAML file containing the options.
 #' @param args [vector(character)] Command line arguments to parse.
 #' @param add_prefix [bool, optional] Whether to add a package prefix to all. Defaults to FALSE.
-#' @returns [list] A list of options
-#' @export
+#' @return [list] A list of options
 parse_options_from_template <- function(path, args, add_prefix = FALSE) {
   if (!file.exists(path)) {
     rlang::abort(glue::glue("Options file '{path}' does not exist."))
@@ -95,3 +93,8 @@ parse_options_from_template <- function(path, args, add_prefix = FALSE) {
 
   parsed_options
 }
+
+box::export(
+  flatten_template_options,
+  parse_options_from_template
+)
