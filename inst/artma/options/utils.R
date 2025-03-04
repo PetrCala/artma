@@ -16,8 +16,6 @@
 #' # [1] "value1"
 #' # $a
 #' # [1] "value2"
-#'
-#' @export
 get_option_group <- function(prefix) {
   options <- options()
   group_keys <- grep(paste0("^", prefix, "\\."), names(options), value = TRUE)
@@ -28,7 +26,6 @@ get_option_group <- function(prefix) {
 #' @title Flat to nested
 #' @description Convert a list of flat options to a nested one
 #' @param flat_option_list [list] A list of flat options
-#' @export
 flat_to_nested <- function(flat_option_list) {
   if (!is.list(flat_option_list)) {
     rlang::abort("The options must be passed as a flat list.")
@@ -62,7 +59,6 @@ flat_to_nested <- function(flat_option_list) {
 #' @param nested [list] A list of nested options
 #' @param parent_key [character, optional] Parent key for the nested options. Defaults to NULL.
 #' @param sep [character, optional] Separator to use when concatenating the level names. Defaulst to '.'.
-#' @export
 nested_to_flat <- function(nested, parent_key = NULL, sep = ".") {
   if (!is.list(nested)) {
     rlang::abort("The options must be passed as a nested list.")
@@ -89,7 +85,6 @@ nested_to_flat <- function(nested, parent_key = NULL, sep = ".") {
 
 #' @title Parse options file name
 #' @description Parse a string into one that can be used as an options file name. If this fails, raise an error.
-#' @export
 parse_options_file_name <- function(input_string) {
   str_out <- rlang::duplicate(input_string)
 
@@ -115,3 +110,113 @@ parse_options_file_name <- function(input_string) {
 
   str_out
 }
+
+#' A helper function to map the expected type from an option definition.
+get_expected_type <- function(opt_def) {
+  # If an explicit type is given, use that.
+  if (!is.null(opt_def$type)) {
+    return(opt_def$type)
+  }
+  # If action is store_true, assume logical.
+  if (!is.null(opt_def$action) && opt_def$action == "store_true") {
+    return("logical")
+  }
+  rlang::abort(glue::glue("Invalid template definition for the option '{opt_def}'. Could not determine the expected value type."))
+}
+
+#' This is a public package method. For more information, see 'options.R::options.list'.
+list_user_options_files <- function(options_dir = NULL, should_return_verbose_names = FALSE) {
+  box::use(
+    artma / paths[PATHS],
+    artma / const[CONST]
+  )
+  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
+
+  if (!dir.exists(options_dir)) {
+    rlang::abort(glue::glue("The following options directory does not exist: {options_dir}"))
+  }
+
+  options_files <- list.files(
+    path = options_dir,
+    pattern = CONST$REGEX$OPTIONS_FILE_SUFFIX,
+    # If we are not going to read the file, full names are unnecessary
+    full.names = should_return_verbose_names
+  )
+
+  options_names <- vector(mode = "character")
+  for (file_name in options_files) {
+    options_name <- if (should_return_verbose_names) {
+      tryCatch(
+        {
+          logger::log_debug(glue::glue("Reading the options file '{file_name}'"))
+          options_name <- yaml::read_yaml(file_name)$general$name
+        },
+        error = function(cond) {
+          logger::log_warn(glue::glue("Failed to read the following options file: {file}"))
+        }
+      )
+    } else {
+      file_name
+    }
+    options_names <- append(options_names, options_name)
+  }
+  return(options_names)
+}
+
+
+#' @title Ask for options file name
+#' @description Ask the user to input a name of an options file. Clean the user's input and return it as a string.
+#' @param should_clean [logical, optional] Whether to clean the input string. Defaults to TRUE
+#' @param prompt [character, optional] The prompt to use. Defaults to a generic prompt.
+#' @return [character] The options file name.
+ask_for_options_file_name <- function(should_clean = TRUE, prompt = NULL) {
+  if (!interactive()) {
+    rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
+  }
+
+  prompt <- prompt %||% "Please provide the name for your options file, including the .yaml suffix: "
+  options_file_name <- readline(prompt = prompt)
+
+  if (should_clean) {
+    options_file_name <- parse_options_file_name(options_file_name)
+  }
+
+  return(options_file_name)
+}
+
+
+#' @title Ask for an existing options file name
+#' @description Prompt the user to select from an existing list of user options files. Return the name of the selected file as a character.
+#' @param options_dir [character, optional] Name of the directory to list the files from. Defaults to NULL.
+#' @param prompt [character, optional] The prompt to use when asking for the user options file name. Defaults to NULL.
+#' @return [character] Name of the selected file.
+ask_for_existing_options_file_name <- function(options_dir = NULL, prompt = NULL) { # nolint: object_length_linter.
+  if (!interactive()) {
+    rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
+  }
+  box::use(artma / libs / utils[is_empty])
+
+  prompt <- prompt %||% "Please select the user options file name you would like to use."
+
+  user_options_file_names <- list_user_options_files(options_dir = options_dir)
+  selected_file_name <- utils::select.list(
+    title = prompt,
+    choices = user_options_file_names
+  )
+  if (is_empty(selected_file_name)) {
+    stop("No user options file was selected. Aborting...")
+  }
+  return(selected_file_name)
+}
+
+
+box::export(
+  ask_for_options_file_name,
+  ask_for_existing_options_file_name,
+  flat_to_nested,
+  get_expected_type,
+  get_option_group,
+  list_user_options_files,
+  nested_to_flat,
+  parse_options_file_name
+)

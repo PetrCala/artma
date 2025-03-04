@@ -1,92 +1,3 @@
-#' This is a public package method. For more information, see 'options.R::options.list'.
-list_user_options_files <- function(options_dir = NULL, should_return_verbose_names = FALSE) {
-  box::use(
-    artma / paths[PATHS],
-    artma / const[CONST]
-  )
-  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
-
-  if (!dir.exists(options_dir)) {
-    rlang::abort(glue::glue("The following options directory does not exist: {options_dir}"))
-  }
-
-  options_files <- list.files(
-    path = options_dir,
-    pattern = CONST$REGEX$OPTIONS_FILE_SUFFIX,
-    # If we are not going to read the file, full names are unnecessary
-    full.names = should_return_verbose_names
-  )
-
-  options_names <- vector(mode = "character")
-  for (file_name in options_files) {
-    options_name <- if (should_return_verbose_names) {
-      tryCatch(
-        {
-          logger::log_debug(glue::glue("Reading the options file '{file_name}'"))
-          options_name <- yaml::read_yaml(file_name)$general$name
-        },
-        error = function(cond) {
-          logger::log_warn(glue::glue("Failed to read the following options file: {file}"))
-        }
-      )
-    } else {
-      file_name
-    }
-    options_names <- append(options_names, options_name)
-  }
-  return(options_names)
-}
-
-
-#' @title Ask for options file name
-#' @description Ask the user to input a name of an options file. Clean the user's input and return it as a string.
-#' @param should_clean [logical, optional] Whether to clean the input string. Defaults to TRUE
-#' @param prompt [character, optional] The prompt to use. Defaults to a generic prompt.
-#' @return [character] The options file name.
-#' @keywords internal
-ask_for_options_file_name <- function(should_clean = TRUE, prompt = NULL) {
-  if (!interactive()) {
-    rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
-  }
-  box::use(artma / options / utils[flat_to_nested, parse_options_file_name])
-
-  prompt <- prompt %||% "Please provide the name for your options file, including the .yaml suffix: "
-  options_file_name <- readline(prompt = prompt)
-
-  if (should_clean) {
-    options_file_name <- parse_options_file_name(options_file_name)
-  }
-
-  return(options_file_name)
-}
-
-
-#' @title Ask for an existing options file name
-#' @description Prompt the user to select from an existing list of user options files. Return the name of the selected file as a character.
-#' @param options_dir [character, optional] Name of the directory to list the files from. Defaults to NULL.
-#' @param prompt [character, optional] The prompt to use when asking for the user options file name. Defaults to NULL.
-#' @return [character] Name of the selected file.
-#' @keywords internal
-ask_for_existing_options_file_name <- function(options_dir = NULL, prompt = NULL) { # nolint: object_length_linter.
-  if (!interactive()) {
-    rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
-  }
-  box::use(artma / libs / utils[is_empty])
-
-  prompt <- prompt %||% "Please select the user options file name you would like to use."
-
-  user_options_file_names <- list_user_options_files(options_dir = options_dir)
-  selected_file_name <- utils::select.list(
-    title = prompt,
-    choices = user_options_file_names
-  )
-  if (is_empty(selected_file_name)) {
-    stop("No user options file was selected. Aborting...")
-  }
-  return(selected_file_name)
-}
-
-
 #' This is a public package method. For more information, see 'options.R::options.create'.
 create_user_options_file <- function(
     options_file_name = NULL,
@@ -95,7 +6,11 @@ create_user_options_file <- function(
   box::use(
     artma / paths[PATHS],
     artma / options / template[parse_options_from_template],
-    artma / options / utils[flat_to_nested, parse_options_file_name],
+    artma / options / utils[
+      flat_to_nested,
+      parse_options_file_name,
+      ask_for_options_file_name
+    ],
     artma / libs / file_utils[ensure_folder_existence]
   )
 
@@ -141,10 +56,13 @@ copy_user_options_file <- function(
     options_file_name_from = NULL,
     options_file_name_to = NULL,
     options_dir = NULL) {
-  box::use(artma / paths[PATHS])
+  box::use(
+    artma / paths[PATHS],
+    artma / options / utils[ask_for_options_file_name, ask_for_existing_options_file_name]
+  )
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
-  options_file_name_from <- options_file_name_from %||% ask_for_existing_options_file_name(prompt = "Please select the name of the user options file you wish to copy from: ")
+  options_file_name_from <- options_file_name_from %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to copy from: ")
   options_file_path_from <- file.path(options_dir, options_file_name_from)
 
   if (!file.exists(options_file_path_from)) {
@@ -174,10 +92,13 @@ delete_user_options_file <- function(
     options_file_name = NULL,
     options_dir = NULL,
     skip_confirmation = FALSE) {
-  box::use(artma / paths[PATHS])
+  box::use(
+    artma / paths[PATHS],
+    artma / options / utils[ask_for_existing_options_file_name]
+  )
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
-  options_file_name <- options_file_name %||% ask_for_existing_options_file_name(prompt = "Please select the user options file you wish to delete: ")
+  options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the user options file you wish to delete: ")
   options_file_path <- file.path(options_dir, options_file_name)
 
   if (!file.exists(options_file_path)) {
@@ -200,6 +121,115 @@ delete_user_options_file <- function(
 }
 
 
+#' Validate a user options file against an options template.
+#'
+#' This function reads a YAML template and an options file, flattens both structures,
+#' and then checks that:
+#'  - Every option defined in the template is present in the options file.
+#'  - The value for each option is of the correct type.
+#'  - (Optionally) It warns about extra options in the file that are not defined in the template.
+#'
+#' For each problem found (missing option or type mismatch), an error message is printed.
+#'
+#' @param options_path [character] Path to the YAML file containing the actual options.
+#' @return Invisibly returns a list of error messages (empty if no errors).
+#' @export
+validate_user_options_file <- function(options_path) {
+  box::use(
+    artma / paths[PATHS],
+    artma / options / utils[ask_for_existing_options_file_name, get_expected_type],
+    artma / options / template[flatten_template_options],
+    artma / libs / utils[validate_value_type]
+  )
+
+  template_path <- PATHS$FILE_OPTIONS_TEMPLATE
+
+  if (!file.exists(template_path)) {
+    stop(glue::glue("The options template file does not exist. Try reinstalling the 'artma' package, and if that does not help, please contact the package maintainer."))
+  }
+
+  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
+  if (!dir.exists(options_dir)) {
+    rlang::abort(glue::glue("The following options directory does not exist: {options_dir}"))
+  }
+
+  options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the user options file you wish to delete: ")
+  options_path <- file.path(options_dir, options_file_name)
+
+
+  if (!file.exists(options_path)) {
+    rlang::abort(glue::glue("Options file '{options_path}' does not exist."))
+  }
+
+  # Load the YAML files
+  template <- yaml::read_yaml(template_path)
+  options_file <- yaml::read_yaml(options_path)
+
+  template_defs <- flatten_template_options(template) # Flatten the template
+  flat_options <- nested_to_flat(options_file) # Flatten the options
+
+  errors <- character(0)
+
+  # Validate that every expected option is provided and has the correct type.
+  for (opt_def in template_defs) {
+    dest <- opt_def$dest
+    exp_type <- get_expected_type(opt_def)
+
+    if (!(dest %in% names(flat_options))) {
+      errors <- c(errors, paste0("Missing option: '", dest, "'"))
+    } else {
+      value <- flat_options[[dest]]
+      if (!validate_value_type(value, exp_type)) {
+        errors <- c(
+          errors,
+          paste0(
+            "Incorrect type for option '", dest,
+            "': expected '", exp_type, "', got '", class(value)[1], "'"
+          )
+        )
+      }
+    }
+  }
+
+  # Warn about extraneous options in the file.
+  for (opt_name in names(flat_options)) {
+    if (!any(vapply(template_defs, function(x) identical(x$dest, opt_name), logical(1)))) {
+      warning(paste0(
+        "Extraneous option: '", opt_name,
+        "' is not defined in the template."
+      ))
+    }
+  }
+
+  # Print the summary in a lint-style format.
+  if (length(errors) > 0) {
+    cat("Validation errors found:\n")
+    for (err in errors) {
+      cat("  - ", err, "\n")
+    }
+  } else {
+    cat("All options are valid.\n")
+  }
+
+  invisible(errors)
+}
+
+# --- Example improvements to existing utility functions ---
+#
+# 1. flatten_template_options: you might consider ensuring that every option definition has
+#    a 'dest' (or at least a derived one) even if the YAML template omits it.
+#
+# 2. parse_options_from_template: since you now pass arguments directly rather than via the command
+#    line, you could add a parameter (e.g., 'args') with a default value and possibly refactor the
+#    check to simplify the logic. (For example, if args is not supplied, default to an empty vector.)
+#
+# 3. The nested_to_flat and flat_to_nested functions work well. Just be sure to add tests to confirm
+#    that they handle edge cases (e.g., names that already include dots).
+#
+# Usage example:
+# validate_options_file("path/to/options_template.yaml", "path/to/options_file.yaml")
+
+
 #' @title Load user options
 #' @description Load user options by their name.
 #' @details In case the options name is not passed, the function will attempt to load the current options configuration. If none is found, it will then attempt to load the default options. If that fails too, an error is raised.
@@ -218,7 +248,7 @@ load_user_options <- function(
   box::use(
     artma / const[CONST],
     artma / paths[PATHS],
-    artma / options / utils[nested_to_flat],
+    artma / options / utils[nested_to_flat, list_user_options_files],
     artma / libs / utils[is_empty]
   )
 
@@ -298,6 +328,6 @@ box::export(
   copy_user_options_file,
   delete_user_options_file,
   create_user_options_file,
-  list_user_options_files,
-  load_user_options
+  load_user_options,
+  validate_user_options_file
 )

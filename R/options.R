@@ -87,7 +87,11 @@ options.delete <- function(
 # options.inspect
 
 # Validate an existing user options file
-# options.validate
+options.validate <- function(
+    options_file_name = NULL,
+    options_dir = NULL) {
+  options_path <- file.path(options_dir, options_file_name)
+}
 
 # Copy an existing folder of options into another place
 # options.migrate
