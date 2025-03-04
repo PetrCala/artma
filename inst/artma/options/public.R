@@ -50,7 +50,7 @@ create_user_options_file <- function(
 
   logger::log_info(glue::glue("User options file created: '{options_file_name}'"))
 
-  return(options_file_name)
+  invisible(options_file_name)
 }
 
 #' This is a public package method. For more information, see 'options.R::options.copy'.
