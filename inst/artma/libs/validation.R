@@ -1,48 +1,116 @@
+#' Parse a Condition Expression
+#'
+#' This helper function parses an expression of the form \code{is.TYPENAME(obj)},
+#' e.g. \code{is.character(my_var)}. If recognized, it returns a more descriptive
+#' message, indicating what the user provided and what was expected. Otherwise,
+#' it returns a generic message based on the function name (e.g. "is.foo").
+#'
+#' @param cond_expr An expression or character string representing the condition
+#'   (e.g. \code{substitute(is.character(obj_name))}).
+#' @param env The environment to evaluate in. By default uses the parent frame.
+#'
+#' @return A character string containing a descriptive, user-friendly error
+#'   message.
+#'
+#' @examples
+#' parse_condition(quote(is.character(my_var)))
+#' parse_condition(quote(is.logical(x)))
+#' parse_condition(quote(is.something_else(obj)))
+#'
+#' @keywords internal
+parse_condition <- function(cond_expr, env = parent.frame()) {
+  # Note: 'cond_expr' might already be a call if using e.g. substitute(...)
+  if (is.character(cond_expr)) {
+    cond_call <- tryCatch(rlang::parse_expr(cond_expr), error = function(e) NULL)
+    if (is.null(cond_call)) {
+      return(glue::glue("Condition did not hold: {cond_expr}"))
+    }
+  } else {
+    cond_call <- cond_expr
+  }
+
+  if (!rlang::is_call(cond_call)) {
+    return(glue::glue("Condition did not hold: {deparse(cond_expr)}"))
+  }
+
+  # Extract the function name and argument
+  fn_name <- as.character(cond_call[[1]]) # e.g. "is.character"
+  arg_expr <- cond_call[[2]] # e.g. "my_var" or a literal "1"
+  arg_label <- deparse(arg_expr) # text version of the argument
+
+  # Attempt to evaluate the argument in 'env' for a "Got: ..." message
+  # There's no guarantee that 'arg_expr' is a symbol, might be a literal, so we wrap in tryCatch.
+  arg_value <- tryCatch(
+    eval(arg_expr, envir = env),
+    error = function(e) arg_label
+  )
+
+  # Build a short name for the function (e.g. "character", "logical"), or default to the part after 'is.' if present.
+  # For instance, if fn_name is "is.character" -> "character"
+  # else if fn_name is "is.data.frame" -> "data.frame"
+  # else "something" if we can't parse it out
+  if (grepl("^is\\.", fn_name)) {
+    expected_type <- sub("^is\\.", "", fn_name)
+  } else {
+    expected_type <- fn_name
+  }
+
+  glue::glue(
+    "'{arg_label}' should be {expected_type}. Got: {arg_value}."
+  )
+}
+
 #' Validate Conditions
 #'
 #' This function validates input conditions. It checks that each argument is
 #' a single logical value (TRUE or FALSE).
 #' If any condition is invalid or does not hold, the function aborts with an
-#' appropriate error message including the failed condition and a backtrace.
+#' appropriate error message including the failed condition, a backtrace,
+#' and a more verbose explanation when the condition is of the form
+#' e.g. \code{is.character(x)}.
 #'
 #' @param ... Any number of logical conditions.
 #'
-#' @return NULL. The function is called for its side effects.
+#' @return `NULL`. The function is called for its side effects.
 #' @export
 #'
 #' @examples
 #' validate(1 == 1, 2 == 2, is.function(print))
-#' # The following examples will abort with an error and print a backtrace
-#' # validate(FALSE)
-#' # validate(TRUE, FALSE, FALSE)
-#' # validate("not a condition")
-#' @export
+#'
+#' # Will abort with a descriptive error and backtrace:
+#' # validate(is.character(1))
+#' # validate(TRUE, FALSE)
 validate <- function(...) {
   withr::with_options(
-    rlang_backtrace_on_error = "full",
-    error = rlang::entrace
+    list(rlang_backtrace_on_error = "full", error = rlang::entrace),
+    {
+      conditions <- list(...)
+      conditions_expr <- as.list(substitute(list(...)))[-1]
+
+      for (i in seq_along(conditions)) {
+        cond <- conditions[[i]]
+        cond_expr <- conditions_expr[[i]]
+
+        if (!is.logical(cond) || length(cond) != 1) {
+          rlang::abort(
+            message = glue::glue(
+              "Condition must be a single logical value (TRUE or FALSE): {deparse(cond_expr)}"
+            ),
+            .subclass = "validation_error"
+          )
+        }
+
+        if (!isTRUE(cond)) {
+          parsed_message <- parse_condition(cond_expr, env = parent.frame())
+          rlang::abort(
+            message = parsed_message,
+            .subclass = "validation_error"
+          )
+        }
+      }
+      invisible(NULL) # All conditions passed
+    }
   )
-
-  conditions <- list(...)
-  conditions_expr <- as.list(substitute(list(...)))[-1]
-
-  # Validate each condition
-  for (i in seq_along(conditions)) {
-    cond <- conditions[[i]]
-    cond_expr <- deparse(conditions_expr[[i]])
-    if (!is.logical(cond) || length(cond) != 1) {
-      rlang::abort(
-        message = paste("Condition must be a single logical value (TRUE or FALSE):", cond_expr),
-        .subclass = "validation_error"
-      )
-    }
-    if (!cond) {
-      rlang::abort(
-        message = paste("Condition did not hold:", cond_expr),
-        .subclass = "validation_error"
-      )
-    }
-  }
 }
 
 #' Check that a data frame contains specific columns
@@ -90,8 +158,7 @@ validate_value_type <- function(value, expected_type) {
 #' condition and a backtrace.
 #'
 #' @param condition_to_validate [logical] The condition to validate.
-#' @param error_message [character(1), optional] The error message to display if the
-#'  condition is FALSE.
+#' @param error_message [character(1), optional] The error message to display if the condition is FALSE.
 #'
 #' @return NULL. The function is called for its side effects.
 #' @export

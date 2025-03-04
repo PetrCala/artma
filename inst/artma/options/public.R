@@ -11,7 +11,8 @@ create_user_options_file <- function(
       parse_options_file_name,
       ask_for_options_file_name
     ],
-    artma / libs / file_utils[ensure_folder_existence]
+    artma / libs / file_utils[ensure_folder_existence],
+    artma / libs / validation[assert]
   )
 
   options_file_name <- options_file_name %||% ask_for_options_file_name()
@@ -23,15 +24,16 @@ create_user_options_file <- function(
   options_file_path <- file.path(options_dir, options_file_name)
   template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
 
+  assert(is.character(template_path), glue::glue("'template_path' must be a character. Got '{template_path}'."))
+
   args <- commandArgs(trailingOnly = TRUE)
   parsed_options <- parse_options_from_template(path = template_path, args = args)
 
-  if (!is.list(parsed_options)) {
-    rlang::abort("Invalid parsed options - must be a list.")
-  }
-  if (!is.character(options_file_path) || length(options_file_path) <= 0) {
-    rlang::abort(glue::glue("Invalid options file path: {options_file_path}"))
-  }
+  assert(is.list(parsed_options), "Invalid parsed options - must be a list.")
+  assert(
+    is.character(options_file_path) && length(options_file_path) > 0,
+    glue::glue("Invalid options file path: {options_file_path}")
+  )
   if (file.exists(options_file_path)) {
     logger::log_info(glue::glue("An options file already exists under the path {options_file_path}. Overwriting this file..."))
   }
@@ -58,16 +60,15 @@ copy_user_options_file <- function(
     options_dir = NULL) {
   box::use(
     artma / paths[PATHS],
-    artma / options / utils[ask_for_options_file_name, ask_for_existing_options_file_name]
+    artma / options / utils[ask_for_options_file_name, ask_for_existing_options_file_name],
+    artma / libs / validation[assert]
   )
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
   options_file_name_from <- options_file_name_from %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to copy from: ")
   options_file_path_from <- file.path(options_dir, options_file_name_from)
 
-  if (!file.exists(options_file_path_from)) {
-    rlang::abort(glue::glue("The source options file does not exist under the following path: {options_file_path_from}"))
-  }
+  assert(file.exists(options_file_path_from), glue::glue("The source options file does not exist under the following path: {options_file_path_from}"))
 
   options_file_name_to <- options_file_name_to %||% ask_for_options_file_name(prompt = "Please provide a name for your new options file, including the .yaml suffix: ")
   options_file_path_to <- file.path(options_dir, options_file_name_to)
@@ -94,16 +95,16 @@ delete_user_options_file <- function(
     skip_confirmation = FALSE) {
   box::use(
     artma / paths[PATHS],
-    artma / options / utils[ask_for_existing_options_file_name]
+    artma / options / utils[ask_for_existing_options_file_name],
+    artma / libs / validation[assert, validate]
   )
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
   options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the user options file you wish to delete: ")
   options_file_path <- file.path(options_dir, options_file_name)
 
-  if (!file.exists(options_file_path)) {
-    rlang::abort(glue::glue("The user options file does not exist under the following path: {options_file_path}"))
-  }
+  validate(is.logical(skip_confirmation))
+  assert(file.exists(options_file_path), glue::glue("The user options file does not exist under the following path: {options_file_path}"))
 
   if (!skip_confirmation) {
     deletion_confirmed <- utils::select.list(
@@ -135,17 +136,19 @@ validate_user_options_file <- function(
       nested_to_flat
     ],
     artma / options / template[flatten_template_options],
-    artma / libs / validation[validate_value_type, assert]
+    artma / libs / validation[validate_value_type, assert, validate]
   )
 
   template_path <- PATHS$FILE_OPTIONS_TEMPLATE
 
-  if (!file.exists(template_path)) {
-    stop(glue::glue("The options template file does not exist. Try reinstalling the 'artma' package, and if that does not help, please contact the package maintainer."))
-  }
-
-  assert(is.logical(should_flag_redundant), glue::glue("'should_flag_redundant' should be a logical. Got '{should_flag_redundant}'."))
-  assert(is.logical(should_fail), glue::glue("'should_fail' should be a logical. Got '{should_fail}'."))
+  assert(
+    file.exists(template_path),
+    glue::glue("The options template file does not exist. Try reinstalling the 'artma' package, and if that does not help, please contact the package maintainer.")
+  )
+  validate(
+    is.logical(should_flag_redundant),
+    is.logical(should_fail)
+  )
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
   if (!dir.exists(options_dir)) {
@@ -155,10 +158,7 @@ validate_user_options_file <- function(
   options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the user options file you wish to delete: ")
   options_path <- file.path(options_dir, options_file_name)
 
-
-  if (!file.exists(options_path)) {
-    rlang::abort(glue::glue("Options file '{options_path}' does not exist."))
-  }
+  assert(file.exists(options_path), glue::glue("Options file '{options_path}' does not exist."))
 
   # Load the YAML files
   template <- yaml::read_yaml(template_path)
@@ -238,10 +238,18 @@ load_user_options <- function(
     artma / const[CONST],
     artma / paths[PATHS],
     artma / options / utils[nested_to_flat, list_user_options_files],
-    artma / libs / utils[is_empty]
+    artma / libs / utils[is_empty],
+    artma / libs / validation[validate, assert]
   )
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
+
+  validate(
+    is.character(options_dir),
+    is.logical(create_options_if_null),
+    is.logical(should_validate),
+    is.logical(should_return)
+  )
 
   if (is.null(options_file_name)) {
     if (!create_options_if_null) {
@@ -287,9 +295,10 @@ load_user_options <- function(
     }
   }
 
-  if (!grepl(".yaml$|.yml$", options_file_name)) {
-    rlang::abort(glue::glue("Please pass the name of the options to load with the .yaml suffix. Got: {options_file_name}."))
-  }
+  assert(
+    grepl(".yaml$|.yml$", options_file_name),
+    glue::glue("Please pass the name of the options to load with the .yaml suffix. Got: {options_file_name}.")
+  )
 
   options_file_path <- file.path(options_dir, options_file_name)
   nested_options <- yaml::read_yaml(options_file_path)
