@@ -212,6 +212,7 @@ validate_user_options_file <- function(
     for (err in errors) {
       cli::cli_alert_danger(err)
     }
+    cat("\n")
     if (should_fail) {
       rlang::abort(glue::glue("Validation failed for file {options_file_name}."))
     }
