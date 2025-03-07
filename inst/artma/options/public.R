@@ -2,7 +2,8 @@
 create_user_options_file <- function(
     options_file_name = NULL,
     options_dir = NULL,
-    template_path = NULL) {
+    template_path = NULL,
+    user_options = list()) {
   box::use(
     artma / paths[PATHS],
     artma / options / template[parse_options_from_template],
@@ -12,28 +13,31 @@ create_user_options_file <- function(
       ask_for_options_file_name
     ],
     artma / libs / file_utils[ensure_folder_existence],
-    artma / libs / validation[assert]
+    artma / libs / validation[assert, validate]
   )
 
   options_file_name <- options_file_name %||% ask_for_options_file_name()
-
-  # Ensure valid, constant, and parseable format for the options file names
   options_file_name <- parse_options_file_name(options_file_name)
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
   options_file_path <- file.path(options_dir, options_file_name)
   template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
 
-  assert(is.character(template_path), glue::glue("'template_path' must be a character. Got '{template_path}'."))
+  validate(is.character(template_path))
 
-  args <- commandArgs(trailingOnly = TRUE)
-  parsed_options <- parse_options_from_template(path = template_path, args = args)
+  parsed_options <- parse_options_from_template(
+    path         = template_path,
+    user_input   = user_options,
+    interactive  = TRUE,
+    add_prefix   = FALSE
+  )
 
-  assert(is.list(parsed_options), "Invalid parsed options - must be a list.")
+  validate(is.list(parsed_options))
   assert(
     is.character(options_file_path) && length(options_file_path) > 0,
     glue::glue("Invalid options file path: {options_file_path}")
   )
+
   if (file.exists(options_file_path)) {
     logger::log_info(glue::glue("An options file already exists under the path {options_file_path}. Overwriting this file..."))
   }
@@ -43,10 +47,7 @@ create_user_options_file <- function(
   logger::log_info(glue::glue("Creating a new user options file: '{options_file_name}'..."))
 
   ensure_folder_existence(dirname(options_file_path))
-  yaml::write_yaml(
-    nested_options,
-    options_file_path
-  )
+  yaml::write_yaml(nested_options, options_file_path)
 
   logger::log_info(glue::glue("User options file created: '{options_file_name}'"))
 
