@@ -22,8 +22,17 @@ create_user_options_file <- function(
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
   options_file_path <- file.path(options_dir, options_file_name)
-  template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
 
+  assert(
+    is.character(options_file_path) && length(options_file_path) > 0,
+    glue::glue("Invalid options file path: {options_file_path}")
+  )
+
+  if (file.exists(options_file_path)) {
+    logger::log_info(glue::glue("An options file already exists under the path {options_file_path}. Overwriting this file..."))
+  }
+
+  template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
   validate(is.character(template_path))
 
   parsed_options <- parse_options_from_template(
@@ -34,15 +43,6 @@ create_user_options_file <- function(
   )
 
   validate(is.list(parsed_options))
-  assert(
-    is.character(options_file_path) && length(options_file_path) > 0,
-    glue::glue("Invalid options file path: {options_file_path}")
-  )
-
-  if (file.exists(options_file_path)) {
-    logger::log_info(glue::glue("An options file already exists under the path {options_file_path}. Overwriting this file..."))
-  }
-
   nested_options <- flat_to_nested(parsed_options)
 
   logger::log_info(glue::glue("Creating a new user options file: '{options_file_name}'..."))
