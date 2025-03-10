@@ -19,7 +19,7 @@ flatten_template_options <- function(x, parent = NULL) {
     for (i in seq_along(x)) {
       # If there's a parent path, update the destination.
       if (!is.null(parent)) {
-        # Concatenate parent path with the current dest value.
+        # Concatenate parent path with the current name value.
         x[[i]]$name <- paste(parent, x[[i]]$name, sep = ".")
       }
       flattened[[length(flattened) + 1]] <- x[[i]]
@@ -39,43 +39,190 @@ flatten_template_options <- function(x, parent = NULL) {
   flattened
 }
 
-#' @title Validate or coerce an option value
-#' @description A helper function that validates or coerces an option value to the
-#' expected type. If the value is not of the expected type, the function will attempt
-#' to coerce it. If coercion is not possible, the function will throw an error.
+#' @title Resolve a fixed option
+#' @description Resolve a fixed option, either using a default value or throwing an error if no default is provided.
+#' @param opt_name [character] The name of the option.
+#' @param opt_required [logical(1)] Whether the option is required.
+#' @param opt_default [any] The default value for the option.
+#' @param user_input [list] A named list of user-provided values.
+#' @return [any] The resolved value for the fixed option.
+#' @keywords internal
+resolve_fixed_option <- function(opt_name, opt_required, opt_default, user_input) {
+  if (!is.null(user_input[[opt_name]])) {
+    # User tried to set a value for a fixed option
+    warning(glue::glue(
+      "Ignoring user-provided value for fixed option '{opt_name}'."
+    ), call. = FALSE)
+  }
+  if (!is.null(opt_default)) {
+    return(opt_default)
+  } else if (opt_required) {
+    stop(glue::glue(
+      "Required option '{opt_name}' is fixed, but no default is provided."
+    ), call. = FALSE)
+  } else {
+    return(NULL) # Not required, no default
+  }
+}
+
+#' @title Prompt user for a value with default
+#' @description Prompt the user for a value, displaying the option name, type, help, and default value.
+#' @param opt_name [character] The name of the option.
+#' @param opt_type [character] The type of the option.
+#' @param opt_help [character] The help text for the option.
+#' @param opt_default [any] The default value for the option.
+#' @return [any] The user-provided value or the default value.
+#' @keywords internal
+prompt_user_with_default <- function(opt_name, opt_type, opt_help, opt_default) {
+  cli::cli_h1("Provide Option Value")
+  cli::cli_text("{.strong Option name}: {.val {opt_name}}")
+  cli::cli_text("{.strong Type}: {.val {opt_type}}")
+
+  if (!is.null(opt_help)) {
+    cli::cli_text("{.strong Help}: {gsub('%default', opt_default, opt_help)}")
+  }
+
+  cli::cli_text("{.strong Default}: {.val {opt_default}}")
+
+  input_val <- readline(
+    prompt = "Enter value (or press <Enter> to accept default): "
+  )
+
+  if (nzchar(input_val)) {
+    return(input_val)
+  } else {
+    return(opt_default)
+  }
+}
+
+#' @title Prompt user for a required value with no default
+#' @description Prompt the user for a value, displaying the option name, type, and help.
+#' @param opt_name [character] The name of the option.
+#' @param opt_type [character] The type of the option.
+#' @param opt_help [character] The help text for the option.
+#' @return [any] The user-provided value.
+#' @keywords internal
+prompt_user_required_no_default <- function(opt_name, opt_type, opt_help) { # nolint: object_length_linter.
+  cli::cli_h1("Option Value Required")
+  cli::cli_text("{.strong Option name}: {.val {opt_name}}")
+  cli::cli_text("{.strong Type}: {.val {opt_type}}")
+
+  if (!is.null(opt_help)) {
+    cli::cli_text("{.strong Help}: {opt_help}")
+  }
+
+  input_val <- readline(
+    prompt = glue::glue("Enter a value for '{opt_name}': ")
+  )
+
+  if (!nzchar(input_val)) {
+    stop(glue::glue(
+      "Required option '{opt_name}' was left blank. Aborting."
+    ), call. = FALSE)
+  }
+
+  return(input_val)
+}
+
+#' @title Resolve an option value
+#' @description Resolve an option value, either using a user-provided value, a default value, or prompting the user.
+#' @param opt [list] The option definition.
+#' @param user_input [list] A named list of user-provided values.
+#' @param is_interactive [logical(1)] Whether to prompt the user for missing/required values.
+#' @param should_ask_for_default_options [logical(1)] Whether to prompt the user for options that have a default value. Defaults to FALSE.
+#' @return [any] The resolved value for the option.
+#' @keywords internal
+resolve_option_value <- function(
+    opt,
+    user_input,
+    is_interactive = interactive(),
+    should_ask_for_default_options = TRUE) {
+  opt_name <- opt$name
+  opt_type <- opt$type
+  opt_help <- opt$help
+  opt_fixed <- isTRUE(opt$fixed)
+  opt_required <- isTRUE(opt$required)
+  opt_default <- opt$default
+
+  if (opt_fixed) {
+    return(resolve_fixed_option(opt_name, opt_required, opt_default, user_input))
+  }
+
+  user_val <- user_input[[opt_name]]
+  if (!is.null(user_val)) {
+    # 1) If user explicitly provided a value, just return it
+    return(user_val)
+  }
+
+  # 2) No user value, check default
+  if (!is.null(opt_default)) {
+    # If interactive, prompt to allow override (optional)
+    if (is_interactive && should_ask_for_default_options) {
+      return(prompt_user_with_default(opt_name, opt_type, opt_help, opt_default))
+    } else {
+      # Non-interactive => silently use default
+      return(opt_default)
+    }
+  }
+
+  # 3) No user value, no default
+  if (opt_required) {
+    if (!is_interactive) {
+      stop(glue::glue(
+        "Required option '{opt_name}' not provided, and no default is available."
+      ), call. = FALSE)
+    } else {
+      return(prompt_user_required_no_default(opt_name, opt_type, opt_help))
+    }
+  }
+
+  # 4) Not required, no default => NULL
+  return(NULL)
+}
+
+
+#' @title Coerce an option value
+#' @description A helper function that attempts to coerce an option value to the correct type. If it fails, it passes the value as is.
 #' @param val [any] The value to validate or coerce.
 #' @param opt_type [character] The expected type of the value.
 #' @param opt_name [character] The name of the option.
-#' @return [any] The validated or coerced value.
+#' @param allow_na [logical] Whether to allow NA values.
+#' @return [any] The coerced value.
 #' @keywords internal
-validate_or_coerce <- function(val, opt_type, opt_name) {
-  if (opt_type == "character") {
-    if (!is.character(val)) val <- as.character(val)
-  } else if (opt_type == "integer") {
-    if (!is.numeric(val)) {
-      stop(glue::glue(
-        "Option '{opt_name}' must be numeric/integer, got: {val}"
-      ))
-    }
-    val <- as.integer(val)
-  } else if (opt_type == "logical") {
-    if (!is.logical(val)) {
-      stop(glue::glue(
-        "Option '{opt_name}' must be logical, got: {val}"
-      ))
-    }
-    val <- as.logical(val)
-  } else if (startsWith(opt_type, "enum:")) {
-    # e.g. "enum: red|blue|green"
-    valid_values <- strsplit(sub("^enum:", "", opt_type), "\\|")[[1]]
-    if (!(val %in% valid_values)) {
-      stop(glue::glue(
-        "Option '{opt_name}' must be one of {toString(valid_values)}; got '{val}'."
-      ))
-    }
+coerce_option_value <- function(val, opt_type, opt_name, allow_na) {
+  # If the value is NULL, there's nothing to coerce
+  if (is.null(val)) {
+    return(val)
   }
-  val
+
+  # Enumerations, e.g. "enum: red|blue|green", return as is
+  if (startsWith(opt_type, "enum:")) {
+    return(val)
+  }
+
+  tryCatch(
+    {
+      coerced_val <- switch(opt_type,
+        character = as.character(val),
+        integer = as.integer(val),
+        logical = as.logical(val),
+        numeric = as.numeric(val),
+        val
+      )
+      # In come invalid cases, the coercion will return NA.
+      # We re-throw an error and catch it to return the original value.
+      # This makes it easier to find the invalid value afterwards.
+      if (is.na(coerced_val) && !isTRUE(allow_na)) {
+        stop(glue::glue(
+          "Option '{opt_name}' does not allow NA values."
+        ), call. = FALSE)
+      }
+      coerced_val
+    },
+    error = function(e) val # Return the original value if coercion fails
+  )
 }
+
 
 
 #' @title Parse options from a template
@@ -103,53 +250,18 @@ parse_options_from_template <- function(
 
   raw_template_options <- yaml::read_yaml(path)
 
-  # Use the new flatten_options that builds flattened dest values.
   options_def <- flatten_template_options(raw_template_options)
 
-  # Build the final list of options that merges template definitions with user inputs.
   parsed_options <- list()
   for (opt in options_def) {
-    opt_name <- opt$name
-    opt_required <- isTRUE(opt$required)
-    opt_default <- opt$default
-    opt_type <- opt$type
-
-    if (!is.null(user_input[[opt_name]])) {
-      val <- user_input[[opt_name]]
-    } else {
-      if (!is.null(opt_default)) {
-        val <- opt_default
-      } else if (opt_required) {
-        if (!interactive) {
-          # If not interactive and no default, throw an error
-          stop(glue::glue(
-            "Required option '{opt_name}' not provided and no default is available."
-          ), call. = FALSE)
-        } else {
-          # Possibly add: Show a hint or a question
-          val <- readline(
-            prompt = glue::glue("Please specify a value for '{opt_name}': ")
-          )
-          if (!nzchar(val)) {
-            stop(glue::glue(
-              "Required option '{opt_name}' was left blank. Aborting."
-            ), call. = FALSE)
-          }
-        }
-      } else {
-        val <- NULL # Not required, no default
-      }
-    }
-
-    val <- validate_or_coerce(val, opt_type, opt_name)
-
-    parsed_options[[opt_name]] <- val
+    val <- resolve_option_value(opt, user_input, interactive())
+    val <- coerce_option_value(val, opt$type, opt$name, opt$allow_na)
+    # We do not validate here, only after all options are parsed
+    parsed_options[[opt$name]] <- val
   }
 
+  # Possibly add a prefix to all names
   if (isTRUE(add_prefix)) {
-    # Prepare a list of options with names prefixed by "artma."
-    # This will transform each element so that, for example, a parsed_args element
-    # named "x.y.z" becomes an R option named "artma.x.y.z".
     names(parsed_options) <- paste0(CONST$PACKAGE_NAME, ".", names(parsed_options))
   }
 

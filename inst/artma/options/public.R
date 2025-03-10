@@ -3,7 +3,8 @@ create_user_options_file <- function(
     options_file_name = NULL,
     options_dir = NULL,
     template_path = NULL,
-    user_options = list()) {
+    user_options = list(),
+    should_validate = TRUE) {
   box::use(
     artma / paths[PATHS],
     artma / options / template[parse_options_from_template],
@@ -50,6 +51,15 @@ create_user_options_file <- function(
   yaml::write_yaml(nested_options, options_file_path)
 
   logger::log_info(glue::glue("User options file created: '{options_file_name}'"))
+
+  if (should_validate) {
+    validate_user_options_file(
+      options_file_name = options_file_name,
+      options_dir = options_dir,
+      should_fail = TRUE,
+      verbose = FALSE # Only print out the errors if validation fails
+    )
+  }
 
   invisible(options_file_name)
 }
@@ -128,13 +138,15 @@ validate_user_options_file <- function(
     options_file_name = NULL,
     options_dir = NULL,
     should_flag_redundant = FALSE,
-    should_fail = FALSE) {
+    should_fail = FALSE,
+    verbose = TRUE) {
   box::use(
     artma / paths[PATHS],
     artma / options / utils[
       ask_for_existing_options_file_name,
       get_expected_type,
-      nested_to_flat
+      nested_to_flat,
+      validate_option_value
     ],
     artma / options / template[flatten_template_options],
     artma / libs / validation[validate_value_type, assert, validate]
@@ -161,7 +173,9 @@ validate_user_options_file <- function(
 
   assert(file.exists(options_path), glue::glue("Options file '{options_path}' does not exist."))
 
-  logger::log_info(glue::glue("Validating the user options file '{options_file_name}'..."))
+  if (verbose) {
+    logger::log_info(glue::glue("Validating the user options file '{options_file_name}'..."))
+  }
 
   # Load the YAML files
   template <- yaml::read_yaml(template_path)
@@ -170,26 +184,21 @@ validate_user_options_file <- function(
   template_defs <- flatten_template_options(template) # Flatten the template
   flat_options <- nested_to_flat(options_file) # Flatten the options
 
-
   errors <- character(0)
 
   # Validate that every expected option is provided and has the correct type.
   for (opt_def in template_defs) {
-    dest <- opt_def$dest
+    opt_name <- opt_def$name
+    allow_na <- opt_def$allow_na
     exp_type <- get_expected_type(opt_def)
 
-    if (!(dest %in% names(flat_options))) {
-      errors <- c(errors, paste0("Missing option: '", dest, "'"))
+    if (!(opt_name %in% names(flat_options))) {
+      errors <- c(errors, paste0("Missing option: '", opt_name, "'"))
     } else {
-      value <- flat_options[[dest]]
-      if (!validate_value_type(value, exp_type)) {
-        errors <- c(
-          errors,
-          paste0(
-            "Incorrect type for option '", dest,
-            "': expected '", exp_type, "', got '", class(value)[1], "'"
-          )
-        )
+      value <- flat_options[[opt_name]]
+      err_msg <- validate_option_value(value, exp_type, opt_name, allow_na)
+      if (!is.null(err_msg)) {
+        errors <- c(errors, err_msg)
       }
     }
   }
@@ -197,7 +206,7 @@ validate_user_options_file <- function(
   # Warn about extraneous options in the file.
   if (should_flag_redundant) {
     for (opt_name in names(flat_options)) {
-      if (!any(vapply(template_defs, function(x) identical(x$dest, opt_name), logical(1)))) {
+      if (!any(vapply(template_defs, function(x) identical(x$name, opt_name), logical(1)))) {
         warning(paste0(
           "Extraneous option: '", opt_name,
           "' is not defined in the template."
@@ -218,7 +227,9 @@ validate_user_options_file <- function(
       rlang::abort(glue::glue("Validation failed for file {options_file_name}."))
     }
   } else {
-    logger::log_success(glue::glue("All options are valid."))
+    if (verbose) {
+      logger::log_success(glue::glue("All options are valid."))
+    }
   }
 
   invisible(errors)

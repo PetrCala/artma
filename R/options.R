@@ -15,6 +15,7 @@ options.list <- function(...) opts$list_user_options_files(...)
 #' @param options_file_name [character] Name of the new user options file, including the suffix.
 #' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
 #' @param template_path [character, optional] Full path to the options template file.
+#' @param should_validate [logical, optional] If TRUE, validate the new options file against the template. Defaults to TRUE.
 #' @return [character] Name of the newly created user options file as a character.
 #' @export
 options.create <- function(...) opts$create_user_options_file(...)
@@ -60,6 +61,7 @@ options.delete <- function(...) opts$delete_user_options_file(...)
 #' @param options_file_name [character] Name of the user options file to validate, including the suffix.
 #' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
 #' @param should_flag_redundant [logical, optional] If TRUE, warn the user about any extraneous options (i.e., options not defined in the options template, such as custom options that the user might have added). Defaults to FALSE.
+#' @param verbose [logical, optional] If TRUE, print additional information about the validation process. Defaults to TRUE.
 #' @return [list] Invisibly returns a list of error messages (empty if no errors).
 #' @export
 options.validate <- function(...) opts$validate_user_options_file(...)

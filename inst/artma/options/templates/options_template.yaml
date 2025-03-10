@@ -1,32 +1,28 @@
 general:
-  - name: "name"
-    type: "character"
-    required: true
-    help: "The name of the current option file"
-
   - name: "artma_version"
     type: "character"
     default: "0.1.2"
     fixed: true
-    help: "Version of the ARTMA package under which these options were generated [default %default]"
+    help: "Version of the ARTMA package under which these options were generated"
 
 logging:
   - name: "log_file_name"
     type: "character"
     default: "artma.log"
-    help: "The name of the log file [default %default]"
+    help: "The name of the log file"
 
   - name: "log_level"
     type: "character"
     default: "INFO"
-    help: "The level of logging [default %default]"
+    allow_na: false
+    help: "The level of logging"
 
   - name: "log_to_console"
     type: "logical"
     default: true
-    help: "Log to console too (not just to the log file) [default %default]"
+    help: "Log to console too (not just to the log file)"
 
   - name: "flush_logs_on_setup"
     type: "logical"
     default: false
-    help: "Flush logs on setup [default %default]"
+    help: "Flush logs on setup"

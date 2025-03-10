@@ -124,6 +124,52 @@ get_expected_type <- function(opt_def) {
   rlang::abort(glue::glue("Invalid template definition for the option '{opt_def}'. Could not determine the expected value type."))
 }
 
+#' @title Validate option type
+#' @description A helper function that checks if a value matches the expected type.
+#'   Returns an error message if it does not.
+#' @param val [any] The value to validate.
+#' @param opt_type [character] The expected type of the value.
+#' @param opt_name [character] The name of the option.
+#' @param allow_na [logical] Whether the value is allowed to be NA or NULL.
+#'   Defaults to FALSE.
+#' @return [character] An error message if the value does not match the expected type, or NULL otherwise.
+validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
+  # Helper function for uniform error formatting:
+  format_error <- function(opt_name, expected_type, val) {
+    glue::glue("Option '{opt_name}' must be {expected_type}, got: {val}")
+  }
+
+  if (is.null(val) || (length(val) == 1 && is.na(val))) {
+    if (!isTRUE(allow_na)) {
+      return(glue::glue("Option '{opt_name}' cannot be NULL or NA."))
+    } else {
+      return(NULL) # NA/NULL is allowed
+    }
+  }
+
+  # Handle enumerations, e.g. "enum: red|blue|green"
+  if (startsWith(opt_type, "enum:")) {
+    valid_values <- strsplit(sub("^enum:", "", opt_type), "\\|")[[1]]
+    if (!val %in% valid_values) {
+      return(
+        glue::glue(
+          "Option '{opt_name}' must be one of {toString(valid_values)}; got '{val}'."
+        )
+      )
+    }
+    return(NULL)
+  }
+
+  switch(opt_type,
+    character = if (!is.character(val)) format_error(opt_name, "character", val),
+    integer = if (!is.numeric(val)) format_error(opt_name, "numeric/integer", val),
+    logical = if (!is.logical(val)) format_error(opt_name, "logical", val),
+    numeric = if (!is.numeric(val)) format_error(opt_name, "numeric", val),
+    NULL
+  )
+}
+
+
 #' This is a public package method. For more information, see 'options.R::options.list'.
 list_user_options_files <- function(options_dir = NULL, should_return_verbose_names = FALSE) {
   box::use(
@@ -218,5 +264,6 @@ box::export(
   get_option_group,
   list_user_options_files,
   nested_to_flat,
-  parse_options_file_name
+  parse_options_file_name,
+  validate_option_value
 )
