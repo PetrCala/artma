@@ -1,8 +1,8 @@
 general:
   - name: "name"
     type: "character"
-    help: "The name of the current option file"
     required: true
+    help: "The name of the current option file"
 
   - name: "artma_version"
     type: "character"
@@ -22,11 +22,11 @@ logging:
     help: "The level of logging [default %default]"
 
   - name: "log_to_console"
-    action: "store_true"
+    type: "logical"
     default: true
     help: "Log to console too (not just to the log file) [default %default]"
 
   - name: "flush_logs_on_setup"
-    action: "store_true"
+    type: "logical"
     default: false
     help: "Flush logs on setup [default %default]"

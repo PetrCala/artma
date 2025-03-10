@@ -1,6 +1,12 @@
-#' Recursively flatten nested template options into a single list of option definitions with flattened destination names (e.g., x.y.z).
+#' @title Flatten nested template options
+#' @description Recursively flatten nested template options into a single list of
+#' option definitions with flattened destination names (e.g., x.y.z).
+#' @param x [list] A list of nested template options.
+#' @param parent [character] The parent path to the current list of options.
+#' @return [list] A list of flattened option definitions.
+#' @export
 flatten_template_options <- function(x, parent = NULL) {
-  # Define a helper to recognize a final option definition.
+  # A helper function to recognize a final option definition.
   is_option_def <- function(e) {
     is.list(e) &&
       all(c("name", "type") %in% names(e))
@@ -33,8 +39,16 @@ flatten_template_options <- function(x, parent = NULL) {
   flattened
 }
 
+#' @title Validate or coerce an option value
+#' @description A helper function that validates or coerces an option value to the
+#' expected type. If the value is not of the expected type, the function will attempt
+#' to coerce it. If coercion is not possible, the function will throw an error.
+#' @param val [any] The value to validate or coerce.
+#' @param opt_type [character] The expected type of the value.
+#' @param opt_name [character] The name of the option.
+#' @return [any] The validated or coerced value.
+#' @keywords internal
 validate_or_coerce <- function(val, opt_type, opt_name) {
-  # Example of something simple:
   if (opt_type == "character") {
     if (!is.character(val)) val <- as.character(val)
   } else if (opt_type == "integer") {
@@ -44,6 +58,13 @@ validate_or_coerce <- function(val, opt_type, opt_name) {
       ))
     }
     val <- as.integer(val)
+  } else if (opt_type == "logical") {
+    if (!is.logical(val)) {
+      stop(glue::glue(
+        "Option '{opt_name}' must be logical, got: {val}"
+      ))
+    }
+    val <- as.logical(val)
   } else if (startsWith(opt_type, "enum:")) {
     # e.g. "enum: red|blue|green"
     valid_values <- strsplit(sub("^enum:", "", opt_type), "\\|")[[1]]
@@ -57,8 +78,8 @@ validate_or_coerce <- function(val, opt_type, opt_name) {
 }
 
 
-#' Parse an options template file into a list of options and return this list
-#'
+#' @title Parse options from a template
+#' @description Parse options from a YAML template file, with optional user input.
 #' @param path [character] Full path to the YAML file containing the options.
 #' @param user_input [list or NULL]
 #'   A named list of user-supplied values for these options. If `NULL` or missing
@@ -68,7 +89,6 @@ validate_or_coerce <- function(val, opt_type, opt_name) {
 #'   Whether to prompt the user (via `readline()`) for missing/required values.
 #'   Defaults to `TRUE`.
 #' @param add_prefix [logical(1)] Whether to add a package prefix to all. Defaults to FALSE.
-#'
 #' @return [list] A list of options
 parse_options_from_template <- function(
     path,
@@ -85,7 +105,6 @@ parse_options_from_template <- function(
 
   # Use the new flatten_options that builds flattened dest values.
   options_def <- flatten_template_options(raw_template_options)
-
 
   # Build the final list of options that merges template definitions with user inputs.
   parsed_options <- list()
@@ -105,17 +124,15 @@ parse_options_from_template <- function(
         val <- opt_default
       } else if (opt_required) {
         if (!interactive) {
-          # If we can't prompt but the option is required, error out
+          # If not interactive and no default, throw an error
           stop(glue::glue(
             "Required option '{opt_name}' not provided and no default is available."
           ), call. = FALSE)
         } else {
-          # Prompt user for the value
-          # Optional: Show a hint or a question
+          # Possibly add: Show a hint or a question
           val <- readline(
             prompt = glue::glue("Please specify a value for '{opt_name}': ")
           )
-          # You might do additional checks here if user must not leave it blank, etc.
           if (!nzchar(val)) {
             stop(glue::glue(
               "Required option '{opt_name}' was left blank. Aborting."
@@ -123,17 +140,11 @@ parse_options_from_template <- function(
           }
         }
       } else {
-        # Not required, no default: in principle, this is permissible
-        # (could remain NULL or be assigned an empty string). Decide your policy:
-        val <- NULL
+        val <- NULL # Not required, no default
       }
     }
 
-    # Optionally do type checks. E.g., if you store something like `opt$type`
-    # in your template, you can coerce or validate it:
-    if (!is.null(opt_type)) {
-      val <- validate_or_coerce(val, opt_type, opt_name) # You'd define this
-    }
+    val <- validate_or_coerce(val, opt_type, opt_name) # Type validation
 
     parsed_options[[opt_name]] <- val
   }
