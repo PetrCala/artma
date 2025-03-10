@@ -114,12 +114,9 @@ parse_options_from_template <- function(
     opt_default <- opt$default
     opt_type <- opt$type
 
-    # Check if user has supplied this option in 'user_input'.
     if (!is.null(user_input[[opt_name]])) {
-      # Use user-supplied value
       val <- user_input[[opt_name]]
     } else {
-      # If user_input does not have it, check for a default or prompt
       if (!is.null(opt_default)) {
         val <- opt_default
       } else if (opt_required) {
@@ -144,7 +141,7 @@ parse_options_from_template <- function(
       }
     }
 
-    val <- validate_or_coerce(val, opt_type, opt_name) # Type validation
+    val <- validate_or_coerce(val, opt_type, opt_name)
 
     parsed_options[[opt_name]] <- val
   }
