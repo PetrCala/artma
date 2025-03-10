@@ -16,6 +16,7 @@ options.list <- function(...) opts$list_user_options_files(...)
 #' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
 #' @param template_path [character, optional] Full path to the options template file.
 #' @param should_validate [logical, optional] If TRUE, validate the new options file against the template. Defaults to TRUE.
+#' @param should_overwrite [logical, optional] If TRUE, overwrite the file if it already exists. Defaults to FALSE, in which case the user is prompted to confirm the overwrite.
 #' @return [character] Name of the newly created user options file as a character.
 #' @export
 options.create <- function(...) opts$create_user_options_file(...)

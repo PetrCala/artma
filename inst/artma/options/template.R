@@ -136,7 +136,7 @@ resolve_option_value <- function(
     opt,
     user_input,
     is_interactive = interactive(),
-    should_ask_for_default_options = TRUE) {
+    should_ask_for_default_options = FALSE) {
   opt_name <- opt$name
   opt_type <- opt$type
   opt_help <- opt$help
