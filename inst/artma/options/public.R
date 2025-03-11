@@ -3,7 +3,7 @@ create_user_options_file <- function(
     options_file_name = NULL,
     options_dir = NULL,
     template_path = NULL,
-    user_options = list(),
+    user_input = list(),
     should_validate = TRUE,
     should_overwrite = FALSE) {
   box::use(
@@ -54,11 +54,14 @@ create_user_options_file <- function(
   }
 
   template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
-  validate(is.character(template_path))
+  validate(
+    is.character(template_path),
+    is.list(user_input)
+  )
 
   parsed_options <- parse_options_from_template(
     path         = template_path,
-    user_input   = user_options,
+    user_input   = user_input,
     interactive  = TRUE,
     add_prefix   = FALSE
   )
@@ -230,7 +233,7 @@ validate_user_options_file <- function(
   if (should_flag_redundant) {
     for (opt_name in names(flat_options)) {
       if (!any(vapply(template_defs, function(x) identical(x$name, opt_name), logical(1)))) {
-        warning(paste0(
+        cli::cli_alert_warning(paste0(
           "Extraneous option: '", opt_name,
           "' is not defined in the template."
         ))
