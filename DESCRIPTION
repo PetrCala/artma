@@ -6,7 +6,7 @@ Version: 0.1.2
 Maintainer: Petr Čala <61505008@fsv.cuni.cz>
 Authors@R: c(
   person("Petr", "Čala", email = "61505008@fsv.cuni.cz", role = c("aut", "cre")))
-Description: Streamline data preprocessing for meta-analysis exploration
+Description: Effortlessly bridging the gap between data and models
 URL: https://github.com/PetrCala/artma
 BugReports: https://github.com/PetrCala/artma/issues
 License: GPL-3
