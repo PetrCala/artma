@@ -21,6 +21,12 @@ create_user_options_file <- function(
 
   validate(is.character(action_name))
 
+  template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
+  validate(
+    is.character(template_path),
+    is.list(user_input)
+  )
+
   options_file_name <- options_file_name %||% ask_for_options_file_name()
   options_file_name <- parse_options_file_name(options_file_name)
 
@@ -53,12 +59,6 @@ create_user_options_file <- function(
       }
     }
   }
-
-  template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
-  validate(
-    is.character(template_path),
-    is.list(user_input)
-  )
 
   parsed_options <- parse_options_from_template(
     path         = template_path,
@@ -381,14 +381,9 @@ modify_user_options_file <- function(
   box::use(
     artma / paths[PATHS],
     artma / options / template[parse_options_from_template],
-    artma / options / utils[
-      flat_to_nested
-    ],
+    artma / options / utils[flat_to_nested],
     artma / libs / validation[assert, assert_options_template_exists, validate]
   )
-
-  template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
-  assert_options_template_exists(template_path)
 
   current_options <- load_user_options(
     options_file_name = options_file_name,
