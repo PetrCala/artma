@@ -379,7 +379,10 @@ modify_user_options_file <- function(
     user_input = list(),
     should_validate = TRUE) {
   box::use(
-    artma / options / ask[ask_for_existing_options_file_name],
+    artma / options / ask[
+      ask_for_existing_options_file_name,
+      ask_for_options_to_modify
+    ],
     artma / libs / validation[assert, validate]
   )
 
@@ -395,7 +398,7 @@ modify_user_options_file <- function(
       rlang::abort("If you wish to modify a user options file, you must provide a list of options to modify, together with their values.")
     }
 
-    # XXX ask interactively
+    user_input <- ask_for_options_to_modify()
   }
 
   current_options <- load_user_options(
