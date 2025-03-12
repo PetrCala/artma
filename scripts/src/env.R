@@ -77,7 +77,7 @@ load_packages <- function(package_list, msg = NULL, native = FALSE) {
 
   # Convert package_list to a named list with NULL versions if necessary
   if (!is.list(package_list) || is.null(names(package_list))) {
-    package_list <- setNames(as.list(rep(NA, length(package_list))), package_list)
+    package_list <- stats::setNames(as.list(rep(NA, length(package_list))), package_list)
   }
 
   # Loading packages

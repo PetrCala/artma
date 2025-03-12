@@ -23,6 +23,28 @@ get_option_group <- function(prefix) {
   return(group)
 }
 
+#' @title Remove Options by Prefix
+#' @description This function removes all options from the R namespace whose names start with a specified prefix.
+#' @param prefix A string representing the prefix of the options to remove.
+#' @return [NULL]
+remove_options_with_prefix <- function(prefix) {
+  opts <- options()
+  opts_to_remove <- names(opts)[startsWith(names(opts), prefix)]
+
+  logger::log_debug("Clearing the following options from the options namespace:")
+  logger::log_debug(opts_to_remove)
+
+  if (length(opts_to_remove) == 0) {
+    logger::log_debug("No options found with the prefix: ", prefix)
+    return(invisible(NULL))
+  }
+
+  options(stats::setNames(rep(list(NULL), length(opts_to_remove)), opts_to_remove))
+
+  invisible(NULL)
+}
+
+
 #' @title Flat to nested
 #' @description Convert a list of flat options to a nested one
 #' @param flat_option_list [list] A list of flat options
@@ -245,6 +267,10 @@ ask_for_existing_options_file_name <- function(options_dir = NULL, prompt = NULL
   prompt <- prompt %||% "Please select the user options file name you would like to use."
 
   user_options_file_names <- list_user_options_files(options_dir = options_dir)
+  if (length(user_options_file_names) == 0) {
+    stop("No existing user options files were found. Aborting...")
+  }
+
   selected_file_name <- utils::select.list(
     title = prompt,
     choices = user_options_file_names
@@ -265,5 +291,6 @@ box::export(
   list_user_options_files,
   nested_to_flat,
   parse_options_file_name,
+  remove_options_with_prefix,
   validate_option_value
 )

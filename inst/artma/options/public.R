@@ -278,7 +278,7 @@ load_user_options <- function(
   box::use(
     artma / const[CONST],
     artma / paths[PATHS],
-    artma / options / utils[nested_to_flat, list_user_options_files],
+    artma / options / utils[nested_to_flat, list_user_options_files, remove_options_with_prefix],
     artma / libs / utils[is_empty],
     artma / libs / validation[validate, assert]
   )
@@ -295,13 +295,12 @@ load_user_options <- function(
   )
 
   if (is.null(options_file_name)) {
-    if (!create_options_if_null) {
-      rlang::abort("No user options file to load was provided. Exiting...")
-    }
-
     existing_options_files <- list_user_options_files(options_dir = options_dir)
 
     if (is_empty(existing_options_files)) {
+      if (!create_options_if_null) {
+        rlang::abort("No user options file to load was provided. Exiting...")
+      }
       can_proceed <- utils::select.list(
         title = "We have not found any option files to load for you. Would you like to create one now?",
         choices = c("Yes", "No")
@@ -361,6 +360,7 @@ load_user_options <- function(
   logger::log_debug(glue::glue("Loading options from the following user options file: '{options_file_name}'"))
 
   if (should_set_to_namespace) {
+    remove_options_with_prefix(CONST$PACKAGE_NAME)
     options(prefixed_options)
   }
 
@@ -379,11 +379,21 @@ modify_user_options_file <- function(
     user_input = list(),
     should_validate = TRUE) {
   box::use(
-    artma / paths[PATHS],
-    artma / options / template[parse_options_from_template],
-    artma / options / utils[flat_to_nested],
-    artma / libs / validation[assert, assert_options_template_exists, validate]
+    artma / options / utils[ask_for_existing_options_file_name],
+    artma / libs / validation[assert, validate]
   )
+
+  validate(
+    is.list(user_input),
+    is.logical(should_validate)
+  )
+
+  options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to modify: ")
+
+  if (length(user_input) == 0) {
+    cli::cli_alert_warning("Please provide a list of options to modify, together with their values.")
+    return(invisible(NULL))
+  }
 
   current_options <- load_user_options(
     options_file_name = options_file_name,
