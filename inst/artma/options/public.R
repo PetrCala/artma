@@ -394,12 +394,14 @@ modify_user_options_file <- function(
     artma / libs / validation[assert, validate]
   )
 
+  options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to modify: ")
+
   validate(
+    is.character(options_file_name),
+    is.character(options_dir),
     is.list(user_input),
     is.logical(should_validate)
   )
-
-  options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to modify: ")
 
   current_options <- load_user_options(
     options_file_name = options_file_name,
@@ -505,12 +507,51 @@ options_help <- function(
   invisible(NULL)
 }
 
+fix_user_options_file <- function(
+    options_file_name = NULL,
+    options_dir = NULL,
+    template_path = NULL,
+    force_default_overwrites = FALSE) {
+  # box::use(
+  #   artma / options / ask[ask_for_existing_options_file_name],
+  #   artma / options / utils[
+  #     nested_to_flat,
+  #     parse_options_file_name
+  #   ],
+  #   artma / libs / validation[validate]
+  # )
+
+  # options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to fix: ")
+  # options_file_name <- parse_options_file_name(options_file_name)
+
+  # validate(
+  #   is.character(options_file_name),
+  #   is.character(options_dir),
+  #   is.logical(force_default_overwrites)
+  # )
+
+  # current_options <- load_user_options(
+  #   options_file_name = options_file_name,
+  #   options_dir = options_dir,
+  #   create_options_if_null = FALSE,
+  #   load_with_prefix = FALSE,
+  #   should_validate = FALSE,
+  #   should_set_to_namespace = FALSE,
+  #   should_return = TRUE
+  # )
+
+
+
+  invisible(NULL)
+}
+
 
 
 box::export(
   copy_user_options_file,
   delete_user_options_file,
   create_user_options_file,
+  fix_user_options_file,
   load_user_options,
   modify_user_options_file,
   options_help,

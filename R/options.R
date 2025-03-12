@@ -99,5 +99,15 @@ options.modify <- function(...) opts$modify_user_options_file(...)
 #' @export
 options.help <- function(...) opts$options_help(...)
 
+#' @title Fix user options file
+#' @description Fix an existing user options file by replacing the values of the options with new ones.
+#' @param options_file_name [character] Name of the user options file to fix, including the suffix.
+#' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
+#' @param template_path [character, optional] Full path to the options template file. Defaults to NULL.
+#' @param force_default_overwrites [logical, optional] If TRUE, overwrite invalid option values with the default values from the template. Defaults to FALSE.
+#' @return [NULL]
+#' @export
+options.fix <- function(...) opts$fix_user_options_file(...)
+
 # Copy an existing folder of options into another place
 # options.migrate
