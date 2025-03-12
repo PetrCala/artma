@@ -12,6 +12,7 @@ local/*
 !config/demo.yaml
 **/*.log
 R/config.yaml
+R/test.R
 man/*
 **/temp/*
 
