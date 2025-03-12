@@ -412,7 +412,7 @@ options_help <- function(
     return(invisible(NULL))
   }
 
-  cli::cli_h1("Option Help")
+  cli::cli_h1("Options Help")
   cat("\n")
 
   for (opt_name in requested_options) {
