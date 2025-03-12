@@ -174,6 +174,19 @@ assert <- function(condition_to_validate, error_message = NULL) {
   }
 }
 
+#' Check that an options template file exists under a given path. If it does not, raise an error.
+#' @param path [character] The path under which the file should exist.
+#' @export
+assert_options_template_exists <- function(path) {
+  if (!file.exists(path)) {
+    rlang::abort(glue::glue("The options template file does not exist under the following path: '{path}'."))
+  }
+  if (!grepl(".yaml$|.yml$", path)) {
+    rlang::abort(glue::glue("The path to the template file is invalid. Reason: Missing the .yaml suffix. Got: {path}."))
+  }
+  return(invisible(NULL))
+}
+
 #' Check if x is a vector and either empty or all characters
 #'
 #' @param x [any] The object to check

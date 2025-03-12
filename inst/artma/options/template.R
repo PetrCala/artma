@@ -49,7 +49,10 @@ flatten_template_options <- function(x, parent = NULL) {
 #' @keywords internal
 resolve_fixed_option <- function(opt_name, opt_required, opt_default, user_input) {
   if (!is.null(user_input[[opt_name]])) {
-    # User tried to set a value for a fixed option
+    if (user_input[[opt_name]] == opt_default) {
+      return(opt_default)
+    }
+    # User tried to set a value for a fixed option to a non-default value
     warning(glue::glue(
       "Ignoring user-provided value for fixed option '{opt_name}'."
     ), call. = FALSE)
@@ -235,11 +238,11 @@ parse_options_from_template <- function(
     user_input = list(),
     interactive = TRUE,
     add_prefix = FALSE) {
-  if (!file.exists(path)) {
-    rlang::abort(glue::glue("Options file '{path}' does not exist."))
-  }
-
-  box::use(artma / const[CONST])
+  box::use(
+    artma / const[CONST],
+    artma / libs / validation[assert_options_template_exists]
+  )
+  assert_options_template_exists(path)
 
   raw_template_options <- yaml::read_yaml(path)
 

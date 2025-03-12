@@ -5,7 +5,8 @@ create_user_options_file <- function(
     template_path = NULL,
     user_input = list(),
     should_validate = TRUE,
-    should_overwrite = FALSE) {
+    should_overwrite = FALSE,
+    action_name = "created") {
   box::use(
     artma / paths[PATHS],
     artma / options / template[parse_options_from_template],
@@ -18,19 +19,19 @@ create_user_options_file <- function(
     artma / libs / validation[assert, validate]
   )
 
-  action_name <- "created" # This is used for logging purposes
+  validate(is.character(action_name))
 
   options_file_name <- options_file_name %||% ask_for_options_file_name()
   options_file_name <- parse_options_file_name(options_file_name)
 
-  logger::log_info(glue::glue("Creating a new user options file: '{options_file_name}'..."))
+  logger::log_info(glue::glue("A user options file is being {action_name}: '{options_file_name}'..."))
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
   options_file_path <- file.path(options_dir, options_file_name)
 
   assert(
     is.character(options_file_path) && length(options_file_path) > 0,
-    glue::glue("Invalid options file path: {options_file_path}")
+    glue::glue("Invalid options file path: '{options_file_path}'")
   )
 
   if (file.exists(options_file_path)) {
@@ -48,7 +49,7 @@ create_user_options_file <- function(
         choices = c("Yes", "No")
       )
       if (overwrite_permitted != "Yes") {
-        stop("Aborting the copying of a user options file.")
+        stop("Aborting the overwriting of a user options file.")
       }
     }
   }
@@ -66,16 +67,11 @@ create_user_options_file <- function(
     add_prefix   = FALSE
   )
 
-  validate(is.list(parsed_options))
   nested_options <- flat_to_nested(parsed_options)
 
   ensure_folder_existence(dirname(options_file_path))
   yaml::write_yaml(nested_options, options_file_path)
 
-  assert(
-    is.character(action_name),
-    glue::glue("The name of the file creation action must be a character string. Got: '{class(action_name)}'")
-  )
   logger::log_info(glue::glue("User options file {action_name}: '{options_file_name}'"))
 
   if (should_validate) {
@@ -165,6 +161,7 @@ validate_user_options_file <- function(
     options_dir = NULL,
     should_flag_redundant = FALSE,
     should_fail = FALSE,
+    template_path = NULL,
     verbose = TRUE) {
   box::use(
     artma / paths[PATHS],
@@ -175,15 +172,12 @@ validate_user_options_file <- function(
       validate_option_value
     ],
     artma / options / template[flatten_template_options],
-    artma / libs / validation[validate_value_type, assert, validate]
+    artma / libs / validation[validate_value_type, assert, validate, assert_options_template_exists]
   )
 
-  template_path <- PATHS$FILE_OPTIONS_TEMPLATE
+  template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
+  assert_options_template_exists(template_path)
 
-  assert(
-    file.exists(template_path),
-    glue::glue("The options template file does not exist. Try reinstalling the 'artma' package, and if that does not help, please contact the package maintainer.")
-  )
   validate(
     is.logical(should_flag_redundant),
     is.logical(should_fail)
@@ -268,14 +262,18 @@ validate_user_options_file <- function(
 #' @param options_file_name [character, optional] Name of the options to load, including the .yaml suffix. Defaults to NULL.
 #' @param options_dir [character, optional] Path to the folder in which to look for user options files. Defaults to NULL.
 #' @param create_options_if_null [logical, optional] If set to TRUE and the options file name is set to NULL, the function will prompt the user to create a new options file. Defaults to TRUE.
+#' @param load_with_prefix [logical, optional] Whether the options should be loaded with the package prefix. Defaults to TRUE.
 #' @param should_validate [logical, optional] Whether the options should be validated after loading. Defaults to TRUE.
+#' @param should_set_to_namespace [logical, optional] Whether the options should be set in the options() namespace. Defaults to TRUE.
 #' @param should_return [logical, optional] Whether the function should return the list of options. Defaults to FALSE.
 #' @return NULL Loads the options into the options() namespace.
 load_user_options <- function(
     options_file_name = NULL,
     options_dir = NULL,
     create_options_if_null = TRUE,
+    load_with_prefix = TRUE,
     should_validate = TRUE,
+    should_set_to_namespace = TRUE,
     should_return = FALSE) {
   box::use(
     artma / const[CONST],
@@ -290,7 +288,9 @@ load_user_options <- function(
   validate(
     is.character(options_dir),
     is.logical(create_options_if_null),
+    is.logical(load_with_prefix),
     is.logical(should_validate),
+    is.logical(should_set_to_namespace),
     is.logical(should_return)
   )
 
@@ -346,25 +346,73 @@ load_user_options <- function(
   options_file_path <- file.path(options_dir, options_file_name)
   nested_options <- yaml::read_yaml(options_file_path)
 
-  prefixed_options <- nested_to_flat(nested = nested_options, parent_key = CONST$PACKAGE_NAME)
+  parent_key <- if (load_with_prefix) CONST$PACKAGE_NAME else NULL
+  prefixed_options <- nested_to_flat(nested = nested_options, parent_key = parent_key)
 
   if (should_validate) {
     validate_user_options_file(
       options_file_name = options_file_name,
       options_dir = options_dir,
-      should_fail = TRUE
+      should_fail = TRUE,
+      verbose = FALSE
     )
   }
 
-  logger::log_info(glue::glue("Loading options from the following user options file: '{options_file_name}'"))
+  logger::log_debug(glue::glue("Loading options from the following user options file: '{options_file_name}'"))
 
-  options(prefixed_options)
+  if (should_set_to_namespace) {
+    options(prefixed_options)
+  }
 
   if (should_return) {
     return(prefixed_options)
   }
 
   return(invisible(NULL))
+}
+
+#' This is a public package method. For more information, see 'options.R::options.modify'.
+modify_user_options_file <- function(
+    options_file_name = NULL,
+    options_dir = NULL,
+    template_path = NULL,
+    user_input = list(),
+    should_validate = TRUE) {
+  box::use(
+    artma / paths[PATHS],
+    artma / options / template[parse_options_from_template],
+    artma / options / utils[
+      flat_to_nested
+    ],
+    artma / libs / validation[assert, assert_options_template_exists, validate]
+  )
+
+  template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
+  assert_options_template_exists(template_path)
+
+  current_options <- load_user_options(
+    options_file_name = options_file_name,
+    options_dir = options_dir,
+    create_options_if_null = FALSE,
+    load_with_prefix = FALSE,
+    should_validate = TRUE,
+    should_set_to_namespace = FALSE,
+    should_return = TRUE
+  )
+
+  new_options <- utils::modifyList(current_options, user_input)
+
+  create_user_options_file(
+    options_file_name = options_file_name,
+    options_dir = options_dir,
+    template_path = template_path,
+    user_input = new_options,
+    should_validate = should_validate,
+    should_overwrite = TRUE,
+    action_name = "modified"
+  )
+
+  invisible(NULL)
 }
 
 #' This is a public package method. For more information, see 'options.R::options.create'.
@@ -374,7 +422,7 @@ options_help <- function(
   box::use(
     artma / paths[PATHS],
     artma / options / template[flatten_template_options],
-    artma / libs / validation[assert, validate]
+    artma / libs / validation[assert, assert_options_template_exists, validate]
   )
 
   if (is.null(options)) {
@@ -384,9 +432,7 @@ options_help <- function(
   validate(is.character(options))
 
   template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
-  assert(file.exists(template_path), glue::glue(
-    "No template file found at '{template_path}'"
-  ))
+  assert_options_template_exists(template_path)
 
   template_raw <- yaml::read_yaml(template_path)
   template_defs <- flatten_template_options(template_raw)
@@ -446,7 +492,8 @@ box::export(
   copy_user_options_file,
   delete_user_options_file,
   create_user_options_file,
-  options_help,
   load_user_options,
+  modify_user_options_file,
+  options_help,
   validate_user_options_file
 )

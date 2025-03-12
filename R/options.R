@@ -18,6 +18,7 @@ options.list <- function(...) opts$list_user_options_files(...)
 #' @param user_input [list, optional] A named list of user-supplied values for these options. If `NULL` or missing entries exist, the function will prompt the user via `readline()` (for required entries) or use defaults (for optional ones).
 #' @param should_validate [logical, optional] If TRUE, validate the new options file against the template. Defaults to TRUE.
 #' @param should_overwrite [logical, optional] If TRUE, overwrite the file if it already exists. Defaults to FALSE, in which case the user is prompted to confirm the overwrite.
+#' @param action_name [character, optional] A name for the action being performed. This is used for logging purposes. Defaults to "create".
 #' @return [character] Name of the newly created user options file as a character.
 #' @export
 options.create <- function(...) opts$create_user_options_file(...)
@@ -63,6 +64,8 @@ options.delete <- function(...) opts$delete_user_options_file(...)
 #' @param options_file_name [character] Name of the user options file to validate, including the suffix.
 #' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
 #' @param should_flag_redundant [logical, optional] If TRUE, warn the user about any extraneous options (i.e., options not defined in the options template, such as custom options that the user might have added). Defaults to FALSE.
+#' @param should_fail [logical, optional] If TRUE, throw an error if any validation errors are found. Defaults to TRUE.
+#' @param template_path [character, optional] Full path to the options template file. Defaults to NULL.
 #' @param verbose [logical, optional] If TRUE, print additional information about the validation process. Defaults to TRUE.
 #' @return [list] Invisibly returns a list of error messages (empty if no errors).
 #' @export
@@ -70,6 +73,17 @@ options.validate <- function(...) opts$validate_user_options_file(...)
 
 # Inspect an existing user options file
 # options.inspect
+
+#' @title Modify User Options
+#' @description Modify an existing user options file with new values.
+#'
+#' @param options_file_name [character] Name of the user options file to modify, including the suffix.
+#' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
+#' @param template_path [character, optional] Full path to the options template file. Defaults to NULL.
+#' @param user_input [list, optional] A named list of user-supplied values for these options. If `NULL` or missing entries exist, the function will prompt the user via `readline()` (for required entries) or use defaults (for optional ones).
+#' @param should_validate [logical, optional] If TRUE, validate the modified options file against the template. Defaults to TRUE.
+#' @export
+options.modify <- function(...) opts$modify_user_options_file(...)
 
 #' @title Options Help
 #' @description
