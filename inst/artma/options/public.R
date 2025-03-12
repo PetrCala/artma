@@ -9,11 +9,11 @@ create_user_options_file <- function(
     action_name = "created") {
   box::use(
     artma / paths[PATHS],
+    artma / options / ask[ask_for_options_file_name],
     artma / options / template[parse_options_from_template],
     artma / options / utils[
       flat_to_nested,
-      parse_options_file_name,
-      ask_for_options_file_name
+      parse_options_file_name
     ],
     artma / libs / file_utils[ensure_folder_existence],
     artma / libs / validation[assert, validate]
@@ -93,7 +93,7 @@ copy_user_options_file <- function(
     options_dir = NULL) {
   box::use(
     artma / paths[PATHS],
-    artma / options / utils[ask_for_options_file_name, ask_for_existing_options_file_name],
+    artma / options / ask[ask_for_options_file_name, ask_for_existing_options_file_name],
     artma / libs / validation[assert]
   )
 
@@ -128,7 +128,7 @@ delete_user_options_file <- function(
     skip_confirmation = FALSE) {
   box::use(
     artma / paths[PATHS],
-    artma / options / utils[ask_for_existing_options_file_name],
+    artma / options / ask[ask_for_existing_options_file_name],
     artma / libs / validation[assert, validate]
   )
 
@@ -165,8 +165,8 @@ validate_user_options_file <- function(
     verbose = TRUE) {
   box::use(
     artma / paths[PATHS],
+    artma / options / ask[ask_for_existing_options_file_name],
     artma / options / utils[
-      ask_for_existing_options_file_name,
       get_expected_type,
       nested_to_flat,
       validate_option_value
@@ -368,7 +368,7 @@ load_user_options <- function(
     return(prefixed_options)
   }
 
-  return(invisible(NULL))
+  invisible(NULL)
 }
 
 #' This is a public package method. For more information, see 'options.R::options.modify'.
@@ -379,7 +379,7 @@ modify_user_options_file <- function(
     user_input = list(),
     should_validate = TRUE) {
   box::use(
-    artma / options / utils[ask_for_existing_options_file_name],
+    artma / options / ask[ask_for_existing_options_file_name],
     artma / libs / validation[assert, validate]
   )
 
@@ -391,8 +391,11 @@ modify_user_options_file <- function(
   options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to modify: ")
 
   if (length(user_input) == 0) {
-    cli::cli_alert_warning("Please provide a list of options to modify, together with their values.")
-    return(invisible(NULL))
+    if (!interactive()) {
+      rlang::abort("If you wish to modify a user options file, you must provide a list of options to modify, together with their values.")
+    }
+
+    # XXX ask interactively
   }
 
   current_options <- load_user_options(
