@@ -120,7 +120,6 @@ ask_for_options_to_modify <- function() {
       break
     }
 
-
     if (option_name %in% names(options_list)) {
       cli::cli_alert_danger("Option already exists: {cli::col_magenta(option_name)}. Choose a different name.")
       cat("\n")
