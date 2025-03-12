@@ -30,7 +30,8 @@ linters <- c(
         undesirable_function_linter = lintr::undesirable_function_linter(
             fun = lintr::modify_defaults(
                 defaults = lintr::default_undesirable_functions,
-                options = NULL # We use options extensively through ARTMA options
+                options = NULL, # We use options extensively through ARTMA options
+                ifelse = "use 'res <- if (x) expr1 else expr2'"
             )
         ),
         # Check for missing packages and symbols in namespace calls
