@@ -206,6 +206,7 @@ coerce_option_value <- function(val, opt_type, opt_name, allow_na) {
         integer = as.integer(val),
         logical = as.logical(val),
         numeric = as.numeric(val),
+        list = as.list(val),
         val
       )
       # In come invalid cases, the coercion will return NA.
