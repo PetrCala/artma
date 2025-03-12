@@ -156,6 +156,10 @@ get_expected_type <- function(opt_def) {
 #'   Defaults to FALSE.
 #' @return [character] An error message if the value does not match the expected type, or NULL otherwise.
 validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
+  box::use(artma / libs / validation[validate])
+
+  validate(is.character(opt_type), is.character(opt_name)) # 'allow_na' can be NULL
+
   # Helper function for uniform error formatting:
   format_error <- function(opt_name, expected_type, val) {
     glue::glue("Option '{opt_name}' must be {expected_type}, got: {val}")

@@ -51,6 +51,53 @@ ask_for_existing_options_file_name <- function(options_dir = NULL, prompt = NULL
   return(selected_file_name)
 }
 
+#' @title Ask for an option value
+#' @description Prompt the user to input a value for an option. Validate the input and return the value.
+#' @param option_name [character] The name of the option.
+#' @param option_type [character, optional] The type of the option. Defaults to NULL.
+#' @param allow_na [logical, optional] Whether to allow NA values. Defaults to FALSE.
+#' @param max_retries [integer, optional] The maximum number of retries to ask for the option value. Defaults to 3.
+#' @return [any] The value of the option.
+ask_for_option_value <- function(
+    option_name,
+    option_type = NULL,
+    allow_na = FALSE,
+    max_retries = 3) {
+  box::use(artma / options / utils[validate_option_value])
+
+  retries <- 0
+  option_value <- ""
+
+  while (option_value == "" && retries < max_retries) {
+    prompt_text <- if (retries == 0) {
+      cli::format_inline("Please provide the value for {cli::col_magenta(option_name)}: ")
+    } else {
+      cli::format_inline("{cli::col_red(cli::symbol$cross)} Value cannot be empty. Please provide a value for {cli::col_magenta(option_name)}:")
+    }
+    option_value <- readline(prompt_text)
+    retries <- retries + 1
+  }
+
+  if (option_value == "") {
+    cli::cli_alert_danger("Failed to set the value for option {cli::col_magenta(option_name)}.")
+    cat("\n")
+    return(NULL)
+  }
+
+  if (is.character(option_value)) option_value <- stringr::str_trim(option_value)
+
+  if (!is.null(option_type)) {
+    err_msg <- validate_option_value(option_value, option_type, option_name, allow_na)
+    if (!is.null(err_msg)) {
+      cli::cli_alert_danger(err_msg)
+      cat("\n")
+      return(NULL)
+    }
+  }
+
+  option_value
+}
+
 #' @title Ask for options to modify
 #' @description Prompt the user to input the names and values of the options they wish to modify. Return a list of the modified options.
 #' @return [list] A list of the modified options.
@@ -73,39 +120,13 @@ ask_for_options_to_modify <- function() {
     readline(cli::format_inline("Please enter an option name (or press {.kbd Enter} to finish): "))
   }
 
-  get_option_value <- function(option_name, max_retries = 3) {
-    retries <- 0
-    option_value <- ""
-
-    while (option_value == "" && retries < max_retries) {
-      prompt_text <- if (retries == 0) {
-        cli::format_inline("Please provide the value for {cli::col_magenta(option_name)}: ")
-      } else {
-        cli::format_inline("{cli::col_red(cli::symbol$cross)} Value cannot be empty. Please provide a value for {cli::col_magenta(option_name)}:")
-      }
-      option_value <- readline(prompt_text)
-      retries <- retries + 1
-    }
-
-    if (option_value == "") {
-      cli::cli_alert_danger("Failed to set the value for option {cli::col_magenta(option_name)}.")
-      cat("\n")
-      return(NULL)
-    }
-
-    option_value <- stringr::str_trim(option_value)
-
-    # Possibly add more validation here in the future.
-
-    option_value
-  }
-
   print_options_to_apply <- function() {
     if (length(options_list) > 0) {
       cli::cli_h3("Applying the following options:")
+      cli::cli_ul()
       for (opt_name in names(options_list)) {
         opt_str <- glue::glue("{cli::col_magenta(opt_name)}: {cli::col_green(options_list[[opt_name]])}")
-        cli::cli_text(opt_str)
+        cli::cli_li(opt_str)
       }
     } else {
       cli::cli_alert_info("No options provided. Keeping the existing options.")
@@ -126,7 +147,8 @@ ask_for_options_to_modify <- function() {
       next
     }
 
-    option_value <- get_option_value(option_name)
+    # if NA/NULL is passed, the validation correctly fails down the line, so we allow NA values
+    option_value <- ask_for_option_value(option_name, allow_na = TRUE)
     if (is.null(option_value)) next
 
     options_list[[option_name]] <- option_value
@@ -139,6 +161,7 @@ ask_for_options_to_modify <- function() {
 }
 
 box::export(
+  ask_for_option_value,
   ask_for_options_file_name,
   ask_for_options_to_modify,
   ask_for_existing_options_file_name

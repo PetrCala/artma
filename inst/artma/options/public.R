@@ -205,7 +205,7 @@ validate_user_options_file <- function(
   template_defs <- flatten_template_options(template) # Flatten the template
   flat_options <- nested_to_flat(options_file) # Flatten the options
 
-  errors <- character(0)
+  errors <- list()
 
   # Validate that every expected option is provided and has the correct type.
   for (opt_def in template_defs) {
@@ -214,12 +214,23 @@ validate_user_options_file <- function(
     exp_type <- get_expected_type(opt_def)
 
     if (!(opt_name %in% names(flat_options))) {
-      errors <- c(errors, paste0("Missing option: '", opt_name, "'"))
+      errors[[length(errors) + 1]] <- list(
+        type = "missing_option",
+        value = NULL,
+        opt_def = opt_def,
+        message = paste0("Missing option: '", opt_name, "'")
+      )
     } else {
+      # Option exists, validate its type/value
       value <- flat_options[[opt_name]]
       err_msg <- validate_option_value(value, exp_type, opt_name, allow_na)
       if (!is.null(err_msg)) {
-        errors <- c(errors, err_msg)
+        errors[[length(errors) + 1]] <- list(
+          type = "type_mismatch",
+          value = value,
+          opt_def = opt_def,
+          message = err_msg
+        )
       }
     }
   }
@@ -242,7 +253,7 @@ validate_user_options_file <- function(
 
       cli::cli_h1("Validation errors found:")
       for (err in errors) {
-        cli::cli_alert_danger(err)
+        cli::cli_alert_danger(err$message)
       }
 
       cli::cli_h3("Possible Resolutions:")
@@ -509,17 +520,22 @@ options_help <- function(
   invisible(NULL)
 }
 
+#' @title Fix user options file
+#' @description Fix a user options file by setting the default values for missing options.
+#' @details The function will attempt to load the user options file and validate it. If any errors are found, the function will attempt to fix them by setting the default values for the missing options.
+#' @param options_file_name [character, optional] Name of the options file to fix, including the .yaml suffix. Defaults to NULL.
+#' @param options_dir [character, optional] Path to the folder in which to look for user options files. Defaults to NULL.
+#' @param template_path [character, optional] Path to the options template file. Defaults to NULL.
+#' @param force_default_overwrites [logical, optional] If set to TRUE, the function will overwrite the existing options file with the default values. Defaults to TRUE.
+#' @return NULL Fixes the user options file.
 fix_user_options_file <- function(
     options_file_name = NULL,
     options_dir = NULL,
     template_path = NULL,
-    force_default_overwrites = FALSE) {
+    force_default_overwrites = TRUE) {
   box::use(
-    artma / options / ask[ask_for_existing_options_file_name],
-    artma / options / utils[
-      nested_to_flat,
-      parse_options_file_name
-    ],
+    artma / options / ask[ask_for_existing_options_file_name, ask_for_option_value],
+    artma / options / utils[nested_to_flat, parse_options_file_name],
     artma / libs / validation[validate]
   )
 
@@ -528,16 +544,6 @@ fix_user_options_file <- function(
 
   validate(is.logical(force_default_overwrites))
 
-  current_options <- load_user_options(
-    options_file_name = options_file_name,
-    options_dir = options_dir,
-    create_options_if_null = FALSE,
-    load_with_prefix = FALSE,
-    should_validate = FALSE,
-    should_set_to_namespace = FALSE,
-    should_return = TRUE
-  )
-
   errors <- validate_user_options_file(
     options_file_name = options_file_name,
     options_dir = options_dir,
@@ -545,8 +551,58 @@ fix_user_options_file <- function(
     verbose = FALSE
   )
 
-  # TODO Fix the errors by setting the default values, or asking the user for custom input
-  fixed_options <- current_options
+  if (length(errors) == 0) {
+    cli::cli_alert_info("No errors found in the user options file '{options_file_name}'.")
+    return(invisible(NULL))
+  }
+
+  cli::cli_h1("Fixing User Options File")
+  cli::cli_ul()
+  cli::cli_li("Below are the proposed changes to the user options file. Please review them before proceeding.")
+  cli::cli_li("{.strong Syntax}: {cli::col_magenta('<option_name>')}: {cli::col_green('<old_value>')} -> {cli::col_green('<new_value>')}")
+
+  cli::cli_h3("Proposed Changes:")
+  cli::cli_ul() # Initialize the list of proposed changes
+
+  fixed_options <- list()
+
+  for (err in errors) {
+    opt_def <- err$opt_def
+    opt_name <- opt_def$name
+    opt_value <- if (is.na(err$value)) "null" else err$value # nolint: unused_declared_object_linter.
+    if (is.null(opt_def$default)) {
+      # A required option is missing and has no default value - ask the user for input
+      fixed_value <- ask_for_option_value(
+        option_name = opt_name,
+        option_type = opt_def$type,
+        allow_na = opt_def$allow_na
+      )
+    } else if (err$type == "missing_option" || force_default_overwrites) {
+      fixed_value <- opt_def$default
+    } else if (err$type == "type_mismatch") {
+      fixed_value <- opt_def$default
+    } else {
+      rlang::abort("Unknown error type encountered while fixing the user options file.")
+    }
+    fixed_options[[opt_name]] <- fixed_value
+    cli::cli_li(glue::glue("{cli::col_magenta(opt_name)}: {cli::col_green(opt_value)} -> {cli::col_green(fixed_value)}"))
+  }
+
+  cat("\n")
+
+  if (interactive()) {
+    should_proceed <- utils::select.list(
+      title = "Do you wish to apply the proposed changes to the user options file?",
+      choices = c("Yes", "No")
+    )
+    if (should_proceed != "Yes") {
+      stop("Aborting the fixing of a user options file.")
+    }
+  } else {
+    logger::log_warn("Running in non-interactive mode. The proposed changes will be applied automatically.")
+  }
+
+  logger::log_info(glue::glue("Fixing the user options file '{options_file_name}'..."))
 
   create_user_options_file(
     options_file_name = options_file_name,
