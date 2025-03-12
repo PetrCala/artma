@@ -194,7 +194,7 @@ validate_user_options_file <- function(
   assert(file.exists(options_path), glue::glue("Options file '{options_path}' does not exist."))
 
   if (verbose) {
-    logger::log_info(glue::glue("Validating the user options file '{options_file_name}'..."))
+    logger::log_debug(glue::glue("Validating the user options file '{options_file_name}'..."))
   }
 
   # Load the YAML files
