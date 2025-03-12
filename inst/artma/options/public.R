@@ -580,7 +580,7 @@ fix_user_options_file <- function(
     } else if (err$type == "missing_option" || force_default_overwrites) {
       fixed_value <- opt_def$default
     } else if (err$type == "type_mismatch") {
-      fixed_value <- opt_def$default
+      fixed_value <- opt_def$default # Here, the user could be asked for input as well
     } else {
       rlang::abort("Unknown error type encountered while fixing the user options file.")
     }
