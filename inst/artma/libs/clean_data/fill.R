@@ -43,7 +43,7 @@ fill_missing_values <- function(df, target_col, columns = NULL, missing_value_pr
   df$change[is.na(df$change)] <- FALSE
 
   # Continue with the rest of the pipeline
-  df$change <- ifelse(seq_len(nrow(df)) == 1, TRUE, df$change)
+  df$change <- if (seq_len(nrow(df)) == 1) TRUE else df$change
   df$change_count <- cumsum(df$change)
   na_indices <- is.na(df[[target_col]])
   df[[target_col]][na_indices] <- paste(missing_value_prefix, df$change_count[na_indices])

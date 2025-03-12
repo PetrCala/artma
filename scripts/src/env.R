@@ -27,7 +27,7 @@ quiet_packages <- function(expr) {
 #' @keywords internal
 install_and_check <- function(pkg, version = NA, verbose = TRUE) {
   if (verbose) {
-    version_info <- ifelse(is.na(version), "", paste0(" (", version, ")"))
+    version_info <- if (is.na(version)) "" else paste0(" (", version, ")")
     message <- paste0("Processing package: ", pkg, version_info)
     cat(sprintf("%-100s", message)) # Add enough whitespace to make sure the whole line is cleared
     flush.console()
