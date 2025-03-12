@@ -395,7 +395,6 @@ options_help <- function(
   #    Each item typically has `name`, `type`, `default`, `help`, possibly others.
   template_map <- stats::setNames(template_defs, vapply(template_defs, `[[`, character(1), "name"))
 
-
   not_found <- setdiff(options, names(template_map))
   if (length(not_found) > 0) {
     msg <- paste(
