@@ -10,6 +10,12 @@ CONST <- list(
   # Various
   DATE_FORMAT = "%Y-%m-%d %H:%M:%S",
   DATE_ONLY_FORMAT = "%Y-%m-%d",
+  OPTIONS_VALIDATION_ACTIONS = c(
+    "abort_verbose",
+    "abort_quiet",
+    "return_errors_verbose",
+    "return_errors_quiet"
+  ),
 
   # Logger
   LOG_PATTERN = "^(INFO|WARN|ERROR|DEBUG|FATAL)\\s+\\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\\]\\s*",

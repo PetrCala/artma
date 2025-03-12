@@ -42,7 +42,6 @@ create_user_options_file <- function(
 
   if (file.exists(options_file_path)) {
     file_exists_msg <- glue::glue("An options file '{options_file_name}' already exists.")
-    action_name <- "overwritten"
 
     if (isTRUE(should_overwrite)) {
       logger::log_info(paste(file_exists_msg, "Overwriting this file..."))
@@ -78,8 +77,8 @@ create_user_options_file <- function(
     validate_user_options_file(
       options_file_name = options_file_name,
       options_dir = options_dir,
-      should_fail = TRUE,
-      verbose = FALSE # Only print out the errors if validation fails
+      failure_action = "abort_verbose",
+      verbose = FALSE # No info messages
     )
   }
 
@@ -160,10 +159,11 @@ validate_user_options_file <- function(
     options_file_name = NULL,
     options_dir = NULL,
     should_flag_redundant = FALSE,
-    should_fail = FALSE,
     template_path = NULL,
+    failure_action = "abort_verbose",
     verbose = TRUE) {
   box::use(
+    artma / const[CONST],
     artma / paths[PATHS],
     artma / options / ask[ask_for_existing_options_file_name],
     artma / options / utils[
@@ -178,9 +178,10 @@ validate_user_options_file <- function(
   template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
   assert_options_template_exists(template_path)
 
-  validate(
-    is.logical(should_flag_redundant),
-    is.logical(should_fail)
+  validate(is.logical(should_flag_redundant))
+  assert(
+    failure_action %in% CONST$OPTIONS_VALIDATION_ACTIONS,
+    glue::glue("Invalid failure action specified: {failure_action}. Must be one of: {glue::glue_collapse(CONST$OPTIONS_VALIDATION_ACTIONS, sep = ", ")}")
   )
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
@@ -235,29 +236,32 @@ validate_user_options_file <- function(
     }
   }
 
-  if (length(errors) > 0) {
-    logger::log_error("Validation failed.")
+  print_validation_results <- function() {
+    if (length(errors) > 0) {
+      logger::log_error("Validation failed.")
 
-    cli::cli_h1("Validation errors found:")
-    for (err in errors) {
-      cli::cli_alert_danger(err)
-    }
+      cli::cli_h1("Validation errors found:")
+      for (err in errors) {
+        cli::cli_alert_danger(err)
+      }
 
-    cli::cli_h3("Possible Resolutions:")
-    cli::cli_ul()
-    cli::cli_li("Run {.code artma::options.help(c('opt.name1', 'opt.name2', ...))} to view detailed descriptions of the specified options.")
-    cli::cli_li("Run {.code artma::options.modify()} to manually modify the options file.")
-    cli::cli_li("Run {.code artma::options.fix()} to automatically fix detected errors where possible.")
-    cli::cli_end()
-    cat("\n")
+      cli::cli_h3("Possible Resolutions:")
+      cli::cli_ul()
+      cli::cli_li("Run {.code artma::options.help(c('opt.name1', 'opt.name2', ...))} to view detailed descriptions of the specified options.")
+      cli::cli_li("Run {.code artma::options.modify()} to manually modify the options file.")
+      cli::cli_li("Run {.code artma::options.fix()} to automatically fix detected errors where possible.")
+      cli::cli_end()
+      cat("\n")
+    } else {
+      if (verbose) {
+        logger::log_success(glue::glue("Validation succeeded for file {options_file_name}."))
+      }
+    }
+  }
 
-    if (should_fail) {
-      rlang::abort(glue::glue("Validation failed for file {options_file_name}."))
-    }
-  } else {
-    if (verbose) {
-      logger::log_success(glue::glue("All options are valid."))
-    }
+  if (grepl("verbose", failure_action)) print_validation_results()
+  if (grepl("abort", failure_action) && length(errors) > 0) {
+    rlang::abort(glue::glue("Validation failed for file {options_file_name}."))
   }
 
   invisible(errors)
@@ -360,7 +364,7 @@ load_user_options <- function(
     validate_user_options_file(
       options_file_name = options_file_name,
       options_dir = options_dir,
-      should_fail = TRUE,
+      failure_action = "abort_verbose",
       verbose = FALSE
     )
   }
@@ -397,8 +401,6 @@ modify_user_options_file <- function(
   options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to modify: ")
 
   validate(
-    is.character(options_file_name),
-    is.character(options_dir),
     is.list(user_input),
     is.logical(should_validate)
   )
@@ -512,35 +514,49 @@ fix_user_options_file <- function(
     options_dir = NULL,
     template_path = NULL,
     force_default_overwrites = FALSE) {
-  # box::use(
-  #   artma / options / ask[ask_for_existing_options_file_name],
-  #   artma / options / utils[
-  #     nested_to_flat,
-  #     parse_options_file_name
-  #   ],
-  #   artma / libs / validation[validate]
-  # )
+  box::use(
+    artma / options / ask[ask_for_existing_options_file_name],
+    artma / options / utils[
+      nested_to_flat,
+      parse_options_file_name
+    ],
+    artma / libs / validation[validate]
+  )
 
-  # options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to fix: ")
-  # options_file_name <- parse_options_file_name(options_file_name)
+  options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to fix: ")
+  options_file_name <- parse_options_file_name(options_file_name)
 
-  # validate(
-  #   is.character(options_file_name),
-  #   is.character(options_dir),
-  #   is.logical(force_default_overwrites)
-  # )
+  validate(is.logical(force_default_overwrites))
 
-  # current_options <- load_user_options(
-  #   options_file_name = options_file_name,
-  #   options_dir = options_dir,
-  #   create_options_if_null = FALSE,
-  #   load_with_prefix = FALSE,
-  #   should_validate = FALSE,
-  #   should_set_to_namespace = FALSE,
-  #   should_return = TRUE
-  # )
+  current_options <- load_user_options(
+    options_file_name = options_file_name,
+    options_dir = options_dir,
+    create_options_if_null = FALSE,
+    load_with_prefix = FALSE,
+    should_validate = FALSE,
+    should_set_to_namespace = FALSE,
+    should_return = TRUE
+  )
 
+  errors <- validate_user_options_file(
+    options_file_name = options_file_name,
+    options_dir = options_dir,
+    failure_action = "return_errors_quiet",
+    verbose = FALSE
+  )
 
+  # TODO Fix the errors by setting the default values, or asking the user for custom input
+  fixed_options <- current_options
+
+  create_user_options_file(
+    options_file_name = options_file_name,
+    options_dir = options_dir,
+    template_path = template_path,
+    user_input = fixed_options,
+    should_validate = TRUE,
+    should_overwrite = TRUE,
+    action_name = "fixed"
+  )
 
   invisible(NULL)
 }
