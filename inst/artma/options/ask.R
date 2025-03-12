@@ -107,8 +107,8 @@ ask_for_options_to_modify <- function() {
         opt_str <- glue::glue("{cli::col_magenta(opt_name)}: {cli::col_green(options_list[[opt_name]])}")
         cli::cli_text(opt_str)
       }
-      cat("\n")
     }
+    cat("\n")
   }
 
   repeat {
