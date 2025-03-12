@@ -242,9 +242,15 @@ validate_user_options_file <- function(
     for (err in errors) {
       cli::cli_alert_danger(err)
     }
+
+    cli::cli_h3("Possible Resolutions:")
+    cli::cli_ul()
+    cli::cli_li("Run {.code artma::options.help(c('opt.name1', 'opt.name2', ...))} to view detailed descriptions of the specified options.")
+    cli::cli_li("Run {.code artma::options.modify()} to manually modify the options file.")
+    cli::cli_li("Run {.code artma::options.fix()} to automatically fix detected errors where possible.")
+    cli::cli_end()
     cat("\n")
-    cli::cli_text("Run {.code artma::options.help(c('opt.name1', 'opt.name2',...))} to view detailed descriptions of the specified options.")
-    cat("\n")
+
     if (should_fail) {
       rlang::abort(glue::glue("Validation failed for file {options_file_name}."))
     }
@@ -395,14 +401,6 @@ modify_user_options_file <- function(
 
   options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to modify: ")
 
-  if (length(user_input) == 0) {
-    if (!interactive()) {
-      rlang::abort("If you wish to modify a user options file, you must provide a list of options to modify, together with their values.")
-    }
-
-    user_input <- ask_for_options_to_modify()
-  }
-
   current_options <- load_user_options(
     options_file_name = options_file_name,
     options_dir = options_dir,
@@ -412,6 +410,14 @@ modify_user_options_file <- function(
     should_set_to_namespace = FALSE,
     should_return = TRUE
   )
+
+  if (length(user_input) == 0) {
+    if (!interactive()) {
+      rlang::abort("If you wish to modify a user options file, you must provide a list of options to modify, together with their values.")
+    }
+
+    user_input <- ask_for_options_to_modify()
+  }
 
   new_options <- utils::modifyList(current_options, user_input)
 
