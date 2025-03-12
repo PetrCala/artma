@@ -71,8 +71,19 @@ options.validate <- function(...) opts$validate_user_options_file(...)
 # Inspect an existing user options file
 # options.inspect
 
-# Explain a single (or multiple?) option - its meaning, expected type, defaults, etc.
-# options.explain
+#' @title Options Help
+#' @description
+#' Prints information for each requested option (or all options if \code{options} is \code{NULL}).
+#'
+#' @param options [character|NULL] A single option name (dot-separated) or a
+#'   character vector thereof. If \code{NULL}, prints **all** options from
+#'   the template.
+#' @param template_path [character|NULL] Path to the template YAML file.
+#'   Defaults to \code{PATHS$FILE_OPTIONS_TEMPLATE}.
+#' @return Invisibly returns \code{NULL}, printing the requested information
+#'   to the console.
+#' @export
+options.help <- function(...) opts$options_help(...)
 
 # Copy an existing folder of options into another place
 # options.migrate

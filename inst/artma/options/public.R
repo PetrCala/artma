@@ -367,11 +367,88 @@ load_user_options <- function(
   return(invisible(NULL))
 }
 
+#' This is a public package method. For more information, see 'options.R::options.create'.
+options_help <- function(
+    options = NULL,
+    template_path = NULL) {
+  box::use(
+    artma / paths[PATHS],
+    artma / options / template[flatten_template_options],
+    artma / libs / validation[assert]
+  )
+
+  template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
+  assert(file.exists(template_path), glue::glue(
+    "No template file found at '{template_path}'"
+  ))
+
+  template_raw <- yaml::read_yaml(template_path)
+  template_defs <- flatten_template_options(template_raw)
+
+  # Build a named lookup table: name -> option definition
+  #    Each item typically has `name`, `type`, `default`, `help`, possibly others.
+  template_map <- stats::setNames(template_defs, vapply(template_defs, `[[`, character(1), "name"))
+
+  if (is.null(options)) {
+    requested_options <- names(template_map)
+  } else {
+    if (is.character(options)) {
+      requested_options <- options
+    } else {
+      rlang::abort("`options` must be NULL or a character vector of option names.")
+    }
+    not_found <- setdiff(requested_options, names(template_map))
+    if (length(not_found) > 0) {
+      msg <- paste(
+        "The following requested option(s) are not in the template:",
+        paste(not_found, collapse = ", ")
+      )
+      rlang::abort(msg)
+    }
+  }
+
+  if (length(requested_options) == 0) {
+    cat("No options to explain.\n")
+    return(invisible(NULL))
+  }
+
+  cli::cli_h1("Option Help")
+  cat("\n")
+
+  for (opt_name in requested_options) {
+    opt_def <- template_map[[opt_name]]
+
+    # nolint start: unused_declared_object_linter.
+    nm <- opt_def$name
+    tp <- opt_def$type
+    hlp <- opt_def$help %||% "(No help text provided.)"
+
+    if ("default" %in% names(opt_def)) {
+      # Accessing a null default value would assign null, so we coerce it to a 'null' string.
+      def <- opt_def$default %||% "null"
+    } else {
+      def <- "This option is required"
+    }
+    # nolint end: unused_declared_object_linter.
+
+    cli::cli_text("{.strong Option name:} {.blue {nm}}")
+    cli::cli_text("{.strong Type:} {.green {tp}}")
+    cli::cli_text("{.strong Default:} {.yellow {def}}")
+    cli::cli_text("{.strong Help:} {.italic {hlp}}")
+    cli::cli_rule()
+    cat("\n")
+  }
+
+  invisible(NULL)
+}
+
+
 
 box::export(
   copy_user_options_file,
   delete_user_options_file,
   create_user_options_file,
+  options_help,
   load_user_options,
   validate_user_options_file
 )

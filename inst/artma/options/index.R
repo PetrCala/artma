@@ -7,6 +7,7 @@ box::use(
   artma / options / public[
     copy_user_options_file,
     delete_user_options_file,
+    options_help,
     create_user_options_file,
     load_user_options,
     validate_user_options_file
@@ -17,6 +18,7 @@ box::export(
   copy_user_options_file,
   delete_user_options_file,
   create_user_options_file,
+  options_help,
   flatten_template_options,
   list_user_options_files,
   load_user_options,
