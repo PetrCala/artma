@@ -374,8 +374,14 @@ options_help <- function(
   box::use(
     artma / paths[PATHS],
     artma / options / template[flatten_template_options],
-    artma / libs / validation[assert]
+    artma / libs / validation[assert, validate]
   )
+
+  if (is.null(options)) {
+    cli::cli_alert_warning("Enter option names either as a character vector or as a single name to print their help.\n")
+    return(invisible(NULL))
+  }
+  validate(is.character(options))
 
   template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
   assert(file.exists(template_path), glue::glue(
@@ -389,33 +395,26 @@ options_help <- function(
   #    Each item typically has `name`, `type`, `default`, `help`, possibly others.
   template_map <- stats::setNames(template_defs, vapply(template_defs, `[[`, character(1), "name"))
 
-  if (is.null(options)) {
-    requested_options <- names(template_map)
-  } else {
-    if (is.character(options)) {
-      requested_options <- options
-    } else {
-      rlang::abort("`options` must be NULL or a character vector of option names.")
-    }
-    not_found <- setdiff(requested_options, names(template_map))
-    if (length(not_found) > 0) {
-      msg <- paste(
-        "The following requested option(s) are not in the template:",
-        paste(not_found, collapse = ", ")
-      )
-      rlang::abort(msg)
-    }
+
+  not_found <- setdiff(options, names(template_map))
+  if (length(not_found) > 0) {
+    msg <- paste(
+      "The following requested option(s) are not recognized:",
+      paste(not_found, collapse = ", ")
+    )
+    cli::cli_alert_warning(msg)
+    return(invisible(NULL))
   }
 
-  if (length(requested_options) == 0) {
-    cat("No options to explain.\n")
+  if (length(options) == 0) {
+    cli::cli_alert_info("No options to explain.\n")
     return(invisible(NULL))
   }
 
   cli::cli_h1("Options Help")
   cat("\n")
 
-  for (opt_name in requested_options) {
+  for (opt_name in options) {
     opt_def <- template_map[[opt_name]]
 
     # nolint start: unused_declared_object_linter.
