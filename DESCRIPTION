@@ -2,7 +2,7 @@ Encoding: UTF-8
 Package: artma
 Type: Package
 Title: Automatic Replication Tools for Meta-analysis
-Version: 0.1.2
+Version: 0.1.3
 Maintainer: Petr Čala <61505008@fsv.cuni.cz>
 Authors@R: c(
   person("Petr", "Čala", email = "61505008@fsv.cuni.cz", role = c("aut", "cre")))
