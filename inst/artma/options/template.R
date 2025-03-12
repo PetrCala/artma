@@ -149,7 +149,7 @@ resolve_option_value <- function(
   }
 
   if (opt_name %in% names(user_input)) {
-      # 1) If user explicitly provided a value, just return it
+    # 1) If user explicitly provided a value, just return it
     return(user_input[[opt_name]])
   }
 
@@ -222,14 +222,12 @@ coerce_option_value <- function(val, opt_type, opt_name, allow_na) {
   )
 }
 
-
-
 #' @title Parse options from a template
 #' @description Parse options from a YAML template file, with optional user input.
 #' @param path [character] Full path to the YAML file containing the options.
 #' @param user_input [list or NULL] A named list of user-supplied values for these options. If `NULL` or missing entries exist, the function will prompt the user via `readline()` (for required entries) or use defaults (for optional ones).
 #' @param interactive [logical(1)] Whether to prompt the user (via `readline()`) for missing/required values.  Defaults to `TRUE`.
-#' @param add_prefix [logical(1)] Whether to add a package prefix to all. Defaults to FALSE.  
+#' @param add_prefix [logical(1)] Whether to add a package prefix to all. Defaults to FALSE.
 #' #' @return [list] A list of options
 parse_options_from_template <- function(
     path,
