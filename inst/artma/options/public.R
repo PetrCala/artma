@@ -561,8 +561,6 @@ fix_user_options_file <- function(
   invisible(NULL)
 }
 
-
-
 box::export(
   copy_user_options_file,
   delete_user_options_file,
