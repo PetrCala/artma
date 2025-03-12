@@ -107,6 +107,8 @@ ask_for_options_to_modify <- function() {
         opt_str <- glue::glue("{cli::col_magenta(opt_name)}: {cli::col_green(options_list[[opt_name]])}")
         cli::cli_text(opt_str)
       }
+    } else {
+      cli::cli_alert_info("No options provided. Keeping the existing options.")
     }
     cat("\n")
   }
