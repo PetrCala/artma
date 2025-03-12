@@ -243,6 +243,8 @@ validate_user_options_file <- function(
       cli::cli_alert_danger(err)
     }
     cat("\n")
+    cli::cli_text("Run {.code artma::options.help(c('opt.name1', 'opt.name2',...))} to view detailed descriptions of the specified options.")
+    cat("\n")
     if (should_fail) {
       rlang::abort(glue::glue("Validation failed for file {options_file_name}."))
     }

@@ -5,6 +5,67 @@ general:
     fixed: true
     help: "Version of the ARTMA package under which these options were generated"
 
+# data:
+#   - name: "data_path"
+#     type: "character"
+#     default: "data/"
+#     help: "Path to the data folder"
+
+#   - name: "data_file"
+#     type: "character"
+#     default: "data.csv"
+#     help: "Name of the data file"
+
+#   - name: "data_format"
+#     type: "character"
+#     default: "csv"
+#     help: "Format of the data file"
+
+#   - name: "data_sep"
+#     type: "character"
+#     default: ","
+#     help: "Separator used in the data file"
+
+#   - name: "data_header"
+#     type: "logical"
+#     default: true
+#     help: "Does the data file have a header?"
+
+#   - name: "data_row_names"
+#     type: "logical"
+#     default: false
+#     help: "Does the data file have row names?"
+
+#   - name: "data_col_names"
+#     type: "logical"
+#     default: true
+#     help: "Does the data file have column names?"
+
+#   - name: "data_na"
+#     type: "character"
+#     default: "NA"
+#     help: "Character used to represent missing values"
+
+#   - name: "data_encoding"
+#     type: "character"
+#     default: "UTF-8"
+#     help: "Encoding of the data file"
+
+#   - name: "data_skip"
+#     type: "integer"
+#     default: 0
+#     help: "Number of rows to skip at the beginning of the data file"
+
+#   - name: "data_nrows"
+#     type: "integer"
+#     default: -1
+#     help: "Number of rows to read from the data file"
+
+#   - name: "data_ncols"
+#     type: "integer"
+#     default: -1
+#     help: "Number of columns to read from the data file"
+
 logging:
   - name: "log_file_name"
     type: "character"
