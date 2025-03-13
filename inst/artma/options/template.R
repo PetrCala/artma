@@ -78,17 +78,17 @@ resolve_fixed_option <- function(opt_name, opt_required, opt_default, user_input
 #' @keywords internal
 prompt_user_with_default <- function(opt_name, opt_type, opt_help, opt_default) {
   cli::cli_h1("Provide Option Value")
-  cli::cli_text("{.strong Option name}: {.val {opt_name}}")
-  cli::cli_text("{.strong Type}: {.val {opt_type}}")
+  cli::cli_text("{.strong Option name}: {cli::col_magenta(opt_name)}")
+  cli::cli_text("{.strong Type}: {cli::col_cyan(opt_type)}")
 
   if (!is.null(opt_help)) {
-    cli::cli_text("{.strong Help}: {gsub('%default', opt_default, opt_help)}")
+    cli::cli_text("{.strong Help}: {.emph {gsub('%default', opt_default, opt_help)}}")
   }
 
-  cli::cli_text("{.strong Default}: {.val {opt_default}}")
+  cli::cli_text("{.strong Default}: {cli::col_yellow(opt_default)}")
 
   input_val <- readline(
-    prompt = "Enter value (or press <Enter> to accept default): "
+    prompt = cli::format_inline("Enter value (or press {.code <Enter>} to accept default): ")
   )
 
   if (nzchar(input_val)) {
@@ -107,20 +107,20 @@ prompt_user_with_default <- function(opt_name, opt_type, opt_help, opt_default) 
 #' @keywords internal
 prompt_user_required_no_default <- function(opt_name, opt_type, opt_help) { # nolint: object_length_linter.
   cli::cli_h1("Option Value Required")
-  cli::cli_text("{.strong Option name}: {.val {opt_name}}")
-  cli::cli_text("{.strong Type}: {.val {opt_type}}")
+  cli::cli_text("{.strong Option name}: {cli::col_magenta(opt_name)}")
+  cli::cli_text("{.strong Type}: {cli::col_cyan(opt_type)}")
 
   if (!is.null(opt_help)) {
-    cli::cli_text("{.strong Help}: {opt_help}")
+    cli::cli_text("{.strong Help}: {.emph {opt_help}}")
   }
 
   input_val <- readline(
-    prompt = glue::glue("Enter a value for '{opt_name}': ")
+    prompt = cli::format_inline("Enter a value for {.strong {opt_name}}: ")
   )
 
   if (!nzchar(input_val)) {
-    stop(glue::glue(
-      "Required option '{opt_name}' was left blank. Aborting."
+    stop(cli::format_inline(
+      "Required option {cli::col_magenta(opt_name)} was left blank. Aborting."
     ), call. = FALSE)
   }
 
@@ -144,8 +144,8 @@ resolve_option_value <- function(
   opt_type <- opt$type
   opt_help <- opt$help
   opt_fixed <- isTRUE(opt$fixed)
-  opt_required <- isTRUE(opt$required)
   opt_default <- opt$default
+  opt_required <- is.null(opt_default) # or isTRUE(opt$required)
 
   if (opt_fixed) {
     return(resolve_fixed_option(opt_name, opt_required, opt_default, user_input))

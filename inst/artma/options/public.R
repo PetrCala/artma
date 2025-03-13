@@ -511,7 +511,7 @@ options_help <- function(
 
     cli::cli_text("{.strong Option name:} {cli::col_magenta(nm)}")
     cli::cli_text("{.strong Type:} {cli::col_cyan(tp)}")
-    cli::cli_text("{.strong Default:} {cli::col_green(def)}")
+    cli::cli_text("{.strong Default:} {cli::col_yellow(def)}")
     cli::cli_text("{.strong Help:} {.emph {hlp}}")
     cli::cli_rule()
     cat("\n")
