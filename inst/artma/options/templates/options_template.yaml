@@ -5,11 +5,10 @@ general:
     fixed: true
     help: "Version of the ARTMA package under which these options were generated"
 
-# data:
-#   - name: "data_path"
-#     type: "character"
-#     default: "data/"
-#     help: "Path to the data folder"
+data:
+  - name: "source_path"
+    type: "character"
+    help: "Full path to your dataset source"
 
 #   - name: "data_file"
 #     type: "character"

@@ -84,7 +84,11 @@ ask_for_option_value <- function(
     return(NULL)
   }
 
-  if (is.character(option_value)) option_value <- stringr::str_trim(option_value)
+
+  if (is.character(option_value)) {
+    option_value <- stringr::str_trim(option_value)
+    # TODO remove double quotes
+  }
 
   if (!is.null(option_type)) {
     err_msg <- validate_option_value(option_value, option_type, option_name, allow_na)

@@ -561,15 +561,13 @@ fix_user_options_file <- function(
   cli::cli_li("Below are the proposed changes to the user options file. Please review them before proceeding.")
   cli::cli_li("{.strong Syntax}: {cli::col_magenta('<option_name>')}: {cli::col_green('<old_value>')} -> {cli::col_green('<new_value>')}")
 
-  cli::cli_h3("Proposed Changes:")
-  cli::cli_ul() # Initialize the list of proposed changes
-
   fixed_options <- list()
+  proposed_changes <- list()
 
   for (err in errors) {
     opt_def <- err$opt_def
     opt_name <- opt_def$name
-    opt_value <- if (is.na(err$value)) "null" else err$value # nolint: unused_declared_object_linter.
+    opt_value <- if (is.null(err$value)) "null" else err$value # nolint: unused_declared_object_linter.
     if (is.null(opt_def$default)) {
       # A required option is missing and has no default value - ask the user for input
       fixed_value <- ask_for_option_value(
@@ -585,7 +583,16 @@ fix_user_options_file <- function(
       rlang::abort("Unknown error type encountered while fixing the user options file.")
     }
     fixed_options[[opt_name]] <- fixed_value
-    cli::cli_li(glue::glue("{cli::col_magenta(opt_name)}: {cli::col_green(opt_value)} -> {cli::col_green(fixed_value)}"))
+    proposed_changes <- append(
+      proposed_changes,
+      glue::glue("{cli::col_magenta(opt_name)}: {cli::col_green(opt_value)} -> {cli::col_green(fixed_value)}")
+    )
+  }
+
+  cli::cli_h3("Proposed Changes:")
+  cli::cli_ul()
+  for (change in proposed_changes) {
+    cli::cli_li(change)
   }
 
   cat("\n")
