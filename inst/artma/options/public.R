@@ -30,18 +30,18 @@ create_user_options_file <- function(
   options_file_name <- options_file_name %||% ask_for_options_file_name()
   options_file_name <- parse_options_file_name(options_file_name)
 
-  logger::log_info(glue::glue("A user options file is being {action_name}: '{options_file_name}'..."))
+  logger::log_info(cli::format_inline("A user options file is being {action_name}: {.path {options_file_name}}..."))
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
   options_file_path <- file.path(options_dir, options_file_name)
 
   assert(
     is.character(options_file_path) && length(options_file_path) > 0,
-    glue::glue("Invalid options file path: '{options_file_path}'")
+    cli::format_inline("Invalid options file path: {.path {options_file_path}}")
   )
 
   if (file.exists(options_file_path)) {
-    file_exists_msg <- glue::glue("An options file '{options_file_name}' already exists.")
+    file_exists_msg <- cli::format_inline("An options file {.path {options_file_name}} already exists.")
 
     if (isTRUE(should_overwrite)) {
       logger::log_info(paste(file_exists_msg, "Overwriting this file..."))
@@ -71,7 +71,7 @@ create_user_options_file <- function(
   ensure_folder_existence(dirname(options_file_path))
   yaml::write_yaml(nested_options, options_file_path)
 
-  logger::log_info(glue::glue("User options file {action_name}: '{options_file_name}'"))
+  logger::log_info(cli::format_inline("User options file {action_name}: {.path {options_file_name}}"))
 
   if (should_validate) {
     validate_user_options_file(
@@ -100,14 +100,14 @@ copy_user_options_file <- function(
   options_file_name_from <- options_file_name_from %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to copy from: ")
   options_file_path_from <- file.path(options_dir, options_file_name_from)
 
-  assert(file.exists(options_file_path_from), glue::glue("The source options file does not exist under the following path: {options_file_path_from}"))
+  assert(file.exists(options_file_path_from), cli::format_inline("The source options file does not exist under the following path: {.path {options_file_path_from}}"))
 
   options_file_name_to <- options_file_name_to %||% ask_for_options_file_name(prompt = "Please provide a name for your new options file, including the .yaml suffix: ")
   options_file_path_to <- file.path(options_dir, options_file_name_to)
 
   if (file.exists(options_file_path_to)) {
     overwrite_permitted <- utils::select.list(
-      title = "An options file name already exists under the path {options_file_path_to}. Do you wish to overwrite the contents of this file?",
+      title = cli::format_inline("An options file name already exists under the path {.path {options_file_path_to}}. Do you wish to overwrite the contents of this file?"),
       choices = c("Yes", "No")
     )
     if (overwrite_permitted != "Yes") {
@@ -117,7 +117,7 @@ copy_user_options_file <- function(
 
   file.copy(options_file_path_from, options_file_path_to, overwrite = TRUE)
 
-  logger::log_info(glue::glue("The user options file '{options_file_name_from}' has been successfully copied over to '{options_file_name_to}'."))
+  logger::log_info(cli::format_inline("The user options file {.path {options_file_name_from}} has been successfully copied over to {.path {options_file_name_to}}."))
 }
 
 #' This is a public package method. For more information, see 'options.R::options.delete'.
@@ -265,7 +265,7 @@ validate_user_options_file <- function(
       cat("\n")
     } else {
       if (verbose) {
-        logger::log_success(glue::glue("Validation succeeded for file {options_file_name}."))
+        cli::cli_alert_success("The user options file {.path {options_file_name}} is valid.")
       }
     }
   }

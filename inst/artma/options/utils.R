@@ -110,7 +110,7 @@ nested_to_flat <- function(nested, parent_key = NULL, sep = ".") {
 parse_options_file_name <- function(input_string) {
   str_out <- rlang::duplicate(input_string)
 
-  logger::log_debug(glue::glue("Parsing the following string into a user options file name: {input_string}"))
+  logger::log_debug(cli::format_inline("Parsing the following string into a user options file name: {.emph {input_string}}"))
 
   tryCatch(
     {
@@ -122,12 +122,12 @@ parse_options_file_name <- function(input_string) {
       str_out <- stringr::str_trim(str_out, side = "both")
     },
     error = function(e) {
-      rlang::abort(glue::glue("There was an error parsing the following into a valid user options file name: {input_string}"))
+      rlang::abort(cli::format_inline("There was an error parsing the following into a valid user options file name: {.emph {input_string}}"))
     }
   )
 
   if (!grepl(".yaml$|.yml$", str_out)) {
-    rlang::abort(glue::glue("Please provide the name of the options file with .yaml suffix. Got: {options_file_name}."))
+    rlang::abort(cli::format_inline("Please provide the name of the options file with .yaml suffix. Got: {.emph {str_out}}."))
   }
 
   str_out
@@ -162,12 +162,12 @@ validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
 
   # Helper function for uniform error formatting:
   format_error <- function(opt_name, expected_type, val) {
-    glue::glue("Option '{opt_name}' must be {expected_type}, got: {val}")
+    cli::format_inline("Option {cli::col_magenta(opt_name)} must be {.emph {expected_type}}, got: {cli::col_green(val)}")
   }
 
   if (is.null(val) || (length(val) == 1 && is.na(val))) {
     if (!isTRUE(allow_na)) {
-      return(glue::glue("Option '{opt_name}' cannot be NULL or NA."))
+      return(cli::format_inline("Option {cli::col_magenta(opt_name)} cannot be NULL or NA."))
     } else {
       return(NULL) # NA/NULL is allowed
     }
@@ -178,8 +178,8 @@ validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
     valid_values <- strsplit(sub("^enum:", "", opt_type), "\\|")[[1]]
     if (!val %in% valid_values) {
       return(
-        glue::glue(
-          "Option '{opt_name}' must be one of {toString(valid_values)}; got '{val}'."
+        cli::format_inline(
+          "Option {cli::col_magenta(opt_name)} must be one of {.emph {toString(valid_values)}}; got {.val {val}}."
         )
       )
     }
@@ -205,7 +205,7 @@ list_user_options_files <- function(options_dir = NULL, should_return_verbose_na
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
 
   if (!dir.exists(options_dir)) {
-    rlang::abort(glue::glue("The following options directory does not exist: {options_dir}"))
+    rlang::abort(cli::format_inline("The following options directory does not exist: {.path {options_dir}}"))
   }
 
   options_files <- list.files(
@@ -220,11 +220,11 @@ list_user_options_files <- function(options_dir = NULL, should_return_verbose_na
     options_name <- if (should_return_verbose_names) {
       tryCatch(
         {
-          logger::log_debug(glue::glue("Reading the options file '{file_name}'"))
+          logger::log_debug(cli::format_inline("Reading the options file {.path {file_name}}"))
           options_name <- yaml::read_yaml(file_name)$general$name
         },
         error = function(cond) {
-          logger::log_warn(glue::glue("Failed to read the following options file: {file}"))
+          logger::log_warn(cli::format_inline("Failed to read the following options file: {.path {file}}"))
         }
       )
     } else {
