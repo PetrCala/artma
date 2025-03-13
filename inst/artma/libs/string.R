@@ -37,6 +37,12 @@ find_string_using_substring <- function(vector_of_strings, substring) {
   return(vector_of_strings[match_bool])
 }
 
+#' @title Trim quotes
+#' @description Removes single or double quotes from the beggining and end of a string. Preserves these quotes elsewhere in the string.
+#' @param s [character] The string to trim quotes for.
+#' @export
+trim_quotes <- function(s) gsub("^(\"|')+|(\"|')+$", "", s)
+
 
 #' Clean a string by removing special characters and converting to lowercase
 #'
@@ -55,8 +61,7 @@ clean_string <- function(input_string) {
   str_out <- stringr::str_replace_all(str_out, "^_+|_+$", "")
 
   # Remove quotes
-  str_out <- gsub('"', "", str_out, fixed = TRUE)
-  str_out <- gsub("'", "", str_out, fixed = TRUE)
+  str_out <- trim_quotes(str_out)
 
   return(str_out)
 }

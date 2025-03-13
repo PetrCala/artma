@@ -63,7 +63,10 @@ ask_for_option_value <- function(
     option_type = NULL,
     allow_na = FALSE,
     max_retries = 3) {
-  box::use(artma / options / utils[validate_option_value])
+  box::use(
+    artma / options / utils[validate_option_value],
+    artma / libs / string[trim_quotes]
+  )
 
   retries <- 0
   option_value <- ""
@@ -86,8 +89,8 @@ ask_for_option_value <- function(
 
 
   if (is.character(option_value)) {
-    option_value <- stringr::str_trim(option_value)
-    # TODO remove double quotes
+    option_value <- stringr::str_trim(option_value, side = "both")
+    option_value <- trim_quotes(option_value)
   }
 
   if (!is.null(option_type)) {
