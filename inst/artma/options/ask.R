@@ -1,3 +1,5 @@
+# nolint start: object_length_linter.
+
 #' @title Ask for options file name
 #' @description Ask the user to input a name of an options file. Clean the user's input and return it as a string.
 #' @param should_clean [logical, optional] Whether to clean the input string. Defaults to TRUE
@@ -24,17 +26,24 @@ ask_for_options_file_name <- function(should_clean = TRUE, prompt = NULL) {
 #' @description Prompt the user to select from an existing list of user options files. Return the name of the selected file as a character.
 #' @param options_dir [character, optional] Name of the directory to list the files from. Defaults to NULL.
 #' @param prompt [character, optional] The prompt to use when asking for the user options file name. Defaults to NULL.
+#' @param multiple [logical, optional] Whether to allow the selction of multiple values. Defaults to FALSE.
 #' @return [character] Name of the selected file.
-ask_for_existing_options_file_name <- function(options_dir = NULL, prompt = NULL) { # nolint: object_length_linter.
+ask_for_existing_options_file_name <- function(
+    options_dir = NULL,
+    prompt = NULL,
+    multiple = FALSE) {
   if (!interactive()) {
     rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
   }
   box::use(
     artma / libs / utils[is_empty],
+    artma / libs / string[pluralize],
     artma / options / utils[list_user_options_files],
   )
 
-  prompt <- prompt %||% "Please select the user options file name you would like to use."
+  file_str <- if (isTRUE(multiple)) pluralize("name") else "name" # nolint: unused_declared_object_linter.
+
+  prompt <- prompt %||% glue::glue("Please select the user options file {file_str} you would like to use.")
 
   user_options_file_names <- list_user_options_files(options_dir = options_dir)
   if (length(user_options_file_names) == 0) {
@@ -43,7 +52,8 @@ ask_for_existing_options_file_name <- function(options_dir = NULL, prompt = NULL
 
   selected_file_name <- utils::select.list(
     title = prompt,
-    choices = user_options_file_names
+    choices = user_options_file_names,
+    multiple = multiple
   )
   if (is_empty(selected_file_name)) {
     stop("No user options file was selected. Aborting...")
@@ -173,3 +183,5 @@ box::export(
   ask_for_options_to_modify,
   ask_for_existing_options_file_name
 )
+
+# nolint end: object_length_linter.

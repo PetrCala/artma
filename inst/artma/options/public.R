@@ -132,25 +132,28 @@ delete_user_options_file <- function(
   )
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
-  options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the user options file you wish to delete: ")
-  options_file_path <- file.path(options_dir, options_file_name)
-
-  validate(is.logical(skip_confirmation))
-  assert(file.exists(options_file_path), glue::glue("The user options file does not exist under the following path: {options_file_path}"))
+  options_file_names <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the user options files you wish to delete: ", multiple = TRUE) # nolint: unused_declared_object_linter.
 
   if (!skip_confirmation) {
     deletion_confirmed <- utils::select.list(
-      title = glue::glue("Are you sure you wish to delete the file the user options file '{options_file_name}'?"),
-      choices = c("Yes, I am sure", "No, I want to keep the file")
+      title = cli::format_inline("Are you sure you wish to delete {.file {options_file_names}}?"),
+      choices = c("Yes, I am sure", "No, I did not mean to")
     )
     if (deletion_confirmed != "Yes, I am sure") {
-      stop("Aborting the deletion of a user options file.")
+      stop("Aborting user option file deletion.")
     }
   }
 
-  base::file.remove(options_file_path)
+  invisible(lapply(options_file_names, function(file_name) {
+    options_file_path <- file.path(options_dir, file_name)
 
-  logger::log_info(glue::glue("The user options file '{options_file_name}' has been deleted."))
+    validate(is.logical(skip_confirmation))
+    assert(file.exists(options_file_path), cli::format_inline("The user options file does not exist under the following path: {.file {options_file_path}}"))
+
+    base::file.remove(options_file_path)
+
+    logger::log_info(cli::format_inline("The user options file {.file {file_name}} has been deleted."))
+  }))
 }
 
 
