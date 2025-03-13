@@ -509,10 +509,10 @@ options_help <- function(
     }
     # nolint end: unused_declared_object_linter.
 
-    cli::cli_text("{.strong Option name:} {.blue {nm}}")
-    cli::cli_text("{.strong Type:} {.green {tp}}")
-    cli::cli_text("{.strong Default:} {.yellow {def}}")
-    cli::cli_text("{.strong Help:} {.italic {hlp}}")
+    cli::cli_text("{.strong Option name:} {cli::col_magenta(nm)}")
+    cli::cli_text("{.strong Type:} {cli::col_cyan(tp)}")
+    cli::cli_text("{.strong Default:} {cli::col_green(def)}")
+    cli::cli_text("{.strong Help:} {.emph {hlp}}")
     cli::cli_rule()
     cat("\n")
   }
@@ -609,7 +609,7 @@ fix_user_options_file <- function(
     logger::log_warn("Running in non-interactive mode. The proposed changes will be applied automatically.")
   }
 
-  logger::log_info(glue::glue("Fixing the user options file '{options_file_name}'..."))
+  logger::log_info(cli::format_inline("Fixing the user options file {.path {options_file_name}}..."))
 
   create_user_options_file(
     options_file_name = options_file_name,

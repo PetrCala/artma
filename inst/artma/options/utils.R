@@ -162,7 +162,7 @@ validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
 
   # Helper function for uniform error formatting:
   format_error <- function(opt_name, expected_type, val) {
-    cli::format_inline("Option {cli::col_magenta(opt_name)} must be {.emph {expected_type}}, got: {cli::col_green(val)}")
+    cli::format_inline("Option {cli::col_magenta(opt_name)} must be {cli::col_cyan(expected_type)}, got: {cli::col_green(val)}")
   }
 
   if (is.null(val) || (length(val) == 1 && is.na(val))) {
