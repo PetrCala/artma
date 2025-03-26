@@ -50,12 +50,16 @@ run <- function(
     methods = NULL,
     options_file_name = NULL,
     options_dir = NULL) {
+  main <- function() {
+    box::use(artma / const[CONST])
+
+    results <- invoke_runtime_methods(methods = methods, df = NULL)
+    logger::log_success("Done.")
+  }
+
   runtime_setup( # nolint: box_usage_linter. # Imported on a package-level
     options_file_name = options_file_name,
     options_dir = options_dir,
-    FUN = function() {
-      results <- invoke_runtime_methods(methods = methods, df = NULL)
-      logger::log_success("Done.")
-    }
+    FUN = main
   )
 }
