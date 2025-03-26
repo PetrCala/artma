@@ -7,17 +7,6 @@ CONST <- list(
   PACKAGE_NAME_VERBOSE = PACKAGE_NAME_VERBOSE,
   DATE_FORMAT = "%Y-%m-%d %H:%M:%S",
   DATE_ONLY_FORMAT = "%Y-%m-%d",
-  OPTIONS_VALIDATION_ACTIONS = c(
-    "abort_verbose",
-    "abort_quiet",
-    "return_errors_verbose",
-    "return_errors_quiet"
-  ),
-  OPTIONS_PROMPT_TYPES = list(
-    READLINE = "readline",
-    FILE = "file",
-    DIRECTORY = "directory"
-  ),
   LOG_PATTERN = "^(INFO|WARN|ERROR|DEBUG|FATAL)\\s+\\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\\]\\s*",
   LOG_LEVEL_MAP = list(
     DEBUG = logger::DEBUG,
@@ -25,6 +14,19 @@ CONST <- list(
     WARN  = logger::WARN,
     ERROR = logger::ERROR,
     FATAL = logger::FATAL
+  ),
+  OPTIONS = list(
+    VALIDATION_ACTIONS = c(
+      "abort_verbose",
+      "abort_quiet",
+      "return_errors_verbose",
+      "return_errors_quiet"
+    ),
+    PROMPT_TYPES = list(
+      READLINE = "readline",
+      FILE = "file",
+      DIRECTORY = "directory"
+    )
   ),
   CONFIG_SPECIAL_KEYS = c("description", "details", "type", "optional", "default", "values"),
   REGEX = list(

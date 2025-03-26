@@ -186,8 +186,8 @@ validate_user_options_file <- function(
 
   validate(is.logical(should_flag_redundant))
   assert(
-    failure_action %in% CONST$OPTIONS_VALIDATION_ACTIONS,
-    glue::glue("Invalid failure action specified: {failure_action}. Must be one of: {glue::glue_collapse(CONST$OPTIONS_VALIDATION_ACTIONS, sep = ", ")}")
+    failure_action %in% CONST$OPTIONS$VALIDATION_ACTIONS,
+    glue::glue("Invalid failure action specified: {failure_action}. Must be one of: {glue::glue_collapse(CONST$OPTIONS$VALIDATION_ACTIONS, sep = ", ")}")
   )
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
