@@ -44,7 +44,6 @@ remove_options_with_prefix <- function(prefix) {
   invisible(NULL)
 }
 
-
 #' @title Flat to nested
 #' @description Convert a list of flat options to a nested one
 #' @param flat_option_list [list] A list of flat options

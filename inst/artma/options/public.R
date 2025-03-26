@@ -286,7 +286,7 @@ validate_user_options_file <- function(
 
 
 #' @title Load user options
-#' @description Load user options by their name.
+#' @description Load user options by their name and return them as a list.
 #' @details In case the options name is not passed, the function will attempt to load the current options configuration. If none is found, it will then attempt to load the default options. If that fails too, an error is raised.
 #' @param options_file_name [character, optional] Name of the options to load, including the .yaml suffix. Defaults to NULL.
 #' @param options_dir [character, optional] Path to the folder in which to look for user options files. Defaults to NULL.
@@ -295,15 +295,15 @@ validate_user_options_file <- function(
 #' @param should_validate [logical, optional] Whether the options should be validated after loading. Defaults to TRUE.
 #' @param should_set_to_namespace [logical, optional] Whether the options should be set in the options() namespace. Defaults to TRUE.
 #' @param should_return [logical, optional] Whether the function should return the list of options. Defaults to FALSE.
-#' @return NULL Loads the options into the options() namespace.
+#' @return [list] The loaded options.
 load_user_options <- function(
     options_file_name = NULL,
     options_dir = NULL,
     create_options_if_null = TRUE,
     load_with_prefix = TRUE,
     should_validate = TRUE,
-    should_set_to_namespace = TRUE,
-    should_return = FALSE) {
+    should_set_to_namespace = FALSE,
+    should_return = TRUE) {
   box::use(
     artma / const[CONST],
     artma / paths[PATHS],
@@ -389,7 +389,7 @@ load_user_options <- function(
   logger::log_debug(glue::glue("Loading options from the following user options file: '{options_file_name}'"))
 
   if (should_set_to_namespace) {
-    remove_options_with_prefix(CONST$PACKAGE_NAME)
+    remove_options_with_prefix(CONST$PACKAGE_NAME) # Remove all existing package options
     options(prefixed_options)
   }
 

@@ -52,9 +52,10 @@ run <- function(
     options_dir = NULL) {
   runtime_setup( # nolint: box_usage_linter. # Imported on a package-level
     options_file_name = options_file_name,
-    options_dir = options_dir
+    options_dir = options_dir,
+    FUN = function() {
+      results <- invoke_runtime_methods(methods = methods, df = NULL)
+      logger::log_success("Done.")
+    }
   )
-  results <- invoke_runtime_methods(methods = methods, df = NULL)
-
-  logger::log_success("Done.")
 }

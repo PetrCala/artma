@@ -30,13 +30,14 @@ static_setup <- function() {
 #' @title Runtime Setup
 #'
 #' @description
-#' A function to be called at the beginning of each exported runtime function to ensure crucial fucntionality, such as imports, logging, etc., all work as expected.
+#' A function user as a wrapper for runtime functions invocation to ensure crucial fucntionality, such as imports, logging, etc., all work as expected.
 #'
-#' @param options [character, optional] Name of the user options file to use. Defaults to the default options file name in CONST.
+#' @param FUN [function] The function to be called after the setup.
 #' @param options_file_name [character] Name of the options file to use, including the suffix.
 #' @param options_dir [character, optional] Path to the directory that contains user options. Defaults to the directory specified in PATHS.
 #' @keywords internal
 runtime_setup <- function(
+    FUN,
     options_file_name = NULL,
     options_dir = NULL) {
   static_setup()
@@ -47,8 +48,13 @@ runtime_setup <- function(
     artma / libs / logs / index[setup_logging]
   )
 
-  load_user_options(options_file_name = options_file_name, options_dir = options_dir)
-  setup_logging()
+  withr::with_options(
+    load_user_options(options_file_name = options_file_name, options_dir = options_dir),
+    {
+      setup_logging()
+      FUN()
+    }
+  )
 }
 
 # nolint end: unused_declared_object_linter.
