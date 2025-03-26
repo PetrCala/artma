@@ -302,7 +302,7 @@ load_user_options <- function(
     create_options_if_null = TRUE,
     load_with_prefix = TRUE,
     should_validate = TRUE,
-    should_set_to_namespace = FALSE,
+    should_set_to_namespace = FALSE, # Be careful when setting this to TRUE - consider using withr::with_options instead
     should_return = TRUE) {
   box::use(
     artma / const[CONST],
