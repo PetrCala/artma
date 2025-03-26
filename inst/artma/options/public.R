@@ -457,6 +457,7 @@ options_help <- function(
     options = NULL,
     template_path = NULL) {
   box::use(
+    artma / const[CONST],
     artma / paths[PATHS],
     artma / options / template[flatten_template_options],
     artma / libs / validation[assert, assert_options_template_exists, validate]
@@ -512,9 +513,10 @@ options_help <- function(
     }
     # nolint end: unused_declared_object_linter.
 
-    cli::cli_text("{.strong Option name:} {cli::col_magenta(nm)}")
-    cli::cli_text("{.strong Type:} {cli::col_cyan(tp)}")
-    cli::cli_text("{.strong Default:} {cli::col_yellow(def)}")
+    opt_styles <- CONST$STYLES$OPTIONS # nolint: unused_declared_object_linter.
+    cli::cli_text("{.strong Option name:} {opt_styles$NAME(nm)}")
+    cli::cli_text("{.strong Type:} {opt_styles$TYPE(tp)}")
+    cli::cli_text("{.strong Default:} {opt_styles$DEFAULT(def)}")
     cli::cli_text("{.strong Help:} {.emph {hlp}}")
     cli::cli_rule()
     cat("\n")
