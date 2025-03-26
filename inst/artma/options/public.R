@@ -539,6 +539,7 @@ fix_user_options_file <- function(
     template_path = NULL,
     force_default_overwrites = TRUE) {
   box::use(
+    artma / const[CONST],
     artma / paths[PATHS],
     artma / options / ask[ask_for_existing_options_file_name, ask_for_option_value],
     artma / options / utils[nested_to_flat, parse_options_file_name],
@@ -555,7 +556,7 @@ fix_user_options_file <- function(
 
   expected_path <- file.path(options_dir, options_file_name)
   if (!file.exists(expected_path)) {
-    rlang::abort(glue::glue("The user options file '{options_file_name}' does not exist under path '{expected_path}'."))
+    rlang::abort(cli::format_inline("The user options file {.file {options_file_name}} does not exist under path {.path {expected_path}}."))
   }
 
   errors <- validate_user_options_file(
@@ -566,24 +567,31 @@ fix_user_options_file <- function(
   )
 
   if (length(errors) == 0) {
-    cli::cli_alert_success("No errors found in the user options file '{options_file_name}'.")
+    cli::cli_alert_success("No errors found in the user options file '{.file {options_file_name}}'.")
     return(invisible(NULL))
   }
 
   cli::cli_h1("Fixing User Options File")
-  cli::cli_ul()
-  cli::cli_li("Below are the proposed changes to the user options file. Please review them before proceeding.")
-  cli::cli_li("{.strong Syntax}: {cli::col_magenta('<option_name>')}: {cli::col_green('<old_value>')} -> {cli::col_green('<new_value>')}")
-  cat("\n")
+  cli::cli_text("We have detected errror in the user options file: {.file {options_file_name}}.")
 
   fixed_options <- list()
   proposed_changes <- list()
+  has_printed_missing_message <- FALSE
 
   for (err in errors) {
     opt_def <- err$opt_def
     opt_name <- opt_def$name
     opt_value <- if (is.null(err$value)) "null" else err$value # nolint: unused_declared_object_linter.
     if (is.null(opt_def$default)) {
+      if (!has_printed_missing_message) {
+        cli::cli_h3("Missing Required Options:")
+        cli::cli_ul()
+        cli::cli_li("Some required options are missing and have no default values. Please provide the values for these options.")
+        cli::cli_li("{.strong Syntax}: {CONST$STYLES$OPTIONS$NAME('<option_name>')}: {CONST$STYLES$OPTIONS$VALUE('<old_value>')} -> {CONST$STYLES$OPTIONS$VALUE('<new_value>')}")
+        cli::cli_end()
+        cat("\n")
+        has_printed_missing_message <- TRUE
+      }
       # A required option is missing and has no default value - ask the user for input
       fixed_value <- ask_for_option_value(
         option_name = opt_name,
@@ -600,7 +608,7 @@ fix_user_options_file <- function(
     fixed_options[[opt_name]] <- fixed_value
     proposed_changes <- append(
       proposed_changes,
-      glue::glue("{cli::col_magenta(opt_name)}: {cli::col_green(opt_value)} -> {cli::col_green(fixed_value)}")
+      glue::glue("{CONST$STYLES$OPTIONS$NAME(opt_name)}: {CONST$STYLES$OPTIONS$VALUE(opt_value)} -> {CONST$STYLES$OPTIONS$VALUE(fixed_value)}")
     )
   }
 
@@ -609,6 +617,7 @@ fix_user_options_file <- function(
   for (change in proposed_changes) {
     cli::cli_li(change)
   }
+  cli::cli_end()
 
   cat("\n")
 

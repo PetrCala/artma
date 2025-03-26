@@ -156,18 +156,21 @@ get_expected_type <- function(opt_def) {
 #'   Defaults to FALSE.
 #' @return [character] An error message if the value does not match the expected type, or NULL otherwise.
 validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
-  box::use(artma / libs / validation[validate])
+  box::use(
+    artma / const[CONST],
+    artma / libs / validation[validate]
+  )
 
   validate(is.character(opt_type), is.character(opt_name)) # 'allow_na' can be NULL
 
   # Helper function for uniform error formatting:
   format_error <- function(opt_name, expected_type, val) {
-    cli::format_inline("Option {cli::col_magenta(opt_name)} must be {cli::col_cyan(expected_type)}, got: {cli::col_green(val)}")
+    cli::format_inline("Option {CONST$STYLES$OPTIONS$NAME(opt_name)} must be {CONST$STYLES$OPTIONS$TYPE(expected_type)}, got: {CONST$STYLES$OPTIONS$VALUE(val)}")
   }
 
   if (is.null(val) || (length(val) == 1 && is.na(val))) {
     if (!isTRUE(allow_na)) {
-      return(cli::format_inline("Option {cli::col_magenta(opt_name)} cannot be NULL or NA."))
+      return(cli::format_inline("Option {CONST$STYLES$OPTIONS$NAME(opt_name)} cannot be NULL or NA."))
     } else {
       return(NULL) # NA/NULL is allowed
     }
@@ -179,7 +182,7 @@ validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
     if (!val %in% valid_values) {
       return(
         cli::format_inline(
-          "Option {cli::col_magenta(opt_name)} must be one of {.emph {toString(valid_values)}}; got {.val {val}}."
+          "Option {CONST$STYLES$OPTIONS$NAME(opt_name)} must be one of {.emph {toString(valid_values)}}; got {CONST$STYLES$OPTIONS$VALUE(val)}."
         )
       )
     }

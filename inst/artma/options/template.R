@@ -77,15 +77,17 @@ resolve_fixed_option <- function(opt_name, opt_required, opt_default, user_input
 #' @return [any] The user-provided value or the default value.
 #' @keywords internal
 prompt_user_with_default <- function(opt_name, opt_type, opt_help, opt_default) {
+  box::use(artma / const[CONST])
+
   cli::cli_h1("Provide Option Value")
-  cli::cli_text("{.strong Option name}: {cli::col_magenta(opt_name)}")
-  cli::cli_text("{.strong Type}: {cli::col_cyan(opt_type)}")
+  cli::cli_text("{.strong Option name}: {CONST$STYLES$OPTIONS$NAME(opt_name)}")
+  cli::cli_text("{.strong Type}: {CONST$STYLES$OPTIONS$TYPE(opt_type)}")
 
   if (!is.null(opt_help)) {
     cli::cli_text("{.strong Help}: {.emph {gsub('%default', opt_default, opt_help)}}")
   }
 
-  cli::cli_text("{.strong Default}: {cli::col_yellow(opt_default)}")
+  cli::cli_text("{.strong Default}: {CONST$STYLES$OPTIONS$DEFAULT(opt_default)}")
 
   input_val <- readline(
     prompt = cli::format_inline("Enter value (or press {.code <Enter>} to accept default): ")
@@ -106,9 +108,11 @@ prompt_user_with_default <- function(opt_name, opt_type, opt_help, opt_default) 
 #' @return [any] The user-provided value.
 #' @keywords internal
 prompt_user_required_no_default <- function(opt_name, opt_type, opt_help) { # nolint: object_length_linter.
+  box::use(artma / const[CONST])
+
   cli::cli_h1("Option Value Required")
-  cli::cli_text("{.strong Option name}: {cli::col_magenta(opt_name)}")
-  cli::cli_text("{.strong Type}: {cli::col_cyan(opt_type)}")
+  cli::cli_text("{.strong Option name}: {CONST$STYLES$OPTIONS$NAME(opt_name)}")
+  cli::cli_text("{.strong Type}: {CONST$STYLES$OPTIONS$TYPE(opt_type)}")
 
   if (!is.null(opt_help)) {
     cli::cli_text("{.strong Help}: {.emph {opt_help}}")
@@ -120,7 +124,7 @@ prompt_user_required_no_default <- function(opt_name, opt_type, opt_help) { # no
 
   if (!nzchar(input_val)) {
     stop(cli::format_inline(
-      "Required option {cli::col_magenta(opt_name)} was left blank. Aborting."
+      "Required option {CONST$STYLES$OPTIONS$NAME(opt_name)} was left blank. Aborting."
     ), call. = FALSE)
   }
 

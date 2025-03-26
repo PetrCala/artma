@@ -74,6 +74,7 @@ ask_for_option_value <- function(
     allow_na = FALSE,
     max_retries = 3) {
   box::use(
+    artma / const[CONST],
     artma / options / utils[validate_option_value],
     artma / libs / string[trim_quotes]
   )
@@ -83,16 +84,16 @@ ask_for_option_value <- function(
 
   while (option_value == "" && retries < max_retries) {
     prompt_text <- if (retries == 0) {
-      cli::format_inline("Please provide the value for {cli::col_magenta(option_name)}: ")
+      cli::format_inline("Please provide the value for {CONST$STYLES$OPTIONS$NAME(option_name)}: ")
     } else {
-      cli::format_inline("{cli::col_red(cli::symbol$cross)} Value cannot be empty. Please provide a value for {cli::col_magenta(option_name)}:")
+      cli::format_inline("{cli::col_red(cli::symbol$cross)} Value cannot be empty. Please provide a value for {CONST$STYLES$OPTIONS$NAME(option_name)}:")
     }
     option_value <- readline(prompt_text)
     retries <- retries + 1
   }
 
   if (option_value == "") {
-    cli::cli_alert_danger("Failed to set the value for option {cli::col_magenta(option_name)}.")
+    cli::cli_alert_danger("Failed to set the value for option {CONST$STYLES$OPTIONS$NAME(option_name)}.")
     cat("\n")
     return(NULL)
   }
@@ -119,12 +120,14 @@ ask_for_option_value <- function(
 #' @description Prompt the user to input the names and values of the options they wish to modify. Return a list of the modified options.
 #' @return [list] A list of the modified options.
 ask_for_options_to_modify <- function() {
+  box::use(artma / const[CONST])
+
   cli::cli_h1("Modify Options")
   cli::cli_text("Please provide the names and values of the options you wish to modify.")
 
   cli::cli_h3("Instructions")
   cli::cli_ul(c(
-    "The names should be {.emph separated by dots} and {.strong NOT} prepended by the package name prefix. {.strong Example}: {cli::col_magenta('logging.log_file_name')}",
+    "The names should be {.emph separated by dots} and {.strong NOT} prepended by the package name prefix. {.strong Example}: {CONST$STYLES$OPTIONS$NAME('logging.log_file_name')}",
     "{.strong DO NOT} use quotes for option names.",
     "The values should usually be provided {.emph without quotes}. Use quotes only if the value is a string that contains spaces or special characters.",
     "Press {.kbd Enter} to finish."
@@ -142,7 +145,7 @@ ask_for_options_to_modify <- function() {
       cli::cli_h3("Applying the following options:")
       cli::cli_ul()
       for (opt_name in names(options_list)) {
-        opt_str <- glue::glue("{cli::col_magenta(opt_name)}: {cli::col_green(options_list[[opt_name]])}")
+        opt_str <- glue::glue("{CONST$STYLES$OPTIONS$NAME(opt_name)}: {CONST$STYLES$OPTIONS$VALUE(options_list[[opt_name]])}")
         cli::cli_li(opt_str)
       }
     } else {
@@ -159,7 +162,7 @@ ask_for_options_to_modify <- function() {
     }
 
     if (option_name %in% names(options_list)) {
-      cli::cli_alert_danger("Option already exists: {cli::col_magenta(option_name)}. Choose a different name.")
+      cli::cli_alert_danger("Option already exists: {CONST$STYLES$OPTIONS$NAME(option_name)}. Choose a different name.")
       cat("\n")
       next
     }
@@ -169,7 +172,7 @@ ask_for_options_to_modify <- function() {
     if (is.null(option_value)) next
 
     options_list[[option_name]] <- option_value
-    opt_str <- glue::glue("{cli::col_magenta(option_name)}: {cli::col_green(option_value)}") # nolint: unused_declared_object_linter.
+    opt_str <- glue::glue("{CONST$STYLES$OPTIONS$NAME(option_name)}: {CONST$STYLES$OPTIONS$VALUE(option_value)}") # nolint: unused_declared_object_linter.
     cli::cli_alert_success("Option added: {.emph {opt_str}}")
     cat("\n")
   }
