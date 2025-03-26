@@ -205,7 +205,7 @@ list_user_options_files <- function(options_dir = NULL, should_return_verbose_na
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
 
   if (!dir.exists(options_dir)) {
-    rlang::abort(cli::format_inline("The following options directory does not exist: {.path {options_dir}}"))
+    return(character(0))
   }
 
   options_files <- list.files(

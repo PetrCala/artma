@@ -537,15 +537,24 @@ fix_user_options_file <- function(
     template_path = NULL,
     force_default_overwrites = TRUE) {
   box::use(
+    artma / paths[PATHS],
     artma / options / ask[ask_for_existing_options_file_name, ask_for_option_value],
     artma / options / utils[nested_to_flat, parse_options_file_name],
     artma / libs / validation[validate]
   )
 
+  validate(is.logical(force_default_overwrites))
+
+
   options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to fix: ")
   options_file_name <- parse_options_file_name(options_file_name)
 
-  validate(is.logical(force_default_overwrites))
+  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
+
+  expected_path <- file.path(options_dir, options_file_name)
+  if (!file.exists(expected_path)) {
+    rlang::abort(glue::glue("The user options file '{options_file_name}' does not exist under path '{expected_path}'."))
+  }
 
   errors <- validate_user_options_file(
     options_file_name = options_file_name,

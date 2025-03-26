@@ -23,7 +23,8 @@ DIR_CONFIG <- file.path(PROJECT_ROOT, "config")
 DIR_METHODS <- file.path(PROJECT_ROOT, "methods")
 DIR_OPTIONS <- file.path(PROJECT_ROOT, "options")
 DIR_OPTIONS_TEMPLATES <- file.path(DIR_OPTIONS, "templates")
-DIR_TEMP <- file.path(getwd(), "temp")
+DIR_TEMP <- file.path(getwd(), glue::glue(".{CONST$PACKAGE_NAME}"))
+
 
 #' A list of paths used in the project
 #'

@@ -1,4 +1,5 @@
 # Local
+.artma/*
 data/
 !data/README.md
 resources/**
