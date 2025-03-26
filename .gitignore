@@ -1,10 +1,11 @@
 # Local
 .artma/*
 data/
-!data/README.md
-resources/**
 _cache/
 cache/
+resources/**
+!data/README.md
+!inst/artma/data/
 !R/libs/cache/
 metadata.json
 output/*
