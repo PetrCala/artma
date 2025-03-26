@@ -13,6 +13,7 @@ create_user_options_file <- function(
     artma / options / template[parse_options_from_template],
     artma / options / utils[
       flat_to_nested,
+      nested_to_flat,
       parse_options_file_name
     ],
     artma / libs / file_utils[ensure_folder_existence],
@@ -40,7 +41,14 @@ create_user_options_file <- function(
     cli::format_inline("Invalid options file path: {.path {options_file_path}}")
   )
 
-  if (file.exists(options_file_path)) {
+  parsed_options <- if (!file.exists(options_file_path)) {
+    parse_options_from_template(
+      path         = template_path,
+      user_input   = user_input,
+      interactive  = TRUE,
+      add_prefix   = FALSE
+    )
+  } else {
     file_exists_msg <- cli::format_inline("An options file {.path {options_file_name}} already exists.")
 
     if (isTRUE(should_overwrite)) {
@@ -57,14 +65,9 @@ create_user_options_file <- function(
         stop("Aborting the overwriting of a user options file.")
       }
     }
+    current_options <- nested_to_flat(yaml::read_yaml(options_file_path))
+    utils::modifyList(current_options, user_input)
   }
-
-  parsed_options <- parse_options_from_template(
-    path         = template_path,
-    user_input   = user_input,
-    interactive  = TRUE,
-    add_prefix   = FALSE
-  )
 
   nested_options <- flat_to_nested(parsed_options)
 

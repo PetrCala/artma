@@ -198,7 +198,6 @@ validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
   )
 }
 
-
 #' This is a public package method. For more information, see 'options.R::options.list'.
 list_user_options_files <- function(options_dir = NULL, should_return_verbose_names = FALSE) {
   box::use(

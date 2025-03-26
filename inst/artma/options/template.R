@@ -95,6 +95,7 @@ prompt_user_with_default <- function(opt) {
     prompt = cli::format_inline("Enter value (or press {.code <Enter>} to accept default): ")
   )
 
+
   if (nzchar(input_val)) {
     return(input_val)
   } else {
