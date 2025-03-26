@@ -555,7 +555,7 @@ fix_user_options_file <- function(
   )
 
   if (length(errors) == 0) {
-    cli::cli_alert_info("No errors found in the user options file '{options_file_name}'.")
+    cli::cli_alert_success("No errors found in the user options file '{options_file_name}'.")
     return(invisible(NULL))
   }
 
@@ -563,6 +563,7 @@ fix_user_options_file <- function(
   cli::cli_ul()
   cli::cli_li("Below are the proposed changes to the user options file. Please review them before proceeding.")
   cli::cli_li("{.strong Syntax}: {cli::col_magenta('<option_name>')}: {cli::col_green('<old_value>')} -> {cli::col_green('<new_value>')}")
+  cat("\n")
 
   fixed_options <- list()
   proposed_changes <- list()
