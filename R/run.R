@@ -51,9 +51,9 @@ run <- function(
     options_file_name = NULL,
     options_dir = NULL) {
   main <- function() {
-    box::use(artma / data / index[read_data])
+    box::use(artma / data / index[prepare_data])
 
-    df <- read_data()
+    df <- prepare_data()
     results <- invoke_runtime_methods(methods = methods, df = df)
     logger::log_success("Done.")
   }
