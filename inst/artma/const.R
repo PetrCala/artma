@@ -5,6 +5,10 @@ PACKAGE_NAME_VERBOSE <- "Automatic Replication Tools for Meta-Analysis"
 CONST <- list(
   PACKAGE_NAME = PACKAGE_NAME,
   PACKAGE_NAME_VERBOSE = PACKAGE_NAME_VERBOSE,
+  DATA = list(
+    # A list of recognized data (meaning data frame) types
+    TYPES = c("csv", "tsv", "xlsx", "xls", "xlsm", "json", "dta", "rds")
+  ),
   DATE_FORMAT = "%Y-%m-%d %H:%M:%S",
   DATE_ONLY_FORMAT = "%Y-%m-%d",
   LOG_PATTERN = "^(INFO|WARN|ERROR|DEBUG|FATAL)\\s+\\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\\]\\s*",

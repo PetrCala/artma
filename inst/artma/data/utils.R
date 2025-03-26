@@ -18,11 +18,47 @@ get_number_of_studies <- function(df) {
   return(length(table(df$study)))
 }
 
+#' @description Raise an error for an invalid data type.
+#' @param data_type [str] The invalid data type.
+#' @return [NULL]
+#' @export
+raise_invalid_data_type_error <- function(data_type) {
+  box::use(artma / const[CONST])
+
+  rlang::abort(
+    glue::glue(
+      cli::format_inline("{CONST$PACKAGE_NAME} does not currently support the following data type {.val {data_type}}."),
+      cli::format_inline("Supported data types are {.val {CONST$DATA$TYPES}}."),
+      .sep = "\n"
+    )
+  )
+}
+
+
 #' @title Determine data type
 #' @description Determine a data type based on its path.
 #' @param path [str] The path to the data.
 #' @return [str] The data type
 #' @export
-determine_data_type <- function(path) {
-  return(NULL) # TODO
+determine_data_type <- function(path, should_validate = TRUE) {
+  box::use(
+    artma / const[CONST],
+    artma / libs / validation[validate]
+  )
+
+  validate(is.character(path))
+
+  if (!file.exists(path)) {
+    rlang::abort(cli::format_inline(
+      "Failed to determine a data type for file {.path {path}}. No such file exists."
+    ))
+  }
+
+  file_extension <- tools::file_ext(path)
+
+  if (should_validate && !(file_extension %in% CONST$DATA$TYPES)) {
+    raise_invalid_data_type_error(file_extension)
+  }
+
+  file_extension
 }
