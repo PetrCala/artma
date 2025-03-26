@@ -8,6 +8,7 @@ general:
 data:
   - name: "source_path"
     type: "character"
+    prompt: "file"
     help: "Full path to your dataset source"
 
 #   - name: "data_file"

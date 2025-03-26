@@ -41,25 +41,23 @@ flatten_template_options <- function(x, parent = NULL) {
 
 #' @title Resolve a fixed option
 #' @description Resolve a fixed option, either using a default value or throwing an error if no default is provided.
-#' @param opt_name [character] The name of the option.
-#' @param opt_required [logical(1)] Whether the option is required.
-#' @param opt_default [any] The default value for the option.
+#' @param opt [list] Option definition.
 #' @param user_input [list] A named list of user-provided values.
 #' @return [any] The resolved value for the fixed option.
 #' @keywords internal
-resolve_fixed_option <- function(opt_name, opt_required, opt_default, user_input) {
-  if (!is.null(user_input[[opt_name]])) {
-    if (user_input[[opt_name]] == opt_default) {
-      return(opt_default)
+resolve_fixed_option <- function(opt, user_input) {
+  if (!is.null(user_input[[opt$name]])) {
+    if (user_input[[opt$opt_name]] == opt$default) {
+      return(opt$default)
     }
     # User tried to set a value for a fixed option to a non-default value
     warning(glue::glue(
       "Ignoring user-provided value for fixed option '{opt_name}'."
     ), call. = FALSE)
   }
-  if (!is.null(opt_default)) {
-    return(opt_default)
-  } else if (opt_required) {
+  if (!is.null(opt$default)) {
+    return(opt$default)
+  } else if (is.null(opt_default)) {
     stop(glue::glue(
       "Required option '{opt_name}' is fixed, but no default is provided."
     ), call. = FALSE)
@@ -70,61 +68,84 @@ resolve_fixed_option <- function(opt_name, opt_required, opt_default, user_input
 
 #' @title Prompt user for a value with default
 #' @description Prompt the user for a value, displaying the option name, type, help, and default value.
-#' @param opt_name [character] The name of the option.
-#' @param opt_type [character] The type of the option.
-#' @param opt_help [character] The help text for the option.
-#' @param opt_default [any] The default value for the option.
+#' @param opt [list] Option definition.
 #' @return [any] The user-provided value or the default value.
 #' @keywords internal
-prompt_user_with_default <- function(opt_name, opt_type, opt_help, opt_default) {
-  box::use(artma / const[CONST])
+prompt_user_with_default <- function(opt) {
+  box::use(
+    artma / const[CONST],
+    artma / libs / validation[assert]
+  )
+
+  assert(interactive(), "Running in a non-interactive mode. Cannot prompt for required option.")
 
   cli::cli_h1("Provide Option Value")
-  cli::cli_text("{.strong Option name}: {CONST$STYLES$OPTIONS$NAME(opt_name)}")
-  cli::cli_text("{.strong Type}: {CONST$STYLES$OPTIONS$TYPE(opt_type)}")
+  cli::cli_text("{.strong Option name}: {CONST$STYLES$OPTIONS$NAME(opt$name)}")
+  cli::cli_text("{.strong Type}: {CONST$STYLES$OPTIONS$TYPE(opt$type)}")
 
-  if (!is.null(opt_help)) {
-    cli::cli_text("{.strong Help}: {.emph {gsub('%default', opt_default, opt_help)}}")
+  if (!is.null(opt$help)) {
+    cli::cli_text("{.strong Help}: {.emph {gsub('%default', opt$default, opt$help)}}")
   }
 
-  cli::cli_text("{.strong Default}: {CONST$STYLES$OPTIONS$DEFAULT(opt_default)}")
+  cli::cli_text("{.strong Default}: {CONST$STYLES$OPTIONS$DEFAULT(opt$default)}")
 
   input_val <- readline(
+    # Here we assume that for opts with defaults, there is no need to choose interactively
+    # This includes, for example, selecting folders, file paths, etc.
     prompt = cli::format_inline("Enter value (or press {.code <Enter>} to accept default): ")
   )
 
   if (nzchar(input_val)) {
     return(input_val)
   } else {
-    return(opt_default)
+    return(opt$default)
   }
 }
 
 #' @title Prompt user for a required value with no default
 #' @description Prompt the user for a value, displaying the option name, type, and help.
-#' @param opt_name [character] The name of the option.
-#' @param opt_type [character] The type of the option.
-#' @param opt_help [character] The help text for the option.
+#' @param opt [list] Option definition.
 #' @return [any] The user-provided value.
 #' @keywords internal
-prompt_user_required_no_default <- function(opt_name, opt_type, opt_help) { # nolint: object_length_linter.
-  box::use(artma / const[CONST])
-
-  cli::cli_h1("Option Value Required")
-  cli::cli_text("{.strong Option name}: {CONST$STYLES$OPTIONS$NAME(opt_name)}")
-  cli::cli_text("{.strong Type}: {CONST$STYLES$OPTIONS$TYPE(opt_type)}")
-
-  if (!is.null(opt_help)) {
-    cli::cli_text("{.strong Help}: {.emph {opt_help}}")
-  }
-
-  input_val <- readline(
-    prompt = cli::format_inline("Enter a value for {.strong {opt_name}}: ")
+prompt_user_required_no_default <- function(opt) { # nolint: object_length_linter.
+  box::use(
+    artma / const[CONST],
+    artma / libs / utils[is_empty],
+    artma / libs / validation[assert]
   )
 
-  if (!nzchar(input_val)) {
+  assert(interactive(), "Running in a non-interactive mode. Cannot prompt for required option.")
+
+  cli::cli_h1("Option Value Required")
+  cli::cli_text("{.strong Option name}: {CONST$STYLES$OPTIONS$NAME(opt$name)}")
+  cli::cli_text("{.strong Type}: {CONST$STYLES$OPTIONS$TYPE(opt$type)}")
+
+  if (!is.null(opt$help)) {
+    cli::cli_text("{.strong Help}: {.emph {opt$help}}")
+  }
+
+  prompt_msg <- switch(opt$prompt, # nolint: unused_declared_object_linter.
+    file = cli::format_inline(" (or enter {.emph {'choose'}} to select a file interactively)"),
+    directory = cli::format_inline(" (or enter {.emph {'choose'}} to select a directory interactively)"),
+    NULL = "",
+    rlang::abort(cli::format_inline("Invalid prompt type {.emph {prompt_type}}."))
+  )
+
+  input_val <- readline(
+    prompt = cli::format_inline("Enter a value for {.strong {opt$name}}{prompt_msg}: ")
+  )
+
+  if (input_val == "choose") {
+    input_val <- switch(opt$prompt,
+      file = tcltk::tk_choose.files(default = "", caption = "Select file", multi = FALSE),
+      directory = tcltk::tk_choose.dir(default = getwd(), caption = "Select directory"),
+      rlang::abort(cli::format_inline("Interactive selection is not supported for type {.emph {prompt_type}}."))
+    )
+  }
+
+  if ((!nzchar(input_val) || is_empty(input_val)) && !isTRUE(opt$allow_na)) {
     stop(cli::format_inline(
-      "Required option {CONST$STYLES$OPTIONS$NAME(opt_name)} was left blank. Aborting."
+      "Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} was left blank. Aborting."
     ), call. = FALSE)
   }
 
@@ -144,41 +165,34 @@ resolve_option_value <- function(
     user_input,
     is_interactive = interactive(),
     should_ask_for_default_options = FALSE) {
-  opt_name <- opt$name
-  opt_type <- opt$type
-  opt_help <- opt$help
-  opt_fixed <- isTRUE(opt$fixed)
-  opt_default <- opt$default
-  opt_required <- is.null(opt_default) # or isTRUE(opt$required)
-
-  if (opt_fixed) {
-    return(resolve_fixed_option(opt_name, opt_required, opt_default, user_input))
+  if (isTRUE(opt$fixed)) {
+    return(resolve_fixed_option(opt, user_input))
   }
 
-  if (opt_name %in% names(user_input)) {
+  if (opt$name %in% names(user_input)) {
     # 1) If user explicitly provided a value, just return it
-    return(user_input[[opt_name]])
+    return(user_input[[opt$name]])
   }
 
   # 2) No user value, check default
-  if (!is.null(opt_default)) {
+  if (!is.null(opt$default)) {
     # If interactive, prompt to allow override (optional)
     if (is_interactive && should_ask_for_default_options) {
-      return(prompt_user_with_default(opt_name, opt_type, opt_help, opt_default))
+      return(prompt_user_with_default(opt))
     } else {
       # Non-interactive => silently use default
-      return(opt_default)
+      return(opt$default)
     }
   }
 
   # 3) No user value, no default
-  if (opt_required) {
+  if (is.null(opt$default)) {
     if (!is_interactive) {
       stop(glue::glue(
-        "Required option '{opt_name}' not provided, and no default is available."
+        "Required option '{opt$name}' not provided, and no default is available."
       ), call. = FALSE)
     } else {
-      return(prompt_user_required_no_default(opt_name, opt_type, opt_help))
+      return(prompt_user_required_no_default(opt))
     }
   }
 
@@ -190,25 +204,23 @@ resolve_option_value <- function(
 #' @title Coerce an option value
 #' @description A helper function that attempts to coerce an option value to the correct type. If it fails, it passes the value as is.
 #' @param val [any] The value to validate or coerce.
-#' @param opt_type [character] The expected type of the value.
-#' @param opt_name [character] The name of the option.
-#' @param allow_na [logical] Whether to allow NA values.
+#' @param opt [list] The option definition.
 #' @return [any] The coerced value.
 #' @keywords internal
-coerce_option_value <- function(val, opt_type, opt_name, allow_na) {
+coerce_option_value <- function(val, opt) {
   # If the value is NULL, there's nothing to coerce
   if (is.null(val)) {
     return(val)
   }
 
   # Enumerations, e.g. "enum: red|blue|green", return as is
-  if (startsWith(opt_type, "enum:")) {
+  if (startsWith(opt$type, "enum:")) {
     return(val)
   }
 
   tryCatch(
     {
-      coerced_val <- switch(opt_type,
+      coerced_val <- switch(opt$type,
         character = as.character(val),
         integer = as.integer(val),
         logical = as.logical(val),
@@ -219,7 +231,7 @@ coerce_option_value <- function(val, opt_type, opt_name, allow_na) {
       # In come invalid cases, the coercion will return NA.
       # We re-throw an error and catch it to return the original value.
       # This makes it easier to find the invalid value afterwards.
-      if (is.na(coerced_val) && !isTRUE(allow_na)) {
+      if (is.na(coerced_val) && !isTRUE(opt$allow_na)) {
         stop(glue::glue(
           "Option '{opt_name}' does not allow NA values."
         ), call. = FALSE)
@@ -255,7 +267,7 @@ parse_options_from_template <- function(
   parsed_options <- list()
   for (opt in options_def) {
     val <- resolve_option_value(opt, user_input, interactive())
-    val <- coerce_option_value(val, opt$type, opt$name, opt$allow_na)
+    val <- coerce_option_value(val, opt)
     # We do not validate here, only after all options are parsed
     parsed_options[[opt$name]] <- val
   }

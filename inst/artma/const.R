@@ -13,6 +13,11 @@ CONST <- list(
     "return_errors_verbose",
     "return_errors_quiet"
   ),
+  OPTIONS_PROMPT_TYPES = list(
+    READLINE = "readline",
+    FILE = "file",
+    DIRECTORY = "directory"
+  ),
   LOG_PATTERN = "^(INFO|WARN|ERROR|DEBUG|FATAL)\\s+\\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\\]\\s*",
   LOG_LEVEL_MAP = list(
     DEBUG = logger::DEBUG,

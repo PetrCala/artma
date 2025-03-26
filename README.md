@@ -34,6 +34,7 @@
       - [Examples using the assert function](#examples-using-the-assert-function)
   - [Formatting code](#formatting-code)
   - [Understanding the folder structure](#understanding-the-folder-structure)
+  - [Using the options template](#using-the-options-template)
   - [Using `lintr` for Code Quality](#using-lintr-for-code-quality)
     - [Installation](#installation)
     - [Usage](#usage)
@@ -287,6 +288,21 @@ Depending on your IDE of choice, the setup for using _styler_ may differ, so we 
 This package is structured with most files located in the `inst/artma` folder, following the design principles encouraged by the box package. This setup allows for a modular and clean organization of the package's components. By keeping the R directory focused on exported functions and placing the core logic and internal scripts in the `inst/pkgname folder`, the package leverages box's module-based approach to encapsulate functionality. This structure promotes better code reuse, easier debugging, and improved separation of concerns, aligning with modern software development practices.
 
 During the package installation, the `inst` folder gets bundled too, and becomes thus available fox `box` imports.
+
+## Using the options template
+
+User options are generated in the project from a template file (potentially `options_template.yaml`). This is a nested yaml file, where the end nodes have the following keys:
+
+- **name** (str): Option name.
+- **type** (str): Option type. Must be one of the supported R types (such as `"character"`, `"logical"`,...)
+- **default** (any, optional): Default value for the option.
+- **fixed** (bool, optional): If `true`, this option may not be overwritten by the user in any of the derived user files. Any overwritten fixed options will be reverted to their default upon file validation.
+- **allow_na** (bool, optional): If `true`, this option may be set to `.na`. Otherwise a non-na value will be required when creating the user options file.
+- **prompt** (character, optional): Specifies how a value for this option should be asked for. Accepts the following values:
+  - **"readline"** (default behavior): The user will be prompted through `readline()` with a simple message.
+  - **"file"**: The user will be asked to provide a file path through `tcltk` interactive window.
+  - **"directory"**: The user will be asked to provide a directory path through `tcltk` interactive window.
+- **help** (str, optional): Option help.
 
 ## Using `lintr` for Code Quality
 

@@ -9,6 +9,7 @@ ask_for_options_file_name <- function(should_clean = TRUE, prompt = NULL) {
   if (!interactive()) {
     rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
   }
+
   box::use(artma / options / utils[parse_options_file_name])
 
   prompt <- prompt %||% "Please provide the name for your options file, including the .yaml suffix: "
@@ -35,6 +36,7 @@ ask_for_existing_options_file_name <- function(
   if (!interactive()) {
     rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
   }
+
   box::use(
     artma / libs / utils[is_empty],
     artma / libs / string[pluralize],
@@ -97,7 +99,6 @@ ask_for_option_value <- function(
     cat("\n")
     return(NULL)
   }
-
 
   if (is.character(option_value)) {
     option_value <- stringr::str_trim(option_value, side = "both")
