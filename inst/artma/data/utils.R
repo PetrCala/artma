@@ -50,7 +50,7 @@ determine_data_type <- function(path, should_validate = TRUE) {
 
   if (!file.exists(path)) {
     rlang::abort(cli::format_inline(
-      "Failed to determine a data type for file {.path {path}}. No such file exists."
+      "The specified data file path {.path {path}} is invalid. No such file found."
     ))
   }
 

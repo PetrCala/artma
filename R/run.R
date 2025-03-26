@@ -54,7 +54,7 @@ run <- function(
     box::use(artma / data / index[read_data])
 
     df <- read_data()
-    results <- invoke_runtime_methods(methods = methods, df = NULL)
+    results <- invoke_runtime_methods(methods = methods, df = df)
     logger::log_success("Done.")
   }
 
