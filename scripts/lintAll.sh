@@ -30,11 +30,9 @@ if ! Rscript -e "if (!requireNamespace('lintr', quietly = TRUE)) quit(status = 1
 fi
 
 # Lint all R files in the directory
-LINT_OUTPUT=$(Rscript -e "lintr::lint_dir("")" 2>&1 | tee /dev/tty)
+LINT_OUTPUT=$(Rscript -e "lintr::lint_package()" 2>&1 | tee /dev/tty)
 
-if [[ -n "$LINT_OUTPUT" ]]; then
+if [[ "$LINT_OUTPUT" != *"No lints found"* ]]; then
     error "Linting failed"
     exit 1
 fi
-
-success "Linting successful!"
