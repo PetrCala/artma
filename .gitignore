@@ -27,7 +27,6 @@ man/*
 *.tar.gz
 *.Rproj
 .vscode/
-.Rbuildignore
 ..Rcheck/
 
 # Distribution / packaging

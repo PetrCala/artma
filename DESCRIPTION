@@ -26,6 +26,7 @@ Imports:
 Suggests:
     box.linters,
     knitr,
+    lintr,
     rmarkdown,
     testthat
 VignetteBuilder: 
