@@ -1,6 +1,5 @@
-^.DS_Store$
-^.lintr.R$
-^.github$
+^\.DS_Store$
+^\.lintr\.R$
 ^\.Rproj\.user$
 ^\.Rhistory$
 ^\.RData$
@@ -9,3 +8,4 @@
 ^README.md$
 ^local$
 ^utils$
+^\.github$

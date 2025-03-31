@@ -372,3 +372,11 @@ This setup will ensure that your R files are linted before every commit, helping
 ## Creating a new package version
 
 To create a new version of this package, run `./run.sh bump-version <semver-level>`.
+
+ <!-- badges: start -->
+
+<!-- example workflows https://github.com/r-lib/actions/blob/v2/examples/README.md -->
+
+[![R-CMD-check](https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml)
+
+  <!-- badges: end -->
