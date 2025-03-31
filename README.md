@@ -5,15 +5,15 @@
     <h4>
     Effortlessly bridging the gap between data and models
     </h4>
-</div>
 
-<!-- example workflows https://github.com/r-lib/actions/blob/v2/examples/README.md -->
-
- <!-- badges: start -->
+  <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml)
 
   <!-- badges: end -->
+</div>
+
+<!-- example workflows https://github.com/r-lib/actions/blob/v2/examples/README.md -->
 
 - [For Users](#for-users)
   - [Prerequisites](#prerequisites)
