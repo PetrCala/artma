@@ -1,35 +1,37 @@
-Encoding: UTF-8
-Package: artma
 Type: Package
+Package: artma
 Title: Automatic Replication Tools for Meta-analysis
 Version: 0.1.3
+Authors@R: 
+    person("Petr", "Čala", , "61505008@fsv.cuni.cz", role = c("aut", "cre"))
+Author: Petr Čala [aut, cre]
 Maintainer: Petr Čala <61505008@fsv.cuni.cz>
-Authors@R: c(
-  person("Petr", "Čala", email = "61505008@fsv.cuni.cz", role = c("aut", "cre")))
 Description: Effortlessly bridging the gap between data and models
+License: GPL-3
 URL: https://github.com/PetrCala/artma
 BugReports: https://github.com/PetrCala/artma/issues
-License: GPL-3
-LazyData: true
-SystemRequirements: JAGS >= 4.3.1 (https://mcmc-jags.sourceforge.io/)
 Depends:
-  R (>= 4.0.0)
+    R (>= 4.0.0)
 Imports:
-  box,
-  cli,
-  fs,
-  glue,
-  here,
-  optparse,
-  rlang,
-  tidyverse,
-  withr,
-  yaml
+    box,
+    cli,
+    fs,
+    glue,
+    here,
+    optparse,
+    rlang,
+    tidyverse,
+    withr,
+    yaml
 Suggests:
-  knitr,
-  box.linters,
-  rmarkdown,
-  testthat
-VignetteBuilder: knitr
+    box.linters,
+    knitr,
+    rmarkdown,
+    testthat
+VignetteBuilder: 
+    knitr
+Encoding: UTF-8
+LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
+SystemRequirements: JAGS >= 4.3.1 (https://mcmc-jags.sourceforge.io/)

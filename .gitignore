@@ -28,6 +28,7 @@ man/*
 *.Rproj
 .vscode/
 .Rbuildignore
+..Rcheck/
 
 # Distribution / packaging
 .Python

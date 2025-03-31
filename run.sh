@@ -6,20 +6,21 @@ help() {
 Usage: $0 <command> [args]
   
 Commands:
-  R               Invoke the R run script
-  bump-version    Create a new package version
-  clear-cache     Clear the cache
-  deps            Install all dependencies
-  fix-options      Ensure that all option templates and default distributed files are valid.
-  help            Display this help message
-  lint            Lint all files in the R folder
-  merge           Merge the currently checked out git branch with another one, and push the changes to the remote repository
-  namespace       Generate the NAMESPACE file
-  package         Invoke an R function from this package
-  preview-docs    Open a preview of an exported object's documentation.
-  setup           Setup the environment
-  test            Run all tests
-  test-e2e        Run all end-to-end tests
+  R                Invoke the R run script
+  bump-version     Create a new package version
+  clear-cache      Clear the cache
+  deps             Install all dependencies
+  desc-normalize   Normalize the DESCRIPTION file
+  fix-options       Ensure that all option templates and default distributed files are valid.
+  help             Display this help message
+  lint             Lint all files in the R folder
+  merge            Merge the currently checked out git branch with another one, and push the changes to the remote repository
+  namespace        Generate the NAMESPACE file
+  package          Invoke an R function from this package
+  preview-docs     Open a preview of an exported object's documentation.
+  setup            Setup the environment
+  test             Run all tests
+  test-e2e         Run all end-to-end tests
 EOF
 }
 
@@ -40,6 +41,7 @@ case "$RUN_ARG" in
 bump-version) sh scripts/bumpVersion.sh "$@" ;;
 clear-cache) sh scripts/clearCache.sh "$@" ;;
 deps) Rscript -e "devtools::install_deps(dependencies = TRUE)" ;;
+desc-normalize) Rscript -e "devtools::desc_normalize()" ;;
 fix-options) Rscript -e "source(\"scripts/src/fix_options.R\")" ;;
 lint) sh scripts/lintAll.sh "$@" ;;
 merge) sh scripts/mergeAndPush.sh "$@" ;;
