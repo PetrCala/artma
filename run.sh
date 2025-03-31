@@ -8,7 +8,7 @@ Usage: $0 <command> [args]
 Commands:
   R                Invoke the R run script
   bump-version     Create a new package version
-  check            Check the package with R CMD check
+  check            Check the package with devtools check (wrapped R CMD check)
   clear-cache      Clear the cache
   deps             Install all dependencies
   desc-normalize   Normalize the DESCRIPTION file
@@ -40,7 +40,7 @@ shift
 case "$RUN_ARG" in
 [Rr]) sh scripts/runR.sh "$@" ;;
 bump-version) sh scripts/bumpVersion.sh "$@" ;;
-check) R CMD check --as-cran . "$@" ;;
+check) Rscript -e "devtools::check()" ;;
 clear-cache) sh scripts/clearCache.sh "$@" ;;
 deps) Rscript -e "devtools::install_deps(dependencies = TRUE)" ;;
 desc-normalize) Rscript -e "devtools::desc_normalize()" ;;

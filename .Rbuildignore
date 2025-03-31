@@ -1,4 +1,6 @@
 ^.DS_Store$
+^.lintr.R$
+^.github$
 ^\.Rproj\.user$
 ^\.Rhistory$
 ^\.RData$
