@@ -25,6 +25,7 @@ Imports:
     yaml
 Suggests:
     box.linters,
+    knitr,
     lintr,
     rmarkdown,
     testthat
