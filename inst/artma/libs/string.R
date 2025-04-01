@@ -2,8 +2,8 @@ box::use(artma / libs / validation[validate, assert])
 
 #' Pluralize a word
 #'
-#' @param word [character] The word to pluralize
-#' @return [character] The pluralized word
+#' @param word *\[character\]* The word to pluralize
+#' `character` The pluralized word
 #' @export
 pluralize <- function(word) {
   validate(is.character(word))
@@ -18,9 +18,9 @@ pluralize <- function(word) {
 
 #' Find a string in a vector of strings using a substring
 #'
-#' @param vector_of_strings [character] The vector of strings to search
-#' @param substring [character] The substring to search for
-#' @return [character] The string that contains the substring
+#' @param vector_of_strings *\[character\]* The vector of strings to search
+#' @param substring *\[character\]* The substring to search for
+#' `character` The string that contains the substring
 #' @export
 find_string_using_substring <- function(vector_of_strings, substring) {
   assert(is.character(substring), "The substring must be a character")
@@ -37,15 +37,15 @@ find_string_using_substring <- function(vector_of_strings, substring) {
 
 #' @title Trim quotes
 #' @description Removes single or double quotes from the beggining and end of a string. Preserves these quotes elsewhere in the string.
-#' @param s [character] The string to trim quotes for.
+#' @param s *\[character\]* The string to trim quotes for.
 #' @export
 trim_quotes <- function(s) gsub("^(\"|')+|(\"|')+$", "", s)
 
 
 #' Clean a string by removing special characters and converting to lowercase
 #'
-#' @param input_string [character] The string to clean
-#' @return [character] The cleaned string
+#' @param input_string *\[character\]* The string to clean
+#' `character` The cleaned string
 #' @export
 clean_string <- function(input_string) {
   # Remove special characters

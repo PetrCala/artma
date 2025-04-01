@@ -2,18 +2,20 @@
 #'
 #' @description This function modifies missing values in a data frame based on changes in other columns. If the target column is NA, it is updated with a new value. The new value is a prefix followed by a number that increments each time any of the values in the variable columns changes.
 #'
-#' @param df [data.frame] The input data frame.
-#' @param target_col [character] The column to modify if it is NA.
-#' @param columns [character] A vector of column names to detect changes in.
-#' @param missing_value_prefix [character] The prefix to use for missing values.
+#' @param df *\[data.frame\]* The input data frame.
+#' @param target_col *\[character\]* The column to modify if it is NA.
+#' @param columns *\[character\]* A vector of column names to detect changes in.
+#' @param missing_value_prefix *\[character\]* The prefix to use for missing values.
 #'  The default is "missing value".
-#' @return [data.frame] The modified data frame with updated missing values.
+#' @return *\[data.frame\]* The modified data frame with updated missing values.
 #' @example
+#' \dontrun{
 #' df <- data.frame(
 #'  author = c("A", "A", "B", "B", "C"),
 #'  year = c(2000, 2000, 2000, 2001, 2002),
 #'  study = c("A2000", NA, "B2000", NA, NA)
 #' )
+#' }
 #' new_df <- fill_missing_values(df, "study", c("author", "year"), "Missing study")
 #' @export
 fill_missing_values <- function(df, target_col, columns = NULL, missing_value_prefix = "missing value") {
@@ -62,12 +64,12 @@ fill_missing_values <- function(df, target_col, columns = NULL, missing_value_pr
 #' Fill missing degrees of freedom based on t-values and PCCs
 #'
 #' @note Only use this function for interpolating missing degrees of freedom of PCC-type effects. The formula does not work for other effect types.
-#' @param df [data.frame] The input data frame.
-#' @param replace_existing [logical] Whether to replace existing degrees of freedom. The default is NULL.
-#' @param drop_missing [logical] Whether to drop rows with missing degrees of freedom. The default is NULL.
-#' @param drop_negative [logical] Whether to drop rows with negative degrees of freedom. The default is NULL.
-#' @param drop_zero [logical] Whether to drop rows with zero degrees of freedom. The default is NULL.
-#' @return [data.frame] The modified data frame with updated degrees of freedom.
+#' @param df *\[data.frame\]* The input data frame.
+#' @param replace_existing *\[logical\]* Whether to replace existing degrees of freedom. The default is NULL.
+#' @param drop_missing *\[logical\]* Whether to drop rows with missing degrees of freedom. The default is NULL.
+#' @param drop_negative *\[logical\]* Whether to drop rows with negative degrees of freedom. The default is NULL.
+#' @param drop_zero *\[logical\]* Whether to drop rows with zero degrees of freedom. The default is NULL.
+#' @return *\[data.frame\]* The modified data frame with updated degrees of freedom.
 #' @export
 fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL, drop_negative = NULL, drop_zero = NULL) {
   box::use(dof_calc = artma / calc / dof)

@@ -3,9 +3,9 @@
 #' - Transform ALL columns into the correct data type.
 #'
 #' Check column validity, add winsorized statistics (Effect, SE, t-stat)
-#' @param input_data [data.frame] Main data frame
-#' @param input_var_list [data.frame] Data frame with variable descriptions.
-#' @return [data.frame] The preprocessed data
+#' @param input_data *\[data.frame\]* Main data frame
+#' @param input_var_list *\[data.frame\]* Data frame with variable descriptions.
+#' @return *\[data.frame\]* The preprocessed data
 preprocess_data <- function(input_data, input_var_list) { # nolint: cyclocomp_linter
   box::use(
     artma / libs / validation[validate]

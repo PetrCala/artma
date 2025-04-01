@@ -1,7 +1,7 @@
 #' @description A helper function that searches for a folder from which relative box imports work. It accepts the path to search, as well as a box path of type character.
-#' @param input_path [character] The path to turn into a box importable path.
-#' @param box_path_character [character] A box path provided as a character.
-#' @return [character] A box importable path.
+#' @param input_path *\[character\]* The path to turn into a box importable path.
+#' @param box_path_character *\[character\]* A box path provided as a character.
+#' `character` A box importable path.
 #' @keywords internal
 turn_path_into_box_importable <- function(input_path, box_path_character) {
   if (!is.character(box_path_character)) {
@@ -40,7 +40,7 @@ turn_path_into_box_importable <- function(input_path, box_path_character) {
 
 #' @title Turn path into box import
 #' @description Given a path, turn this into a box import statement that can be evaluated through 'eval'. Return that (unevaluated) statement.
-#' @param path [character] The path to convert into the import statement.
+#' @param path *\[character\]* The path to convert into the import statement.
 #'
 #' @usage
 #' box_import_statement <- turn_path_into_box_import('./some/path')

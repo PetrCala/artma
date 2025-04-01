@@ -3,10 +3,10 @@ box::use(artma / libs / validation[assert, validate])
 
 #' Calculate the PCC variance.
 #'
-#' @param df [data.frame] The data frame upon which to calculate the PCC vairance. Should include the columns 'effect', 'sample_size', 'dof'
-#' @param offset [int] An offset value to subtract from the degrees of freedom
+#' @param df *\[data.frame\]* The data frame upon which to calculate the PCC vairance. Should include the columns 'effect', 'sample_size', 'dof'
+#' @param offset *\[numeric\]* An offset value to subtract from the degrees of freedom
 #'  in case they are missing. Defaults to 0.
-#' @return [vector] A vector of PCC variances.
+#' `vector` A vector of PCC variances.
 #' @export
 pcc_variance <- function(df, offset = 0) {
   assert(sum(is.na(df$dof)) == 0, "Missing DoF values in the PCC data frame")
@@ -21,10 +21,10 @@ pcc_variance <- function(df, offset = 0) {
 
 #' Calculate random effects
 #'
-#' @param df [data.frame] The data frame to calculate the RE with
-#' @param effect [vector] The vector of effects. If not provided, defaults to df$effect.
-#' @param se [vector] The vector of SEs. If not provided, defaults to df$se.
-#' @param method [character] The method to use for the RE calculation. Defaults to "DL". Other common options include "ML" and "REML".
+#' @param df *\[data.frame\]* The data frame to calculate the RE with
+#' @param effect *\[vector\]* The vector of effects. If not provided, defaults to df$effect.
+#' @param se *\[vector\]* The vector of SEs. If not provided, defaults to df$se.
+#' @param method *\[character\]* The method to use for the RE calculation. Defaults to "DL". Other common options include "ML" and "REML".
 #' @export
 re <- function(df, effect = NULL, se = NULL, method = "DL") {
   if (is.null(effect)) effect <- df$effect
@@ -64,10 +64,10 @@ re <- function(df, effect = NULL, se = NULL, method = "DL") {
 #'
 #' @note Here, the statistics upon which the UWLS is calculated are more variable, thus flexibility is provided when defining the input through the 'effect' and 'se' arguments. To see how this can be leveraged, refer, for example, to the 'uwls3' function, or the 'get_chris_meta_flavours' function.
 #'
-#' @param df [data.frame] The data frame on which to run the calculation
-#' @param effect [vector] The vector of effects. If not provided, defaults to df$effect.
-#' @param se [vector] The vector of SEs. If not provided, defaults to df$se.
-#' @return [list] A list with properties "est", "t_value".
+#' @param df *\[data.frame\]* The data frame on which to run the calculation
+#' @param effect *\[vector\]* The vector of effects. If not provided, defaults to df$effect.
+#' @param se *\[vector\]* The vector of SEs. If not provided, defaults to df$se.
+#' `list` A list with properties "est", "t_value".
 #' @export
 uwls <- function(df, effect = NULL, se = NULL) {
   if (is.null(effect)) effect <- df$effect
@@ -100,8 +100,8 @@ uwls <- function(df, effect = NULL, se = NULL) {
 
 #' Calculate UWLS+3
 #'
-#' @param df [data.frame] The data frame to calculate the UWLS+3 with
-#' @return [list] A list with properties "est", "t_value".
+#' @param df *\[data.frame\]* The data frame to calculate the UWLS+3 with
+#' `list` A list with properties "est", "t_value".
 #' @export
 uwls3 <- function(df) {
   meta <- unique(df$meta)
@@ -124,8 +124,8 @@ uwls3 <- function(df) {
 
 #' Calculate the Hunter-Schmidt estimate
 #'
-#' @param df [data.frame] The data frame to calculate the UWLS+3 with
-#' @return [list] A list with properties "est", "t_value".
+#' @param df *\[data.frame\]* The data frame to calculate the UWLS+3 with
+#' `list` A list with properties "est", "t_value".
 #' @export
 hsma <- function(df) {
   meta <- unique(df$meta)

@@ -2,8 +2,8 @@
 #' @description Recursively flatten nested template options into a single list of
 #' option definitions with flattened destination names (e.g., x.y.z).
 #' @param x [list] A list of nested template options.
-#' @param parent [character] The parent path to the current list of options.
-#' @return [list] A list of flattened option definitions.
+#' @param parent *\[character\]* The parent path to the current list of options.
+#' `list` A list of flattened option definitions.
 #' @export
 flatten_template_options <- function(x, parent = NULL) {
   # A helper function to recognize a final option definition.
@@ -43,7 +43,7 @@ flatten_template_options <- function(x, parent = NULL) {
 #' @description Resolve a fixed option, either using a default value or throwing an error if no default is provided.
 #' @param opt [list] Option definition.
 #' @param user_input [list] A named list of user-provided values.
-#' @return [any] The resolved value for the fixed option.
+#' `any` The resolved value for the fixed option.
 #' @keywords internal
 resolve_fixed_option <- function(opt, user_input) {
   if (!is.null(user_input[[opt$name]])) {
@@ -69,7 +69,7 @@ resolve_fixed_option <- function(opt, user_input) {
 #' @title Prompt user for a value with default
 #' @description Prompt the user for a value, displaying the option name, type, help, and default value.
 #' @param opt [list] Option definition.
-#' @return [any] The user-provided value or the default value.
+#' `any` The user-provided value or the default value.
 #' @keywords internal
 prompt_user_with_default <- function(opt) {
   box::use(
@@ -106,7 +106,7 @@ prompt_user_with_default <- function(opt) {
 #' @title Prompt user for a required value with no default
 #' @description Prompt the user for a value, displaying the option name, type, and help.
 #' @param opt [list] Option definition.
-#' @return [any] The user-provided value.
+#' `any` The user-provided value.
 #' @keywords internal
 prompt_user_required_no_default <- function(opt) { # nolint: object_length_linter.
   box::use(
@@ -159,7 +159,7 @@ prompt_user_required_no_default <- function(opt) { # nolint: object_length_linte
 #' @param user_input [list] A named list of user-provided values.
 #' @param is_interactive [logical(1)] Whether to prompt the user for missing/required values.
 #' @param should_ask_for_default_options [logical(1)] Whether to prompt the user for options that have a default value. Defaults to FALSE.
-#' @return [any] The resolved value for the option.
+#' `any` The resolved value for the option.
 #' @keywords internal
 resolve_option_value <- function(
     opt,
@@ -206,7 +206,7 @@ resolve_option_value <- function(
 #' @description A helper function that attempts to coerce an option value to the correct type. If it fails, it passes the value as is.
 #' @param val [any] The value to validate or coerce.
 #' @param opt [list] The option definition.
-#' @return [any] The coerced value.
+#' `any` The coerced value.
 #' @keywords internal
 coerce_option_value <- function(val, opt) {
   # If the value is NULL, there's nothing to coerce
@@ -245,11 +245,11 @@ coerce_option_value <- function(val, opt) {
 
 #' @title Parse options from a template
 #' @description Parse options from a YAML template file, with optional user input.
-#' @param path [character] Full path to the YAML file containing the options.
+#' @param path *\[character\]* Full path to the YAML file containing the options.
 #' @param user_input [list or NULL] A named list of user-supplied values for these options. If `NULL` or missing entries exist, the function will prompt the user via `readline()` (for required entries) or use defaults (for optional ones).
 #' @param interactive [logical(1)] Whether to prompt the user (via `readline()`) for missing/required values.  Defaults to `TRUE`.
 #' @param add_prefix [logical(1)] Whether to add a package prefix to all. Defaults to FALSE.
-#' #' @return [list] A list of options
+#' #' `list` A list of options
 parse_options_from_template <- function(
     path,
     user_input = list(),

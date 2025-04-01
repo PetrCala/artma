@@ -9,13 +9,14 @@
 #'   (e.g. \code{substitute(is.character(obj_name))}).
 #' @param env The environment to evaluate in. By default uses the parent frame.
 #'
-#' @return A character string containing a descriptive, user-friendly error
-#'   message.
+#' @return *\[character(1)]* A message indicating the expected type and the actual value.
 #'
 #' @examples
+#' |dontrun{
 #' parse_condition(quote(is.character(my_var)))
 #' parse_condition(quote(is.logical(x)))
 #' parse_condition(quote(is.something_else(obj)))
+#' }
 #'
 #' @keywords internal
 parse_condition <- function(cond_expr, env = parent.frame()) {
@@ -75,7 +76,9 @@ parse_condition <- function(cond_expr, env = parent.frame()) {
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' validate(1 == 1, 2 == 2, is.function(print))
+#' }
 #'
 #' # Will abort with a descriptive error and backtrace:
 #' # validate(is.character(1))
@@ -115,9 +118,9 @@ validate <- function(...) {
 
 #' Check that a data frame contains specific columns
 #'
-#' @param df [data.frame] The data frame to check
-#' @param columns [vector, character] A set of columns to check
-#' @return NULL Checks that the columns exist in the data frame
+#' @param df *\[data.frame\]* The data frame to check
+#' @param columns *\[vector, character\]* A set of columns to check
+#' @return `NULL`. Checks that the columns exist in the data frame
 #' @example
 #' validate_columns(df, c("effect", "se"))
 #' @export
@@ -137,8 +140,8 @@ validate_columns <- function(df, columns) {
 #' @title Validate value type
 #' @description A helper function that checks if a value matches the expected type. Returns TRUE if it does, and FALSE otherwise.
 #' @param value [any] The value to check
-#' @param expected_type [character] The expected type.
-#'  [logical] TRUE if the value matches the expected type, FALSE otherwise.
+#' @param expected_type *\[character\]* The expected type.
+#'  *\[logical\]* TRUE if the value matches the expected type, FALSE otherwise.
 #' @export
 validate_value_type <- function(value, expected_type) {
   switch(expected_type,
@@ -157,10 +160,10 @@ validate_value_type <- function(value, expected_type) {
 #' the function aborts with an appropriate error message including the failed
 #' condition and a backtrace.
 #'
-#' @param condition_to_validate [logical] The condition to validate.
+#' @param condition_to_validate *\[logical\]* The condition to validate.
 #' @param error_message [character(1), optional] The error message to display if the condition is FALSE.
 #'
-#' @return NULL. The function is called for its side effects.
+#' @return `NULL`. The function is called for its side effects.
 #' @export
 assert <- function(condition_to_validate, error_message = NULL) {
   if (is.null(error_message)) {
@@ -175,7 +178,7 @@ assert <- function(condition_to_validate, error_message = NULL) {
 }
 
 #' Check that an options template file exists under a given path. If it does not, raise an error.
-#' @param path [character] The path under which the file should exist.
+#' @param path *\[character\]* The path under which the file should exist.
 #' @export
 assert_options_template_exists <- function(path) {
   if (!file.exists(path)) {
@@ -190,8 +193,8 @@ assert_options_template_exists <- function(path) {
 #' Check if x is a vector and either empty or all characters
 #'
 #' @param x [any] The object to check
-#' @param throw_error [logical] Whether to throw an error if the check fails
-#' @return boolean indicating whether or not x is a character vector or empty
+#' @param throw_error *\[logical\]* Whether to throw an error if the check fails
+#' @return *\[boolean\]* A boolean indicating whether or not x is a character vector or empty
 #' @export
 is_char_vector_or_empty <- function(x, throw_error = FALSE) {
   is_empty <- is.vector(x) && (length(x) == 0 || is.character(x))

@@ -1,7 +1,7 @@
 #' @title Read data
 #' @description Read data from a path. Returns a data frame.
 #' @param path [str] The path to the data source. If NULL, the options data source path is used.
-#' @return [data.frame] The data frame.
+#' @return *\[data.frame\]* The data frame.
 #' @export
 read_data <- function(path = NULL) {
   box::use(

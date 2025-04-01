@@ -2,9 +2,9 @@
 
 #' @title Ask for options file name
 #' @description Ask the user to input a name of an options file. Clean the user's input and return it as a string.
-#' @param should_clean [logical, optional] Whether to clean the input string. Defaults to TRUE
-#' @param prompt [character, optional] The prompt to use. Defaults to a generic prompt.
-#' @return [character] The options file name.
+#' @param should_clean *\[logical, optional\]* Whether to clean the input string. Defaults to TRUE
+#' @param prompt *\[character, optional\]* The prompt to use. Defaults to a generic prompt.
+#' `character` The options file name.
 ask_for_options_file_name <- function(should_clean = TRUE, prompt = NULL) {
   if (!interactive()) {
     rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
@@ -25,10 +25,10 @@ ask_for_options_file_name <- function(should_clean = TRUE, prompt = NULL) {
 
 #' @title Ask for an existing options file name
 #' @description Prompt the user to select from an existing list of user options files. Return the name of the selected file as a character.
-#' @param options_dir [character, optional] Name of the directory to list the files from. Defaults to NULL.
-#' @param prompt [character, optional] The prompt to use when asking for the user options file name. Defaults to NULL.
-#' @param multiple [logical, optional] Whether to allow the selction of multiple values. Defaults to FALSE.
-#' @return [character] Name of the selected file.
+#' @param options_dir *\[character, optional\]* Name of the directory to list the files from. Defaults to `NULL`.
+#' @param prompt *\[character, optional\]* The prompt to use when asking for the user options file name. Defaults to `NULL`.
+#' @param multiple *\[logical, optional\]* Whether to allow the selction of multiple values. Defaults to FALSE.
+#' `character` Name of the selected file.
 ask_for_existing_options_file_name <- function(
     options_dir = NULL,
     prompt = NULL,
@@ -65,11 +65,11 @@ ask_for_existing_options_file_name <- function(
 
 #' @title Ask for an option value
 #' @description Prompt the user to input a value for an option. Validate the input and return the value.
-#' @param option_name [character] The name of the option.
-#' @param option_type [character, optional] The type of the option. Defaults to NULL.
-#' @param allow_na [logical, optional] Whether to allow NA values. Defaults to FALSE.
-#' @param max_retries [integer, optional] The maximum number of retries to ask for the option value. Defaults to 3.
-#' @return [any] The value of the option.
+#' @param option_name *\[character\]* The name of the option.
+#' @param option_type *\[character, optional\]* The type of the option. Defaults to `NULL`.
+#' @param allow_na *\[logical, optional\]* Whether to allow NA values. Defaults to FALSE.
+#' @param max_retries *\[integer, optional\]* The maximum number of retries to ask for the option value. Defaults to 3.
+#' `any` The value of the option.
 ask_for_option_value <- function(
     option_name,
     option_type = NULL,
@@ -119,7 +119,7 @@ ask_for_option_value <- function(
 
 #' @title Ask for options to modify
 #' @description Prompt the user to input the names and values of the options they wish to modify. Return a list of the modified options.
-#' @return [list] A list of the modified options.
+#' `list` A list of the modified options.
 ask_for_options_to_modify <- function() {
   box::use(artma / const[CONST])
 

@@ -33,8 +33,8 @@ static_setup <- function() {
 #' A function user as a wrapper for runtime functions invocation to ensure crucial fucntionality, such as imports, logging, etc., all work as expected.
 #'
 #' @param FUN [function] The function to be called after the setup.
-#' @param options_file_name [character] Name of the options file to use, including the suffix.
-#' @param options_dir [character, optional] Path to the directory that contains user options. Defaults to the directory specified in PATHS.
+#' @param options_file_name *\[character\]* Name of the options file to use, including the suffix.
+#' @param options_dir *\[character, optional\]* Path to the directory that contains user options. Defaults to the directory specified in PATHS.
 #' @keywords internal
 runtime_setup <- function(
     FUN,

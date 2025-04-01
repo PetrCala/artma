@@ -288,14 +288,14 @@ validate_user_options_file <- function(
 #' @title Load user options
 #' @description Load user options by their name and return them as a list.
 #' @details In case the options name is not passed, the function will attempt to load the current options configuration. If none is found, it will then attempt to load the default options. If that fails too, an error is raised.
-#' @param options_file_name [character, optional] Name of the options to load, including the .yaml suffix. Defaults to NULL.
-#' @param options_dir [character, optional] Path to the folder in which to look for user options files. Defaults to NULL.
-#' @param create_options_if_null [logical, optional] If set to TRUE and the options file name is set to NULL, the function will prompt the user to create a new options file. Defaults to TRUE.
-#' @param load_with_prefix [logical, optional] Whether the options should be loaded with the package prefix. Defaults to TRUE.
-#' @param should_validate [logical, optional] Whether the options should be validated after loading. Defaults to TRUE.
-#' @param should_set_to_namespace [logical, optional] Whether the options should be set in the options() namespace. Defaults to TRUE.
-#' @param should_return [logical, optional] Whether the function should return the list of options. Defaults to FALSE.
-#' @return [list] The loaded options.
+#' @param options_file_name *\[character, optional\]* Name of the options to load, including the .yaml suffix. Defaults to `NULL`.
+#' @param options_dir *\[character, optional\]* Path to the folder in which to look for user options files. Defaults to `NULL`.
+#' @param create_options_if_null *\[logical, optional\]* If set to TRUE and the options file name is set to NULL, the function will prompt the user to create a new options file. Defaults to TRUE.
+#' @param load_with_prefix *\[logical, optional\]* Whether the options should be loaded with the package prefix. Defaults to TRUE.
+#' @param should_validate *\[logical, optional\]* Whether the options should be validated after loading. Defaults to TRUE.
+#' @param should_set_to_namespace *\[logical, optional\]* Whether the options should be set in the options() namespace. Defaults to TRUE.
+#' @param should_return *\[logical, optional\]* Whether the function should return the list of options. Defaults to FALSE.
+#' `list` The loaded options.
 load_user_options <- function(
     options_file_name = NULL,
     options_dir = NULL,
@@ -531,11 +531,11 @@ options_help <- function(
 #' @title Fix user options file
 #' @description Fix a user options file by setting the default values for missing options.
 #' @details The function will attempt to load the user options file and validate it. If any errors are found, the function will attempt to fix them by setting the default values for the missing options.
-#' @param options_file_name [character, optional] Name of the options file to fix, including the .yaml suffix. Defaults to NULL.
-#' @param options_dir [character, optional] Path to the folder in which to look for user options files. Defaults to NULL.
-#' @param template_path [character, optional] Path to the options template file. Defaults to NULL.
-#' @param force_default_overwrites [logical, optional] If set to TRUE, the function will overwrite the existing options file with the default values. Defaults to TRUE.
-#' @return NULL Fixes the user options file.
+#' @param options_file_name *\[character, optional\]* Name of the options file to fix, including the .yaml suffix. Defaults to `NULL`.
+#' @param options_dir *\[character, optional\]* Path to the folder in which to look for user options files. Defaults to `NULL`.
+#' @param template_path *\[character, optional\]* Path to the options template file. Defaults to `NULL`.
+#' @param force_default_overwrites *\[logical, optional\]* If set to TRUE, the function will overwrite the existing options file with the default values. Defaults to TRUE.
+#' @return `NULL` Fixes the user options file.
 fix_user_options_file <- function(
     options_file_name = NULL,
     options_dir = NULL,

@@ -4,7 +4,7 @@ box::use(
 
 #' @title Prepare data
 #' @description Prepare data for analysis. This includes reading, preprocessing, cleaning, and validating the data.
-#' @return [data.frame] The prepared data frame.
+#' @return *\[data.frame\]* The prepared data frame.
 prepare_data <- function() {
   logger::log_info("Preparing data for analysis.")
 

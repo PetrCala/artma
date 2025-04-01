@@ -64,9 +64,9 @@ install_and_check <- function(pkg, version = NA, verbose = TRUE) {
 #'
 #' Include a progress bar to track the loading process.
 #'
-#' @param package_list [character] A character vector of package names.
-#' @param msg [character] An optional message to display before loading the packages.
-#' @param native [logical] A flag indicating whether to install the packages in an R-native way. This approach is less transparent, but requires no external packages.
+#' @param package_list *\[character\]* A character vector of package names.
+#' @param msg *\[character\]* An optional message to display before loading the packages.
+#' @param native *\[logical\]* A flag indicating whether to install the packages in an R-native way. This approach is less transparent, but requires no external packages.
 #' @return A message indicating that all packages were loaded successfully or an error message if the process fails.
 #' @export
 load_packages <- function(package_list, msg = NULL, native = FALSE) {

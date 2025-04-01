@@ -7,8 +7,8 @@ box::use(
 
 #' Check that a data frame contains all the expected columns
 #'
-#' @param df [data.frame] The data frame to check
-#' @param expected_cols [character] The list of expected column names
+#' @param df *\[data.frame\]* The data frame to check
+#' @param expected_cols *\[character\]* The list of expected column names
 #' @example
 #' check_for_missing_cols(df, c("Effect", "Standard Error", "Lower CI", "Upper CI"))
 #' # Throws an error if any of the columns are missing
@@ -75,11 +75,11 @@ clean_names <- function(df) {
 
 #' Clean a data frame for analysis
 #'
-#' @param df [data.frame] The data frame to clean
-#' @param analysis_name [character] The name of the analysis
-#' @param clean_names [logical] Whether to clean the names of the studies and files. Defaults to TRUE
-#' @param recalculate_t_value [logical] Whether to recalculate the t-value based on the effect and se columns. Defaults to TRUE
-#' @param fill_dof [logical] Whether to fill missing degrees of freedom using the PCC method. Defaults to TRUE
+#' @param df *\[data.frame\]* The data frame to clean
+#' @param analysis_name *\[character\]* The name of the analysis
+#' @param clean_names *\[logical\]* Whether to clean the names of the studies and files. Defaults to TRUE
+#' @param recalculate_t_value *\[logical\]* Whether to recalculate the t-value based on the effect and se columns. Defaults to TRUE
+#' @param fill_dof *\[logical\]* Whether to fill missing degrees of freedom using the PCC method. Defaults to TRUE
 clean_data <- function(
     df,
     analysis_name,

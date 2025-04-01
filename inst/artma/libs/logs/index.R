@@ -5,8 +5,8 @@ box::use(
 
 #' Get the path to the logger file
 #'
-#' @param logger_name [character] The name of the logger
-#' @return [character] The path to the logger file
+#' @param logger_name *\[character\]* The name of the logger
+#' `character` The path to the logger file
 #' @export
 get_logger_path <- function(logger_name) {
   box::use(
@@ -21,7 +21,7 @@ get_logger_path <- function(logger_name) {
 
 #' Flush all log files in the logs directory
 #'
-#' @param logger_name [character] The name of the logger to flush, if only one should be flushed.
+#' @param logger_name *\[character\]* The name of the logger to flush, if only one should be flushed.
 #' @export
 flush_log_files <- function(logger_name = NULL) {
   for (file in list.files(PATHS$DIR_LOGS)) {
@@ -70,7 +70,7 @@ setup_logging <- function() {
 
 #' Teardown the logger and remove the log file
 #'
-#' @param logger_name [character] The name of the logger to teardown
+#' @param logger_name *\[character\]* The name of the logger to teardown
 #' @export
 teardown_logger_file <- function(logger_name) {
   flush_log_files(logger_name = logger_name)

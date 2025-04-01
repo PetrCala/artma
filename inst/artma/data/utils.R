@@ -7,9 +7,9 @@ assign_na_col <- function(df, colname) {
 
 #' Get the number of studies in an analysis data frame.
 #'
-#' @param df [data.frame] The analysis data frame.
+#' @param df *\[data.frame\]* The analysis data frame.
 #' @param study_colname [str] The column name holding names of all studies.
-#' @return [int] The number of studies.
+#' `int` The number of studies.
 #' @export
 get_number_of_studies <- function(df) {
   if (!"study" %in% colnames(df)) {
@@ -20,7 +20,7 @@ get_number_of_studies <- function(df) {
 
 #' @description Raise an error for an invalid data type.
 #' @param data_type [str] The invalid data type.
-#' @return [NULL]
+#' @return `NULL`
 #' @export
 raise_invalid_data_type_error <- function(data_type) {
   box::use(artma / const[CONST])
@@ -38,7 +38,7 @@ raise_invalid_data_type_error <- function(data_type) {
 #' @title Determine data type
 #' @description Determine a data type based on its path.
 #' @param path [str] The path to the data.
-#' @return [str] The data type
+#' `str` The data type
 #' @export
 determine_data_type <- function(path, should_validate = TRUE) {
   box::use(

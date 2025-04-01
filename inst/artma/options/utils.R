@@ -9,6 +9,7 @@
 #'               The prefix should match the hierarchical group (e.g., `x.y`).
 #' @return A named list of options under the specified prefix, with the prefix removed from the names.
 #' @examples
+#' \dontrun{
 #' options(x.y.z = "value1", x.y.a = "value2", x.b = "value3")
 #' get_option_group("x.y")
 #' # Returns:
@@ -16,6 +17,7 @@
 #' # [1] "value1"
 #' # $a
 #' # [1] "value2"
+#' }
 get_option_group <- function(prefix) {
   options <- options()
   group_keys <- grep(paste0("^", prefix, "\\."), names(options), value = TRUE)
@@ -26,7 +28,7 @@ get_option_group <- function(prefix) {
 #' @title Remove Options by Prefix
 #' @description This function removes all options from the R namespace whose names start with a specified prefix.
 #' @param prefix A string representing the prefix of the options to remove.
-#' @return [NULL]
+#' @return `NULL`
 remove_options_with_prefix <- function(prefix) {
   opts <- options()
   opts_to_remove <- names(opts)[startsWith(names(opts), prefix)]
@@ -78,8 +80,8 @@ flat_to_nested <- function(flat_option_list) {
 #' @title Nested to flat
 #' @description Convert a list of nested options to a flat one
 #' @param nested [list] A list of nested options
-#' @param parent_key [character, optional] Parent key for the nested options. Defaults to NULL.
-#' @param sep [character, optional] Separator to use when concatenating the level names. Defaulst to '.'.
+#' @param parent_key *\[character, optional\]* Parent key for the nested options. Defaults to `NULL`.
+#' @param sep *\[character, optional\]* Separator to use when concatenating the level names. Defaulst to '.'.
 nested_to_flat <- function(nested, parent_key = NULL, sep = ".") {
   if (!is.list(nested)) {
     rlang::abort("The options must be passed as a nested list.")
@@ -149,11 +151,11 @@ get_expected_type <- function(opt_def) {
 #' @description A helper function that checks if a value matches the expected type.
 #'   Returns an error message if it does not.
 #' @param val [any] The value to validate.
-#' @param opt_type [character] The expected type of the value.
-#' @param opt_name [character] The name of the option.
-#' @param allow_na [logical] Whether the value is allowed to be NA or NULL.
+#' @param opt_type *\[character\]* The expected type of the value.
+#' @param opt_name *\[character\]* The name of the option.
+#' @param allow_na *\[logical\]* Whether the value is allowed to be NA or NULL.
 #'   Defaults to FALSE.
-#' @return [character] An error message if the value does not match the expected type, or NULL otherwise.
+#' `character` An error message if the value does not match the expected type, or NULL otherwise.
 validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
   box::use(
     artma / const[CONST],

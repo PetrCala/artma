@@ -7,7 +7,7 @@ box::use(
 #'
 #' @param t_value [numeric] The t-value(s) to use for the calculation.
 #' @param pcc [numeric] The partial correlation coefficient(s) to use for the calculation.
-#' @return [numeric] The calculated degrees of freedom.
+#' `numeric` The calculated degrees of freedom.
 #' @export
 calculate_dof <- function(t_value, pcc) {
   assert(length(t_value) != length(pcc), "The length of 't_value' and 'pcc' must be the same.")

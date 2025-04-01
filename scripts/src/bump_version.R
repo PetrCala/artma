@@ -11,9 +11,9 @@ get_current_version <- function(pkg.repo) {
 }
 
 #' Given a semver string and a semver level, bump that string to the new semver level and return the modified string
-#' @param current_version [character] The current version, given as a semver string.
-#' @param semver_level [character] The new semver level.
-#' @return [character] The new version
+#' @param current_version *\[character\]* The current version, given as a semver string.
+#' @param semver_level *\[character\]* The new semver level.
+#' `character` The new version
 #' @keywords internal
 generate_new_version <- function(current_version, semver_level) {
   old <- as.numeric(unlist(strsplit(current_version, ".", fixed = TRUE)))
@@ -37,7 +37,7 @@ generate_new_version <- function(current_version, semver_level) {
 #'   to be bumped.
 #' @param pkg.repo Path to package repository folder. Default is current working
 #'   directory, i.e. `"."`.
-#' @return [character] The new version as a semver string
+#' `character` The new version as a semver string
 #'
 #' @seealso
 #' \url{https://semver.org/}

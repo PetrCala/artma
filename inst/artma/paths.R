@@ -3,7 +3,7 @@ box::use(
 )
 
 
-#' @return The path to the folder where the main 'artma' folder is located. In case the package is installed, the path to the package folder is returned. In case the package is in development mode, the path to the 'inst' folder is returned instead.
+#' @return *\[character\]* The path to the folder where the main 'artma' folder is located. In case the package is installed, the path to the package folder is returned. In case the package is in development mode, the path to the 'inst' folder is returned instead.
 #' @export
 get_pkg_path <- function() {
   package_name <- CONST$PACKAGE_NAME

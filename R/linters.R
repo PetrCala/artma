@@ -7,6 +7,7 @@
 #' Instead, consider alternative approaches for managing directories.
 #'
 #' @examples
+#' \dontrun{
 #' # will produce lints
 #' lint(
 #'   text = 'dir.create("path/to/dir")',
@@ -23,7 +24,7 @@
 #'   text = 'if (!dir.exists("path/to/dir")) { fs::dir_create("path/to/dir") }',
 #'   linters = dir_create_linter()
 #' )
-#'
+#' }
 #' @seealso [linters] for a complete list of linters available in lintr.
 #' @keywords internal
 dir_create_linter <- lintr::make_linter_from_xpath(

@@ -1,8 +1,8 @@
 #' Create a folder in the working directory if it does not exist yet
 #'
-#' @param folder_name [character] Name of the folder. Specify in the format
+#' @param folder_name *\[character\]* Name of the folder. Specify in the format
 #' "./<name_of_the_folder>/
-#' @param require_existence [logical] Only check the existence of the folder.
+#' @param require_existence *\[logical\]* Only check the existence of the folder.
 #'  Raise an error in case the folder does not exist.
 #' @export
 ensure_folder_existence <- function(folder_name, require_existence = FALSE) {
@@ -22,7 +22,7 @@ ensure_folder_existence <- function(folder_name, require_existence = FALSE) {
 #' of the main script, and validate that all are indeed present.
 #' Print out a status message after the validation.
 #'
-#' @param files[vector] A vector of strings.
+#' @param files*\[vector\]* A vector of strings.
 #' @export
 validate_files <- function(files) {
   for (file in files) {
@@ -44,8 +44,8 @@ validate_files <- function(files) {
 #' Create a text file in the specified path with the given message list
 #'
 #' @param msg_list [list] A list of messages to write to the file
-#' @param full_path [character] The full path to the file to create
-#' @return [NULL] The function writes the file and does not return anything
+#' @param full_path *\[character\]* The full path to the file to create
+#' @return `NULL` The function writes the file and does not return anything
 #' @export
 write_txt_file <- function(msg_list, full_path) {
   box::use(

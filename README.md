@@ -55,6 +55,8 @@ Status](https://www.r-pkg.org/badges/version/artma)](https://cran.r-project.org/
     - [Installation](#installation)
     - [Usage](#usage)
     - [Set up box paths](#set-up-box-paths)
+  - [Docstrings and documentation](#docstrings-and-documentation)
+    - [Annotating function argument types](#annotating-function-argument-types)
   - [Creating a new package version](#creating-a-new-package-version)
   - [Code of Conduct](#code-of-conduct)
 
@@ -363,6 +365,16 @@ To do so, put the following into your `.Rprofile`:
 ```.Rprofile
 # ~/.Rprofile
 option(box.path="<path-to-the-artma-package>/inst")
+```
+
+## Docstrings and documentation
+
+### Annotating function argument types
+
+To denote the expected type of a function argument, use the following syntax in the function docstring:
+
+```R
+#' @param some_arg *\[character, optional\]* This argument does the following. Defaults to `NULL`.
 ```
 
 ## Creating a new package version

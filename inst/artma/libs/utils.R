@@ -2,7 +2,7 @@
 #' Return a boolean to indicate this.
 #'
 #' @param obj [any] The object to evaluate
-#' @return [logical] TRUE if the object is a function call, FALSE otherwise
+#' `logical` TRUE if the object is a function call, FALSE otherwise
 #' @export
 is_function_call <- function(obj) {
   if (is.call(obj)) {
@@ -47,7 +47,7 @@ is_empty <- function(obj) {
 #' Convert a number to a percentage
 #'
 #' @param x [numeric] The number to convert
-#' @return [character] The number as a percentage
+#' `character` The number as a percentage
 #' @export
 to_perc <- function(x) paste0(round(x * 100, 2), "%")
 
@@ -56,7 +56,7 @@ to_perc <- function(x) paste0(round(x * 100, 2), "%")
 #' @description A version of lapply that disassigns items from a list in case their value is NULL. In case the result is empty, return NULL.
 #' @param x A list
 #' @param FUN A function
-#' @return A list
+#' @return *\[list\]* A list of the same length as x, with the same names. The values are the result of applying FUN to each element of x. If FUN returns NULL for an element, that element is removed from the list.
 #' @export
 nullable_lapply <- function(x, FUN) {
   box::use(

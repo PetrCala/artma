@@ -1,8 +1,8 @@
 #' @title Crawl and import modules
 #' @description Provided a path to a directory, crawl this directory for .R files and import all of them as box modules. Each such module will be imported under its name.
 #' @details Assume you have a file 'my_custom_module.R' in a directory you want to import. Running this function on that directory loads a module named 'my_custom_module' into memory through box. Consequently, calls su
-#' @param dir_path [character] Path to the directory to crawl.
-#' @return [list] A list of box modules, accessible by their name.
+#' @param dir_path *\[character\]* Path to the directory to crawl.
+#' `list` A list of box modules, accessible by their name.
 #'
 #' @usage
 #' # Assume you have a 'my_custom_module.R' inside the following directory
@@ -50,7 +50,7 @@ crawl_and_import_modules <- function(dir_path) {
 #' @title Validate runtime method modules
 #' @description Given a list of modules, validate that all of the components of this list are valid runtime method modules. This means ensuring they are proper module objects, contain the 'run' function, etc. Raise an error if any of these validations fail.
 #' @param modules [list[box.module]] A list of modules to validate.
-#' @return [NULL] Validates the object structure
+#' @return `NULL` Validates the object structure
 validate_runtime_method_modules <- function(modules) { # nolint: object_length_linter.
   if (!is.list(modules)) {
     obj_class <- class(modules)
