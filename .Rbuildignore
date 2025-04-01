@@ -5,8 +5,9 @@
 ^\.RData$
 ^\.\.Rcheck$
 ^\.artma$
+^\.github$
+^\.covrignore$
 ^README\.md$
 ^local$
 ^utils$
-^\.github$
-^\.covrignore$
+^scripts$
