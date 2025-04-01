@@ -17,7 +17,6 @@ turn_path_into_box_importable <- function(input_path, box_path_character) {
 
   path_parts <- vector(mode = "character", length = 0)
 
-  browser()
   i <- tools::file_path_as_absolute(input_path)
   i <- tools::file_path_sans_ext(i) # Strip the .R extension
 
