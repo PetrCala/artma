@@ -8,16 +8,16 @@ turn_path_into_box_importable <- function(input_path, box_path_character) {
     rlang::abort(glue::glue("The box path must be passed as a character: {box_path_character}"))
   }
 
-  browser()
   box::use(artma / const[CONST])
 
-  if (grepl(glue::glue("{CONST$PACKAGE_NAME}$"), box_path_character)) {
+  if (!grepl(glue::glue("{CONST$PACKAGE_NAME}$"), box_path_character)) {
     logger::log_debug(glue::glue("The box path {box_path_character} does not end in the package name. Skipping this path..."))
     return(NULL)
   }
 
   path_parts <- vector(mode = "character", length = 0)
 
+  browser()
   i <- tools::file_path_as_absolute(input_path)
   i <- tools::file_path_sans_ext(i) # Strip the .R extension
 
