@@ -5,7 +5,7 @@
 ^\.RData$
 ^\.\.Rcheck$
 ^\.artma$
-^README.md$
+^README\.md$
 ^local$
 ^utils$
 ^\.github$
