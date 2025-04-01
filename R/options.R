@@ -103,14 +103,14 @@ options.modify <- function(...) {
 
 #' @title Options Help
 #' @description
-#' Prints information for each requested option (or all options if \code{options} is \code{NULL}).
+#' Prints information for each requested option (or all options if `options` is `NULL`).
 #'
-#' @param options [character|NULL] A single option name (dot-separated) or a
-#'   character vector thereof. If \code{NULL}, prints **all** options from
+#' @param options *\[character, optional\]* A single option name (dot-separated) or a
+#'   character vector thereof. If `NULL`, prints **all** options from
 #'   the template.
-#' @param template_path [character|NULL] Path to the template YAML file.
+#' @param template_path *\[character, optional\]* Path to the template YAML file.
 #'   Defaults to \code{PATHS$FILE_OPTIONS_TEMPLATE}.
-#' @return Invisibly returns \code{NULL}, printing the requested information
+#' @return Invisibly returns `NULL`, printing the requested information
 #'   to the console.
 #' @export
 options.help <- function(...) {

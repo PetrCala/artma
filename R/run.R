@@ -1,6 +1,6 @@
 #' @title Invoke methods
 #' @description Pass a vector of runtime methods to invoke, together with a data frame to invoke these methods on, and invoke them.
-#' @param method *\[character\]* A character vector of the methods to invoke. Can be NULL.
+#' @param method *\[character\]* A character vector of the methods to invoke.
 #' @param df *\[data.frame\]* The data frame to invoke the methods on.
 #' `list` Results of the invocations, indexed by method names.
 #'
@@ -48,6 +48,12 @@ invoke_runtime_methods <- function(methods, df, ...) {
   results
 }
 
+#' @title Run ARTMA
+#' @description Run ARTMA with the specified methods and options.
+#' @param methods *\[character, optional\]* A character vector of the methods to invoke. Defaults to NULL.
+#' @param options_file_name *\[character, optional\]* The name of the options file to use. Defaults to NULL.
+#' @param options_dir *\[character, optional\]* The directory containing the options file. Defaults to NULL.
+#' @return *\[list\]* Results of the invocations, indexed by method names.
 #' @export
 run <- function(
     methods = NULL,
