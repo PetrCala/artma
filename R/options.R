@@ -1,14 +1,15 @@
 static_setup() # nolint: box_usage_linter.
 
-box::use(opts = artma / options / index)
-
 #' @title List available user options
 #' @description Retrieves the list of the existing options files and returns their names as a character vector. By default, this retrieves the names of the files including the yaml suffix, but can be modified to retrieve options verbose names instead.
 #' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
 #' @param should_return_verbose_names [logical, optional] If set to TRUE, the custom names of each of the options files are read and returned instead of file names. Defaults to FALSE.
 #' @return [vector, character] A character vector with the names of the options available.
 #' @export
-options.list <- function(...) opts$list_user_options_files(...)
+options.list <- function(...) {
+  box::use(opts = artma / options / index)
+  opts$list_user_options_files(...)
+}
 
 #' @title Create user options
 #' @description Create a new user options file from an options template.
@@ -21,7 +22,10 @@ options.list <- function(...) opts$list_user_options_files(...)
 #' @param action_name [character, optional] A name for the action being performed. This is used for logging purposes. Defaults to "create".
 #' @return [character] Name of the newly created user options file as a character.
 #' @export
-options.create <- function(...) opts$create_user_options_file(...)
+options.create <- function(...) {
+  box::use(opts = artma / options / index)
+  opts$create_user_options_file(...)
+}
 
 #' @title Print default user options directory
 #' @description Prints the full path to the directory where user options are stored by default
@@ -40,7 +44,10 @@ options.print_default_dir <- function(...) { # nolint: object_name_linter.
 #' @param options_dir [character, optional] Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to NULL.
 #' @return [NULL]
 #' @export
-options.copy <- function(...) opts$copy_user_options_file(...)
+options.copy <- function(...) {
+  box::use(opts = artma / options / index)
+  opts$copy_user_options_file(...)
+}
 
 #' @title Delete user options
 #' @description Provide a name of a user options file to delete, and delete that file.
@@ -49,7 +56,10 @@ options.copy <- function(...) opts$copy_user_options_file(...)
 #' @param skip_confirmation [boolean, optional] If passed as TRUE, the user will not be prompted for deletion confirmation. Defaults to FALSE.
 #' @return [NULL]
 #' @export
-options.delete <- function(...) opts$delete_user_options_file(...)
+options.delete <- function(...) {
+  box::use(opts = artma / options / index)
+  opts$delete_user_options_file(...)
+}
 
 #' Validate a user options file against an options template.
 #'
@@ -69,7 +79,10 @@ options.delete <- function(...) opts$delete_user_options_file(...)
 #' @param verbose [logical, optional] If TRUE, print additional information about the validation process. Defaults to TRUE.
 #' @return [list] Invisibly returns a list of error messages (empty if no errors).
 #' @export
-options.validate <- function(...) opts$validate_user_options_file(...)
+options.validate <- function(...) {
+  box::use(opts = artma / options / index)
+  opts$validate_user_options_file(...)
+}
 
 # Inspect an existing user options file
 # options.inspect
@@ -83,7 +96,10 @@ options.validate <- function(...) opts$validate_user_options_file(...)
 #' @param user_input [list, optional] A named list of user-supplied values for these options. If `NULL` or missing entries exist, the function will prompt the user via `readline()` (for required entries) or use defaults (for optional ones).
 #' @param should_validate [logical, optional] If TRUE, validate the modified options file against the template. Defaults to TRUE.
 #' @export
-options.modify <- function(...) opts$modify_user_options_file(...)
+options.modify <- function(...) {
+  box::use(opts = artma / options / index)
+  opts$modify_user_options_file(...)
+}
 
 #' @title Options Help
 #' @description
@@ -97,7 +113,10 @@ options.modify <- function(...) opts$modify_user_options_file(...)
 #' @return Invisibly returns \code{NULL}, printing the requested information
 #'   to the console.
 #' @export
-options.help <- function(...) opts$options_help(...)
+options.help <- function(...) {
+  box::use(opts = artma / options / index)
+  opts$options_help(...)
+}
 
 #' @title Fix user options file
 #' @description Fix an existing user options file by replacing the values of the options with new ones.
@@ -107,7 +126,10 @@ options.help <- function(...) opts$options_help(...)
 #' @param force_default_overwrites [logical, optional] If TRUE, overwrite invalid option values with the default values from the template. Defaults to FALSE.
 #' @return [NULL]
 #' @export
-options.fix <- function(...) opts$fix_user_options_file(...)
+options.fix <- function(...) {
+  box::use(opts = artma / options / index)
+  opts$fix_user_options_file(...)
+}
 
 # Copy an existing folder of options into another place
 # options.migrate

@@ -14,6 +14,7 @@ invoke_runtime_methods <- function(methods, df, ...) {
     artma / libs / utils[is_empty]
   )
 
+  RUNTIME_METHOD_MODULES <- get_runtime_method_modules() # nolint: box_usage_linter.
   supported_methods <- names(RUNTIME_METHOD_MODULES)
 
   if (is.null(methods)) {
