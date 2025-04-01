@@ -42,16 +42,14 @@ runtime_setup <- function(
     options_dir = NULL) {
   static_setup()
   box::use(
-    artma / const[CONST],
-    artma / paths[PATHS],
-    artma / options / index[load_user_options],
-    artma / libs / logs / index[setup_logging]
+    opts = artma / options / index,
+    logs = artma / libs / logs / index
   )
 
   withr::with_options(
-    load_user_options(options_file_name = options_file_name, options_dir = options_dir),
+    opts$load_user_options(options_file_name = options_file_name, options_dir = options_dir),
     {
-      setup_logging()
+      logs$setup_logging()
       FUN()
     }
   )
