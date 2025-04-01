@@ -1,0 +1,9 @@
+general:
+  artma_version: 0.1.3
+data:
+  source_path: abc
+logging:
+  log_file_name: artma.log
+  log_level: INFO
+  log_to_console: yes
+  flush_logs_on_setup: no
