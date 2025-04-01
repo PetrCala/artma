@@ -7,6 +7,7 @@ Usage: $0 <command> [args]
   
 Commands:
   R                 Invoke the R run script
+  build-ignore      Add files to the package build ignore list
   bump-version      Create a new package version
   check             Check the package with devtools check (wrapped R CMD check)
   check-no-install  Check the package without installing it
@@ -41,6 +42,7 @@ shift
 # Main switch-case to handle commands
 case "$RUN_ARG" in
 [Rr]) sh scripts/runR.sh "$@" ;;
+build-ignore) Rscript -e "usethis::use_build_ignore('$@')" ;;
 bump-version) sh scripts/bumpVersion.sh "$@" ;;
 check) Rscript -e "devtools::check()" ;;
 check-no-install) Rscript -e "devtools::check(args = c('--no-install'))" ;;
