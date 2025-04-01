@@ -11,14 +11,10 @@ ensure_valid_boxpath <- function() {
   current_box_path <- getOption("box.path", character(0))
   pkg_box_path <- find.package("artma")
   dev_box_path <- file.path(pkg_box_path, "inst") # For local development
-  print("Running static setup")
 
   if (!any(grepl("artma$", current_box_path))) { # should end with 'artma'
-    print("Adding artma to box.path")
     # Make the package available to the box options
     options(box.path = unique(c(current_box_path, pkg_box_path, dev_box_path)))
-    print("box path:")
-    print(getOption("box.path"))
   }
 }
 
@@ -30,6 +26,8 @@ ensure_valid_boxpath <- function() {
 static_setup <- function() {
   ensure_valid_boxpath()
 }
+
+static_setup()
 
 #' @title Runtime Setup
 #'
@@ -54,9 +52,6 @@ runtime_setup <- function(
   withr::with_options(
     options.load(options_file_name = options_file_name, options_dir = options_dir),
     {
-      print("Running runtime setup")
-      print("box path:")
-      print(getOption("box.path"))
       logs$setup_logging()
       FUN()
     }

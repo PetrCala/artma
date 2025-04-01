@@ -1,7 +1,5 @@
 #' @keywords internal
 get_runtime_method_modules <- function() {
-  static_setup() # nolint: box_usage_linter. # Imported on a package-level
-
   box::use(
     artma / paths[PATHS],
     artma / libs / modules[crawl_and_import_modules, validate_runtime_method_modules]
@@ -17,8 +15,6 @@ get_runtime_method_modules <- function() {
 #' @description Print all runtime methods supported by ARTMA into the console.
 #' @export
 methods.list <- function() {
-  static_setup() # nolint: box_usage_linter. # Imported on a package-level
-
   box::use(artma / const[CONST])
 
   RUNTIME_METHOD_MODULES <- get_runtime_method_modules()
