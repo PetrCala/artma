@@ -12,3 +12,4 @@
 ^utils$
 ^scripts$
 ^run\.sh$
+^codecov\.yml$
