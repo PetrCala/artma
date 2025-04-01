@@ -56,6 +56,7 @@ Status](https://www.r-pkg.org/badges/version/artma)](https://cran.r-project.org/
     - [Usage](#usage)
     - [Set up box paths](#set-up-box-paths)
   - [Creating a new package version](#creating-a-new-package-version)
+  - [Code of Conduct](#code-of-conduct)
 
 # For Users
 
@@ -367,3 +368,7 @@ option(box.path="<path-to-the-artma-package>/inst")
 ## Creating a new package version
 
 To create a new version of this package, run `./run.sh bump-version <semver-level>`.
+
+## Code of Conduct
+
+Please note that the artma project is released with a [Contributor Code of Conduct](https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html). By contributing to this project, you agree to abide by its terms.
