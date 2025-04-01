@@ -15,5 +15,6 @@ PACKAGES <- c(
   "pbapply", # Package installation
   "remotes", # Pacakge installation
   "rstudioapi", # RStudio communication
-  "tidyverse" # Package installation
+  "tidyverse", # Package installation
+  "usethis" # Package development
 )
