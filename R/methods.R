@@ -21,6 +21,6 @@ methods.list <- function() {
 
   RUNTIME_METHOD_MODULES <- get_runtime_method_modules()
 
-  cli::cli_text(paste("As of the current version,", CONST$PACKAGE_NAME, "supports the following runtime methods:"))
+  cli::cli_text(cli::format_inline(("{CONST$PACKAGE_NAME} ({packageVersion(CONST$PACKAGE_NAME)}) supports the following runtime methods:")))
   cli::cli_ul(names(RUNTIME_METHOD_MODULES))
 }
