@@ -16,7 +16,6 @@
 #' my_custom_module$another_method()
 #' modules$my_custom_module$some_method()
 crawl_and_import_modules <- function(dir_path) {
-  browser()
   if (!dir.exists(dir_path)) {
     rlang::abort(glue::glue("Non-existent directory when importing modules: {dir_path}"))
   }

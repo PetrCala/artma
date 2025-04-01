@@ -7,6 +7,8 @@ turn_path_into_box_importable <- function(input_path, box_path_character) {
   if (!is.character(box_path_character)) {
     rlang::abort(glue::glue("The box path must be passed as a character: {box_path_character}"))
   }
+
+  browser()
   box::use(artma / const[CONST])
 
   if (grepl(glue::glue("{CONST$PACKAGE_NAME}$"), box_path_character)) {
