@@ -15,6 +15,8 @@ get_runtime_method_modules <- function() {
 #' @description Print all runtime methods supported by ARTMA into the console.
 #' @export
 methods.list <- function() {
+  static_setup() # nolint: box_usage_linter.
+
   box::use(artma / const[CONST])
 
   RUNTIME_METHOD_MODULES <- get_runtime_method_modules()
