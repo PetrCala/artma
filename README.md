@@ -8,12 +8,20 @@
 
   <!-- badges: start -->
 
-[![R-CMD-check](https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml)
+[![R build status](https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml)
+[![Lifecycle](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html)
+[![Test coverage](https://codecov.io/gh/PetrCala/artma/graph/badge.svg)](https://app.codecov.io/gh/PetrCala/artma)
+[![Version](https://img.shields.io/github/r-package/v/PetrCala/artma)](https://github.com/PetrCala/artma)
 
   <!-- badges: end -->
-</div>
+
+<!-- To use CRAN version, once published -->
+<!-- [![CRAN
+Status](https://www.r-pkg.org/badges/version/artma)](https://cran.r-project.org/package=artma) -->
 
 <!-- example workflows https://github.com/r-lib/actions/blob/v2/examples/README.md -->
+
+</div>
 
 - [For Users](#for-users)
   - [Prerequisites](#prerequisites)
