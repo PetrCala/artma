@@ -9,3 +9,4 @@
 ^local$
 ^utils$
 ^\.github$
+^\.covrignore$

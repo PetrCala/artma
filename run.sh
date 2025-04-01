@@ -9,6 +9,7 @@ Commands:
   R                Invoke the R run script
   bump-version     Create a new package version
   check            Check the package with devtools check (wrapped R CMD check)
+  coverage         Run the coverage report
   clear-cache      Clear the cache
   deps             Install all dependencies
   desc-normalize   Normalize the DESCRIPTION file
@@ -42,6 +43,7 @@ case "$RUN_ARG" in
 bump-version) sh scripts/bumpVersion.sh "$@" ;;
 check) Rscript -e "devtools::check()" ;;
 clear-cache) sh scripts/clearCache.sh "$@" ;;
+coverage) Rscript -e "covr::package_coverage()" ;;
 deps) Rscript -e "devtools::install_deps(dependencies = TRUE)" ;;
 desc-normalize) Rscript -e "devtools::desc_normalize()" ;;
 fix-options) Rscript -e "source(\"scripts/src/fix_options.R\")" ;;

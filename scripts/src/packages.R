@@ -5,6 +5,7 @@
 PACKAGES <- c(
   "box", # Package and module handling
   "box.linters", # Box linting
+  "covr", # Code coverage
   "devtools", # Package development
   "here", # Correct project document pathing
   "jsonlite", # VSCode interactive terminal
