@@ -55,7 +55,6 @@ Status](https://www.r-pkg.org/badges/version/artma)](https://cran.r-project.org/
     - [Installation](#installation)
     - [Usage](#usage)
     - [Set up box paths](#set-up-box-paths)
-    - [Automate Linting (Optional)](#automate-linting-optional)
   - [Creating a new package version](#creating-a-new-package-version)
 
 # For Users
@@ -364,26 +363,6 @@ To do so, put the following into your `.Rprofile`:
 # ~/.Rprofile
 option(box.path="<path-to-the-artma-package>/inst")
 ```
-
-### Automate Linting (Optional)
-
-You can automate linting using Git pre-commit hooks with the `precommit` package. First, install `precommit`:
-
-```r
-install.packages("precommit")
-precommit::use_precommit()
-```
-
-Edit the `.pre-commit-config.yaml` file to include `lintr`:
-
-```yaml
-- repo: https://github.com/jimhester/lintr
-  rev: v3.0.0 # Replace with the latest version
-  hooks:
-    - id: lintr
-```
-
-This setup will ensure that your R files are linted before every commit, helping you maintain consistent code quality.
 
 ## Creating a new package version
 
