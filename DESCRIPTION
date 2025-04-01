@@ -17,6 +17,7 @@ Imports:
     fs,
     glue,
     here,
+    lifecycle,
     lintr,
     logger,
     optparse,
