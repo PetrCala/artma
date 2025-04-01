@@ -1,8 +1,9 @@
 #' @title Invoke methods
 #' @description Pass a vector of runtime methods to invoke, together with a data frame to invoke these methods on, and invoke them.
-#' @param method *\[character\]* A character vector of the methods to invoke.
+#' @param methods *\[character\]* A character vector of the methods to invoke.
 #' @param df *\[data.frame\]* The data frame to invoke the methods on.
 #' `list` Results of the invocations, indexed by method names.
+#' @param ... *\[any\]* Additional arguments to pass to the methods.
 #'
 #' @examples
 #' \dontrun{

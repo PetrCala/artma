@@ -199,51 +199,10 @@ validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
   )
 }
 
-#' This is a public package method. For more information, see 'options.R::options.list'.
-list_user_options_files <- function(options_dir = NULL, should_return_verbose_names = FALSE) {
-  box::use(
-    artma / paths[PATHS],
-    artma / const[CONST]
-  )
-  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
-
-  if (!dir.exists(options_dir)) {
-    return(character(0))
-  }
-
-  options_files <- list.files(
-    path = options_dir,
-    pattern = CONST$REGEX$OPTIONS_FILE_SUFFIX,
-    # If we are not going to read the file, full names are unnecessary
-    full.names = should_return_verbose_names
-  )
-
-  options_names <- vector(mode = "character")
-  for (file_name in options_files) {
-    options_name <- if (should_return_verbose_names) {
-      tryCatch(
-        {
-          logger::log_debug(cli::format_inline("Reading the options file {.path {file_name}}"))
-          options_name <- yaml::read_yaml(file_name)$general$name
-        },
-        error = function(cond) {
-          logger::log_warn(cli::format_inline("Failed to read the following options file: {.path {file}}"))
-        }
-      )
-    } else {
-      file_name
-    }
-    options_names <- append(options_names, options_name)
-  }
-  return(options_names)
-}
-
-
 box::export(
   flat_to_nested,
   get_expected_type,
   get_option_group,
-  list_user_options_files,
   nested_to_flat,
   parse_options_file_name,
   remove_options_with_prefix,

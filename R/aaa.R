@@ -1,4 +1,4 @@
-# nolint start: unused_declared_object_linter.
+# nolint start: unused_declared_object_linter, box_usage_linter.
 
 #' @title Ensure valid box path
 #'
@@ -41,13 +41,14 @@ runtime_setup <- function(
     options_file_name = NULL,
     options_dir = NULL) {
   static_setup()
+
   box::use(
-    opts = artma / options / index,
+    artma,
     logs = artma / libs / logs / index
   )
 
   withr::with_options(
-    opts$load_user_options(options_file_name = options_file_name, options_dir = options_dir),
+    artma$options.load(options_file_name = options_file_name, options_dir = options_dir),
     {
       logs$setup_logging()
       FUN()
@@ -55,4 +56,4 @@ runtime_setup <- function(
   )
 }
 
-# nolint end: unused_declared_object_linter.
+# nolint end: unused_declared_object_linter, box_usage_linter.

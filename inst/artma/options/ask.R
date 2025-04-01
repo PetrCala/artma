@@ -38,16 +38,16 @@ ask_for_existing_options_file_name <- function(
   }
 
   box::use(
+    artma[options.list],
     artma / libs / utils[is_empty],
-    artma / libs / string[pluralize],
-    artma / options / utils[list_user_options_files],
+    artma / libs / string[pluralize]
   )
 
   file_str <- if (isTRUE(multiple)) pluralize("name") else "name" # nolint: unused_declared_object_linter.
 
   prompt <- prompt %||% glue::glue("Please select the user options file {file_str} you would like to use.")
 
-  user_options_file_names <- list_user_options_files(options_dir = options_dir)
+  user_options_file_names <- options.list(options_dir = options_dir) # nolint: box_usage_linter.
   if (length(user_options_file_names) == 0) {
     stop("No existing user options files were found. Aborting...")
   }
