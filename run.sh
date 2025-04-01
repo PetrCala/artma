@@ -6,23 +6,24 @@ help() {
 Usage: $0 <command> [args]
   
 Commands:
-  R                Invoke the R run script
-  bump-version     Create a new package version
-  check            Check the package with devtools check (wrapped R CMD check)
-  coverage         Run the coverage report
-  clear-cache      Clear the cache
-  deps             Install all dependencies
-  desc-normalize   Normalize the DESCRIPTION file
-  fix-options       Ensure that all option templates and default distributed files are valid.
-  help             Display this help message
-  lint             Lint all files in the R folder
-  merge            Merge the currently checked out git branch with another one, and push the changes to the remote repository
-  namespace        Generate the NAMESPACE file
-  package          Invoke an R function from this package
-  preview-docs     Open a preview of an exported object's documentation.
-  setup            Setup the environment
-  test             Run all tests
-  test-e2e         Run all end-to-end tests
+  R                 Invoke the R run script
+  bump-version      Create a new package version
+  check             Check the package with devtools check (wrapped R CMD check)
+  check-no-install  Check the package without installing it
+  coverage          Run the coverage report
+  clear-cache       Clear the cache
+  deps              Install all dependencies
+  desc-normalize    Normalize the DESCRIPTION file
+  fix-options        Ensure that all option templates and default distributed files are valid.
+  help              Display this help message
+  lint              Lint all files in the R folder
+  merge             Merge the currently checked out git branch with another one, and push the changes to the remote repository
+  namespace         Generate the NAMESPACE file
+  package           Invoke an R function from this package
+  preview-docs      Open a preview of an exported object's documentation.
+  setup             Setup the environment
+  test              Run all tests
+  test-e2e          Run all end-to-end tests
 EOF
 }
 
@@ -42,6 +43,7 @@ case "$RUN_ARG" in
 [Rr]) sh scripts/runR.sh "$@" ;;
 bump-version) sh scripts/bumpVersion.sh "$@" ;;
 check) Rscript -e "devtools::check()" ;;
+check-no-install) Rscript -e "devtools::check(args = c('--no-install'))" ;;
 clear-cache) sh scripts/clearCache.sh "$@" ;;
 coverage) Rscript -e "covr::package_coverage()" ;;
 deps) Rscript -e "devtools::install_deps(dependencies = TRUE)" ;;
