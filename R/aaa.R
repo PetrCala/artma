@@ -27,6 +27,7 @@ static_setup <- function() {
   ensure_valid_boxpath()
 }
 
+# Ensure the box path is always set up correctly
 static_setup()
 
 #' @title Runtime Setup
