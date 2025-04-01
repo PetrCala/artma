@@ -18,6 +18,8 @@ Imports:
     fs,
     glue,
     here,
+    lintr,
+    logger,
     optparse,
     rlang,
     tidyverse,
@@ -26,7 +28,6 @@ Imports:
 Suggests:
     box.linters,
     knitr,
-    lintr,
     rmarkdown,
     testthat
 VignetteBuilder: 
