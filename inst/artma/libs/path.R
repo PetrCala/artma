@@ -1,18 +1,18 @@
-#' @description A helper function that searches for a folder from which relative box imports work. It accepts the path to search, as well as a box path of type character.
+#' @description A helper function that searches for a folder from which relative box imports work. It accepts the path to search.
 #' @param input_path *\[character\]* The path to turn into a box importable path.
-#' @param box_path_character *\[character\]* A box path provided as a character.
-#' `character` A box importable path.
 #' @keywords internal
-turn_path_into_box_importable <- function(input_path, box_path_character) {
-  if (!is.character(box_path_character)) {
-    rlang::abort(glue::glue("The box path must be passed as a character: {box_path_character}"))
+turn_path_into_box_importable <- function(input_path) {
+  box::use(
+    artma / const[CONST],
+    artma / libs / utils[is_empty]
+  )
+
+  if (!is.character(input_path) || is_empty(input_path)) {
+    rlang::abort(cli::format_inline("Invalid path: {.path {input_path}}"))
   }
 
-  box::use(artma / const[CONST])
-
-  if (!grepl(glue::glue("{CONST$PACKAGE_NAME}$"), box_path_character)) {
-    logger::log_debug(glue::glue("The box path {box_path_character} does not end in the package name. Skipping this path..."))
-    return(NULL)
+  if (!file.exists(input_path)) {
+    rlang::abort(cli::format_inline("File does not exist under path: {.path {input_path}}"))
   }
 
   path_parts <- vector(mode = "character", length = 0)
@@ -21,7 +21,7 @@ turn_path_into_box_importable <- function(input_path, box_path_character) {
   i <- tools::file_path_sans_ext(i) # Strip the .R extension
 
   while (i != ".") {
-    if (i == box_path_character) {
+    if (grepl(glue::glue("{CONST$PACKAGE_NAME}$"), i)) {
       break
     }
     removed_part <- Reduce(setdiff, strsplit(c(i, dirname(i)), split = "/", fixed = TRUE))
@@ -50,27 +50,12 @@ turn_path_into_box_importable <- function(input_path, box_path_character) {
 turn_path_into_box_import <- function(path) {
   box::use(artma / libs / utils[is_empty])
 
-  box_path <- getOption("box.path", character(0))
-
   if (!is.character(path) || is_empty(path)) {
     rlang::abort(glue::glue("Invalid path: {path}"))
   }
-  if (is_empty(box_path)) {
-    rlang::abort(glue::glue("Invalid box path: {box_path}"))
-  }
 
   # The box path can be a character, or a vector thereof
-  importable_box_path <- NULL
-  if (is.vector(box_path)) {
-    i <- 0
-    while (is.null(importable_box_path) && i < length(box_path)) {
-      box_path_to_search <- box_path[i + 1] # 1-indexing
-      importable_box_path <- turn_path_into_box_importable(path, box_path_to_search)
-      i <- i + 1
-    }
-  } else {
-    importable_box_path <- turn_path_into_box_importable(path, box_path)
-  }
+  importable_box_path <- turn_path_into_box_importable(path)
 
   if (is.null(importable_box_path)) {
     rlang::abort("Failed to determine a path for box imports.")
