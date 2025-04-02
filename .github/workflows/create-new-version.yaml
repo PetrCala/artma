@@ -9,21 +9,15 @@ on:
         default: patch
         type: string
 
-    outputs:
-      NEW_VERSION:
-        description: The new version string
-        value: ${{ jobs.createNewVersion.outputs.NEW_VERSION }}
+    # outputs:
+    #   NEW_VERSION:
+    #     description: The new version string
+    #     value: ${{ jobs.createNewVersion.outputs.NEW_VERSION }}
 
-    # secrets:
-    #   LARGE_SECRET_PASSPHRASE:
-    #     description: Passphrase used to decrypt GPG key
-    #     required: true
-    #   SLACK_WEBHOOK:
-    #     description: Webhook used to comment in slack
-    #     required: true
-    #   OS_BOTIFY_COMMIT_TOKEN:
-    #     description: OSBotify personal access token, used to workaround committing to protected branch
-    #     required: true
+    secrets:
+      ARTMA_BOT_COMMIT_TOKEN:
+        description: ArtmaBot personal access token, used to workaround committing to protected branch
+        required: true
 
 jobs:
   validateActor:
@@ -35,63 +29,54 @@ jobs:
         id: getUserPermissions
         run: echo "PERMISSION=$(gh api /repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission | jq -r '.permission')" >> "$GITHUB_OUTPUT"
         env:
-          GITHUB_TOKEN: ${{ secrets.OS_BOTIFY_COMMIT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
 
   createNewVersion:
     runs-on: macos-latest
     needs: validateActor
     if: ${{ fromJSON(needs.validateActor.outputs.HAS_WRITE_ACCESS) }}
 
-    outputs:
-      NEW_VERSION: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
+    # outputs:
+    #   NEW_VERSION: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
 
     steps:
-      - name: Run turnstyle
-        uses: softprops/turnstyle@49108bdfa571e62371bd2c3094893c547ab3fc03
-        with:
-          poll-interval-seconds: 10
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
       - name: Check out
         uses: actions/checkout@v4
         with:
-          ref: main
-          # The OS_BOTIFY_COMMIT_TOKEN is a personal access token tied to osbotify
+          ref: master
+          # The ARTMA_BOT_COMMIT_TOKEN is a personal access token tied to osbotify
           # This is a workaround to allow pushes to a protected branch
-          token: ${{ secrets.OS_BOTIFY_COMMIT_TOKEN }}
+          token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
 
-      - name: Setup git for OSBotify
-        uses: ./.github/actions/composite/setupGitForOSBotify
-        id: setupGitForOSBotify
+      - name: Setup git for ArtmaBot
+        uses: ./.github/actions/composite/setupGitForArtmaBot
+        id: setupGitForArtmaBot
         with:
           GPG_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
-          # git config user.name "github-actions"
-          # git config user.email "github-actions@github.com"
 
-      - name: Generate version
-        id: bumpVersion
-        uses: ./.github/actions/javascript/bumpVersion
-        with:
-          GITHUB_TOKEN: ${{ secrets.OS_BOTIFY_COMMIT_TOKEN }}
-          SEMVER_LEVEL: ${{ inputs.SEMVER_LEVEL }}
+      # - name: Generate version
+      #   id: bumpVersion
+      #   uses: ./.github/actions/javascript/bumpVersion
+      #   with:
+      #     GITHUB_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
+      #     SEMVER_LEVEL: ${{ inputs.SEMVER_LEVEL }}
 
-      - name: Commit new version
-        run: |
-          git add \
-            ./package.json \
-            ./package-lock.json \
-            ./android/app/build.gradle \
-            ./ios/NewExpensify/Info.plist \
-            ./ios/NewExpensifyTests/Info.plist \
-            ./ios/NotificationServiceExtension/Info.plist
-          git commit -m "Update version to ${{ steps.bumpVersion.outputs.NEW_VERSION }}"
+      # - name: Commit new version
+      #   run: |
+      #     git add \
+      #       ./package.json \
+      #       ./package-lock.json \
+      #       ./android/app/build.gradle \
+      #       ./ios/NewExpensify/Info.plist \
+      #       ./ios/NewExpensifyTests/Info.plist \
+      #       ./ios/NotificationServiceExtension/Info.plist
+      #     git commit -m "Update version to ${{ steps.bumpVersion.outputs.NEW_VERSION }}"
 
-      - name: Update main branch
-        run: git push origin main
+      # - name: Update main branch
+      #   run: git push origin main
 
-      - name: Announce failed workflow in Slack
-        if: ${{ failure() }}
-        uses: ./.github/actions/composite/announceFailedWorkflowInSlack
-        with:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+      # - name: Announce failed workflow in Slack
+      #   if: ${{ failure() }}
+      #   uses: ./.github/actions/composite/announceFailedWorkflowInSlack
+      #   with:
+      #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
