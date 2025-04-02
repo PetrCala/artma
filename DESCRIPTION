@@ -23,6 +23,7 @@ Imports:
     withr,
     yaml
 Suggests:
+    box.linters,
     covr,
     devtools,
     here,
