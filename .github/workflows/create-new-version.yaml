@@ -1,15 +1,6 @@
 name: Create new version
 
 on:
-  # Remove this later
-  workflow_dispatch:
-    inputs:
-      SEMVER_LEVEL:
-        description: One of {patch, minor, major}
-        required: false
-        default: patch
-        type: string
-
   workflow_call:
     inputs:
       SEMVER_LEVEL:
@@ -52,7 +43,7 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
         with:
-          ref: dev # TODO replace with master
+          ref: master
           # The ARTMA_BOT_COMMIT_TOKEN is a personal access token tied to osbotify
           # This is a workaround to allow pushes to a protected branch
           token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
@@ -69,22 +60,24 @@ jobs:
         with:
           SEMVER_LEVEL: ${{ inputs.SEMVER_LEVEL }}
 
-      - name: Echo new version
-        run: echo "Bumped to version ${{ steps.bumpVersion.outputs.NEW_VERSION }}"
+      - name: Commit new version
+        run: |
+          git add \
+            ./DESCRIPTION \ 
+            ./**/options_template.yaml
+          git commit -m "Update version to ${{ steps.bumpVersion.outputs.NEW_VERSION }}"
 
-      # - name: Commit new version
-      #   run: |
-      #     git add \
-      #       ./package.json \
-      #       ./package-lock.json \
-      #       ./android/app/build.gradle \
-      #       ./ios/NewExpensify/Info.plist \
-      #       ./ios/NewExpensifyTests/Info.plist \
-      #       ./ios/NotificationServiceExtension/Info.plist
-      #     git commit -m "Update version to ${{ steps.bumpVersion.outputs.NEW_VERSION }}"
+      - name: Push changes to master
+        run: |
+          git push --force origin master
 
-      # - name: Update main branch
-      #   run: git push origin main
+      - name: Update release branch from master
+        run: |
+          # Re-create the release branch from master
+          git switch -c release
+
+          # Force-update the remote release branch
+          git push --force origin release
 
       # - name: Announce failed workflow in Slack
       #   if: ${{ failure() }}
