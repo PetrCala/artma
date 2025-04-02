@@ -1,0 +1,13 @@
+name: Submit to CRAN
+
+on:
+  pull_request:
+    branches: [non-existent-branch]
+    types: [opened, synchronize]
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Placeholder step
+        run: echo "This is a placeholder step. The actual submission to CRAN will be handled in the next job."
