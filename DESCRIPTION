@@ -25,6 +25,7 @@ Imports:
 Suggests:
     covr,
     knitr,
+    rex,
     rmarkdown,
     testthat
 VignetteBuilder: 
