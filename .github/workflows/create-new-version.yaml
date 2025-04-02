@@ -63,7 +63,7 @@ jobs:
       - name: Commit new version
         run: |
           git add \
-            ./DESCRIPTION \ 
+            ./DESCRIPTION \
             ./**/options_template.yaml
           git commit -m "Update version to ${{ steps.bumpVersion.outputs.NEW_VERSION }}"
 
