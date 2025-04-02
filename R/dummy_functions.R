@@ -3,7 +3,11 @@
 # nolint start: box_usage_linter, unused_declared_object_linter.
 
 #' @keywords internal
+.dummy_use_here <- function() here::here("R", "dummy_functions.R")
+
+#' @keywords internal
 .dummy_use_stringr <- function() stringr::str_trim("")
+
 
 
 # nolint end: box_usage_linter, unused_declared_object_linter.
