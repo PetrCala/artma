@@ -1,0 +1,32 @@
+name: 'Setup Git for ArtmaBot'
+description: 'Setup Git for ArtmaBot'
+
+inputs:
+  GPG_PASSPHRASE:
+    description: 'Passphrase used to decrypt GPG key'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Decrypt ArtmaBot GPG key
+      run: cd .github/workflows && gpg --quiet --batch --yes --decrypt --passphrase=${{ inputs.GPG_PASSPHRASE }} --output artma-bot-private-key.asc artma-bot-private-key.asc.gpg
+      shell: bash
+
+    - name: Import ArtmaBot GPG Key
+      shell: bash
+      run: cd .github/workflows && gpg --import artma-bot-private-key.asc
+
+    - name: Set up git for ArtmaBot
+      shell: bash
+      run: |
+        git config --global user.signingkey 34E8BC6DD5102661
+        git config --global commit.gpgsign true
+        git config --global user.name ArtmaBot
+        git config --global user.email artma.bot@gmail.com
+
+    - name: Enable debug logs for git
+      shell: bash
+      if: runner.debug == '1'
+      run: echo "GIT_TRACE=true" >> "$GITHUB_ENV"
+
