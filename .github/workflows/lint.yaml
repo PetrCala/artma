@@ -3,12 +3,9 @@
 name: Lint Check
 
 on:
-  push:
-    branches: [master]
+  workflow_call:
   pull_request:
-    branches:
-      - master
-    types: [opened]
+    types: [opened, synchronize]
 
 permissions: read-all
 
