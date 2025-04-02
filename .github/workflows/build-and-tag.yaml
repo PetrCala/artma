@@ -39,7 +39,7 @@ jobs:
     uses: ./.github/workflows/create-new-version.yaml
 
   build:
-    needs: [preBuild, createNewVersion]
+    needs: [createNewVersion]
     steps:
       - name: Run R CMD check
         run: |
@@ -50,7 +50,7 @@ jobs:
           Rscript -e 'devtools::build()'
 
   postBuild:
-    needs: [build]
+    needs: [build, createNewVersion]
     steps:
       - name: Determine new version and create tag
         id: createTag
