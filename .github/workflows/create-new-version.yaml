@@ -1,6 +1,15 @@
 name: Create new version
 
 on:
+  # Remove this later
+  workflow_dispatch:
+    inputs:
+      SEMVER_LEVEL:
+        description: One of {patch, minor, major}
+        required: false
+        default: patch
+        type: string
+
   workflow_call:
     inputs:
       SEMVER_LEVEL:
