@@ -20,7 +20,7 @@ runs:
     - name: Set up git for ArtmaBot
       shell: bash
       run: |
-        git config --global user.signingkey 34E8BC6DD5102661
+        git config --global user.signingkey 34E952254629FD89
         git config --global commit.gpgsign true
         git config --global user.name ArtmaBot
         git config --global user.email artma.bot@gmail.com
