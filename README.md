@@ -9,9 +9,9 @@
   <!-- badges: start -->
 
 [![R build status](https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml)
+[![Version](https://img.shields.io/github/r-package/v/PetrCala/artma)](https://github.com/PetrCala/artma)
 [![Lifecycle](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html)
 [![codecov](https://codecov.io/gh/PetrCala/artma/graph/badge.svg?token=6XNXVDOT80)](https://codecov.io/gh/PetrCala/artma)
-[![Version](https://img.shields.io/github/r-package/v/PetrCala/artma)](https://github.com/PetrCala/artma)
 
   <!-- badges: end -->
 
