@@ -7,96 +7,59 @@ on:
     types: [closed]
 
 jobs:
-  createNewVersion:
+  preBuild:
     if: ${{ github.event.pull_request.merged == true }}
-    runs-on: ubuntu-latest
-    # uses: ./.github/workflows/createNewVersion.yaml
-    # with:
-    #   github_token: ${{ secrets.OS_BOTIFY_TOKEN }}
-    # secrets: inherit
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
 
-  # buildAndroid:
-  #   name: Build Android app for testing
-  #   uses: ./.github/workflows/buildAndroid.yml
-  #   if: ${{ fromJSON(needs.validateActor.outputs.READY_TO_BUILD) }}
-  #   needs: [validateActor, getBranchRef]
-  #   secrets: inherit
-  #   with:
-  #     type: adhoc
-  #     ref: ${{ github.event.pull_request.head.sha || needs.getBranchRef.outputs.REF }}
-  #     pull_request_number: ${{ github.event.number || github.event.inputs.PULL_REQUEST_NUMBER }}
-# name: Build & Create Tag
+      - name: Set up pandoc
+        uses: r-lib/actions/setup-pandoc@v2
 
-# on:
-#   push:
-#     branches:
-#       - release
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
 
-#   build_and_tag:
-#     runs-on: ubuntu-latest
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::remotes, any::devtools, local::.
+          needs: remotes, devtools
 
-#     steps:
-#       - name: Check out code
-#         uses: actions/checkout@v3
+      - name: Setup git for ArtmaBot
+        uses: ./.github/actions/composite/setupGitForArtmaBot
+        id: setupGitForArtmaBot
+        with:
+          GPG_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
 
-#       - name: Set up pandoc
-#         uses: r-lib/actions/setup-pandoc@v2
+  createNewVersion:
+    needs: [preBuild]
+    uses: ./.github/workflows/create-new-version.yaml
 
-#       - name: Set up R
-#         uses: r-lib/actions/setup-r@v2
-#         with:
-#           r-version: "4.1" # Adjust as needed
+  build:
+    needs: [preBuild, createNewVersion]
+    steps:
+      - name: Run R CMD check
+        run: |
+          Rscript -e 'devtools::check()'
 
-#       - name: Install dependencies
-#         run: |
-#           Rscript -e 'install.packages(c("remotes", "devtools"), repos = "https://cloud.r-project.org")'
-#           Rscript -e 'devtools::install_deps(dep = TRUE)'  # Install package dependencies
+      - name: Build the .tar.gz
+        run: |
+          Rscript -e 'devtools::build()'
 
-#       - name: Run R CMD check
-#         run: |
-#           Rscript -e 'devtools::check()'
+  postBuild:
+    needs: [build]
+    steps:
+      - name: Determine new version and create tag
+        id: createTag
+        run: |
+          TAG_NAME="v${{ needs.createNewVersion.outputs.NEW_VERSION }}"
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
 
-#       - name: Bump package version
-#         # Example: you might use a small R script to increment the version
-#         # Or you could do a more sophisticated approach using R's `usethis::use_version()`
-#         # This snippet demonstrates a simple sed approach on the DESCRIPTION file
-#         run: |
-#           OLD_VERSION=$(grep '^Version:' DESCRIPTION | sed 's/Version: //')
-
-#           # Simple "patch" bump: e.g. 1.2.3 -> 1.2.4
-#           # This only works if your version is strictly in x.y.z format
-#           # For more robust approaches, you might rely on a dedicated versioning function.
-#           MAJOR=$(echo "$OLD_VERSION" | cut -d '.' -f1)
-#           MINOR=$(echo "$OLD_VERSION" | cut -d '.' -f2)
-#           PATCH=$(echo "$OLD_VERSION" | cut -d '.' -f3)
-#           NEW_PATCH=$((PATCH + 1))
-#           NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
-
-#           echo "Old version: $OLD_VERSION"
-#           echo "New version: $NEW_VERSION"
-
-#           sed -i "s/Version: .*/Version: $NEW_VERSION/g" DESCRIPTION
-
-#           # Commit the version change
-#           git config user.name "github-actions"
-#           git config user.email "github-actions@github.com"
-#           git add DESCRIPTION
-#           git commit -m "Bump version to $NEW_VERSION"
-
-#       - name: Build the .tar.gz
-#         run: |
-#           Rscript -e 'devtools::build()'
-#           # By default, this places the built tar.gz in the working directory
-
-#       - name: Determine new version and create tag
-#         id: create_tag
-#         run: |
-#           NEW_VERSION=$(grep '^Version:' DESCRIPTION | sed 's/Version: //')
-#           # Format your tag name however you like. Typically 'v1.2.3'
-#           TAG_NAME="v${NEW_VERSION}"
-#           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
-
-#       - name: Push tag to GitHub
-#         run: |
-#           git tag ${{ steps.create_tag.outputs.TAG_NAME }}
-#           git push origin ${{ steps.create_tag.outputs.TAG_NAME }}
+      - name: Push tag to GitHub
+        run: |
+          git tag ${{ steps.createTag.outputs.TAG_NAME }}
+          git push origin ${{ steps.createTag.outputs.TAG_NAME }}
