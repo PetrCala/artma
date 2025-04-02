@@ -43,7 +43,7 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
         with:
-          ref: master
+          ref: release
           # The ARTMA_BOT_COMMIT_TOKEN is a personal access token tied to osbotify
           # This is a workaround to allow pushes to a protected branch
           token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
@@ -67,17 +67,17 @@ jobs:
             ./**/options_template.yaml
           git commit -m "Update version to ${{ steps.bumpVersion.outputs.NEW_VERSION }}"
 
-      - name: Push changes to master
+      - name: Push changes to release
         run: |
-          git push --force origin master
-
-      - name: Update release branch from master
-        run: |
-          # Re-create the release branch from master
-          git switch -c release
-
-          # Force-update the remote release branch
           git push --force origin release
+
+      - name: Update master branch from release
+        run: |
+          # Re-create the master branch from release
+          git switch -c master
+
+          # Force-update the remote master branch
+          git push --force origin master
 
       # - name: Announce failed workflow in Slack
       #   if: ${{ failure() }}
