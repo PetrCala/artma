@@ -6,8 +6,6 @@ on:
   pull_request:
     types: [opened, synchronize]
 
-name: R-CMD-check.yaml
-
 permissions: read-all
 
 jobs:

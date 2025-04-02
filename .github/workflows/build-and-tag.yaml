@@ -8,6 +8,7 @@ on:
 
 jobs:
   preBuild:
+    runs-on: macos-latest
     if: ${{ github.event.pull_request.merged == true }}
     steps:
       - name: Check out code
@@ -39,6 +40,7 @@ jobs:
     uses: ./.github/workflows/create-new-version.yaml
 
   build:
+    runs-on: macos-latest
     needs: [createNewVersion]
     steps:
       - name: Run R CMD check
@@ -50,6 +52,7 @@ jobs:
           Rscript -e 'devtools::build()'
 
   postBuild:
+    runs-on: macos-latest
     needs: [build, createNewVersion]
     steps:
       - name: Determine new version and create tag
