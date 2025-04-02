@@ -6,7 +6,7 @@ main <- function(
     options = NULL,
     options_dir = NULL) {
   runtime_setup( # nolint: box_usage_linter. # Imported on a package-level
-    options = options,
+    options_file_name = options,
     options_dir = options_dir,
     FUN = function() {
       print("ARTMA main function")
