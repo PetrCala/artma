@@ -44,7 +44,6 @@ linters <- c(
 
 exclusions <- list(
     "tests/",
-    "archive/",
     "local/"
 )
 
