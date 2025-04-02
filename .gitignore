@@ -1,3 +1,8 @@
+# R
+inst/doc
+/doc/
+/Meta/
+
 # Local
 .artma/*
 data/

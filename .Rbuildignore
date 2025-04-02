@@ -13,3 +13,5 @@
 ^scripts$
 ^run\.sh$
 ^codecov\.yml$
+^doc$
+^Meta$

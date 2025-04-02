@@ -25,6 +25,7 @@ Commands:
   setup             Setup the environment
   test              Run all tests
   test-e2e          Run all end-to-end tests
+  vignettes         Build the vignettes
 EOF
 }
 
@@ -59,6 +60,7 @@ preview-docs) sh scripts/previewDocs.sh "$@" ;;
 setup) sh scripts/setup.sh "$@" ;;
 test) sh scripts/test.sh "$@" ;;
 test-e2e) sh scripts/testE2E.sh "$@" ;;
+vignettes) Rscript -e "devtools::build_vignettes()" ;;
 help) help ;;
 *)
   echo "Error: Unknown command: $1"
