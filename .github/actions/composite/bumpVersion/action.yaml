@@ -8,6 +8,11 @@ inputs:
     required: false
     default: patch
 
+outputs:
+  NEW_VERSION:
+    description: The new version string
+    value: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
+
 runs:
   using: "composite"
   
@@ -28,7 +33,8 @@ runs:
         extra-packages: any::glue, local::.
         needs: glue
 
-    - name: Bump R package version
+    - name: Bump the package version
+      id: bumpVersion
       run: |
-        Rscript scripts/src/bump_version.R ${{ inputs.SEMVER_LEVEL }}
+        Rscript ./.github/actions/composite/bumpVersion/bump_version.R ${{ inputs.SEMVER_LEVEL }}
       shell: bash

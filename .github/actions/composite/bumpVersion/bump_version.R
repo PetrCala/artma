@@ -98,14 +98,12 @@ main <- function() {
 
   semver_level <- args[1]
 
-  pkg_repo <- here::here("..", "..", "..", "..", "artma")
-  if (!dir.exists(pkg_repo)) {
-    stop("The package repository does not exist under path", pkg_repo)
-  }
-
-  new_version <- bump_version(semver_level = semver_level, pkg.repo = pkg_repo)
+  new_version <- bump_version(semver_level = semver_level, pkg.repo = ".")
 
   cat(sprintf("New version is: %s\n", new_version))
+
+  output_line <- paste0("NEW_VERSION=", new_version)
+  write(output_line, file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
 }
 
 main()
