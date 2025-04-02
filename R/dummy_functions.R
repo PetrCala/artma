@@ -3,13 +3,7 @@
 # nolint start: object_usage_linter, box_usage_linter, unused_declared_object_linter.
 
 #' @keywords internal
-.dummy_use_tidyverse <- function() {
-  dplyr::tibble(a = 1)
-  stringr::str_trim(" test ")
-  purrr::map(1:3, ~ .x + 1)
-  tidyr::unnest(tibble::tibble(a = list(1:2)))
-  invisible(NULL)
-}
+.dummy_use_stringr <- function() stringr::str_trim("")
 
 
 # nolint end: object_usage_linter, box_usage_linter, unused_declared_object_linter.

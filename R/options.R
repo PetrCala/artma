@@ -13,8 +13,8 @@ static_setup() # nolint: box_usage_linter.
 #' @param options_file_name *\[character\]* Name of the user options file to validate, including the suffix.
 #' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
 #' @param should_flag_redundant *\[logical, optional\]* If TRUE, warn the user about any extraneous options (i.e., options not defined in the options template, such as custom options that the user might have added). Defaults to FALSE.
-#' @param should_fail *\[logical, optional\]* If TRUE, throw an error if any validation errors are found. Defaults to TRUE.
 #' @param template_path *\[character, optional\]* Full path to the options template file. Defaults to `NULL`.
+#' @param failure_action *\[character\]* Action to take if validation fails. Can be one of: 'abort_verbose', 'abort_quiet', 'return_errors_verbose', 'return_errors_quiet'. Defaults to 'abort_verbose'.
 #' @param verbose *\[logical, optional\]* If TRUE, print additional information about the validation process. Defaults to TRUE.
 #' `list` Invisibly returns a list of error messages (empty if no errors).
 #' @export
@@ -533,6 +533,7 @@ options.help <- function(
 
 #' @title Print default user options directory
 #' @description Prints the full path to the directory where user options are stored by default
+#' @param ... *\[any\]* Additional arguments.
 #' @export
 options.print_default_dir <- function(...) { # nolint: object_name_linter.
   box::use(artma / paths[PATHS])

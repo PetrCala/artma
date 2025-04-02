@@ -1,11 +1,9 @@
 # nolint start: unused_declared_object_linter, box_usage_linter.
 
 #' @title Ensure valid box path
-#'
-#' @usage Should be called at the top of every exported function
 #' @description
 #' Ensure that box imports throughout the projects work. This is done by adding the package path to the box path option if it is not already there.
-#'
+#' @note Should be called at the top of every exported function
 #' @keywords internal
 ensure_valid_boxpath <- function() {
   current_box_path <- getOption("box.path", character(0))
@@ -19,7 +17,6 @@ ensure_valid_boxpath <- function() {
 }
 
 #' @title Static Setup
-#'
 #' @description
 #' A function to be called at the beginning of each static setup function to ensure crucial fucntionality, such as imports, logging, etc., all work as expected.
 #' @keywords internal
@@ -28,7 +25,6 @@ static_setup <- function() {
 }
 
 #' @title Runtime Setup
-#'
 #' @description
 #' A function user as a wrapper for runtime functions invocation to ensure crucial fucntionality, such as imports, logging, etc., all work as expected.
 #'

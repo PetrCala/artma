@@ -19,7 +19,7 @@ Imports:
     lintr,
     logger,
     rlang,
-    tidyverse,
+    stringr,
     withr,
     yaml
 Suggests:
