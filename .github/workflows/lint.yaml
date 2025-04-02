@@ -22,12 +22,19 @@ jobs:
 
       - uses: r-lib/actions/setup-r@v2
         with:
+          r-version: "4.3.2"
           use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::lintr, local::.
           needs: lint
+
+      - name: Debug R session
+        run: |
+          sessionInfo()
+          installed.packages()[, c("Package", "Version")]
+        shell: Rscript {0}
 
       - name: Lint
         run: lintr::lint_package()
