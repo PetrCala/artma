@@ -24,9 +24,11 @@ Imports:
     yaml
 Suggests:
     covr,
+    devtools,
     knitr,
     rex,
     rmarkdown,
+    roxygen2,
     testthat
 VignetteBuilder: 
     knitr
