@@ -34,8 +34,6 @@ Suggests:
     testthat
 VignetteBuilder: 
     knitr
-Remotes: 
-    r-lib/testthat
 Config/testthat/edition: 3
 Config/testthat/parallel: TRUE
 Config/testthat/start-first: github-actions, release
