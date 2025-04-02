@@ -19,7 +19,6 @@ Imports:
     lintr,
     logger,
     rlang,
-    stringr,
     tidyverse,
     withr,
     yaml

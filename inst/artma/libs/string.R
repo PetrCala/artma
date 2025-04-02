@@ -46,6 +46,7 @@ trim_quotes <- function(s) gsub("^(\"|')+|(\"|')+$", "", s)
 #'
 #' @param input_string *\[character\]* The string to clean
 #' `character` The cleaned string
+#' @importFrom stringr
 #' @export
 clean_string <- function(input_string) {
   # Remove special characters
