@@ -30,12 +30,6 @@ jobs:
           extra-packages: any::lintr, local::.
           needs: lint
 
-      - name: Debug R session
-        run: |
-          sessionInfo()
-          installed.packages()[, c("Package", "Version")]
-        shell: Rscript {0}
-
       - name: Lint
         run: lintr::lint_package()
         shell: Rscript {0}
