@@ -58,7 +58,7 @@ jobs:
           token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
 
       - name: Setup git for ArtmaBot
-        uses: ./.github/actions/composite/setupGitForArtmaBot
+        uses: ./.github/actions/composite/setup-git-for-artma-bot
         id: setupGitForArtmaBot
         with:
           GPG_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
