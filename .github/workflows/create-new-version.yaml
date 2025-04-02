@@ -63,12 +63,12 @@ jobs:
         with:
           GPG_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
 
-      # - name: Generate version
-      #   id: bumpVersion
-      #   uses: ./.github/actions/javascript/bumpVersion
-      #   with:
-      #     GITHUB_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
-      #     SEMVER_LEVEL: ${{ inputs.SEMVER_LEVEL }}
+      - name: Generate version
+        id: bumpVersion
+        uses: ./.github/actions/javascript/bumpVersion
+        with:
+          GITHUB_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
+          SEMVER_LEVEL: ${{ inputs.SEMVER_LEVEL }}
 
       # - name: Commit new version
       #   run: |
