@@ -27,7 +27,6 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::remotes, any::devtools, local::.
-          needs: remotes, devtools
 
       - name: Setup git for ArtmaBot
         uses: ./.github/actions/composite/setupGitForArtmaBot
