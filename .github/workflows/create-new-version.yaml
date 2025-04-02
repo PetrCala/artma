@@ -69,6 +69,9 @@ jobs:
         with:
           SEMVER_LEVEL: ${{ inputs.SEMVER_LEVEL }}
 
+      - name: Echo new version
+        run: echo "Bumped to version ${{ steps.bumpVersion.outputs.NEW_VERSION }}"
+
       # - name: Commit new version
       #   run: |
       #     git add \
