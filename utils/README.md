@@ -1,17 +1,17 @@
 - [Installing R](#installing-r)
 - [VSCode](#vscode)
-	- [Invoking the run script](#invoking-the-run-script)
-		- [Interactively](#interactively)
-		- [Non-interactively](#non-interactively)
-	- [Closing an open interactive script](#closing-an-open-interactive-script)
-	- [Useful settings](#useful-settings)
+  - [Invoking the run script](#invoking-the-run-script)
+    - [Interactively](#interactively)
+    - [Non-interactively](#non-interactively)
+  - [Closing an open interactive script](#closing-an-open-interactive-script)
+  - [Useful settings](#useful-settings)
 - [Aliases](#aliases)
 - [Rprofile](#rprofile)
 - [.Renviron](#renviron)
 - [Installing various R packages](#installing-various-r-packages)
-	- [`systemfonts` on MacOS](#systemfonts-on-macos)
+  - [`systemfonts` on MacOS](#systemfonts-on-macos)
 - [Building the package](#building-the-package)
-	- [To exclude a file from the build](#to-exclude-a-file-from-the-build)
+  - [To exclude a file from the build](#to-exclude-a-file-from-the-build)
 
 ## Installing R
 
@@ -192,6 +192,7 @@ To correctly specify installation paths, you may want to add the following to yo
 ```env
 R_LIBS_USER=/opt/homebrew/lib/R/4.4/site-library
 _R_CHECK_USE_CODETOOLS_=FALSE
+_R_CHECK_SYSTEM_CLOCK_=0
 ```
 
 ## Installing various R packages
