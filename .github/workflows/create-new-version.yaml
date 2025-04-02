@@ -52,7 +52,7 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
         with:
-          ref: master
+          ref: dev # TODO replace with master
           # The ARTMA_BOT_COMMIT_TOKEN is a personal access token tied to osbotify
           # This is a workaround to allow pushes to a protected branch
           token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
@@ -65,7 +65,7 @@ jobs:
 
       - name: Generate version
         id: bumpVersion
-        uses: ./.github/actions/javascript/bumpVersion
+        uses: ./.github/actions/composite/bumpVersion
         with:
           GITHUB_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
           SEMVER_LEVEL: ${{ inputs.SEMVER_LEVEL }}
