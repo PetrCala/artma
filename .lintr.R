@@ -2,7 +2,7 @@
 
 custom_linters_env <- new.env()
 
-source(here::here("R", "linters.R"), local = custom_linters_env, chdir = TRUE)
+source(here::here("scripts", "src", "linters.R"), local = custom_linters_env, chdir = TRUE)
 
 linters <- c(
     lintr::linters_with_defaults(

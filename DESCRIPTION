@@ -16,9 +16,7 @@ Imports:
     cli,
     fs,
     glue,
-    here,
     lifecycle,
-    lintr,
     logger,
     optparse,
     rlang,
@@ -26,7 +24,6 @@ Imports:
     withr,
     yaml
 Suggests:
-    box.linters,
     covr,
     knitr,
     rmarkdown,
