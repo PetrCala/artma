@@ -28,6 +28,7 @@ Suggests:
     devtools,
     here,
     knitr,
+    remotes,
     rex,
     rmarkdown,
     roxygen2,
