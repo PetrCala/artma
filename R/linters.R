@@ -25,7 +25,7 @@
 #'   linters = dir_create_linter()
 #' )
 #' }
-#' @seealso [linters] for a complete list of linters available in lintr.
+#' @seealso [lintr::linters] for a complete list of linters available in lintr.
 #' @importFrom lintr make_linter_from_xpath
 #' @keywords internal
 dir_create_linter <- lintr::make_linter_from_xpath(
