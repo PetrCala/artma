@@ -2,7 +2,8 @@ name: Build & Create Tag
 
 on:
   pull_request:
-    branches: [release]
+    branches: 
+      - release
     types: [closed]
 
 jobs:
