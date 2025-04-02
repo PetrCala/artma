@@ -14,12 +14,12 @@ Depends:
 Imports:
     box,
     cli,
-    fs,
     glue,
     lifecycle,
+    lintr,
     logger,
-    optparse,
     rlang,
+    stringr,
     tidyverse,
     withr,
     yaml
