@@ -52,7 +52,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: master
-          # The ARTMA_BOT_COMMIT_TOKEN is a personal access token tied to osbotify
+          # The ARTMA_BOT_COMMIT_TOKEN is a personal access token tied to ArtmaBot
           # This is a workaround to allow pushes to a protected branch
           token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
 
@@ -66,6 +66,7 @@ jobs:
         id: bumpVersion
         uses: ./.github/actions/composite/bumpVersion
         with:
+          GITHUB_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
           SEMVER_LEVEL: ${{ inputs.SEMVER_LEVEL }}
 
       - name: Commit new version
@@ -77,7 +78,6 @@ jobs:
 
       - name: Push changes to master
         run: |
-          git remote set-url origin "https://ArtmaBot:${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}@github.com/${{ github.repository }}.git"
           git pull --rebase
           git push --set-upstream origin master
 
