@@ -41,6 +41,7 @@ jobs:
 
   preBuild:
     runs-on: macos-latest
+    needs: [labelChecks]
     if: ${{ needs.labelChecks.outputs.readyToBuild == 'true' && github.event.pull_request.merged == true }}
     steps:
       - name: Check out code
