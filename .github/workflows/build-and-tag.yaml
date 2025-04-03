@@ -7,9 +7,41 @@ on:
     types: [closed]
 
 jobs:
+  labelChecks:
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+
+    outputs:
+      readyToBuild: ${{ steps.labelCheck.outputs.readyToBuild }}
+      semver: ${{ steps.labelCheck.outputs.semver }}
+
+    steps:
+      - name: Determine labels from PR
+        id: labelCheck
+        run: |
+          label_names="${{ toJson(github.event.pull_request.labels) }}"
+
+          readyToBuild="false"
+
+          if echo "$label_names" | grep -q '"name":"Ready To Build"'; then
+            readyToBuild="true"
+          fi
+
+          v_label_count=$(echo "$label_names" | grep -o '"name":"v-[a-z]*"' | wc -l)
+
+          if [ "$v_label_count" -gt 1 ]; then
+            echo "Error: More than one version label (v-*) detected."
+            exit 1
+          fi
+
+          semver=$(echo "$label_names" | grep -o '"name":"v-[a-z]*"' | head -n1 | cut -d':' -f2 | tr -d '"')
+
+          echo "readyToBuild=$readyToBuild" >> "$GITHUB_OUTPUT"
+          echo "semver=$semver" >> "$GITHUB_OUTPUT"
+
   preBuild:
     runs-on: macos-latest
-    if: ${{ github.event.pull_request.merged == true }}
+    if: ${{ needs.labelChecks.outputs.readyToBuild == 'true' && github.event.pull_request.merged == true }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -36,8 +68,10 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
 
   createNewVersion:
-    needs: [preBuild]
+    needs: [preBuild, labelChecks]
     uses: ./.github/workflows/create-new-version.yaml
+    with:
+      SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
 
   build:
     runs-on: macos-latest
