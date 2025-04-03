@@ -77,7 +77,7 @@ jobs:
 
       - name: Push changes to master
         run: |
-          git remote set-url origin https://${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}@github.com/${{ github.repository }}.git
+          git remote set-url origin "https://ArtmaBot:${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}@github.com/${{ github.repository }}.git"
           git pull --rebase
           git push --set-upstream origin master
 
