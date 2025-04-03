@@ -49,6 +49,7 @@ jobs:
           ref: master
           token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
 
+
       - name: Set up pandoc
         uses: r-lib/actions/setup-pandoc@v2
 
@@ -72,6 +73,7 @@ jobs:
     uses: ./.github/workflows/create-new-version.yaml
     with:
       SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
+    secrets: inherit
 
   build:
     runs-on: macos-latest
