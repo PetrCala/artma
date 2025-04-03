@@ -19,28 +19,34 @@ jobs:
       - name: Determine labels from PR
         id: labelCheck
         run: |
-          label_names="${{ toJson(github.event.pull_request.labels) }}"
+          label_names='${{ toJson(github.event.pull_request.labels) }}'
 
           readyToBuild="false"
 
-          if echo "$label_names" | grep -q '"name":"release:next-version"'; then
+          if echo "$label_names" | jq -e '.[] | select(.name == "release:next-version")' >/dev/null; then
             readyToBuild="true"
           fi
 
-          v_label_count=$(echo "$label_names" | grep -o '"name":"v-[a-z]*"' | wc -l)
+          semver_labels=$(echo "$label_names" | jq -r '[.[] | select(.name | startswith("v-")) | .name]')
 
-          if [ "$v_label_count" -gt 1 ]; then
-            echo "Error: More than one version label (v-*) detected."
+          label_count=$(echo "$semver_labels" | jq 'length')
+
+          semver="patch"
+          if ((label_count > 1)); then
+            echo "Error: more than one label starting with 'v-' found." >&2
             exit 1
+          elif ((label_count == 1)); then
+            semver=$(echo "$semver_labels" | jq -r '.[0]' | sed 's/^v-//')
+            echo "Assigned semver: $semver"
           fi
-
-          semver=$(echo "$label_names" | grep -o '"name":"v-[a-z]*"' | head -n1 | cut -d':' -f2 | tr -d '"')
 
           echo "readyToBuild=$readyToBuild" >> "$GITHUB_OUTPUT"
           echo "semver=$semver" >> "$GITHUB_OUTPUT"
+        shell: bash
 
   preBuild:
     runs-on: macos-latest
+    needs: [labelChecks]
     if: ${{ needs.labelChecks.outputs.readyToBuild == 'true' && github.event.pull_request.merged == true }}
     steps:
       - name: Check out code
