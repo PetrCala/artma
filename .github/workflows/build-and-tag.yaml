@@ -23,7 +23,7 @@ jobs:
 
           readyToBuild="false"
 
-          if echo "$label_names" | grep -q '"name":"Ready To Build"'; then
+          if echo "$label_names" | grep -q '"name":"release:next-version"'; then
             readyToBuild="true"
           fi
 
