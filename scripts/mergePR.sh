@@ -39,5 +39,6 @@ git push origin --delete $CURRENT_BRANCH
 # Delete the local branch
 git checkout master
 git branch -D $CURRENT_BRANCH
+git pull
 
 echo "Done!"
