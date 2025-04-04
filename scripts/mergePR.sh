@@ -45,9 +45,4 @@ gh auth switch --hostname github.com --user $PERSONAL_USER
 gh pr merge $PR_NUMBER --rebase --auto --delete-branch
 info "Merged PR using your personal account."
 
-# Delete origin and local branches
-git checkout master
-git branch -D $CURRENT_BRANCH
-git pull
-
 success "Done!"
