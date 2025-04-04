@@ -6,6 +6,9 @@ set -e
 
 # Get the PR number from the arguments
 PR_NUMBER=$1
+
+ARTMABOT_HOST=artmabot.github.com
+PERSONAL_HOST=PetrCala.github.com
 EXPECTED_ACTOR="ArtmaBot"
 
 # Check for uncommitted changes
@@ -37,19 +40,16 @@ if [ -z "$PR_NUMBER" ]; then
   info "Using the latest open PR: #$PR_NUMBER"
 fi
 
-# Get the current branch name
-CURRENT_BRANCH=$(git branch --show-current)
+# Approve the PR as ArtmaBot
+gh pr review $PR_NUMBER --hostname $ARTMABOT_HOST -a
+info "Approved PR as ArtmaBot."
 
-# Review the PR
-gh pr review $PR_NUMBER -a
+# Merge the PR using your personal account
+gh pr merge $PR_NUMBER --hostname $PERSONAL_HOST --rebase --auto
+info "Merged PR using your personal account."
 
-# Merge the PR
-gh pr merge $PR_NUMBER --rebase --auto
-
-# Delete the origin branch
+# Delete origin and local branches
 git push origin --delete $CURRENT_BRANCH
-
-# Delete the local branch
 git checkout master
 git branch -D $CURRENT_BRANCH
 git pull
