@@ -88,6 +88,8 @@ jobs:
   postBuild:
     runs-on: macos-latest
     needs: [build, createNewVersion]
+    permissions:
+      contents: write
     steps:
       - name: Determine new version and create tag
         id: createTag
