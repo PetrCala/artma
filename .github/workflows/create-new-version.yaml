@@ -66,7 +66,6 @@ jobs:
         id: bumpVersion
         uses: ./.github/actions/composite/bumpVersion
         with:
-          GITHUB_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
           SEMVER_LEVEL: ${{ inputs.SEMVER_LEVEL }}
 
       - name: Commit new version
