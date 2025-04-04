@@ -5,8 +5,7 @@ on:
     inputs:
       SEMVER_LEVEL:
         description: One of {patch, minor, major}
-        required: false
-        default: patch
+        required: true
         type: string
 
     outputs:
