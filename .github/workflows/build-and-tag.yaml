@@ -19,50 +19,58 @@ on:
           - patch
 
 jobs:
-  # labelChecks:
-  #   if: ${{ github.event.pull_request.merged == true }}
-  #   runs-on: ubuntu-latest
+  labelChecks:
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
 
-  #   outputs:
-  #     readyToBuild: ${{ steps.labelCheck.outputs.readyToBuild }}
-  #     semver: ${{ steps.labelCheck.outputs.semver }}
+    outputs:
+      readyToBuild: ${{ steps.labelCheck.outputs.readyToBuild }}
+      semver: ${{ steps.labelCheck.outputs.semver }}
 
-  #   steps:
-  #     - name: Determine labels from PR
-  #       id: labelCheck
-  #       run: |
-  #         label_names='${{ toJson(github.event.pull_request.labels) }}'
+    steps:
+      - name: Determine labels from PR
+        id: labelCheck
+        run: |
+          label_names='${{ toJson(github.event.pull_request.labels) }}'
 
-  #         readyToBuild="false"
+          readyToBuild="false"
 
-  #         if echo "$label_names" | jq -e '.[] | select(.name == "release:next-version")' >/dev/null; then
-  #           readyToBuild="true"
-  #         fi
+          if echo "$label_names" | jq -e '.[] | select(.name == "release:next-version")' >/dev/null; then
+            readyToBuild="true"
+          fi
 
-  #         semver_labels=$(echo "$label_names" | jq -r '[.[] | select(.name | startswith("v-")) | .name]')
+          semver_labels=$(echo "$label_names" | jq -r '[.[] | select(.name | startswith("v-")) | .name]')
 
-  #         label_count=$(echo "$semver_labels" | jq 'length')
+          label_count=$(echo "$semver_labels" | jq 'length')
 
-  #         semver="patch"
-  #         if ((label_count > 1)); then
-  #           echo "Error: more than one label starting with 'v-' found." >&2
-  #           exit 1
-  #         elif ((label_count == 1)); then
-  #           semver=$(echo "$semver_labels" | jq -r '.[0]' | sed 's/^v-//')
-  #           echo "Assigned semver: $semver"
-  #         fi
+          semver="patch"
+          if ((label_count > 1)); then
+            echo "Error: more than one label starting with 'v-' found." >&2
+            exit 1
+          elif ((label_count == 1)); then
+            semver=$(echo "$semver_labels" | jq -r '.[0]' | sed 's/^v-//')
+            echo "Assigned semver: $semver"
+          fi
 
-  #         echo "readyToBuild=$readyToBuild" >> "$GITHUB_OUTPUT"
-  #         echo "semver=$semver" >> "$GITHUB_OUTPUT"
-  #       shell: bash
+          echo "readyToBuild=$readyToBuild" >> "$GITHUB_OUTPUT"
+          echo "semver=$semver" >> "$GITHUB_OUTPUT"
+        shell: bash
 
   build:
     runs-on: ubuntu-latest
-    # needs: [labelChecks]
-    # if: ${{ needs.labelChecks.outputs.readyToBuild == 'true' && github.event.pull_request.merged == true }}
+    needs: [labelChecks]
+    if: ${{ needs.labelChecks.outputs.readyToBuild == 'true' && github.event.pull_request.merged == true }}
+    outputs:
+          NEW_VERSION: ${{ steps.setJobOutput.outputs.NEW_VERSION }}
+          ARTIFACT_NAME: ${{ steps.setJobOutput.outputs.ARTIFACT_NAME }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+        with:
+          ref: master
+          # The ARTMA_BOT_COMMIT_TOKEN is a personal access token tied to ArtmaBot
+          # This is a workaround to allow pushes to a protected branch
+          token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
 
       - name: Set up pandoc
         uses: r-lib/actions/setup-pandoc@v2
@@ -71,6 +79,12 @@ jobs:
         uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
+
+      - name: Setup git for ArtmaBot
+        uses: ./.github/actions/composite/setupGitForArtmaBot
+        id: setupGitForArtmaBot
+        with:
+          GPG_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -81,60 +95,65 @@ jobs:
         id: bumpVersion 
         uses: ./.github/actions/composite/bumpVersion
         with:
-          # SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
-          SEMVER_LEVEL: ${{ inputs.SEMVER_LEVEL }}
+          SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
 
       - name: Build the .tar.gz
         run: |
           Rscript -e 'devtools::build(path = ".", binary = TRUE, vignettes = TRUE, manual = FALSE)'
 
+      - name: Commit new version
+        run: |
+          git checkout master
+          git add ./DESCRIPTION ./**/options_template.yaml
+          git commit -m "Update version to ${{ needs.build.outputs.NEW_VERSION }}"
+
+      - name: Push changes to master
+        run: |
+          git remote set-url origin git@github.com:${{ github.repository }}.git
+          git pull --rebase origin master
+          git push origin master
+
+      - name: Set job output
+        id: setJobOutput
+        run: |
+          echo "NEW_VERSION=${{ steps.bumpVersion.outputs.NEW_VERSION }}" >> $GITHUB_OUTPUT
+          echo "ARTIFACT_NAME=artma_${{ steps.bumpVersion.outputs.NEW_VERSION }}.tar.gz" >> $GITHUB_OUTPUT
+
       - name: Upload R package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: r-package
+          name: ${{ steps.setJobOutput.outputs.ARTIFACT_NAME }}
           path: ./*.tar.gz
 
-  # createNewVersion:
-  #   needs: [build]
-  #   uses: ./.github/workflows/create-new-version.yaml
-  #   with:
-  #     SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
-  #   secrets: inherit
+  postBuild:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
 
-  # postBuild:
-  #   runs-on: macos-latest
-  #   needs: [createNewVersion]
-  #   permissions:
-  #     contents: write
-  #   steps:
-  #     - name: Checkout repo
-  #       uses: actions/checkout@v4
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.ARTIFACT_NAME }}
 
-  #     - name: Setup git for ArtmaBot
-  #       uses: ./.github/actions/composite/setupGitForArtmaBot
-  #       id: setupGitForArtmaBot
-  #       with:
-  #         GPG_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
+      - name: Determine new version and create tag
+        id: createTag
+        run: |
+          TAG_NAME="v${{ needs.built.outputs.NEW_VERSION }}"
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
 
-  #     - name: Determine new version and create tag
-  #       id: createTag
-  #       run: |
-  #         TAG_NAME="v${{ needs.createNewVersion.outputs.NEW_VERSION }}"
-  #         echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
+      - name: Push tag to GitHub
+        run: |
+          git fetch --tags
+          git tag ${{ steps.createTag.outputs.TAG_NAME }}
+          git push origin ${{ steps.createTag.outputs.TAG_NAME }}
 
-  #     - name: Push tag to GitHub
-  #       run: |
-  #         git fetch --tags
-  #         git tag ${{ steps.createTag.outputs.TAG_NAME }}
-  #         git push origin ${{ steps.createTag.outputs.TAG_NAME }}
-
-  #     - name: Download built package
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: r-package
-
-  #     - name: Upload release asset
-  #       uses: softprops/action-gh-release@v2
-  #       with:
-  #         tag_name: ${{ steps.createTag.outputs.TAG_NAME }}
-  #         files: ./*.tar.gz
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.createTag.outputs.TAG_NAME }}
+          files: ./*.tar.gz
