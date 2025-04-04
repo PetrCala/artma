@@ -74,7 +74,8 @@ jobs:
           git add \
             ./DESCRIPTION \
             ./**/options_template.yaml
-          git commit -m "Update version to ${{ steps.bumpVersion.outputs.NEW_VERSION }}"
+          -m "Update version to ${{ steps.bumpVersion.outputs.NEW_VERSION }}" \
+          --author="ArtmaBot <artma.bot@gmail.com>"
 
       - name: Push changes to master
         run: |
