@@ -17,6 +17,28 @@ runs:
       shell: bash
       run: cd .github/workflows && gpg --import artma-bot-private-key.asc
 
+    - name: Decrypt ArtmaBot SSH Deploy Key
+      run: |
+        mkdir -p ~/.ssh
+        gpg --quiet --batch --yes --decrypt \
+            --passphrase="${{ inputs.GPG_PASSPHRASE }}" \
+            --output ~/.ssh/deploy_key \
+            .github/workflows/artma-bot-ssh-key.gpg
+        chmod 600 ~/.ssh/deploy_key
+      shell: bash
+
+    - name: Configure SSH for GitHub
+      run: |
+        echo "Host github.com
+              HostName github.com
+              User git
+              IdentityFile ~/.ssh/deploy_key
+              IdentitiesOnly yes
+              StrictHostKeyChecking no
+              " > ~/.ssh/config
+        chmod 600 ~/.ssh/config
+      shell: bash
+
     - name: Set up git for ArtmaBot
       shell: bash
       run: |
