@@ -79,9 +79,12 @@ jobs:
           git commit -m "Update version to ${{ steps.bumpVersion.outputs.NEW_VERSION }}"
 
       - name: Push changes to master
+        env:
+          GITHUB_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
         run: |
           git pull --rebase origin master
-          git push --force origin master
+          git remote set-url origin https://x-access-token:${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}@github.com/${{ github.repository }}.git
+          git push origin master
 
       # - name: Announce failed workflow in Slack
       #   if: ${{ failure() }}
