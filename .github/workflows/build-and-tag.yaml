@@ -110,7 +110,7 @@ jobs:
 
   createNewVersion:
     uses: ./.github/workflows/create-new-version.yaml
-    needs: [build]
+    needs: [labelChecks, build]
     with:
       SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
     secrets: inherit
