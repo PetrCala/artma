@@ -7,8 +7,8 @@ set -e
 # Get the PR number from the arguments
 PR_NUMBER=$1
 
-ARTMABOT_HOST="ArtmaBot"
-PERSONAL_HOST="PetrCala"
+ARTMABOT_USER="ArtmaBot"
+PERSONAL_USER="PetrCala"
 
 # Check for uncommitted changes
 if [[ -n $(git status --porcelain) ]]; then
@@ -19,13 +19,6 @@ fi
 # Install gh if it's not already installed
 if ! command -v gh &>/dev/null; then
   error "gh is not installed. Please install it first."
-  exit 1
-fi
-
-CURRENT_ACTOR=$(gh api user --jq '.login')
-
-if [ "$CURRENT_ACTOR" != "$EXPECTED_ACTOR" ]; then
-  error "This script must be run by $EXPECTED_ACTOR. Current actor is $CURRENT_ACTOR."
   exit 1
 fi
 
@@ -40,12 +33,12 @@ if [ -z "$PR_NUMBER" ]; then
 fi
 
 # Approve the PR as ArtmaBot
-gh auth switch --hostname github.com --user $ARTMABOT_HOST
+gh auth switch --hostname github.com --user $ARTMABOT_USER
 gh pr review $PR_NUMBER -a
 info "Approved PR as ArtmaBot."
 
 # Merge the PR using your personal account
-gh auth switch --hostname github.com --user $PERSONAL_HOST
+gh auth switch --hostname github.com --user $PERSONAL_USER
 gh pr merge $PR_NUMBER --rebase --auto
 info "Merged PR using your personal account."
 
