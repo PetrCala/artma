@@ -32,6 +32,9 @@ if [ -z "$PR_NUMBER" ]; then
   info "Using the latest open PR: #$PR_NUMBER"
 fi
 
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+info "Current branch: $CURRENT_BRANCH"
+
 # Approve the PR as ArtmaBot
 gh auth switch --hostname github.com --user $ARTMABOT_USER
 gh pr review $PR_NUMBER -a
