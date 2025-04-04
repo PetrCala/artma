@@ -81,7 +81,8 @@ jobs:
         id: bumpVersion 
         uses: ./.github/actions/composite/bumpVersion
         with:
-          SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
+          # SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
+          SEMVER_LEVEL: ${{ inputs.SEMVER_LEVEL }}
 
       - name: Build the .tar.gz
         run: |
