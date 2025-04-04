@@ -43,7 +43,7 @@ gh pr merge $PR_NUMBER --rebase --auto
 info "Merged PR using your personal account."
 
 # Delete origin and local branches
-git push origin --delete $CURRENT_BRANCH
+git push origin --delete origin $CURRENT_BRANCH
 git checkout master
 git branch -D $CURRENT_BRANCH
 git pull
