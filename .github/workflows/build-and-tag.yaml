@@ -7,6 +7,16 @@ on:
     types: [closed]
 
   workflow_dispatch:
+    inputs:
+      SEMVER_LEVEL:
+        description: 'Semver level to bump (major, minor, patch)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
 
 jobs:
   labelChecks:
