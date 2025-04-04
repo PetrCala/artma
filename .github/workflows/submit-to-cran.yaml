@@ -1,13 +1,70 @@
 name: Submit to CRAN
 
 on:
-  pull_request:
-    branches: [non-existent-branch]
-    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      PACKAGE_VERSION:
+        description: The version of the package to be submitted to CRAN
+        required: true
+        type: string
 
 jobs:
-  placeholder:
+  validateActor:
     runs-on: ubuntu-latest
+    outputs:
+      CAN_SUBMIT_TO_CRAN: ${{ contains(fromJSON('["admin"]'), steps.getUserPermissions.outputs.PERMISSION) }}
     steps:
-      - name: Placeholder step
-        run: echo "This is a placeholder step. The actual submission to CRAN will be handled in the next job."
+      - name: Get user permissions
+        id: getUserPermissions
+        run: echo "PERMISSION=$(gh api /repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission | jq -r '.permission')" >> "$GITHUB_OUTPUT"
+
+
+  submitToCran:
+    runs-on: ubuntu-latest
+    needs: validateActor
+    if: ${{ needs.validateActor.outputs.CAN_SUBMIT_TO_CRAN == 'true' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::devtools, any::curl, local::.
+
+      - name: Construct CRAN package name
+        id: constructCranPackageName
+        run: |
+          echo "PACKAGE_NAME=artma_v${{ inputs.PACKAGE_VERSION }}" >> "$GITHUB_OUTPUT"
+
+      - name: Get release asset URL
+        id: getReleaseUrl
+        run: |
+          TAG="v${{ inputs.PACKAGE_VERSION }}"
+          REPO="${{ github.repository }}"
+          PATTERN="tar.gz"
+
+          ASSET_INFO=$(curl -s "https://api.github.com/repos/${REPO}/releases/tags/${TAG}")
+          DOWNLOAD_URL=$(echo "$ASSET_INFO" | jq -r ".assets[] | select(.name | test(\"$PATTERN\")) | .browser_download_url")
+
+          if [ -z "$DOWNLOAD_URL" ]; then
+            echo "No matching asset found for tag $TAG with pattern $PATTERN"
+            exit 1
+          fi
+
+          echo "DOWNLOAD_URL=$DOWNLOAD_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Download release tarball
+        run: |
+          curl -L -o \
+            "${{ steps.constructCranPackageName.outputs.PACKAGE_NAME }}.tar.gz" \
+            "${{ steps.getReleaseUrl.outputs.DOWNLOAD_URL }}"
+
+      - name: Submit to CRAN
+        run: |
+          devtools::submit_cran("${{ steps.constructCranPackageName.outputs.PACKAGE_NAME }}.tar.gz")
+        shell: Rscript {0}
