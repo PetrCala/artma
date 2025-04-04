@@ -6,6 +6,8 @@ on:
       - master
     types: [closed]
 
+  workflow_dispatch:
+
 jobs:
   labelChecks:
     if: ${{ github.event.pull_request.merged == true }}
@@ -64,10 +66,10 @@ jobs:
         with:
           extra-packages: any::remotes, any::devtools, local::.
 
+        # Bump the version locally for the build to run correctly
       - name: Generate version
         id: bumpVersion 
         uses: ./.github/actions/composite/bumpVersion
-        description: Bump the version locally for the build to run correctly
         with:
           SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
 
@@ -81,47 +83,47 @@ jobs:
           name: r-package
           path: ./*.tar.gz
 
-  createNewVersion:
-    needs: [build]
-    uses: ./.github/workflows/create-new-version.yaml
-    with:
-      SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
-    secrets: inherit
+  # createNewVersion:
+  #   needs: [build]
+  #   uses: ./.github/workflows/create-new-version.yaml
+  #   with:
+  #     SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
+  #   secrets: inherit
 
-  postBuild:
-    runs-on: macos-latest
-    needs: [createNewVersion]
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+  # postBuild:
+  #   runs-on: macos-latest
+  #   needs: [createNewVersion]
+  #   permissions:
+  #     contents: write
+  #   steps:
+  #     - name: Checkout repo
+  #       uses: actions/checkout@v4
 
-      - name: Setup git for ArtmaBot
-        uses: ./.github/actions/composite/setupGitForArtmaBot
-        id: setupGitForArtmaBot
-        with:
-          GPG_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
+  #     - name: Setup git for ArtmaBot
+  #       uses: ./.github/actions/composite/setupGitForArtmaBot
+  #       id: setupGitForArtmaBot
+  #       with:
+  #         GPG_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
 
-      - name: Determine new version and create tag
-        id: createTag
-        run: |
-          TAG_NAME="v${{ needs.createNewVersion.outputs.NEW_VERSION }}"
-          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
+  #     - name: Determine new version and create tag
+  #       id: createTag
+  #       run: |
+  #         TAG_NAME="v${{ needs.createNewVersion.outputs.NEW_VERSION }}"
+  #         echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
 
-      - name: Push tag to GitHub
-        run: |
-          git fetch --tags
-          git tag ${{ steps.createTag.outputs.TAG_NAME }}
-          git push origin ${{ steps.createTag.outputs.TAG_NAME }}
+  #     - name: Push tag to GitHub
+  #       run: |
+  #         git fetch --tags
+  #         git tag ${{ steps.createTag.outputs.TAG_NAME }}
+  #         git push origin ${{ steps.createTag.outputs.TAG_NAME }}
 
-      - name: Download built package
-        uses: actions/download-artifact@v4
-        with:
-          name: r-package
+  #     - name: Download built package
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: r-package
 
-      - name: Upload release asset
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.createTag.outputs.TAG_NAME }}
-          files: ./*.tar.gz
+  #     - name: Upload release asset
+  #       uses: softprops/action-gh-release@v2
+  #       with:
+  #         tag_name: ${{ steps.createTag.outputs.TAG_NAME }}
+  #         files: ./*.tar.gz
