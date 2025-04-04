@@ -144,7 +144,7 @@ jobs:
       - name: Determine new version and create tag
         id: createTag
         run: |
-          TAG_NAME="v${{ needs.built.outputs.NEW_VERSION }}"
+          TAG_NAME="v${{ needs.build.outputs.NEW_VERSION }}"
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
 
       - name: Push tag to GitHub
