@@ -20,6 +20,7 @@ Commands:
   help              Display this help message
   lint              Lint all files in the R folder
   merge             Merge the currently checked out git branch with another one, and push the changes to the remote repository
+  merge-pr          Merge a pull request that targets the master branch
   namespace         Generate the NAMESPACE file
   package           Invoke an R function from this package
   preview-docs      Open a preview of an exported object's documentation.
@@ -56,6 +57,7 @@ desc-normalize) Rscript -e "desc::desc_normalize()" ;;
 fix-options) Rscript -e "source(\"scripts/src/fix_options.R\")" ;;
 lint) sh scripts/lintAll.sh "$@" ;;
 merge) sh scripts/mergeAndPush.sh "$@" ;;
+merge-pr) sh scripts/mergePR.sh "$@" ;;
 namespace) Rscript -e "roxygen2::roxygenize()" ;;
 package) sh scripts/package.sh "$@" ;;
 preview-docs) sh scripts/previewDocs.sh "$@" ;;
