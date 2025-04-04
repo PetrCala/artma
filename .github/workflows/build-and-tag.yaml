@@ -19,47 +19,47 @@ on:
           - patch
 
 jobs:
-  labelChecks:
-    if: ${{ github.event.pull_request.merged == true }}
-    runs-on: ubuntu-latest
+  # labelChecks:
+  #   if: ${{ github.event.pull_request.merged == true }}
+  #   runs-on: ubuntu-latest
 
-    outputs:
-      readyToBuild: ${{ steps.labelCheck.outputs.readyToBuild }}
-      semver: ${{ steps.labelCheck.outputs.semver }}
+  #   outputs:
+  #     readyToBuild: ${{ steps.labelCheck.outputs.readyToBuild }}
+  #     semver: ${{ steps.labelCheck.outputs.semver }}
 
-    steps:
-      - name: Determine labels from PR
-        id: labelCheck
-        run: |
-          label_names='${{ toJson(github.event.pull_request.labels) }}'
+  #   steps:
+  #     - name: Determine labels from PR
+  #       id: labelCheck
+  #       run: |
+  #         label_names='${{ toJson(github.event.pull_request.labels) }}'
 
-          readyToBuild="false"
+  #         readyToBuild="false"
 
-          if echo "$label_names" | jq -e '.[] | select(.name == "release:next-version")' >/dev/null; then
-            readyToBuild="true"
-          fi
+  #         if echo "$label_names" | jq -e '.[] | select(.name == "release:next-version")' >/dev/null; then
+  #           readyToBuild="true"
+  #         fi
 
-          semver_labels=$(echo "$label_names" | jq -r '[.[] | select(.name | startswith("v-")) | .name]')
+  #         semver_labels=$(echo "$label_names" | jq -r '[.[] | select(.name | startswith("v-")) | .name]')
 
-          label_count=$(echo "$semver_labels" | jq 'length')
+  #         label_count=$(echo "$semver_labels" | jq 'length')
 
-          semver="patch"
-          if ((label_count > 1)); then
-            echo "Error: more than one label starting with 'v-' found." >&2
-            exit 1
-          elif ((label_count == 1)); then
-            semver=$(echo "$semver_labels" | jq -r '.[0]' | sed 's/^v-//')
-            echo "Assigned semver: $semver"
-          fi
+  #         semver="patch"
+  #         if ((label_count > 1)); then
+  #           echo "Error: more than one label starting with 'v-' found." >&2
+  #           exit 1
+  #         elif ((label_count == 1)); then
+  #           semver=$(echo "$semver_labels" | jq -r '.[0]' | sed 's/^v-//')
+  #           echo "Assigned semver: $semver"
+  #         fi
 
-          echo "readyToBuild=$readyToBuild" >> "$GITHUB_OUTPUT"
-          echo "semver=$semver" >> "$GITHUB_OUTPUT"
-        shell: bash
+  #         echo "readyToBuild=$readyToBuild" >> "$GITHUB_OUTPUT"
+  #         echo "semver=$semver" >> "$GITHUB_OUTPUT"
+  #       shell: bash
 
   build:
     runs-on: ubuntu-latest
-    needs: [labelChecks]
-    if: ${{ needs.labelChecks.outputs.readyToBuild == 'true' && github.event.pull_request.merged == true }}
+    # needs: [labelChecks]
+    # if: ${{ needs.labelChecks.outputs.readyToBuild == 'true' && github.event.pull_request.merged == true }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
