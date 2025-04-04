@@ -85,12 +85,10 @@ jobs:
           Rscript -e 'devtools::check(args = c("--as-cran", "--no-manual", "--no-build-vignettes"))'
         continue-on-error: false
 
-        # Bump the version locally for the build to run correctly
-      - name: Generate version
+      - name: Bump the package version locally
         id: bumpVersion 
-        uses: ./.github/actions/composite/bumpVersion
-        with:
-          SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
+        run: |
+          Rscript ./.github/actions/composite/bumpVersion/bump_version.R ${{ needs.labelChecks.output.SEMVER_LEVEL }}
 
       - name: Build the .tar.gz
         run: |
