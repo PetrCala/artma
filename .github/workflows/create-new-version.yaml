@@ -78,8 +78,10 @@ jobs:
 
       - name: Push changes to master
         run: |
-          git pull --rebase
-          git push --set-upstream origin master
+          git remote set-url origin https://ArtmaBot:${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}@github.com/${{ github.repository }}
+          git config --global user.name ArtmaBot
+          git config --global user.email artma.bot@gmail.com
+          git push origin master
 
       # - name: Announce failed workflow in Slack
       #   if: ${{ failure() }}
