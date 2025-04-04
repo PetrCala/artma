@@ -78,7 +78,7 @@ jobs:
 
       - name: Push changes to master
         run: |
-          git push --rebase origin master
+          git pull --rebase origin master
           git push --force origin master
 
       # - name: Announce failed workflow in Slack
