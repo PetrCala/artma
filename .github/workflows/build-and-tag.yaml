@@ -44,8 +44,8 @@ jobs:
           echo "semver=$semver" >> "$GITHUB_OUTPUT"
         shell: bash
 
-  preBuild:
-    runs-on: macos-latest
+  build:
+    runs-on: ubuntu-latest
     needs: [labelChecks]
     if: ${{ needs.labelChecks.outputs.readyToBuild == 'true' && github.event.pull_request.merged == true }}
     steps:
@@ -64,33 +64,45 @@ jobs:
         with:
           extra-packages: any::remotes, any::devtools, local::.
 
+      - name: Generate version
+        id: bumpVersion 
+        uses: ./.github/actions/composite/bumpVersion
+        description: Bump the version locally for the build to run correctly
+        with:
+          SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
+
+      - name: Build the .tar.gz
+        run: |
+          Rscript -e 'devtools::build(path = ".", binary = TRUE, vignettes = TRUE, manual = FALSE)'
+
+      - name: Upload R package artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: r-package
+          path: ./*.tar.gz
+
+  createNewVersion:
+    needs: [build]
+    uses: ./.github/workflows/create-new-version.yaml
+    with:
+      SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
+    secrets: inherit
+
+  postBuild:
+    runs-on: macos-latest
+    needs: [createNewVersion]
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Setup git for ArtmaBot
         uses: ./.github/actions/composite/setupGitForArtmaBot
         id: setupGitForArtmaBot
         with:
           GPG_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
 
-  createNewVersion:
-    needs: [preBuild, labelChecks]
-    uses: ./.github/workflows/create-new-version.yaml
-    with:
-      SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
-    secrets: inherit
-
-  build:
-    runs-on: macos-latest
-    needs: [createNewVersion]
-    steps:
-      - name: Build the .tar.gz
-        run: |
-          Rscript -e 'devtools::build()'
-
-  postBuild:
-    runs-on: macos-latest
-    needs: [build, createNewVersion]
-    permissions:
-      contents: write
-    steps:
       - name: Determine new version and create tag
         id: createTag
         run: |
@@ -99,5 +111,17 @@ jobs:
 
       - name: Push tag to GitHub
         run: |
+          git fetch --tags
           git tag ${{ steps.createTag.outputs.TAG_NAME }}
           git push origin ${{ steps.createTag.outputs.TAG_NAME }}
+
+      - name: Download built package
+        uses: actions/download-artifact@v4
+        with:
+          name: r-package
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.createTag.outputs.TAG_NAME }}
+          files: ./*.tar.gz
