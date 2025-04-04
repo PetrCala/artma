@@ -72,6 +72,19 @@ jobs:
         with:
           extra-packages: any::remotes, any::devtools, local::.
 
+      - name: Build vignettes
+        run: |
+          Rscript -e 'devtools::build_vignettes()'
+
+      - name: Build documentation
+        run: |
+          Rscript -e 'devtools::document()'
+
+      - name: Check for R CMD check
+        run: |
+          Rscript -e 'devtools::check(args = c("--as-cran", "--no-manual", "--no-build-vignettes"))'
+        continue-on-error: false
+
         # Bump the version locally for the build to run correctly
       - name: Generate version
         id: bumpVersion 

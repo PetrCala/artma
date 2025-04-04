@@ -16,6 +16,7 @@ Commands:
   clear-cache       Clear the cache
   deps              Install all dependencies
   desc-normalize    Normalize the DESCRIPTION file
+  document          Generate documentation for the package
   fix-options        Ensure that all option templates and default distributed files are valid.
   help              Display this help message
   lint              Lint all files in the R folder
@@ -54,6 +55,7 @@ clear-cache) sh scripts/clearCache.sh "$@" ;;
 coverage) Rscript -e "covr::package_coverage()" ;;
 deps) Rscript -e "devtools::install_deps(dependencies = TRUE)" ;;
 desc-normalize) Rscript -e "desc::desc_normalize()" ;;
+document) Rscript -e "devtools::document()" ;;
 fix-options) Rscript -e "source(\"scripts/src/fix_options.R\")" ;;
 lint) sh scripts/lintAll.sh "$@" ;;
 merge) sh scripts/mergeAndPush.sh "$@" ;;
