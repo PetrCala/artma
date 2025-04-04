@@ -2,26 +2,39 @@
 
 set -e
 
+. "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+
 # Get the PR number from the arguments
 PR_NUMBER=$1
 EXPECTED_ACTOR="ArtmaBot"
 
-if [ -z "$PR_NUMBER" ]; then
-  echo "Usage: mergePR.sh <PR_NUMBER>"
+# Check for uncommitted changes
+if [[ -n $(git status --porcelain) ]]; then
+  error "There are uncommitted changes in the repository. Please commit or stash them before proceeding."
   exit 1
 fi
 
 # Install gh if it's not already installed
 if ! command -v gh &>/dev/null; then
-  echo "gh is not installed. Please install it first."
+  error "gh is not installed. Please install it first."
   exit 1
 fi
 
 CURRENT_ACTOR=$(gh api user --jq '.login')
 
 if [ "$CURRENT_ACTOR" != "$EXPECTED_ACTOR" ]; then
-  echo "This script must be run by $EXPECTED_ACTOR. Current actor is $CURRENT_ACTOR."
+  error "This script must be run by $EXPECTED_ACTOR. Current actor is $CURRENT_ACTOR."
   exit 1
+fi
+
+if [ -z "$PR_NUMBER" ]; then
+  info "PR number not provided. Determining the latest open PR..."
+  PR_NUMBER=$(gh pr list --state open --limit 1 --json number --jq '.[0].number')
+  if [ -z "$PR_NUMBER" ]; then
+    error "No open PRs found."
+    exit 1
+  fi
+  info "Using the latest open PR: #$PR_NUMBER"
 fi
 
 # Get the current branch name
@@ -41,4 +54,4 @@ git checkout master
 git branch -D $CURRENT_BRANCH
 git pull
 
-echo "Done!"
+success "Done!"
