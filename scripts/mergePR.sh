@@ -42,11 +42,10 @@ info "Approved PR as ArtmaBot."
 
 # Merge the PR using your personal account
 gh auth switch --hostname github.com --user $PERSONAL_USER
-gh pr merge $PR_NUMBER --rebase --auto
+gh pr merge $PR_NUMBER --rebase --auto --delete-branch
 info "Merged PR using your personal account."
 
 # Delete origin and local branches
-git push origin --delete origin $CURRENT_BRANCH
 git checkout master
 git branch -D $CURRENT_BRANCH
 git pull
