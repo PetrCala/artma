@@ -70,6 +70,7 @@ jobs:
 
       - name: Commit new version
         run: |
+          git checkout master # Temporary
           git add \
             ./DESCRIPTION \
             ./**/options_template.yaml
