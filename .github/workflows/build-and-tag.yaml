@@ -19,47 +19,47 @@ on:
           - patch
 
 jobs:
-  # labelChecks:
-  #   if: ${{ github.event.pull_request.merged == true }}
-  #   runs-on: ubuntu-latest
+  labelChecks:
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
 
-  #   outputs:
-  #     readyToBuild: ${{ steps.labelCheck.outputs.readyToBuild }}
-  #     semver: ${{ steps.labelCheck.outputs.semver }}
+    outputs:
+      readyToBuild: ${{ steps.labelCheck.outputs.readyToBuild }}
+      semver: ${{ steps.labelCheck.outputs.semver }}
 
-  #   steps:
-  #     - name: Determine labels from PR
-  #       id: labelCheck
-  #       run: |
-  #         label_names='${{ toJson(github.event.pull_request.labels) }}'
+    steps:
+      - name: Determine labels from PR
+        id: labelCheck
+        run: |
+          label_names='${{ toJson(github.event.pull_request.labels) }}'
 
-  #         readyToBuild="false"
+          readyToBuild="false"
 
-  #         if echo "$label_names" | jq -e '.[] | select(.name == "release:next-version")' >/dev/null; then
-  #           readyToBuild="true"
-  #         fi
+          if echo "$label_names" | jq -e '.[] | select(.name == "release:next-version")' >/dev/null; then
+            readyToBuild="true"
+          fi
 
-  #         semver_labels=$(echo "$label_names" | jq -r '[.[] | select(.name | startswith("v-")) | .name]')
+          semver_labels=$(echo "$label_names" | jq -r '[.[] | select(.name | startswith("v-")) | .name]')
 
-  #         label_count=$(echo "$semver_labels" | jq 'length')
+          label_count=$(echo "$semver_labels" | jq 'length')
 
-  #         semver="patch"
-  #         if ((label_count > 1)); then
-  #           echo "Error: more than one label starting with 'v-' found." >&2
-  #           exit 1
-  #         elif ((label_count == 1)); then
-  #           semver=$(echo "$semver_labels" | jq -r '.[0]' | sed 's/^v-//')
-  #           echo "Assigned semver: $semver"
-  #         fi
+          semver="patch"
+          if ((label_count > 1)); then
+            echo "Error: more than one label starting with 'v-' found." >&2
+            exit 1
+          elif ((label_count == 1)); then
+            semver=$(echo "$semver_labels" | jq -r '.[0]' | sed 's/^v-//')
+            echo "Assigned semver: $semver"
+          fi
 
-  #         echo "readyToBuild=$readyToBuild" >> "$GITHUB_OUTPUT"
-  #         echo "semver=$semver" >> "$GITHUB_OUTPUT"
-  #       shell: bash
+          echo "readyToBuild=$readyToBuild" >> "$GITHUB_OUTPUT"
+          echo "semver=$semver" >> "$GITHUB_OUTPUT"
+        shell: bash
 
   build:
     runs-on: ubuntu-latest
-    # needs: [labelChecks]
-    # if: ${{ needs.labelChecks.outputs.readyToBuild == 'true' && github.event.pull_request.merged == true }}
+    needs: [labelChecks]
+    if: ${{ needs.labelChecks.outputs.readyToBuild == 'true' && github.event.pull_request.merged == true }}
     outputs:
           NEW_VERSION: ${{ steps.setJobOutput.outputs.NEW_VERSION }}
           ARTIFACT_NAME: ${{ steps.setJobOutput.outputs.ARTIFACT_NAME }}
@@ -80,12 +80,6 @@ jobs:
         with:
           use-public-rspm: true
 
-      - name: Setup git for ArtmaBot
-        uses: ./.github/actions/composite/setupGitForArtmaBot
-        id: setupGitForArtmaBot
-        with:
-          GPG_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
-
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::remotes, any::devtools, local::.
@@ -95,24 +89,11 @@ jobs:
         id: bumpVersion 
         uses: ./.github/actions/composite/bumpVersion
         with:
-          # SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
-          SEMVER_LEVEL: ${{ inputs.SEMVER_LEVEL }}
+          SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
 
       - name: Build the .tar.gz
         run: |
           Rscript -e 'devtools::build(path = ".", binary = TRUE, vignettes = TRUE, manual = FALSE)'
-
-      - name: Commit new version
-        run: |
-          git checkout master
-          git add ./DESCRIPTION ./**/options_template.yaml
-          git commit -m "Update version to ${{ needs.build.outputs.NEW_VERSION }}"
-
-      - name: Push changes to master
-        run: |
-          git remote set-url origin git@github.com:${{ github.repository }}.git
-          git pull --rebase origin master
-          git push origin master
 
       - name: Set job output
         id: setJobOutput
@@ -126,6 +107,13 @@ jobs:
           name: ${{ steps.setJobOutput.outputs.ARTIFACT_NAME }}
           path: ./*.tar.gz
 
+  createNewVersion:
+    uses: ./.github/workflows/create-new-version.yaml
+    needs: [build]
+    with:
+      SEMVER_LEVEL: ${{ needs.labelChecks.outputs.semver }}
+    secrets: inherit
+
   postBuild:
     runs-on: ubuntu-latest
     needs: [build]
@@ -136,7 +124,7 @@ jobs:
           ref: master
           token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
 
-      - name: Download artifact
+      - name: Download the package artifact
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.build.outputs.ARTIFACT_NAME }}

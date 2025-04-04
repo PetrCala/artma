@@ -1,0 +1,77 @@
+name: Create new version
+
+on:
+  workflow_call:
+    inputs:
+      SEMVER_LEVEL:
+        description: One of {patch, minor, major}
+        required: false
+        default: patch
+        type: string
+
+    outputs:
+      NEW_VERSION:
+        description: The new version string
+        value: ${{ jobs.createNewVersion.outputs.NEW_VERSION }}
+
+    secrets:
+      ARTMA_BOT_COMMIT_TOKEN:
+        description: ArtmaBot personal access token, used to workaround committing to protected branch
+        required: true
+
+jobs:
+  validateActor:
+    runs-on: ubuntu-latest
+    outputs:
+      HAS_WRITE_ACCESS: ${{ contains(fromJSON('["write", "admin"]'), steps.getUserPermissions.outputs.PERMISSION) }}
+    steps:
+      - name: Get user permissions
+        id: getUserPermissions
+        run: echo "PERMISSION=$(gh api /repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission | jq -r '.permission')" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
+
+  createNewVersion:
+    runs-on: macos-latest
+    needs: validateActor
+    if: ${{ fromJSON(needs.validateActor.outputs.HAS_WRITE_ACCESS) }}
+
+    outputs:
+      NEW_VERSION: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
+
+      - name: Setup git for ArtmaBot
+        uses: ./.github/actions/composite/setupGitForArtmaBot
+        id: setupGitForArtmaBot
+        with:
+          GPG_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
+
+      - name: Generate version
+        id: bumpVersion 
+        uses: ./.github/actions/composite/bumpVersion
+        with:
+          SEMVER_LEVEL: ${{ inputs.SEMVER_LEVEL }}
+
+      - name: Commit new version
+        run: |
+          git checkout master
+          git add ./DESCRIPTION ./**/options_template.yaml
+          git commit -m "Update version to ${{ steps.bumpVersion.outputs.NEW_VERSION }}"
+
+      - name: Push changes to master
+        run: |
+          git remote set-url origin git@github.com:${{ github.repository }}.git
+          git pull --rebase origin master
+          git push origin master
+
+      # - name: Announce failed workflow in Slack
+      #   if: ${{ failure() }}
+      #   uses: ./.github/actions/composite/announceFailedWorkflowInSlack
+      #   with:
+      #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
