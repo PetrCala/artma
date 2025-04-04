@@ -7,9 +7,8 @@ set -e
 # Get the PR number from the arguments
 PR_NUMBER=$1
 
-ARTMABOT_HOST=artmabot.github.com
-PERSONAL_HOST=PetrCala.github.com
-EXPECTED_ACTOR="ArtmaBot"
+ARTMABOT_HOST="ArtmaBot"
+PERSONAL_HOST="PetrCala"
 
 # Check for uncommitted changes
 if [[ -n $(git status --porcelain) ]]; then
@@ -41,11 +40,13 @@ if [ -z "$PR_NUMBER" ]; then
 fi
 
 # Approve the PR as ArtmaBot
-gh pr review $PR_NUMBER --hostname $ARTMABOT_HOST -a
+gh auth switch --hostname github.com --user $ARTMABOT_HOST
+gh pr review $PR_NUMBER -a
 info "Approved PR as ArtmaBot."
 
 # Merge the PR using your personal account
-gh pr merge $PR_NUMBER --hostname $PERSONAL_HOST --rebase --auto
+gh auth switch --hostname github.com --user $PERSONAL_HOST
+gh pr merge $PR_NUMBER --rebase --auto
 info "Merged PR using your personal account."
 
 # Delete origin and local branches
