@@ -126,7 +126,7 @@ jobs:
           name: ${{ steps.setJobOutput.outputs.ARTIFACT_NAME }}
           path: |
             ./*.tar.gz
-            "cran-comments.md"
+            **/cran-comments.md
 
   createNewVersion:
     uses: ./.github/workflows/create-new-version.yaml
