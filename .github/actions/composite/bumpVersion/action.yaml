@@ -36,5 +36,5 @@ runs:
     - name: Bump the package version
       id: bumpVersion
       run: |
-        Rscript ./.github/actions/composite/bumpVersion/bump_version.R ${{ inputs.SEMVER_LEVEL }}
+        Rscript ./scripts/R/bump_version.R ${{ inputs.SEMVER_LEVEL }}
       shell: bash
