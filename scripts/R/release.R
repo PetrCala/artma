@@ -56,7 +56,7 @@ cran_comments <- function(pkg = ".", call = parent.frame()) {
 
   path <- path(pkg$path, "cran-comments.md")
   if (!file.exists(path)) {
-    cli::cli_warn(
+    cli::cli_abort(
       c(
         x = "Can't find {.file cran-comments.md}.",
         i = "This file is used to communicate your release process to the CRAN team.",
@@ -64,7 +64,6 @@ cran_comments <- function(pkg = ".", call = parent.frame()) {
       ),
       call = call
     )
-    return(character())
   }
 
   paste0(readLines(path, warn = FALSE), collapse = "\n")
@@ -194,11 +193,20 @@ flag_release <- function(pkg = ".") {
 }
 
 
-#' @export
-submit_cran <- function(pkg = ".", args = NULL) {
+#' @description Build the package locally and return the path to the built package.
+build_pkg <- function(pkg = ".", args = NULL) {
   pkg <- devtools::as.package(pkg)
 
   built_path <- pkgbuild::build(pkg$path, tempdir(), manual = TRUE, args = args)
+  built_path
+}
+
+#' @export
+submit_cran <- function(pkg = ".", built_path = NULL, args = NULL) {
+  pkg <- devtools::as.package(pkg)
+
+  # Build the package if it has not been built already
+  if (is.null(built_path)) built_path <- build_pkg(pkg = pkg, args = args)
 
   size <- format(as_object_size(fs::file_info(built_path)$size), units = "auto") # nolint: unused_declared_object_linter.
   cli::cat_rule("Submitting", col = "cyan")
