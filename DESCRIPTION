@@ -1,6 +1,6 @@
 Package: artma
 Title: Automatic Replication Tools for Meta-Analysis
-Version: 0.1.7
+Version: 0.1.8
 Authors@R: 
     person("Petr", "Čala", , "61505008@fsv.cuni.cz", role = c("aut", "cre"))
 Author: Petr Čala [aut, cre]
