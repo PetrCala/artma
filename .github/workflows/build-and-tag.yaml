@@ -50,7 +50,7 @@ jobs:
     if: ${{ needs.labelChecks.outputs.READY_TO_BUILD == 'true' && github.event.pull_request.merged == true }}
     outputs:
       NEW_VERSION: ${{ steps.setJobOutput.outputs.NEW_VERSION }}
-      ARTIFACT_NAME: ${{ steps.setJobOutput.outputs.ARTIFACT_NAME }}
+      PKG_ARTIFACT: ${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -110,20 +110,29 @@ jobs:
             --manual-file "manual_cran_comments.md" \
             --check-status "${{ steps.rcmdCheck.outputs.CHECK_STATUS }}"
 
-      - name: Build the .tar.gz
-        run: |
-          Rscript -e 'devtools::build(path = ".", binary = TRUE, vignettes = TRUE, manual = FALSE)'
-
       - name: Set job output
         id: setJobOutput
         run: |
           echo "NEW_VERSION=${{ steps.bumpVersion.outputs.NEW_VERSION }}" >> $GITHUB_OUTPUT
-          echo "ARTIFACT_NAME=artma_${{ steps.bumpVersion.outputs.NEW_VERSION }}.tar.gz" >> $GITHUB_OUTPUT
+          echo "PKG_ARTIFACT=artma_v${{ steps.bumpVersion.outputs.NEW_VERSION }}.tar.gz" >> $GITHUB_OUTPUT
+
+      - name: Build the .tar.gz
+        run: |
+          Rscript -e "
+            devtools::build(
+              pkg = '.',
+              # Make the package tarball name match the artifact name
+              path = './${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}',
+              binary = TRUE,
+              vignettes = TRUE,
+              manual = FALSE
+            )
+          "
 
       - name: Upload R package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.setJobOutput.outputs.ARTIFACT_NAME }}
+          name: ${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}
           path: |
             ./*.tar.gz
             **/cran-comments.md
@@ -148,7 +157,7 @@ jobs:
       - name: Download the package artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.build.outputs.ARTIFACT_NAME }}
+          name: ${{ needs.build.outputs.PKG_ARTIFACT }}
 
       - name: Determine new version and create tag
         id: createTag
