@@ -14,6 +14,7 @@ PACKAGES <- c(
   "languageserver", # Formatting and linting
   "lintr", # Linting and formatting
   "mathjaxr", # Documentation preview
+  "optparse", # Command line argument parsing
   "pbapply", # Package installation
   "pkgbuild", # Package building
   "remotes", # Pacakge installation

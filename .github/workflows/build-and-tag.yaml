@@ -49,8 +49,8 @@ jobs:
     needs: [labelChecks]
     if: ${{ needs.labelChecks.outputs.readyToBuild == 'true' && github.event.pull_request.merged == true }}
     outputs:
-          NEW_VERSION: ${{ steps.setJobOutput.outputs.NEW_VERSION }}
-          ARTIFACT_NAME: ${{ steps.setJobOutput.outputs.ARTIFACT_NAME }}
+      NEW_VERSION: ${{ steps.setJobOutput.outputs.NEW_VERSION }}
+      ARTIFACT_NAME: ${{ steps.setJobOutput.outputs.ARTIFACT_NAME }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -81,14 +81,34 @@ jobs:
           Rscript -e 'devtools::document()'
 
       - name: Check for R CMD check
+        id: rcmdCheck
         run: |
-          Rscript -e 'devtools::check(args = c("--as-cran", "--no-manual", "--no-build-vignettes"))'
+          Rscript -e '
+            results <- devtools::check(args = c("--as-cran", "--no-manual", "--no-build-vignettes"))
+            status <- ifelse(length(results$errors) == 0 && length(results$warnings) == 0, "success", "failure")
+            cat("CHECK_STATUS=", status, "\n", file = Sys.getenv("GITHUB_OUTPUT"), sep="")
+          '
         continue-on-error: false
 
+      - name: Get current version
+        id: getCurrentVersion
+        run: |
+          CURRENT_VERSION=$(Rscript -e "desc::desc_get_version()")
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
       - name: Bump the package version locally
-        id: bumpVersion 
+        id: bumpVersion
         run: |
           Rscript ./scripts/R/bump_version.R ${{ needs.labelChecks.output.SEMVER_LEVEL }}
+
+      - name: Generate cran-comments.md
+        if: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
+        run: |
+          Rscript scripts/R/generate_cran_comments.R \
+            --old-version "${{ steps.getCurrentVersion.outputs.CURRENT_VERSION }}" \
+            --new-version "${{ steps.bumpVersion.outputs.NEW_VERSION }}" \
+            --manual-file "manual_cran_comments.md" \
+            --check-status "${{ steps.rcmdCheck.outputs.CHECK_STATUS }}"
 
       - name: Build the .tar.gz
         run: |
@@ -104,7 +124,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.setJobOutput.outputs.ARTIFACT_NAME }}
-          path: ./*.tar.gz
+          path: |
+            ./*.tar.gz
+            "cran-comments.md"
 
   createNewVersion:
     uses: ./.github/workflows/create-new-version.yaml
