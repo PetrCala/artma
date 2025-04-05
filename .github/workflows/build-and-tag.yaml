@@ -99,7 +99,7 @@ jobs:
       - name: Bump the package version locally
         id: bumpVersion
         run: |
-          Rscript ./scripts/R/bump_version.R ${{ needs.labelChecks.output.SEMVER_LEVEL }}
+          Rscript ./scripts/R/bump_version.R ${{ needs.labelChecks.outputs.SEMVER_LEVEL }}
 
       - name: Generate cran-comments.md
         if: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
