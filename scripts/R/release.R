@@ -54,7 +54,7 @@ find_release_questions <- function(pkg = ".") {
 cran_comments <- function(pkg = ".", call = parent.frame()) {
   pkg <- devtools::as.package(pkg)
 
-  path <- path(pkg$path, "cran-comments.md")
+  path <- file.path(pkg$path, "cran-comments.md")
   if (!file.exists(path)) {
     cli::cli_abort(
       c(
@@ -207,6 +207,15 @@ submit_cran <- function(pkg = ".", built_path = NULL, args = NULL) {
 
   # Build the package if it has not been built already
   if (is.null(built_path)) built_path <- build_pkg(pkg = pkg, args = args)
+
+  if (!file.exists(built_path)) {
+    cli::cli_abort(
+      c(
+        x = "Can't find built package at {.file {built_path}}.",
+        i = "Build the package first with {.code build_pkg()}"
+      )
+    )
+  }
 
   size <- format(as_object_size(fs::file_info(built_path)$size), units = "auto") # nolint: unused_declared_object_linter.
   cli::cat_rule("Submitting", col = "cyan")
