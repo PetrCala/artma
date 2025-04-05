@@ -88,7 +88,7 @@ jobs:
       - name: Bump the package version locally
         id: bumpVersion 
         run: |
-          Rscript ./.github/actions/composite/bumpVersion/bump_version.R ${{ needs.labelChecks.output.SEMVER_LEVEL }}
+          Rscript ./scripts/R/bump_version.R ${{ needs.labelChecks.output.SEMVER_LEVEL }}
 
       - name: Build the .tar.gz
         run: |
