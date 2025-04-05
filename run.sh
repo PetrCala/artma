@@ -56,7 +56,7 @@ coverage) Rscript -e "covr::package_coverage()" ;;
 deps) Rscript -e "devtools::install_deps(dependencies = TRUE)" ;;
 desc-normalize) Rscript -e "desc::desc_normalize()" ;;
 document) Rscript -e "devtools::document()" ;;
-fix-options) Rscript -e "source(\"scripts/src/fix_options.R\")" ;;
+fix-options) Rscript -e "source(\"scripts/R/fix_options.R\")" ;;
 lint) sh scripts/lintAll.sh "$@" ;;
 merge) sh scripts/mergeAndPush.sh "$@" ;;
 merge-pr) sh scripts/mergePR.sh "$@" ;;

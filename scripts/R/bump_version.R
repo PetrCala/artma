@@ -1,6 +1,3 @@
-#!/usr/bin/env Rscript
-# bump_version.R
-
 #' Reads the current package version from the DESCRIPTION file and returns it as a string
 #' @keywords internal
 get_current_version <- function(pkg.repo) {
@@ -87,7 +84,6 @@ bump_version <- function(semver_level = "patch", pkg.repo = ".") {
 
   new.ver
 }
-
 
 main <- function() {
   args <- commandArgs(trailingOnly = TRUE)
