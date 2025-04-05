@@ -36,6 +36,10 @@ jobs:
         with:
           extra-packages: any::devtools, any::curl, local::.
 
+      - name: Install local development dependencies
+        run: |
+          ./run.sh setup --no-box-check
+
       - name: Construct CRAN package name
         id: constructCranPackageName
         run: |
@@ -66,5 +70,8 @@ jobs:
 
       - name: Submit to CRAN
         run: |
-          devtools::submit_cran("${{ steps.constructCranPackageName.outputs.PACKAGE_NAME }}.tar.gz")
+          source("./scripts/R/release.R")
+          built_path <- "${{ steps.constructCranPackageName.outputs.PACKAGE_NAME }}.tar.gz"
+          print(paste("Submitting package:", built_path))
+          submit_cran(pkg = ".", built_path = built_path, args = NULL)
         shell: Rscript {0}
