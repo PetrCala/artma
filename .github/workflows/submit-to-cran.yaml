@@ -18,7 +18,6 @@ jobs:
         id: getUserPermissions
         run: echo "PERMISSION=$(gh api /repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission | jq -r '.permission')" >> "$GITHUB_OUTPUT"
 
-
   submitToCran:
     runs-on: ubuntu-latest
     needs: validateActor
@@ -40,10 +39,10 @@ jobs:
         run: |
           ./run.sh setup --no-box-check
 
-      - name: Construct CRAN package name
-        id: constructCranPackageName
+      - name: Construct package local file name
+        id: constructPackageName
         run: |
-          echo "PACKAGE_NAME=artma_v${{ inputs.PACKAGE_VERSION }}" >> "$GITHUB_OUTPUT"
+          echo "PACKAGE_FILE_NAME=artma_v${{ inputs.PACKAGE_VERSION }}.tar.gz" >> "$GITHUB_OUTPUT"
 
       - name: Get release asset URL
         id: getReleaseUrl
@@ -65,13 +64,13 @@ jobs:
       - name: Download release tarball
         run: |
           curl -L -o \
-            "${{ steps.constructCranPackageName.outputs.PACKAGE_NAME }}.tar.gz" \
+            "${{ steps.constructPackageName.outputs.PACKAGE_FILE_NAME }}" \
             "${{ steps.getReleaseUrl.outputs.DOWNLOAD_URL }}"
 
       - name: Submit to CRAN
         run: |
           source("./scripts/R/release.R")
-          built_path <- "${{ steps.constructCranPackageName.outputs.PACKAGE_NAME }}.tar.gz"
+          built_path <- "${{ steps.constructPackageName.outputs.PACKAGE_FILE_NAME }}"
           print(paste("Submitting package:", built_path))
           submit_cran(pkg = ".", built_path = built_path, args = NULL)
         shell: Rscript {0}
