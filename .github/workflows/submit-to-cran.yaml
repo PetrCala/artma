@@ -42,35 +42,33 @@ jobs:
       - name: Construct package local file name
         id: constructPackageName
         run: |
-          echo "PACKAGE_FILE_NAME=artma_v${{ inputs.PACKAGE_VERSION }}.tar.gz" >> "$GITHUB_OUTPUT"
+          echo "PKG_FILE_NAME=artma_v${{ inputs.PACKAGE_VERSION }}.tar.gz" >> "$GITHUB_OUTPUT"
 
       - name: Get release asset URL
         id: getReleaseUrl
         run: |
           TAG="v${{ inputs.PACKAGE_VERSION }}"
           REPO="${{ github.repository }}"
-          PATTERN="tar.gz"
 
           ASSET_INFO=$(curl -s "https://api.github.com/repos/${REPO}/releases/tags/${TAG}")
-          DOWNLOAD_URL=$(echo "$ASSET_INFO" | jq -r ".assets[] | select(.name | test(\"$PATTERN\")) | .browser_download_url")
+              
+          echo "$ASSET_INFO" | jq -r '.assets[] | "\(.name)=\(.browser_download_url)"' > assets.txt
 
-          if [ -z "$DOWNLOAD_URL" ]; then
-            echo "No matching asset found for tag $TAG with pattern $PATTERN"
-            exit 1
-          fi
+          cat assets.txt
 
-          echo "DOWNLOAD_URL=$DOWNLOAD_URL" >> "$GITHUB_OUTPUT"
+          echo "ASSET_LIST=$(cat assets.txt | jq -Rs .)" >> "$GITHUB_OUTPUT"
 
-      - name: Download release tarball
+      - name: Download all release assets
         run: |
-          curl -L -o \
-            "${{ steps.constructPackageName.outputs.PACKAGE_FILE_NAME }}" \
-            "${{ steps.getReleaseUrl.outputs.DOWNLOAD_URL }}"
+          while IFS='=' read -r name url; do
+            echo "Downloading $name"
+            curl -L -o "$name" "$url"
+          done < assets.txt
 
       - name: Submit to CRAN
         run: |
           source("./scripts/R/release.R")
-          built_path <- "${{ steps.constructPackageName.outputs.PACKAGE_FILE_NAME }}"
+          built_path <- "${{ steps.constructPackageName.outputs.PKG_FILE_NAME }}"
           print(paste("Submitting package:", built_path))
           submit_cran(pkg = ".", built_path = built_path, args = NULL)
         shell: Rscript {0}
