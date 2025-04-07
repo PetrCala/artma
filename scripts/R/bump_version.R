@@ -53,7 +53,7 @@ bump_version <- function(semver_level = "patch", pkg.repo = ".") {
 
   options_file_path <- file.path(pkg.repo, "inst", "artma", "options", "templates", "options_template.yaml")
   if (!file.exists(options_file_path)) {
-    stop("The options file template does not exist under path", options_file_path)
+    cli::cli_abort("The options file template does not exist under path", options_file_path)
   }
 
   ### Generate a new package version
@@ -89,7 +89,7 @@ main <- function() {
   args <- commandArgs(trailingOnly = TRUE)
 
   if (length(args) < 1) {
-    stop("No semver level provided. Must be one of 'patch', 'minor', or 'major'.")
+    cli::cli_abort("No semver level provided. Must be one of 'patch', 'minor', or 'major'.")
   }
 
   semver_level <- args[1]

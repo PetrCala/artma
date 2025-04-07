@@ -25,7 +25,7 @@ invoke_runtime_methods <- function(methods, df, ...) {
       multiple = TRUE
     )
     if (is_empty(methods)) {
-      stop("No runtime methods were selected. Aborting...")
+      cli::cli_abort("No runtime methods were selected. Aborting...")
     }
   }
 
