@@ -29,9 +29,20 @@ linters <- c(
         # Turn off linting for several functions otherwise flagged as undesirable
         undesirable_function_linter = lintr::undesirable_function_linter(
             fun = lintr::modify_defaults(
-                defaults = lintr::default_undesirable_functions,
-                options = NULL, # We use options extensively through ARTMA options
-                ifelse = "use 'res <- if (x) expr1 else expr2'"
+                "defaults" = lintr::default_undesirable_functions,
+                "options" = NULL, # Remove down the line
+                "ifelse" = "use 'res <- if (x) expr1 else expr2'",
+                # Console print methods
+                "print" = "use cli::cli_inform()",
+                "cat" = "use cli::cli_inform()",
+                # Base messaging
+                "message" = "use cli::cli_inform()",
+                "warning" = "use cli::cli_warn()",
+                "stop" = "use cli::cli_abort()",
+                # rlang messaging
+                "inform" = "use cli::cli_inform()",
+                "warn" = "use cli::cli_warn()",
+                "abort" = "use cli::cli_abort()"
             )
         ),
         # Check for missing packages and symbols in namespace calls
