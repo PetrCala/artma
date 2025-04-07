@@ -114,7 +114,7 @@ jobs:
         id: setJobOutput
         run: |
           echo "NEW_VERSION=${{ steps.bumpVersion.outputs.NEW_VERSION }}" >> $GITHUB_OUTPUT
-          echo "PKG_ARTIFACT=artma_v${{ steps.bumpVersion.outputs.NEW_VERSION }}.tar.gz" >> $GITHUB_OUTPUT
+          echo "PKG_ARTIFACT=artma_${{ steps.bumpVersion.outputs.NEW_VERSION }}.tar.gz" >> $GITHUB_OUTPUT
 
       - name: Build the .tar.gz
         run: |
