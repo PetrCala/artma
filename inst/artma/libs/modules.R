@@ -17,7 +17,7 @@
 #' modules$my_custom_module$some_method()
 crawl_and_import_modules <- function(dir_path) {
   if (!dir.exists(dir_path)) {
-    rlang::abort(glue::glue("Non-existent directory when importing modules: {dir_path}"))
+    cli::cli_abort(glue::glue("Non-existent directory when importing modules: {dir_path}"))
   }
 
   box::use(artma / libs / path[turn_path_into_box_import])
@@ -38,7 +38,7 @@ crawl_and_import_modules <- function(dir_path) {
     # Calling the module name should now return the module itself
     imported_module <- eval(parse(text = module_name))
     if (!inherits(imported_module, "box$mod")) {
-      rlang::abort(glue::glue("Failed to import {module_name} as a box module. Aborting..."))
+      cli::cli_abort(glue::glue("Failed to import {module_name} as a box module. Aborting..."))
     }
     modules[[module_name]] <- imported_module
   }
@@ -54,7 +54,7 @@ crawl_and_import_modules <- function(dir_path) {
 validate_runtime_method_modules <- function(modules) { # nolint: object_length_linter.
   if (!is.list(modules)) {
     obj_class <- class(modules)
-    rlang::abort(glue::glue("Invalid runtime method modules object: {modules}. Class: '{obj_class}'. Expected: 'list'."))
+    cli::cli_abort(glue::glue("Invalid runtime method modules object: {modules}. Class: '{obj_class}'. Expected: 'list'."))
   }
 
   if (length(modules) == 0) {
@@ -68,11 +68,11 @@ validate_runtime_method_modules <- function(modules) { # nolint: object_length_l
         main_method <- modules[[module_name]]$run # Can throw an error
 
         if (!inherits(main_method, "function")) {
-          rlang::abort(glue::glue("Missing or invalid 'run' function in module '{module_name}'. Make sure your module contains this function."))
+          cli::cli_abort(glue::glue("Missing or invalid 'run' function in module '{module_name}'. Make sure your module contains this function."))
         }
       },
       error = function(e) {
-        rlang::abort(glue::glue("Error validating the '{module_name}' runtime methods module: {e}"))
+        cli::cli_abort(glue::glue("Error validating the '{module_name}' runtime methods module: {e}"))
       }
     )
   }

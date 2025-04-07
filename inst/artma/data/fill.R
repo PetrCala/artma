@@ -21,7 +21,7 @@ fill_missing_values <- function(df, target_col, columns = NULL, missing_value_pr
 
   logger::log_debug(paste0("Filling missing values for col", target_col, "..."))
   if (!is_char_vector_or_empty(columns) || !is.null(columns)) {
-    rlang::abort("The columns parameter must be a character vector or empty")
+    cli::cli_abort("The columns parameter must be a character vector or empty")
   }
   # No values to modify by
   if (length(columns) == 0) {
@@ -53,7 +53,7 @@ fill_missing_values <- function(df, target_col, columns = NULL, missing_value_pr
 
   invalid_value <- paste(missing_value_prefix, "NA")
   if (invalid_value %in% df[[target_col]]) {
-    rlang::abort("The target column contains invalid values. Check the fill function.")
+    cli::cli_abort("The target column contains invalid values. Check the fill function.")
   }
 
   return(df)

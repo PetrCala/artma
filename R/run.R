@@ -30,7 +30,7 @@ invoke_runtime_methods <- function(methods, df, ...) {
   }
 
   if (!(is.character(methods) && all(methods %in% supported_methods))) {
-    rlang::abort(paste("Invalid runtime methods selected:", glue::glue_collapse(as.character(methods), sep = ", "), "\nTo see a list of available methods, run 'artma::methods.list()'."))
+    cli::cli_abort(paste("Invalid runtime methods selected:", glue::glue_collapse(as.character(methods), sep = ", "), "\nTo see a list of available methods, run 'artma::methods.list()'."))
   }
 
   logger::log_info("Running the main ARTMA function.")

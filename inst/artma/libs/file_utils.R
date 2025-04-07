@@ -8,7 +8,7 @@
 ensure_folder_existence <- function(folder_name, require_existence = FALSE) {
   if (!dir.exists(folder_name)) {
     if (require_existence) {
-      rlang::abort(
+      cli::cli_abort(
         paste("The folder", folder_name, "must exist in the working directory."),
         class = "folder_not_found"
       )
@@ -27,7 +27,7 @@ ensure_folder_existence <- function(folder_name, require_existence = FALSE) {
 validate_files <- function(files) {
   for (file in files) {
     if (!file.exists(file)) {
-      rlang::abort(
+      cli::cli_abort(
         paste(
           file,
           "does not exist or could not be located.",

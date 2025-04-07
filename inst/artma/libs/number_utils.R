@@ -19,15 +19,15 @@
 #' generate_random_vector(1, 50, 5, replace = FALSE)
 generate_random_vector <- function(from, to, length.out, replace = TRUE) {
   if (!is.numeric(from) || !is.numeric(to) || !is.numeric(length.out) || !is.logical(replace)) {
-    rlang::abort("Invalid input: 'from', 'to', and 'length.out' should be numeric, 'replace' should be logical.")
+    cli::cli_abort("Invalid input: 'from', 'to', and 'length.out' should be numeric, 'replace' should be logical.")
   }
 
   if (from > to) {
-    rlang::abort("Invalid range: 'from' should be less than or equal to 'to'.")
+    cli::cli_abort("Invalid range: 'from' should be less than or equal to 'to'.")
   }
 
   if (!replace && length.out > (to - from + 1)) {
-    rlang::abort("Invalid input: 'length.out' cannot be greater than the range size when sampling without replacement.")
+    cli::cli_abort("Invalid input: 'length.out' cannot be greater than the range size when sampling without replacement.")
   }
 
   sample(from:to, size = length.out, replace = replace)

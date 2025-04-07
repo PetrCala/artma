@@ -129,7 +129,7 @@ prompt_user_required_no_default <- function(opt) { # nolint: object_length_linte
     file = cli::format_inline(" (or enter {.emph {'choose'}} to select a file interactively)"),
     directory = cli::format_inline(" (or enter {.emph {'choose'}} to select a directory interactively)"),
     NULL = "",
-    rlang::abort(cli::format_inline("Invalid prompt type {.emph {prompt_type}}."))
+    cli::cli_abort(cli::format_inline("Invalid prompt type {.emph {prompt_type}}."))
   )
 
   input_val <- readline(
@@ -140,7 +140,7 @@ prompt_user_required_no_default <- function(opt) { # nolint: object_length_linte
     input_val <- switch(opt$prompt,
       file = tcltk::tk_choose.files(default = "", caption = "Select file", multi = FALSE),
       directory = tcltk::tk_choose.dir(default = getwd(), caption = "Select directory"),
-      rlang::abort(cli::format_inline("Interactive selection is not supported for type {.emph {prompt_type}}."))
+      cli::cli_abort(cli::format_inline("Interactive selection is not supported for type {.emph {prompt_type}}."))
     )
   }
 

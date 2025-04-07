@@ -27,10 +27,10 @@ find_string_using_substring <- function(vector_of_strings, substring) {
   assert(is.vector(vector_of_strings), "The vector of strings must be a character vector")
   match_bool <- grepl(substring, vector_of_strings)
   if (sum(match_bool) == 0) {
-    rlang::abort("Could not find the substring", substring, "in the vector of strings.")
+    cli::cli_abort("Could not find the substring", substring, "in the vector of strings.")
   }
   if (sum(match_bool) > 1) {
-    rlang::abort("Found multiple matches for the substring", substring, "in the vector of strings.")
+    cli::cli_abort("Found multiple matches for the substring", substring, "in the vector of strings.")
   }
   return(vector_of_strings[match_bool])
 }

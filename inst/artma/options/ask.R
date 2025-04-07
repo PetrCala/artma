@@ -7,7 +7,7 @@
 #' `character` The options file name.
 ask_for_options_file_name <- function(should_clean = TRUE, prompt = NULL) {
   if (!interactive()) {
-    rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
+    cli::cli_abort("You must provide the options file name explicitly in non-interactive R sessions.")
   }
 
   box::use(artma / options / utils[parse_options_file_name])
@@ -34,7 +34,7 @@ ask_for_existing_options_file_name <- function(
     prompt = NULL,
     multiple = FALSE) {
   if (!interactive()) {
-    rlang::abort("You must provide the options file name explicitly in non-interactive R sessions.")
+    cli::cli_abort("You must provide the options file name explicitly in non-interactive R sessions.")
   }
 
   box::use(

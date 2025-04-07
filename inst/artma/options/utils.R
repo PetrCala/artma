@@ -49,7 +49,7 @@ remove_options_with_prefix <- function(prefix) {
 #' @param flat_option_list [list] A list of flat options
 flat_to_nested <- function(flat_option_list) {
   if (!is.list(flat_option_list)) {
-    rlang::abort("The options must be passed as a flat list.")
+    cli::cli_abort("The options must be passed as a flat list.")
   }
 
   # Function to recursively insert values into a nested list based on keys
@@ -82,7 +82,7 @@ flat_to_nested <- function(flat_option_list) {
 #' @param sep *\[character, optional\]* Separator to use when concatenating the level names. Defaulst to '.'.
 nested_to_flat <- function(nested, parent_key = NULL, sep = ".") {
   if (!is.list(nested)) {
-    rlang::abort("The options must be passed as a nested list.")
+    cli::cli_abort("The options must be passed as a nested list.")
   }
 
   flat <- list()
@@ -121,12 +121,12 @@ parse_options_file_name <- function(input_string) {
       str_out <- stringr::str_trim(str_out, side = "both")
     },
     error = function(e) {
-      rlang::abort(cli::format_inline("There was an error parsing the following into a valid user options file name: {.emph {input_string}}"))
+      cli::cli_abort(cli::format_inline("There was an error parsing the following into a valid user options file name: {.emph {input_string}}"))
     }
   )
 
   if (!grepl(".yaml$|.yml$", str_out)) {
-    rlang::abort(cli::format_inline("Please provide the name of the options file with .yaml suffix. Got: {.emph {str_out}}."))
+    cli::cli_abort(cli::format_inline("Please provide the name of the options file with .yaml suffix. Got: {.emph {str_out}}."))
   }
 
   str_out
@@ -142,7 +142,7 @@ get_expected_type <- function(opt_def) {
   if (!is.null(opt_def$action) && opt_def$action == "store_true") {
     return("logical")
   }
-  rlang::abort(glue::glue("Invalid template definition for the option '{opt_def}'. Could not determine the expected value type."))
+  cli::cli_abort(glue::glue("Invalid template definition for the option '{opt_def}'. Could not determine the expected value type."))
 }
 
 #' @title Validate option type
