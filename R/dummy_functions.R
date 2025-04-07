@@ -8,6 +8,7 @@
 #' @keywords internal
 .dummy_use_stringr <- function() stringr::str_trim("")
 
-
+#' @keywords internal
+.dummy_use_rlang <- function() rlang::is_true(TRUE)
 
 # nolint end: box_usage_linter, unused_declared_object_linter.
