@@ -51,7 +51,7 @@ resolve_fixed_option <- function(opt, user_input) {
       return(opt$default)
     }
     # User tried to set a value for a fixed option to a non-default value
-    warning(glue::glue(
+    cli::cli_alert_warning(glue::glue(
       "Ignoring user-provided value for fixed option '{opt_name}'."
     ), call. = FALSE)
   }
