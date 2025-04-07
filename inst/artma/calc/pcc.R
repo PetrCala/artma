@@ -35,7 +35,7 @@ re <- function(df, effect = NULL, se = NULL, method = "DL") {
     {
       meta <- unique(df$meta)
       if (length(meta) != 1) {
-        message("Could not calculate RE for multiple meta-analyses")
+        cli::cli_inform("Could not calculate RE for multiple meta-analyses")
         return(list(est = NA, t_value = NA))
       }
 

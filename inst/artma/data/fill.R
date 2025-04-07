@@ -92,10 +92,10 @@ fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL,
   logger::log_info(paste("Filled", sum(fillable_rows), "missing degrees of freedom."))
 
   #' A helper function to drop rows based on a condition
-  drop_rows <- function(condition, message) {
+  drop_rows <- function(condition, msg) {
     n_rows_to_drop <- sum(condition)
     if (n_rows_to_drop > 0) {
-      logger::log_info(paste("Dropping", n_rows_to_drop, message))
+      logger::log_info(paste("Dropping", n_rows_to_drop, msg))
       return(df[!condition, ])
     }
     return(df)

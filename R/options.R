@@ -174,7 +174,7 @@ options.copy <- function(
       choices = c("Yes", "No")
     )
     if (overwrite_permitted != "Yes") {
-      stop("Aborting the copying of a user options file.")
+      cli::cli_abort("Aborting the copying of a user options file.")
     }
   }
 
@@ -209,7 +209,7 @@ options.delete <- function(
       choices = c("Yes, I am sure", "No, I did not mean to")
     )
     if (deletion_confirmed != "Yes, I am sure") {
-      stop("Aborting user option file deletion.")
+      cli::cli_abort("Aborting user option file deletion.")
     }
   }
 
@@ -320,7 +320,7 @@ options.load <- function(
         choices = c("Yes", "No")
       )
       if (can_proceed != "Yes") {
-        stop("To load user options, you must create an options file first.")
+        cli::cli_abort("To load user options, you must create an options file first.")
       }
       options_file_name <- options.create(
         options_file_name = options_file_name,
@@ -343,10 +343,10 @@ options.load <- function(
           choices = existing_options_files
         )
         if (is_empty(options_file_name)) {
-          stop("No user options file was selected. Aborting...")
+          cli::cli_abort("No user options file was selected. Aborting...")
         }
       } else {
-        stop("No action was chosen for loading user options. Exiting...")
+        cli::cli_abort("No action was chosen for loading user options. Exiting...")
       }
     }
   }
@@ -648,7 +648,7 @@ options.fix <- function(
       choices = c("Yes", "No")
     )
     if (should_proceed != "Yes") {
-      stop("Aborting the fixing of a user options file.")
+      cli::cli_abort("Aborting the fixing of a user options file.")
     }
   } else {
     logger::log_warn("Running in non-interactive mode. The proposed changes will be applied automatically.")
@@ -744,7 +744,7 @@ options.create <- function(
         choices = c("Yes", "No")
       )
       if (overwrite_permitted != "Yes") {
-        stop("Aborting the overwriting of a user options file.")
+        cli::cli_abort("Aborting the overwriting of a user options file.")
       }
     }
     current_options <- nested_to_flat(yaml::read_yaml(options_file_path))
