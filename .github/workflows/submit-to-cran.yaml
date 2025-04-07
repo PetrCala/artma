@@ -31,6 +31,9 @@ jobs:
       TAG_NAME: ${{ steps.getVersion.outputs.TAG_NAME }}
 
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
       - name: Determine package version
         id: getVersion
         run: |
