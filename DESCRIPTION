@@ -5,7 +5,7 @@ Authors@R:
     person("Petr", "Čala", , "61505008@fsv.cuni.cz", role = c("aut", "cre"))
 Author: Petr Čala [aut, cre]
 Maintainer: Petr Čala <61505008@fsv.cuni.cz>
-Description: Effortlessly bridging the gap between data and models.
+Description: This package provides a simple and unified interface for running a wide range of meta-analysis methods directly from your data. By inputting a data frame and specifying a few key options, users can effortlessly execute and compare multiple commonly used meta-analytic models. Designed to work out of the box, it enables researchers of all backgrounds to replicate and conduct their own meta-analyses without needing to manually implement each method. Ideal for transparency, reproducibility, and ease of use, the package streamlines the analytical workflow from data to results.
 License: GPL-3
 URL: https://github.com/PetrCala/artma
 BugReports: https://github.com/PetrCala/artma/issues
