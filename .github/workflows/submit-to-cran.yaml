@@ -42,7 +42,7 @@ jobs:
       - name: Construct package local file name
         id: constructPackageName
         run: |
-          echo "PKG_FILE_NAME=artma_v${{ inputs.PACKAGE_VERSION }}.tar.gz" >> "$GITHUB_OUTPUT"
+          echo "PKG_FILE_NAME=artma_${{ inputs.PACKAGE_VERSION }}.tar.gz" >> "$GITHUB_OUTPUT"
 
       - name: Get release asset URL
         id: getReleaseUrl
