@@ -40,6 +40,7 @@ jobs:
       - name: Install local development dependencies
         run: |
           ./run.sh setup --no-box-check
+        shell: bash
 
       - name: Construct package local file name
         id: constructPackageName
