@@ -28,10 +28,3 @@ jobs:
         run: |
           devtools::test(stop_on_failure = TRUE)
         shell: Rscript {0}
-
-      - name: Upload testthat logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: testthat-failures
-          path: tests/testthat.Rout*
