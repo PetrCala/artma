@@ -17,6 +17,8 @@ jobs:
       - name: Get user permissions
         id: getUserPermissions
         run: echo "PERMISSION=$(gh api /repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission | jq -r '.permission')" >> "$GITHUB_OUTPUT"
+        env:
+            GH_TOKEN: ${{ github.token }}
 
   submitToCran:
     runs-on: ubuntu-latest
