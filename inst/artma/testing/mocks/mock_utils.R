@@ -14,14 +14,14 @@
 #' create_mock_study_names(5, 20)
 create_mock_study_names <- function(n_studies, total_occurrences) {
   if (!is.numeric(n_studies) || !is.numeric(total_occurrences) || n_studies <= 0 || total_occurrences <= 0) {
-    rlang::abort("Both n_studies and total_occurrences should be positive integers.")
+    cli::cli_abort("Both n_studies and total_occurrences should be positive integers.")
   }
 
   n_studies <- as.integer(n_studies)
   total_occurrences <- as.integer(total_occurrences)
 
   if (total_occurrences < n_studies) {
-    rlang::abort("Total occurrences must be greater than or equal to the number of studies.")
+    cli::cli_abort("Total occurrences must be greater than or equal to the number of studies.")
   }
 
   study_names <- paste("Mock Study", 1:n_studies)

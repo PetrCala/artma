@@ -15,7 +15,7 @@ box::use(
 check_for_missing_cols <- function(df, expected_cols) {
   missing_cols <- setdiff(expected_cols, colnames(df))
   if (length(missing_cols) > 0) {
-    rlang::abort(
+    cli::cli_abort(
       paste("The data frame is missing the following columns:", missing_cols),
       class = "missing_columns_error"
     )
@@ -87,7 +87,7 @@ clean_data <- function(
     recalculate_t_value = TRUE,
     fill_dof = TRUE) {
   logger::log_debug("Cleaning data...")
-  rlang::abort("NOT IMPLEMENTED")
+  cli::cli_abort("NOT IMPLEMENTED")
   source_cols <- c("a", "b", "c")
 
   # Replace missing columns with NAs

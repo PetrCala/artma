@@ -48,7 +48,7 @@ bump_version <- function(semver_level = "patch", pkg.repo = ".") {
   # Validate input and file paths
   valid_semver_levels <- c("patch", "minor", "major")
   if (!semver_level %in% valid_semver_levels) {
-    rlang::abort("Invalid semver level:", semver_level, "Must be one of:", paste(valid_semver_levels, sep = ", "))
+    cli::cli_abort("Invalid semver level:", semver_level, "Must be one of:", paste(valid_semver_levels, sep = ", "))
   }
 
   options_file_path <- file.path(pkg.repo, "inst", "artma", "options", "templates", "options_template.yaml")

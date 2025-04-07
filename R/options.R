@@ -50,7 +50,7 @@ options.validate <- function(
 
   options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
   if (!dir.exists(options_dir)) {
-    rlang::abort(glue::glue("The following options directory does not exist: {options_dir}"))
+    cli::cli_abort(glue::glue("The following options directory does not exist: {options_dir}"))
   }
 
   options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the user options file you wish to delete: ")
@@ -136,7 +136,7 @@ options.validate <- function(
 
   if (grepl("verbose", failure_action)) print_validation_results()
   if (grepl("abort", failure_action) && length(errors) > 0) {
-    rlang::abort(glue::glue("Validation failed for file {options_file_name}."))
+    cli::cli_abort(glue::glue("Validation failed for file {options_file_name}."))
   }
 
   invisible(errors)
@@ -313,7 +313,7 @@ options.load <- function(
 
     if (is_empty(existing_options_files)) {
       if (!create_options_if_null) {
-        rlang::abort("No user options file to load was provided. Exiting...")
+        cli::cli_abort("No user options file to load was provided. Exiting...")
       }
       can_proceed <- utils::select.list(
         title = "We have not found any option files to load for you. Would you like to create one now?",
@@ -428,7 +428,7 @@ options.modify <- function(
 
   if (length(user_input) == 0) {
     if (!interactive()) {
-      rlang::abort("If you wish to modify a user options file, you must provide a list of options to modify, together with their values.")
+      cli::cli_abort("If you wish to modify a user options file, you must provide a list of options to modify, together with their values.")
     }
 
     user_input <- ask_for_options_to_modify()
@@ -577,7 +577,7 @@ options.fix <- function(
 
   expected_path <- file.path(options_dir, options_file_name)
   if (!file.exists(expected_path)) {
-    rlang::abort(cli::format_inline("The user options file {.file {options_file_name}} does not exist under path {.path {expected_path}}."))
+    cli::cli_abort(cli::format_inline("The user options file {.file {options_file_name}} does not exist under path {.path {expected_path}}."))
   }
 
   errors <- options.validate(
@@ -624,7 +624,7 @@ options.fix <- function(
     } else if (err$type == "type_mismatch") {
       fixed_value <- opt_def$default # Here, the user could be asked for input as well
     } else {
-      rlang::abort("Unknown error type encountered while fixing the user options file.")
+      cli::cli_abort("Unknown error type encountered while fixing the user options file.")
     }
     fixed_options[[opt_name]] <- fixed_value
     proposed_changes <- append(
@@ -737,7 +737,7 @@ options.create <- function(
       logger::log_info(paste(file_exists_msg, "Overwriting this file..."))
     } else {
       if (!interactive()) {
-        rlang::abort(paste(file_exists_msg, "Either allow overwriting or provide a different name."))
+        cli::cli_abort(paste(file_exists_msg, "Either allow overwriting or provide a different name."))
       }
       overwrite_permitted <- utils::select.list(
         title = paste(file_exists_msg, "Do you wish to overwrite the contents of this file?"),

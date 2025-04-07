@@ -28,7 +28,7 @@ preprocess_data <- function(input_data, input_var_list) { # nolint: cyclocomp_li
   if (!all(varnames %in% expected_varnames) || !all(expected_varnames %in% varnames)) {
     missing_from_var_list <- varnames[!varnames %in% expected_varnames]
     missing_from_data <- expected_varnames[!expected_varnames %in% varnames]
-    rlang::abort(
+    cli::cli_abort(
       paste(
         "Mismatching variable names. \n",
         "These variables are not a part of the variable list: ",
@@ -41,7 +41,7 @@ preprocess_data <- function(input_data, input_var_list) { # nolint: cyclocomp_li
   # Check for correct ordering
   if (!identical(varnames, expected_varnames)) {
     problematic_indexes <- which(varnames != expected_varnames)
-    rlang::abort(
+    cli::cli_abort(
       paste(
         "The order of some columns in the data frame and the expected variable list is different. \n",
         paste("Problematic indexes and their column names: \n"),

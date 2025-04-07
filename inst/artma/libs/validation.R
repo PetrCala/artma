@@ -91,7 +91,7 @@ validate <- function(...) {
         cond_expr <- conditions_expr[[i]]
 
         if (!is.logical(cond) || length(cond) != 1) {
-          rlang::abort(
+          cli::cli_abort(
             message = glue::glue(
               "Condition must be a single logical value (TRUE or FALSE): {deparse(cond_expr)}"
             ),
@@ -101,7 +101,7 @@ validate <- function(...) {
 
         if (!isTRUE(cond)) {
           parsed_message <- parse_condition(cond_expr, env = parent.frame())
-          rlang::abort(
+          cli::cli_abort(
             message = parsed_message,
             .subclass = "validation_error"
           )
@@ -122,14 +122,14 @@ validate <- function(...) {
 #' @export
 validate_columns <- function(df, columns) {
   if (!is.data.frame(df)) {
-    rlang::abort("'df' must be a data frame.")
+    cli::cli_abort("'df' must be a data frame.")
   }
   if (!is.character(columns)) {
-    rlang::abort("'columns' must be a character vector")
+    cli::cli_abort("'columns' must be a character vector")
   }
 
   if (!all(columns %in% colnames(df))) {
-    rlang::abort(glue::glue_collapse("Invalid column names:", glue::glue_collapse(colnames(df), sep = ", ")), "Expected to contain:", paste(columns, sep = ", "))
+    cli::cli_abort(glue::glue_collapse("Invalid column names:", glue::glue_collapse(colnames(df), sep = ", ")), "Expected to contain:", paste(columns, sep = ", "))
   }
 }
 
@@ -166,7 +166,7 @@ assert <- function(condition_to_validate, error_message = NULL) {
     error_message <- paste("Assertion failed:", deparse(substitute(condition_to_validate)))
   }
   if (!condition_to_validate) {
-    rlang::abort(
+    cli::cli_abort(
       message = error_message,
       .subclass = "assertion_error"
     )
@@ -178,10 +178,10 @@ assert <- function(condition_to_validate, error_message = NULL) {
 #' @export
 assert_options_template_exists <- function(path) {
   if (!file.exists(path)) {
-    rlang::abort(glue::glue("The options template file does not exist under the following path: '{path}'."))
+    cli::cli_abort(glue::glue("The options template file does not exist under the following path: '{path}'."))
   }
   if (!grepl(".yaml$|.yml$", path)) {
-    rlang::abort(glue::glue("The path to the template file is invalid. Reason: Missing the .yaml suffix. Got: {path}."))
+    cli::cli_abort(glue::glue("The path to the template file is invalid. Reason: Missing the .yaml suffix. Got: {path}."))
   }
   return(invisible(NULL))
 }
@@ -195,7 +195,7 @@ assert_options_template_exists <- function(path) {
 is_char_vector_or_empty <- function(x, throw_error = FALSE) {
   is_empty <- is.vector(x) && (length(x) == 0 || is.character(x))
   if (throw_error && !is_empty) {
-    rlang::abort("The object is not a character vector or empty")
+    cli::cli_abort("The object is not a character vector or empty")
   }
   return(is_empty)
 }

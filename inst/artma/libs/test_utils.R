@@ -9,7 +9,7 @@ find_test_files <- function(path = file.path("tests", "testthat")) {
 run_tests_recursively <- function(path = file.path("tests", "testthat"), reporter = NULL) {
   test_files <- find_test_files(path)
   if (length(test_files) == 0) {
-    rlang::abort("No test files found")
+    cli::cli_abort("No test files found")
   }
   lapply(test_files, testthat::test_file, reporter = reporter)
 }

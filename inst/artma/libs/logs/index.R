@@ -13,7 +13,7 @@ get_logger_path <- function(logger_name) {
     artma / libs / file_utils[ensure_folder_existence]
   )
   if (is.null(logger_name)) {
-    rlang::abort("Logger name cannot be NULL")
+    cli::cli_abort("Logger name cannot be NULL")
   }
   ensure_folder_existence(PATHS$DIR_LOGS)
   file.path(PATHS$DIR_LOGS, logger_name)
@@ -46,7 +46,7 @@ setup_logging <- function() {
   if (log_level %in% names(CONST$LOG_LEVEL_MAP)) {
     logger::log_threshold(CONST$LOG_LEVEL_MAP[[log_level]])
   } else {
-    rlang::abort("Invalid log level specified. Choose from 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'.")
+    cli::cli_abort("Invalid log level specified. Choose from 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'.")
   }
 
   if (isTRUE(getOption("artma.logging.log_to_console"))) {

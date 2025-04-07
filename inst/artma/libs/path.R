@@ -8,11 +8,11 @@ turn_path_into_box_importable <- function(input_path) {
   )
 
   if (!is.character(input_path) || is_empty(input_path)) {
-    rlang::abort(cli::format_inline("Invalid path: {.path {input_path}}"))
+    cli::cli_abort(cli::format_inline("Invalid path: {.path {input_path}}"))
   }
 
   if (!file.exists(input_path)) {
-    rlang::abort(cli::format_inline("File does not exist under path: {.path {input_path}}"))
+    cli::cli_abort(cli::format_inline("File does not exist under path: {.path {input_path}}"))
   }
 
   path_parts <- vector(mode = "character", length = 0)
@@ -51,14 +51,14 @@ turn_path_into_box_import <- function(path) {
   box::use(artma / libs / utils[is_empty])
 
   if (!is.character(path) || is_empty(path)) {
-    rlang::abort(glue::glue("Invalid path: {path}"))
+    cli::cli_abort(glue::glue("Invalid path: {path}"))
   }
 
   # The box path can be a character, or a vector thereof
   importable_box_path <- turn_path_into_box_importable(path)
 
   if (is.null(importable_box_path)) {
-    rlang::abort("Failed to determine a path for box imports.")
+    cli::cli_abort("Failed to determine a path for box imports.")
   }
 
   module_name <- base::basename(importable_box_path)

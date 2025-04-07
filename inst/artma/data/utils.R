@@ -13,7 +13,7 @@ assign_na_col <- function(df, colname) {
 #' @export
 get_number_of_studies <- function(df) {
   if (!"study" %in% colnames(df)) {
-    rlang::abort("The data frame does not have a 'study' column.", class = "missing_study_column")
+    cli::cli_abort("The data frame does not have a 'study' column.", class = "missing_study_column")
   }
   return(length(table(df$study)))
 }
@@ -25,7 +25,7 @@ get_number_of_studies <- function(df) {
 raise_invalid_data_type_error <- function(data_type) {
   box::use(artma / const[CONST])
 
-  rlang::abort(
+  cli::cli_abort(
     glue::glue(
       cli::format_inline("{CONST$PACKAGE_NAME} does not currently support the following data type {.val {data_type}}."),
       cli::format_inline("Supported data types are {.val {CONST$DATA$TYPES}}."),
@@ -49,7 +49,7 @@ determine_data_type <- function(path, should_validate = TRUE) {
   validate(is.character(path))
 
   if (!file.exists(path)) {
-    rlang::abort(cli::format_inline(
+    cli::cli_abort(cli::format_inline(
       "The specified data file path {.path {path}} is invalid. No such file found."
     ))
   }
