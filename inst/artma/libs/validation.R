@@ -12,11 +12,9 @@
 #' @return *\[character(1)]* A message indicating the expected type and the actual value.
 #'
 #' @examples
-#' |dontrun{
 #' parse_condition(quote(is.character(my_var)))
 #' parse_condition(quote(is.logical(x)))
 #' parse_condition(quote(is.something_else(obj)))
-#' }
 #'
 #' @keywords internal
 parse_condition <- function(cond_expr, env = parent.frame()) {
@@ -76,9 +74,7 @@ parse_condition <- function(cond_expr, env = parent.frame()) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
 #' validate(1 == 1, 2 == 2, is.function(print))
-#' }
 #'
 #' # Will abort with a descriptive error and backtrace:
 #' # validate(is.character(1))

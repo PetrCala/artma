@@ -9,7 +9,6 @@
 #'               The prefix should match the hierarchical group (e.g., `x.y`).
 #' @return A named list of options under the specified prefix, with the prefix removed from the names.
 #' @examples
-#' \dontrun{
 #' options(x.y.z = "value1", x.y.a = "value2", x.b = "value3")
 #' get_option_group("x.y")
 #' # Returns:
@@ -17,7 +16,6 @@
 #' # [1] "value1"
 #' # $a
 #' # [1] "value2"
-#' }
 get_option_group <- function(prefix) {
   options <- options()
   group_keys <- grep(paste0("^", prefix, "\\."), names(options), value = TRUE)

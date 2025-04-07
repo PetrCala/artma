@@ -12,13 +12,11 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
 #' # Generate a vector of length 10 with numbers from 1 to 100, with replacement
 #' generate_random_vector(1, 100, 10)
 #'
 #' # Generate a vector of length 5 with numbers from 1 to 50, without replacement
 #' generate_random_vector(1, 50, 5, replace = FALSE)
-#' }
 generate_random_vector <- function(from, to, length.out, replace = TRUE) {
   if (!is.numeric(from) || !is.numeric(to) || !is.numeric(length.out) || !is.logical(replace)) {
     rlang::abort("Invalid input: 'from', 'to', and 'length.out' should be numeric, 'replace' should be logical.")

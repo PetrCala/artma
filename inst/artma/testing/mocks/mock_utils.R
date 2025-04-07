@@ -11,9 +11,7 @@
 #' @return A character vector with the study names repeated according to their assigned occurrences.
 #'
 #' @examples
-#' \dontrun{
 #' create_mock_study_names(5, 20)
-#' }
 create_mock_study_names <- function(n_studies, total_occurrences) {
   if (!is.numeric(n_studies) || !is.numeric(total_occurrences) || n_studies <= 0 || total_occurrences <= 0) {
     rlang::abort("Both n_studies and total_occurrences should be positive integers.")
