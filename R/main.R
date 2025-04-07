@@ -10,7 +10,7 @@ main <- function(
     options_file_name = options,
     options_dir = options_dir,
     FUN = function() {
-      print("ARTMA main function")
+      cli::cli_inform("ARTMA main function")
     }
   )
 }

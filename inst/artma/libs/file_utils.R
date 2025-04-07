@@ -37,7 +37,7 @@ validate_files <- function(files) {
       )
     }
   }
-  print("All necessary files located successfully.")
+  cli::cli_inform("All necessary files located successfully.")
 }
 
 
