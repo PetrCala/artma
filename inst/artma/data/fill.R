@@ -9,13 +9,11 @@
 #'  The default is "missing value".
 #' @return *\[data.frame\]* The modified data frame with updated missing values.
 #' @example
-#' \dontrun{
 #' df <- data.frame(
 #'  author = c("A", "A", "B", "B", "C"),
 #'  year = c(2000, 2000, 2000, 2001, 2002),
 #'  study = c("A2000", NA, "B2000", NA, NA)
 #' )
-#' }
 #' new_df <- fill_missing_values(df, "study", c("author", "year"), "Missing study")
 #' @export
 fill_missing_values <- function(df, target_col, columns = NULL, missing_value_prefix = "missing value") {
