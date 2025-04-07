@@ -43,7 +43,7 @@ install_and_check <- function(pkg, version = NA, verbose = TRUE) {
         }
       },
       error = function(e) {
-        stop("\nPackage installation failed for ", pkg, ": ", e$message)
+        cli::cli_abort("\nPackage installation failed for ", pkg, ": ", e$message)
       }
     )
   }

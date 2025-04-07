@@ -58,7 +58,7 @@ resolve_fixed_option <- function(opt, user_input) {
   if (!is.null(opt$default)) {
     return(opt$default)
   } else if (is.null(opt_default)) {
-    stop(glue::glue(
+    cli::cli_abort(glue::glue(
       "Required option '{opt_name}' is fixed, but no default is provided."
     ), call. = FALSE)
   } else {
@@ -145,7 +145,7 @@ prompt_user_required_no_default <- function(opt) { # nolint: object_length_linte
   }
 
   if ((!nzchar(input_val) || is_empty(input_val)) && !isTRUE(opt$allow_na)) {
-    stop(cli::format_inline(
+    cli::cli_abort(cli::format_inline(
       "Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} was left blank. Aborting."
     ), call. = FALSE)
   }
@@ -189,7 +189,7 @@ resolve_option_value <- function(
   # 3) No user value, no default
   if (is.null(opt$default)) {
     if (!is_interactive) {
-      stop(glue::glue(
+      cli::cli_abort(glue::glue(
         "Required option '{opt$name}' not provided, and no default is available."
       ), call. = FALSE)
     } else {
@@ -233,7 +233,7 @@ coerce_option_value <- function(val, opt) {
       # We re-throw an error and catch it to return the original value.
       # This makes it easier to find the invalid value afterwards.
       if (is.na(coerced_val) && !isTRUE(opt$allow_na)) {
-        stop(glue::glue(
+        cli::cli_abort(glue::glue(
           "Option '{opt_name}' does not allow NA values."
         ), call. = FALSE)
       }
