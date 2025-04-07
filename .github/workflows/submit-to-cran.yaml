@@ -67,6 +67,15 @@ jobs:
             fi
           fi
 
+          if [ -z "$PACKAGE_VERSION" ]; then
+            echo "Error: Unable to determine package version."
+            exit 1
+          fi
+          if [ -z "$TAG_NAME" ]; then
+            echo "Error: Unable to determine tag name."
+            exit 1
+          fi
+
           echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
           echo "TAG_NAME"="$TAG_NAME" >> "$GITHUB_OUTPUT"
 
