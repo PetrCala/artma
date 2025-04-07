@@ -17,7 +17,7 @@ CONFIG_SRC_DIR_NAME="$R_DIR_NAME/libs/config"
 LINT_DIR_NAME="R" # Name of the directory to lint
 TEST_DIR_NAME="tests/testthat"
 E2E_TEST_DIR_NAME="tests/E2E"
-SCRIPTS_SRC_DIR_NAME="src"
+SCRIPTS_SRC_DIR_NAME="R" # R local source scripts
 
 # File names - _FILE_NAME
 RUN_FILE_NAME="run.R"
