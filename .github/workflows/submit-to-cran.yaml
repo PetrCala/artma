@@ -34,6 +34,17 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Check that tags exist
+        run: |
+          git fetch --tags
+
+          TAGS=$(git tag)
+
+          if [ -z "$TAGS" ]; then
+            echo "Error: No tags found in the repository."
+            exit 1
+          fi
+
       - name: Determine package version
         id: getVersion
         run: |
