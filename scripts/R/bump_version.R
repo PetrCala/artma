@@ -60,7 +60,7 @@ bump_version <- function(semver_level = "patch", pkg.repo = ".") {
   old.ver <- get_current_version(pkg.repo = pkg.repo)
   new.ver <- generate_new_version(current_version = old.ver, semver_level = semver_level)
   print_info <- function(file_name) {
-    print(glue::glue("Modifying the {file_name} package version: {old.ver} -> {new.ver}"))
+    cli::cli_inform(glue::glue("Modifying the {file_name} package version: {old.ver} -> {new.ver}"))
   }
 
   ### Change the DESCRIPTION_FILE

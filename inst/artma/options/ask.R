@@ -96,7 +96,7 @@ ask_for_option_value <- function(
 
   if (option_value == "") {
     cli::cli_alert_danger("Failed to set the value for option {CONST$STYLES$OPTIONS$NAME(option_name)}.")
-    cat("\n")
+    cli::cli_inform("\n")
     return(NULL)
   }
 
@@ -109,7 +109,7 @@ ask_for_option_value <- function(
     err_msg <- validate_option_value(option_value, option_type, option_name, allow_na)
     if (!is.null(err_msg)) {
       cli::cli_alert_danger(err_msg)
-      cat("\n")
+      cli::cli_inform("\n")
       return(NULL)
     }
   }
@@ -133,7 +133,7 @@ ask_for_options_to_modify <- function() {
     "The values should usually be provided {.emph without quotes}. Use quotes only if the value is a string that contains spaces or special characters.",
     "Press {.kbd Enter} to finish."
   ))
-  cat("\n")
+  cli::cli_inform("\n")
 
   options_list <- list()
 
@@ -152,7 +152,7 @@ ask_for_options_to_modify <- function() {
     } else {
       cli::cli_alert_info("No options provided. Keeping the existing options.")
     }
-    cat("\n")
+    cli::cli_inform("\n")
   }
 
   repeat {
@@ -164,7 +164,7 @@ ask_for_options_to_modify <- function() {
 
     if (option_name %in% names(options_list)) {
       cli::cli_alert_danger("Option already exists: {CONST$STYLES$OPTIONS$NAME(option_name)}. Choose a different name.")
-      cat("\n")
+      cli::cli_inform("\n")
       next
     }
 
@@ -175,7 +175,7 @@ ask_for_options_to_modify <- function() {
     options_list[[option_name]] <- option_value
     opt_str <- glue::glue("{CONST$STYLES$OPTIONS$NAME(option_name)}: {CONST$STYLES$OPTIONS$VALUE(option_value)}") # nolint: unused_declared_object_linter.
     cli::cli_alert_success("Option added: {.emph {opt_str}}")
-    cat("\n")
+    cli::cli_inform("\n")
   }
 
   options_list

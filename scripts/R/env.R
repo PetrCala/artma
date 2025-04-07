@@ -70,7 +70,7 @@ install_and_check <- function(pkg, version = NA, verbose = TRUE) {
 #' @return A message indicating that all packages were loaded successfully or an error message if the process fails.
 #' @export
 load_packages <- function(package_list, msg = NULL, native = FALSE) {
-  print("Setting a mirror...")
+  print("Setting a mirror...") # nolint: undesirable_function.
   set_mirror()
 
   verbose <- !is.null(msg)
