@@ -17,6 +17,7 @@ static_setup() # nolint: box_usage_linter.
 #' @param failure_action *\[character\]* Action to take if validation fails. Can be one of: 'abort_verbose', 'abort_quiet', 'return_errors_verbose', 'return_errors_quiet'. Defaults to 'abort_verbose'.
 #' @param verbose *\[logical, optional\]* If TRUE, print additional information about the validation process. Defaults to TRUE.
 #' `list` Invisibly returns a list of error messages (empty if no errors).
+#' @return *\[list\]* The validation errors
 #' @export
 options.validate <- function(
     options_file_name = NULL,
@@ -278,7 +279,7 @@ options.list <- function(options_dir = NULL, should_return_verbose_names = FALSE
 #' @param should_validate *\[logical, optional\]* Whether the options should be validated after loading. Defaults to TRUE.
 #' @param should_set_to_namespace *\[logical, optional\]* Whether the options should be set in the options() namespace. Defaults to TRUE.
 #' @param should_return *\[logical, optional\]* Whether the function should return the list of options. Defaults to FALSE.
-#' `list` The loaded options.
+#' @return *\[list|NULL\]* The loaded options as a list or `NULL`.
 #' @export
 options.load <- function(
     options_file_name = NULL,
@@ -392,6 +393,7 @@ options.load <- function(
 #' @param template_path *\[character, optional\]* Full path to the options template file. Defaults to `NULL`.
 #' @param user_input *\[list, optional\]* A named list of user-supplied values for these options. If `NULL` or missing entries exist, the function will prompt the user via `readline()` (for required entries) or use defaults (for optional ones).
 #' @param should_validate *\[logical, optional\]* If TRUE, validate the modified options file against the template. Defaults to TRUE.
+#' @return `NULL`
 #' @export
 options.modify <- function(
     options_file_name = NULL,
@@ -534,6 +536,7 @@ options.help <- function(
 #' @title Print default user options directory
 #' @description Prints the full path to the directory where user options are stored by default
 #' @param ... *\[any\]* Additional arguments.
+#' @return `NULL` Prints the default directory to console.
 #' @export
 options.print_default_dir <- function(...) { # nolint: object_name_linter.
   box::use(artma / paths[PATHS])
@@ -676,6 +679,7 @@ options.fix <- function(
 #' @param should_overwrite *\[logical, optional\]* If TRUE, overwrite the file if it already exists. Defaults to FALSE, in which case the user is prompted to confirm the overwrite.
 #' @param action_name *\[character, optional\]* A name for the action being performed. This is used for logging purposes. Defaults to "create".
 #' `character` Name of the newly created user options file as a character.
+#' @return `NULL`
 #' @export
 options.create <- function(
     options_file_name = NULL,

@@ -5,11 +5,9 @@
 #' `list` Results of the invocations, indexed by method names.
 #' @param ... *\[any\]* Additional arguments to pass to the methods.
 #'
-#' @examples
-#' \dontrun{
+#' Internal example:
 #' df <- data.frame(...)
 #' invoke_runtime_methods(c("funnel_plot", "bma"), df)
-#' }
 #'
 #' @keywords internal
 invoke_runtime_methods <- function(methods, df, ...) {
