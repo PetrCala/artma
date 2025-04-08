@@ -131,6 +131,6 @@ jobs:
         run: |
           source("./scripts/R/release.R")
           built_path <- "${{ needs.determinePackageMetadata.outputs.PKG_FILE_NAME }}"
-          print(paste("Submitting package:", built_path))
+          cli::cli_inform("Submitting package: {.path {built_path}}")
           submit_cran(pkg = ".", built_path = built_path, args = NULL)
         shell: Rscript {0}

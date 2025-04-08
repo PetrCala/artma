@@ -74,7 +74,7 @@ main <- function(opts) {
   writeLines(full_lines, con = "cran-comments.md")
 
   output_path <- file.path(getwd(), "cran-comments.md")
-  cat(sprintf("cran-comments.md generated successfully at %s.\n", output_path))
+  cli::cli_inform(sprintf("cran-comments.md generated successfully at %s.\n", output_path))
 }
 
 main(opts)

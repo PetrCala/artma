@@ -96,7 +96,7 @@ main <- function() {
 
   new_version <- bump_version(semver_level = semver_level, pkg.repo = ".")
 
-  cat(sprintf("New version is: %s\n", new_version))
+  cli::cli_inform(sprintf("New version is: %s\n", new_version))
 
   output_line <- paste0("NEW_VERSION=", new_version)
   write(output_line, file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
