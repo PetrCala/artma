@@ -1,17 +1,8 @@
 name: Submit to CRAN
 
 on:
-  workflow_dispatch:
-    inputs:
-      PACKAGE_VERSION:
-        description: The version of the package to be submitted to CRAN. If not provided, use the latest version.
-        required: false
-        type: string
-      SHOULD_USE_DEVTOOLS:
-        description: Whether to use devtools for submission.
-        required: false
-        type: boolean
-        default: true
+  release:
+    types: [published]
 
 jobs:
   validateActor:
@@ -25,85 +16,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-  determinePackageMetadata:
-    runs-on: ubuntu-latest
-    needs: validateActor
-    if: ${{ needs.validateActor.outputs.CAN_SUBMIT_TO_CRAN == 'true' }}
-
-    outputs:
-      PACKAGE_VERSION: ${{ steps.getVersion.outputs.PACKAGE_VERSION }}
-      PKG_FILE_NAME: ${{ steps.getPackageName.outputs.PKG_FILE_NAME }}
-      TAG_NAME: ${{ steps.getVersion.outputs.TAG_NAME }}
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Check that tags exist
-        run: |
-          git fetch --tags
-
-          TAGS=$(git tag)
-
-          if [ -z "$TAGS" ]; then
-            echo "Error: No tags found in the repository."
-            exit 1
-          fi
-
-      - name: Determine package version
-        id: getVersion
-        run: |
-          if [ -z "${{ github.event.inputs.PACKAGE_VERSION }}" ]; then
-            # Get the latest tag and strip leading "v"
-            TAG_NAME=$(git describe --tags `git rev-list --tags --max-count=1`)
-            echo "No version input provided. Using latest tag: $TAG_NAME"
-
-            PACKAGE_VERSION="${TAG_NAME#v}"
-          else
-            PACKAGE_VERSION="${{ github.event.inputs.PACKAGE_VERSION }}"
-            echo "Using provided version: $PACKAGE_VERSION"
-            TAG_NAME="v${PACKAGE_VERSION}"
-
-            if git rev-parse "${TAG_NAME}" >/dev/null 2>&1; then
-              echo "Provided version exists in tags: ${TAG_NAME}"
-            else
-              echo "Error: Provided version does not exist in tags: ${TAG_NAME}"
-              exit 1
-            fi
-          fi
-
-          if [ -z "$PACKAGE_VERSION" ]; then
-            echo "Error: Unable to determine package version."
-            exit 1
-          fi
-          if [ -z "$TAG_NAME" ]; then
-            echo "Error: Unable to determine tag name."
-            exit 1
-          fi
-
-          echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
-          echo "TAG_NAME"="$TAG_NAME" >> "$GITHUB_OUTPUT"
-
-      - name: Construct package local file name
-        id: getPackageName
-        run: |
-          echo "PKG_FILE_NAME=artma_${{ steps.getVersion.outputs.PACKAGE_VERSION }}.tar.gz" >> "$GITHUB_OUTPUT"
-
-      - name: Echo the metadata to console
-        run: |
-          echo "PACKAGE_VERSION=${{ steps.getVersion.outputs.PACKAGE_VERSION }}"
-          echo "TAG_NAME=${{ steps.getVersion.outputs.TAG_NAME }}"
-          echo "PKG_FILE_NAME=${{ steps.getPackageName.outputs.PKG_FILE_NAME }}"
-
   submitToCran:
     runs-on: ubuntu-latest
-    needs: determinePackageMetadata
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           # Checkout to the tag that was used for the release
-          ref: ${{ needs.determinePackageMetadata.outputs.TAG_NAME }}
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
@@ -117,7 +37,7 @@ jobs:
       - name: Get release asset URL
         id: getReleaseUrl
         run: |
-          TAG="${{ needs.determinePackageMetadata.outputs.TAG_NAME }}"
+          TAG="${{ github.event.release.tag_name }}"
           REPO="${{ github.repository }}"
 
           ASSET_INFO=$(curl -s "https://api.github.com/repos/${REPO}/releases/tags/${TAG}")
@@ -136,23 +56,13 @@ jobs:
           done < assets.txt
 
       - name: Submit to CRAN using devtools
-        if: ${{ github.event.inputs.SHOULD_USE_DEVTOOLS == 'true' }}
         run: |
-          cli::cli_inform("Using devtools for submission. Rebuilding the package.")
+          cli::cli_inform("Using devtools for submission. Rebuilding the package...")
 
-          # Override yesno function to always behave as if "yes" was selected
+          # Override the 'devtools::yesno' function to always behave as if "yes" was selected
           unlockBinding("yesno", asNamespace("devtools"))
           assign("yesno", function(...) FALSE, envir = asNamespace("devtools"))
           lockBinding("yesno", asNamespace("devtools"))
 
           devtools::submit_cran() # Rebuilds the package
-        shell: Rscript {0}
-
-      - name: Submit to CRAN using custom script
-        if: ${{ github.event.inputs.SHOULD_USE_DEVTOOLS != 'true' }}
-        run: |
-          built_path <- "${{ needs.determinePackageMetadata.outputs.PKG_FILE_NAME }}"
-          cli::cli_inform("Submitting package from {.path {built_path}} using a custom script.")
-          source("./scripts/R/release.R")
-          submit_cran(pkg = ".", built_path = built_path, args = NULL)
         shell: Rscript {0}
