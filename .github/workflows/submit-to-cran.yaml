@@ -101,6 +101,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          # Checkout to the tag that was used for the release
+          ref: ${{ needs.determinePackageMetadata.outputs.TAG_NAME }}
 
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
