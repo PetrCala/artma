@@ -18,7 +18,7 @@ jobs:
         id: getUserPermissions
         run: echo "PERMISSION=$(gh api /repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission | jq -r '.permission')" >> "$GITHUB_OUTPUT"
         env:
-            GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
 
   determinePackageMetadata:
     runs-on: ubuntu-latest
@@ -104,12 +104,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::devtools, any::curl, local::.
-
-      - name: Install local development dependencies
-        run: |
-          ./run.sh setup --no-box-check
-        shell: bash
+          extra-packages: any::curl
 
       - name: Get release asset URL
         id: getReleaseUrl

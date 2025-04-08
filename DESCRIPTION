@@ -12,7 +12,6 @@ BugReports: https://github.com/PetrCala/artma/issues
 Depends:
     R (>= 4.0.0)
 Imports:
-    box,
     cli,
     glue,
     lifecycle,
@@ -23,16 +22,26 @@ Imports:
     withr,
     yaml
 Suggests:
+    box,
     box.linters,
     covr,
     devtools,
+    fs,
     here,
+    jsonlite,
     knitr,
+    languageserver,
+    mathjaxr,
+    optparse,
+    pkgbuild,
     remotes,
     rex,
     rmarkdown,
     roxygen2,
-    testthat
+    rstudioapi,
+    testthat,
+    tidyverse,
+    usethis
 VignetteBuilder: 
     knitr
 Config/testthat/edition: 3

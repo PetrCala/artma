@@ -26,7 +26,7 @@ info "Setting up the environment..."
 
 cd $PROJECT_ROOT
 
-source "$SCRIPTS_DIR/setupR.sh" # Prints verbose output
+Rscript -e "devtools::install(dependencies = TRUE)"
 
 # Validate box.path
 if [[ $NO_BOX_CHECK == false ]]; then

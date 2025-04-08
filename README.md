@@ -40,6 +40,9 @@ Status](https://www.r-pkg.org/badges/version/artma)](https://cran.r-project.org/
   - [How to run](#how-to-run)
     - [Using the `run.sh` sript](#using-the-runsh-sript)
       - [Creating an alias](#creating-an-alias)
+  - [Required packages](#required-packages)
+    - [Runtime Dependencies (`Imports`)](#runtime-dependencies-imports)
+    - [Development Dependencies (`Suggests`)](#development-dependencies-suggests)
   - [Importing modules](#importing-modules)
   - [Validating Conditions](#validating-conditions)
     - [Using the `validate` Function](#using-the-validate-function)
@@ -247,6 +250,50 @@ artma test
 artma lint
 # etc.
 ```
+
+## Required packages
+
+Below is a list of required packages and reasoning for why they are needed.
+
+### Runtime Dependencies (`Imports`)
+
+These packages are required for the package to function correctly when used by others.
+
+- `cli` – For styled and structured console output (messages, warnings, etc.)
+- `glue` – For efficient and readable string interpolation
+- `lifecycle` – To manage and signal function lifecycle stages (e.g., deprecated, experimental)
+- `lintr` – Runtime linting (if exposed in package functionality)
+- `logger` – Lightweight logging for debugging or tracking events during runtime
+- `rlang` – Core tidyverse infrastructure: advanced error handling, quosures, tidy evaluation
+- `stringr` – Consistent string manipulation functions
+- `withr` – Temporarily change global state (e.g., options, env vars) within a controlled context
+- `yaml` – Parsing and reading `.yaml` configuration files
+
+### Development Dependencies (`Suggests`)
+
+These packages are used for development only.
+
+- `box` – Package and module handling
+- `box.linters` – Box-specific linting support
+- `cli` – Console output and user-friendly messages
+- `covr` – Code coverage reporting
+- `devtools` – Package development tools (e.g., load_all, check, test)
+- `fs` – File system handling with a consistent API
+- `here` – Reliable file path construction within a project
+- `jsonlite` – JSON parsing, used for VSCode interactive terminals or custom config handling
+- `knitr` – Dynamic report generation, especially for vignettes or R Markdown
+- `languageserver` – Provides LSP support for IDE features like autocomplete and linting
+- `mathjaxr` – MathJax support for documentation previews (e.g., vignettes)
+- `optparse` – Command line argument parsing for scripts
+- `pkgbuild` – Tools for building R packages
+- `remotes` – Install packages from GitHub or other remote sources
+- `rex` – Human-readable regular expression construction (useful in testing/linting tools)
+- `rmarkdown` – Rendering and previewing Markdown-based reports
+- `roxygen2` – Inline documentation generation
+- `rstudioapi` – Interface with RStudio IDE features programmatically
+- `testthat` – Unit testing framework
+- `tidyverse` – Collection of packages useful for data manipulation and visualization (also helps in testing, debugging)
+- `usethis` – Automate package setup and development tasks (e.g., create_test, use_package)
 
 ## Importing modules
 

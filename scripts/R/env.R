@@ -1,3 +1,6 @@
+# DEPRECATED
+# This script is no longer used, as it has been superseeded by `devtools::install(dependencies = TRUE)`
+
 #' Set the CRAN mirror
 #' @keywords internal
 set_mirror <- function(mirror = NULL) {
