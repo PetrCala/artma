@@ -90,15 +90,12 @@ jobs:
           '
         continue-on-error: false
 
-      - name: Check reverse dependencies
-        id: rcmdCheckReverse
-        run: |
-          Rscript -e '
-            results <- devtools::check_reverse_dependencies(args = c("--as-cran", "--no-manual", "--no-build-vignettes"))
-            status <- ifelse(length(results$errors) == 0 && length(results$warnings) == 0, "success", "failure")
-            cat("CHECK_STATUS=", status, "\n", file = Sys.getenv("GITHUB_OUTPUT"), sep="")
-          '
-        continue-on-error: false
+      # - name: Check reverse dependencies
+      #   id: rcmdCheckReverse
+      #   run: |
+      #     # The library must be added and loaded first
+      #     Rscript -e 'revdepcheck::revdep_check(num_workers = 4)'
+      #   continue-on-error: false
 
       - name: Get current version
         id: getCurrentVersion
