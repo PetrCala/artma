@@ -140,7 +140,7 @@ jobs:
           if (tolower(${{ github.event.inputs.SHOULD_USE_DEVTOOLS }}) == "true") {
             cli::cli_inform("Using devtools for submission. Rebuilding the package.")
 
-            # Override yesno function to always return TRUE
+            # Override yesno function to always behave as if "yes" was selected
             unlockBinding("yesno", asNamespace("devtools"))
             assign("yesno", function(...) FALSE, envir = asNamespace("devtools"))
             lockBinding("yesno", asNamespace("devtools"))
