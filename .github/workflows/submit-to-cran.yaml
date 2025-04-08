@@ -137,7 +137,9 @@ jobs:
 
       - name: Submit to CRAN
         run: |
-          if (tolower(${{ github.event.inputs.SHOULD_USE_DEVTOOLS }}) == "true") {
+          should_use_devtools <- tolower("${{ github.event.inputs.SHOULD_USE_DEVTOOLS }}") == "true"
+          
+          if (should_use_devtools) {
             cli::cli_inform("Using devtools for submission. Rebuilding the package.")
 
             # Override yesno function to always behave as if "yes" was selected
