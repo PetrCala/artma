@@ -7,6 +7,11 @@ on:
         description: The version of the package to be submitted to CRAN. If not provided, use the latest version.
         required: false
         type: string
+      SHOULD_USE_DEVTOOLS:
+        description: Whether to use devtools for submission. Defaults to TRUE.
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   validateActor:
@@ -129,8 +134,17 @@ jobs:
 
       - name: Submit to CRAN
         run: |
-          source("./scripts/R/release.R")
+          should_use_devtools <- ${{ github.event.inputs.SHOULD_USE_DEVTOOLS }}
           built_path <- "${{ needs.determinePackageMetadata.outputs.PKG_FILE_NAME }}"
           cli::cli_inform("Submitting package: {.path {built_path}}")
-          submit_cran(pkg = ".", built_path = built_path, args = NULL)
+
+          if (should_use_devtools) {
+            cli::cli_inform("Using devtools for submission")
+            assign('yesno', function(...) FALSE, envir = asNamespace('devtools'))
+            devtools::submit_cran() # Rebuilds the package
+          } else {
+            cli::cli_inform("Using a custom submission script")
+            source("./scripts/R/release.R")
+            submit_cran(pkg = ".", built_path = built_path, args = NULL)
+           }
         shell: Rscript {0}
