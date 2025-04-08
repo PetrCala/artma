@@ -45,27 +45,27 @@ shift
 
 # Main switch-case to handle commands
 case "$RUN_ARG" in
-[Rr]) sh scripts/runR.sh "$@" ;;
+[Rr]) bash scripts/runR.sh "$@" ;;
 build) Rscript -e "devtools::build()" ;;
 build-ignore) Rscript -e "usethis::use_build_ignore('$@')" ;;
-bump-version) sh scripts/bumpVersion.sh "$@" ;;
+bump-version) bash scripts/bumpVersion.sh "$@" ;;
 check) Rscript -e "devtools::check()" ;;
 check-no-install) Rscript -e "devtools::check(args = c('--no-install'))" ;;
-clear-cache) sh scripts/clearCache.sh "$@" ;;
+clear-cache) bash scripts/clearCache.sh "$@" ;;
 coverage) Rscript -e "covr::package_coverage()" ;;
 deps) Rscript -e "devtools::install_deps(dependencies = TRUE)" ;;
 desc-normalize) Rscript -e "desc::desc_normalize()" ;;
 document) Rscript -e "devtools::document()" ;;
 fix-options) Rscript -e "source(\"scripts/R/fix_options.R\")" ;;
-lint) sh scripts/lintAll.sh "$@" ;;
-merge) sh scripts/mergeAndPush.sh "$@" ;;
-merge-pr) sh scripts/mergePR.sh "$@" ;;
+lint) bash scripts/lintAll.sh "$@" ;;
+merge) bash scripts/mergeAndPush.sh "$@" ;;
+merge-pr) bash scripts/mergePR.sh "$@" ;;
 namespace) Rscript -e "roxygen2::roxygenize()" ;;
-package) sh scripts/package.sh "$@" ;;
-preview-docs) sh scripts/previewDocs.sh "$@" ;;
-setup) sh scripts/setup.sh "$@" ;;
-test) sh scripts/test.sh "$@" ;;
-test-e2e) sh scripts/testE2E.sh "$@" ;;
+package) bash scripts/package.sh "$@" ;;
+preview-docs) bash scripts/previewDocs.sh "$@" ;;
+setup) bash scripts/setup.sh "$@" ;;
+test) bash scripts/test.sh "$@" ;;
+test-e2e) bash scripts/testE2E.sh "$@" ;;
 vignettes) Rscript -e "devtools::build_vignettes()" ;;
 help) help ;;
 *)
