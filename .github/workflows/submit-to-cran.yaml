@@ -8,7 +8,7 @@ on:
         required: false
         type: string
       SHOULD_USE_DEVTOOLS:
-        description: Whether to use devtools for submission. Defaults to TRUE.
+        description: Whether to use devtools for submission.
         required: false
         type: boolean
         default: true
