@@ -14,6 +14,7 @@ jobs:
     outputs:
       READY_TO_BUILD: ${{ steps.labelCheck.outputs.READY_TO_BUILD }}
       SEMVER_LEVEL: ${{ steps.labelCheck.outputs.SEMVER_LEVEL }}
+      SKIP_CRAN: ${{ steps.labelCheck.outputs.SKIP_CRAN }}
 
     steps:
       - name: Determine labels from PR
@@ -22,13 +23,17 @@ jobs:
           label_names='${{ toJson(github.event.pull_request.labels) }}'
 
           ready_to_build="false"
+          skip_cran="false"
 
           if echo "$label_names" | jq -e '.[] | select(.name == "release:next-version")' >/dev/null; then
             ready_to_build="true"
           fi
 
-          semver_labels=$(echo "$label_names" | jq -r '[.[] | select(.name | startswith("v-")) | .name]')
+          if echo "$label_names" | jq -e '.[] | select(.name == "release:skip-cran")' >/dev/null; then
+            skip_cran="true"
+          fi
 
+          semver_labels=$(echo "$label_names" | jq -r '[.[] | select(.name | startswith("v-")) | .name]')
           label_count=$(echo "$semver_labels" | jq 'length')
 
           semver_level="patch"
@@ -42,6 +47,7 @@ jobs:
 
           echo "READY_TO_BUILD=$ready_to_build" >> "$GITHUB_OUTPUT"
           echo "SEMVER_LEVEL=$semver_level" >> "$GITHUB_OUTPUT"
+          echo "SKIP_CRAN=$skip_cran" >> "$GITHUB_OUTPUT"
         shell: bash
 
   build:
@@ -117,11 +123,24 @@ jobs:
             --manual-file "manual_cran_comments.md" \
             --check-status "${{ steps.rcmdCheck.outputs.CHECK_STATUS }}"
 
+      - name: Create job metadata
+        id: createJobMetadata
+        shell: bash
+        run: |
+          jq -n \
+            --arg OLD_VERSION "${{ steps.getCurrentVersion.outputs.CURRENT_VERSION }}" \
+            --arg NEW_VERSION "${{ steps.bumpVersion.outputs.NEW_VERSION }}" \
+            --arg TAG_NAME "v${{ steps.bumpVersion.outputs.NEW_VERSION }}" \
+            --arg PKG_ARTIFACT "artma_${{ steps.bumpVersion.outputs.NEW_VERSION }}.tar.gz" \
+            --arg SKIP_CRAN "${{ needs.labelChecks.outputs.SKIP_CRAN }}" \
+            '{$OLD_VERSION, $NEW_VERSION, $TAG_NAME, $PKG_ARTIFACT, $SKIP_CRAN}' > metadata.json
+
       - name: Set job output
         id: setJobOutput
         run: |
-          echo "NEW_VERSION=${{ steps.bumpVersion.outputs.NEW_VERSION }}" >> $GITHUB_OUTPUT
-          echo "PKG_ARTIFACT=artma_${{ steps.bumpVersion.outputs.NEW_VERSION }}.tar.gz" >> $GITHUB_OUTPUT
+          while IFS="=" read -r key value; do
+            echo "$key=$value" >> $GITHUB_OUTPUT
+          done < <(jq -r 'to_entries[] | "\(.key)=\(.value)"' metadata.json)
 
       - name: Build the .tar.gz
         run: |
@@ -143,6 +162,7 @@ jobs:
           path: |
             ./*.tar.gz
             **/cran-comments.md
+            ./metadata.json
 
   createNewVersion:
     uses: ./.github/workflows/create-new-version.yaml
@@ -166,24 +186,26 @@ jobs:
         with:
           name: ${{ needs.build.outputs.PKG_ARTIFACT }}
 
-      - name: Determine new version and create tag
-        id: createTag
+      - name: Unpack the metadata
+        id: unpackMetadata
         run: |
-          TAG_NAME="v${{ needs.build.outputs.NEW_VERSION }}"
-          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
+          while IFS="=" read -r key value; do
+            echo "$key=$value" >> $GITHUB_OUTPUT
+          done < <(jq -r 'to_entries[] | "\(.key)=\(.value)"' metadata.json)
 
       - name: Push tag to GitHub
         run: |
           git fetch --tags
-          git tag ${{ steps.createTag.outputs.TAG_NAME }}
-          git push origin ${{ steps.createTag.outputs.TAG_NAME }}
+          git tag ${{ steps.unpackMetadata.outputs.TAG_NAME }}
+          git push origin ${{ steps.unpackMetadata.outputs.TAG_NAME }}
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.createTag.outputs.TAG_NAME }}
+          tag_name: ${{ steps.unpackMetadata.outputs.TAG_NAME }}
           files: |
             ./*.tar.gz
             **/cran-comments.md
+            ./metadata.json
           draft: false
           prerelease: false

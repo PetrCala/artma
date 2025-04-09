@@ -19,3 +19,4 @@
 ^CRAN-SUBMISSION$
 ^revdep$
 ^assets\.txt$
+^metadata\.json$

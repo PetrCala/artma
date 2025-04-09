@@ -37,50 +37,47 @@ jobs:
         with:
           extra-packages: any::curl, any::httr
 
-      - name: Get release asset URL
-        id: getReleaseUrl
+      - name: Fetch and download release assets
+        id: assets
         run: |
           TAG="${{ needs.getTagName.outputs.tag }}"
           REPO="${{ github.repository }}"
+          ASSETS=$(curl -s "https://api.github.com/repos/${REPO}/releases/tags/${TAG}" | jq -rc '.assets[]')
 
-          ASSET_INFO=$(curl -s "https://api.github.com/repos/${REPO}/releases/tags/${TAG}")
-              
-          echo "$ASSET_INFO" | jq -r '.assets[] | "\(.name)=\(.browser_download_url)"' > assets.txt
+          for row in $(echo "$ASSETS"); do
+            NAME=$(echo "$row" | jq -r '.name')
+            URL=$(echo "$row" | jq -r '.browser_download_url')
+            echo "Downloading $NAME"
+            curl -L -o "$NAME" "$URL"
+          done
 
-          cat assets.txt
+          METADATA_JSON=$(cat metadata.json)
+          jq -r 'to_entries[] | "\(.key)=\(.value)"' <<< "$METADATA_JSON" >> "$GITHUB_OUTPUT"
 
-          echo "ASSET_LIST=$(cat assets.txt | jq -Rs .)" >> "$GITHUB_OUTPUT"
-
-      - name: Download all release assets
+      - name: Submit to CRAN
+        if: steps.assets.outputs.SKIP_CRAN != 'true'
+        env:
+          USE_DEVTOOLS: ${{ env.SHOULD_USE_DEVTOOLS }}
+          PKG_ARTIFACT: ${{ steps.assets.outputs.PKG_ARTIFACT }}
         run: |
-          while IFS='=' read -r name url; do
-            echo "Downloading $name"
-            curl -L -o "$name" "$url"
-          done < assets.txt
+          if (Sys.getenv("USE_DEVTOOLS") == 'true') {
+            cli::cli_inform("Submitting via devtools")
+            unlockBinding("yesno", asNamespace("devtools"))
+            assign("yesno", function(...) FALSE, asNamespace("devtools"))
+            lockBinding("yesno", asNamespace("devtools"))
 
-      - name: Submit to CRAN using devtools
-        if: env.SHOULD_USE_DEVTOOLS == 'true'
-        run: |
-          cli::cli_inform("Using devtools for submission. Rebuilding the package...")
+            devtools::build_vignettes()
+            devtools::document()
+            devtools::submit_cran()
+          } else {
+            cli::cli_inform("Submitting via custom script")
 
-          # Override the 'devtools::yesno' function to always behave as if "yes" was selected
-          unlockBinding("yesno", asNamespace("devtools"))
-          assign("yesno", function(...) FALSE, envir = asNamespace("devtools"))
-          lockBinding("yesno", asNamespace("devtools"))
+            built_path <- Sys.getenv("PKG_ARTIFACT")
+            if (!file.exists(built_path)) {
+              cli::cli_abort("File {.file {built_path}} does not exist.")
+              }
 
-          # Rebuild the package and submit to CRAN
-          devtools::build_vignettes()
-          devtools::document()
-          devtools::submit_cran()
-        shell: Rscript {0}
-
-      - name: Submit to CRAN using a custom script
-        if: env.SHOULD_USE_DEVTOOLS != 'true'
-        run: |
-          cli::cli_inform("Using custom script for submission.")
-
-          source("./scripts/R/release.R")
-          semver <- sub("v", "", ${{ needs.getTagName.outputs.tag }}")
-          built_path <- paste("./artma_", semver, ".tar.gz", sep = "")
-          submit_cran(pkg = ".", built_path = built_path)
+            source("./scripts/R/release.R")
+            submit_cran(pkg = ".", built_path = built_path)
+          }
         shell: Rscript {0}
