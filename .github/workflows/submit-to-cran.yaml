@@ -64,5 +64,8 @@ jobs:
           assign("yesno", function(...) FALSE, envir = asNamespace("devtools"))
           lockBinding("yesno", asNamespace("devtools"))
 
-          devtools::submit_cran() # Rebuilds the package
+          # Rebuild the package and submit to CRAN
+          devtools::build_vignettes()
+          devtools::document()
+          devtools::submit_cran()
         shell: Rscript {0}
