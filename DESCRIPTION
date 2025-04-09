@@ -5,7 +5,7 @@ Authors@R:
     person("Petr", "Čala", , "61505008@fsv.cuni.cz", role = c("aut", "cre"))
 Author: Petr Čala [aut, cre]
 Maintainer: Petr Čala <61505008@fsv.cuni.cz>
-Description: Provides a unified and straightforward interface for performing a variety of meta-analysis methods directly from user data. Users can input a data frame, specify key parameters, and effortlessly execute and compare multiple common meta-analytic models. Designed for immediate usability, the package facilitates transparent, reproducible research without manual implementation of each analytical method. Ideal for researchers aiming for efficiency and reproducibility, it streamlines workflows from data preparation to results interpretation. For a comprehensive overview and practical tips on conducting meta-analysis, see Irsova et al. (2024) <doi:10.1111/joes.12595>.
+Description: Provides a unified and straightforward interface for performing a variety of meta-analysis methods directly from user data. Users can input a data frame, specify key parameters, and effortlessly execute and compare multiple common meta-analytic models. Designed for immediate usability, the package facilitates transparent, reproducible research without manual implementation of each analytical method. Ideal for researchers aiming for efficiency and reproducibility, it streamlines workflows from data preparation to results interpretation.
 License: GPL-3
 URL: https://github.com/PetrCala/artma
 BugReports: https://github.com/PetrCala/artma/issues
