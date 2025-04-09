@@ -27,6 +27,7 @@ utils::globalVariables(c(
   "paths",
   "prepare_data",
   "remove_options_with_prefix",
+  "submit_cran",
   "template",
   "utils",
   "validate",
