@@ -188,7 +188,7 @@ flag_release <- function(pkg = ".") {
     SHA = sha
   )
 
-  write.dcf(dat, file = path(pkg$path, "CRAN-SUBMISSION"))
+  write.dcf(dat, file = file.path(pkg$path, "CRAN-SUBMISSION"))
   usethis::use_build_ignore("CRAN-SUBMISSION")
 }
 
@@ -197,25 +197,25 @@ flag_release <- function(pkg = ".") {
 build_pkg <- function(pkg = ".", args = NULL) {
   pkg <- devtools::as.package(pkg)
 
-  built_path <- pkgbuild::build(pkg$path, tempdir(), manual = TRUE, args = args)
-  built_path
+  cli::cli_inform(c(
+    "i" = "Building package {.pkg {pkg$package}}",
+    "i" = "Version: {.val {pkg$version}}"
+  ))
+  cli::cat_line()
+  cli::cat_rule("Building", col = "cyan")
+
+  devtools::build_vignettes()
+  devtools::document()
+
+  # Returns the built path
+  pkgbuild::build(pkg$path, tempdir(), manual = TRUE, args = args)
 }
 
 #' @export
-submit_cran <- function(pkg = ".", built_path = NULL, args = NULL) {
+submit_cran <- function(pkg = ".", args = NULL) {
   pkg <- devtools::as.package(pkg)
 
-  # Build the package if it has not been built already
-  if (is.null(built_path)) built_path <- build_pkg(pkg = pkg, args = args)
-
-  if (!file.exists(built_path)) {
-    cli::cli_abort(
-      c(
-        x = "Can't find built package at {.file {built_path}}.",
-        i = "Build the package first with {.code build_pkg()}"
-      )
-    )
-  }
+  built_path <- build_pkg(pkg = pkg, args = args)
 
   size <- format(as_object_size(fs::file_info(built_path)$size), units = "auto") # nolint: unused_declared_object_linter.
   cli::cat_rule("Submitting", col = "cyan")

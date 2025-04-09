@@ -71,13 +71,7 @@ jobs:
             devtools::submit_cran()
           } else {
             cli::cli_inform("Submitting via custom script")
-
-            built_path <- Sys.getenv("PKG_ARTIFACT")
-            if (!file.exists(built_path)) {
-              cli::cli_abort("File {.file {built_path}} does not exist.")
-              }
-
             source("./scripts/R/release.R")
-            submit_cran(pkg = ".", built_path = built_path)
+            submit_cran(pkg = ".")
           }
         shell: Rscript {0}
