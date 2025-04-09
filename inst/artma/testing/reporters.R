@@ -13,7 +13,7 @@ custom_reporter <- R6::R6Class(
       cli::cli_inform(name, " | ")
     },
     end_file = function() {
-      cli::cli_inform("\n")
+      cli::cat_line()
     },
     start_test = function(context, test) {
       base::invisible()
@@ -75,7 +75,7 @@ dot_reporter <- R6::R6Class(
       invisible()
     },
     end_reporter = function() {
-      cli::cli_inform("\n")
+      cli::cat_line()
       if (self$n_fail > 0) {
         cli::cli_inform(cli::rule("Failures", line = 2), "\n")
       }

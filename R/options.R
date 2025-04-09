@@ -126,7 +126,7 @@ options.validate <- function(
       cli::cli_li("Run {.code artma::options.modify()} to manually modify the options file.")
       cli::cli_li("Run {.code artma::options.fix()} to automatically fix detected errors where possible.")
       cli::cli_end()
-      cli::cli_inform("\n")
+      cli::cat_line()
     } else {
       if (verbose) {
         cli::cli_alert_success("The user options file {.path {options_file_name}} is valid.")
@@ -503,7 +503,7 @@ options.help <- function(
   }
 
   cli::cli_h1("Options Help")
-  cli::cli_inform("\n")
+  cli::cat_line()
 
   for (opt_name in options) {
     opt_def <- template_map[[opt_name]]
@@ -527,7 +527,7 @@ options.help <- function(
     cli::cli_text("{.strong Default:} {opt_styles$DEFAULT(def)}")
     cli::cli_text("{.strong Help:} {.emph {hlp}}")
     cli::cli_rule()
-    cli::cli_inform("\n")
+    cli::cat_line()
   }
 
   invisible(NULL)
@@ -610,7 +610,7 @@ options.fix <- function(
         cli::cli_li("Some required options are missing and have no default values. Please provide the values for these options.")
         cli::cli_li("{.strong Syntax}: {CONST$STYLES$OPTIONS$NAME('<option_name>')}: {CONST$STYLES$OPTIONS$VALUE('<old_value>')} -> {CONST$STYLES$OPTIONS$VALUE('<new_value>')}")
         cli::cli_end()
-        cli::cli_inform("\n")
+        cli::cat_line()
         has_printed_missing_message <- TRUE
       }
       # A required option is missing and has no default value - ask the user for input
@@ -640,7 +640,7 @@ options.fix <- function(
   }
   cli::cli_end()
 
-  cli::cli_inform("\n")
+  cli::cat_line()
 
   if (interactive()) {
     should_proceed <- utils::select.list(
