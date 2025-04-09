@@ -2,7 +2,7 @@
 # We use it here as the source package does not export a couple of functions we need for our release cycle.
 # To see the source file, go to https://github.com/r-lib/devtools/blob/main/R/release.R
 
-cran_submission_url <- "https://cran.r-project.org/submit.html"
+cran_submission_url <- "https://xmpalantir.wu.ac.at/cransubmit/index2.php"
 
 as_object_size <- function(x) structure(x, class = "object_size") # nolint: undesirable_function_linter.
 
