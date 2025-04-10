@@ -194,7 +194,7 @@ flag_release <- function(pkg = ".") {
 
 
 #' @description Build the package locally and return the path to the built package.
-build_pkg <- function(pkg = ".", args = NULL) {
+build_pkg <- function(pkg = ".", path = NULL, args = NULL) {
   pkg <- devtools::as.package(pkg)
 
   cli::cli_inform(c(
@@ -206,15 +206,17 @@ build_pkg <- function(pkg = ".", args = NULL) {
 
   devtools::document()
 
+  path <- if (is.null(path)) tempdir() else path
+
   # Returns the built path
-  pkgbuild::build(pkg$path, tempdir(), manual = TRUE, args = args)
+  pkgbuild::build(pkg$path, path, manual = TRUE, args = args)
 }
 
 #' @export
-submit_cran <- function(pkg = ".", args = NULL) {
+submit_cran <- function(pkg = ".", built_path = NULL, args = NULL) {
   pkg <- devtools::as.package(pkg)
 
-  built_path <- build_pkg(pkg = pkg, args = args)
+  built_path <- if (is.null(built_path)) build_pkg(pkg = pkg, args = args) else built_path
 
   size <- format(as_object_size(fs::file_info(built_path)$size), units = "auto") # nolint: unused_declared_object_linter.
   cli::cat_rule("Submitting", col = "cyan")
