@@ -78,10 +78,6 @@ jobs:
         with:
           extra-packages: any::remotes, any::devtools, local::.
 
-      - name: Build vignettes
-        run: |
-          Rscript -e 'devtools::build_vignettes()'
-
       - name: Build documentation
         run: |
           Rscript -e 'devtools::document()'

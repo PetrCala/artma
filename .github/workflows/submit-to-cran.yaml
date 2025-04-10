@@ -66,7 +66,6 @@ jobs:
             assign("yesno", function(...) FALSE, asNamespace("devtools"))
             lockBinding("yesno", asNamespace("devtools"))
 
-            devtools::build_vignettes()
             devtools::document()
             devtools::submit_cran()
           } else {

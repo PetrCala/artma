@@ -204,7 +204,6 @@ build_pkg <- function(pkg = ".", args = NULL) {
   cli::cat_line()
   cli::cat_rule("Building", col = "cyan")
 
-  devtools::build_vignettes()
   devtools::document()
 
   # Returns the built path
