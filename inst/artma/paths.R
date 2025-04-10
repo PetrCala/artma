@@ -23,8 +23,9 @@ DIR_CONFIG <- file.path(PROJECT_ROOT, "config")
 DIR_METHODS <- file.path(PROJECT_ROOT, "methods")
 DIR_OPTIONS <- file.path(PROJECT_ROOT, "options")
 DIR_OPTIONS_TEMPLATES <- file.path(DIR_OPTIONS, "templates")
-DIR_TEMP <- file.path(PROJECT_ROOT, "temp")
-
+DIR_USR_DATA <- tools::R_user_dir(CONST$PACKAGE_NAME, which = "data")
+DIR_USR_CONFIG <- tools::R_user_dir(CONST$PACKAGE_NAME, which = "config")
+DIR_USR_CACHE <- tools::R_user_dir(CONST$PACKAGE_NAME, which = "cache")
 
 #' A list of paths used in the project
 #'
@@ -36,10 +37,12 @@ PATHS <- list(
   DIR_METHODS = DIR_METHODS,
   DIR_OPTIONS = DIR_OPTIONS,
   DIR_OPTIONS_TEMPLATES = DIR_OPTIONS_TEMPLATES,
-  DIR_TEMP = DIR_TEMP,
-  DIR_LOGS = file.path(DIR_TEMP, "logs"),
-  DIR_CACHE = file.path(DIR_TEMP, "cache"),
-  DIR_USER_OPTIONS = file.path(DIR_TEMP, "options"), # Store user options here by default
+
+  # Persistent user data directories
+  DIR_USR_DATA = DIR_USR_DATA,
+  DIR_USR_CONFIG = DIR_USR_CONFIG,
+  DIR_USR_CACHE = DIR_USR_CACHE,
+  DIR_LOGS = file.path(DIR_USR_CACHE, "logs"),
 
   # Files
   FILE_OPTIONS_TEMPLATE = file.path(DIR_OPTIONS_TEMPLATES, "options_template.yaml")

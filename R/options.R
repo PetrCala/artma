@@ -48,7 +48,7 @@ options.validate <- function(
     glue::glue("Invalid failure action specified: {failure_action}. Must be one of: {glue::glue_collapse(CONST$OPTIONS$VALIDATION_ACTIONS, sep = ", ")}")
   )
 
-  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
+  options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
   if (!dir.exists(options_dir)) {
     cli::cli_abort(glue::glue("The following options directory does not exist: {options_dir}"))
   }
@@ -159,7 +159,7 @@ options.copy <- function(
     artma / libs / validation[assert]
   )
 
-  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
+  options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
   options_file_name_from <- options_file_name_from %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to copy from: ")
   options_file_path_from <- file.path(options_dir, options_file_name_from)
 
@@ -200,7 +200,7 @@ options.delete <- function(
     artma / libs / validation[assert, validate]
   )
 
-  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
+  options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
   options_file_names <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the user options files you wish to delete: ", multiple = TRUE) # nolint: unused_declared_object_linter.
 
   if (!skip_confirmation) {
@@ -236,7 +236,7 @@ options.list <- function(options_dir = NULL, should_return_verbose_names = FALSE
     artma / paths[PATHS],
     artma / const[CONST]
   )
-  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
+  options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
 
   if (!dir.exists(options_dir)) {
     return(character(0))
@@ -297,7 +297,7 @@ options.load <- function(
     artma / libs / validation[validate, assert]
   )
 
-  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
+  options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
 
   validate(
     is.character(options_dir),
@@ -542,7 +542,7 @@ options.print_default_dir <- function(...) { # nolint: object_name_linter.
   box::use(artma / paths[PATHS])
 
   cli::cli_h1("User option files default directory:")
-  cli::cli_text("{.path {PATHS$DIR_USER_OPTIONS}}")
+  cli::cli_text("{.path {PATHS$DIR_USR_CONFIG}}")
 }
 
 #' @title Fix user options file
@@ -573,7 +573,7 @@ options.fix <- function(
   options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to fix: ")
   options_file_name <- parse_options_file_name(options_file_name)
 
-  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
+  options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
 
   expected_path <- file.path(options_dir, options_file_name)
   if (!file.exists(expected_path)) {
@@ -715,7 +715,7 @@ options.create <- function(
 
   logger::log_info(cli::format_inline("A user options file is being {action_name}: {.path {options_file_name}}..."))
 
-  options_dir <- options_dir %||% PATHS$DIR_USER_OPTIONS
+  options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
   options_file_path <- file.path(options_dir, options_file_name)
 
   assert(
