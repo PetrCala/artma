@@ -19,7 +19,8 @@ ensure_valid_boxpath <- function() {
 #' @title Static Setup
 #' @description
 #' A function to be called at the beginning of each static setup function to ensure crucial fucntionality, such as imports, logging, etc., all work as expected.
-#' @keywords internal
+#' @returns `NULL` Sets up the package for use.
+#' @export
 static_setup <- function() {
   ensure_valid_boxpath()
 }
