@@ -145,7 +145,6 @@ jobs:
             pkg = ".",
             path = "./${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}"
           )
-          "
         shell: Rscript {0}
 
       - name: Upload R package artifact
