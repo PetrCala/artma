@@ -1,0 +1,82 @@
+---
+title: "Release Cycle for artma"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Release Cycle for artma}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<style>
+div.reviewer pre { background-color:#e3dece; background-image: none; }
+div.output pre { background-color:#FFFFFF; background-image: none; }
+</style>
+
+## Introduction
+
+This vignette outlines the release cycle for the **artma** package (Automatic Replication Tools for Meta-Analysis).
+
+## Pull request-based workflow
+
+All changes to **artma** must be made via pull requests (PRs) against the `master` branch. Whenever a PR is opened, updated, or synchronized:
+
+1. **R CMD checks**, **lint checks**, and **package tests** run automatically.
+2. The PR cannot be merged until these checks pass, ensuring that every update maintains code quality and package integrity.
+
+### Example contributor flow
+
+```{r contributor_flow, eval=FALSE}
+# contributor code:
+# 1. Fork or clone the artma repository.
+# 2. Create a feature branch based on master.
+# 3. Make changes locally (adding features, fixing bugs, etc.).
+# 4. Push the branch to your fork or to the main repo (if you have permissions).
+# 5. Open a pull request against master.
+```
+
+<div class = "reviewer">
+```{r reviewer_flow, eval=FALSE}
+# reviewer code:
+# 1. Review the open pull request.
+# 2. Confirm all checks (R CMD check, lint, tests) pass.
+# 3. Request changes or merge, if it looks good.
+```
+</div>
+
+## Version tagging and release
+
+When a PR is merged into `master`, the system checks for the special flag **`release:next-version`** in the PR description or labels. If it exists, a separate workflow called `build-and-tag.yaml` is triggered. This workflow automatically:
+
+- **Builds** the package with the new changes.
+- **Tags** a new version based on the provided version increment labels.
+
+### Version increment labels
+
+The PR can include one of the following labels to indicate how the version should be bumped:
+
+- **v-patch**: Increment the patch level (e.g., from 0.1.18 to 0.1.19).
+- **v-minor**: Increment the minor version (e.g., from 0.1.18 to 0.2.0).
+- **v-major**: Increment the major version (e.g., from 0.1.18 to 1.0.0).
+
+If multiple of these labels appear, the workflow will choose the highest priority bump (major > minor > patch).
+
+### Skipping CRAN or submitting automatically
+
+After a successful tag is created, the `build-and-tag.yaml` workflow also creates a GitHub release. By default, another workflow (`submit-to-cran.yaml`) will run next, automatically **submitting** the new version of **artma** to CRAN.
+
+If your PR or commit message contains the label **`release:skip-cran`**, the CRAN submission is bypassed. In that scenario, the tag is created and the GitHub release is published, but no submission to CRAN occurs.
+
+## Summary
+
+1. **Open a PR** against `master`.
+2. **Checks run** automatically (R CMD check, lint, tests).
+3. **Merge** once the PR is approved and checks pass.
+4. **`release:next-version`?**
+   - If yes, run `build-and-tag.yaml`, then automatically:
+     1. Create a new version tag using **v-patch**, **v-minor**, or **v-major** labels.
+     2. Trigger a GitHub release.
+     3. By default, run `submit-to-cran.yaml` to submit to CRAN.
+   - If **`release:skip-cran`** is also present, skip the CRAN submission step.
+5. **Enjoy** the newly published version of **artma** or continue development on your next feature branch.
+
+This system ensures that **artma** remains stable, well-tested, and easy to maintain for both developers and end users, while keeping the release process transparent and reproducible.

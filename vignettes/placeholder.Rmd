@@ -1,8 +1,0 @@
----
-title: "Placeholder vignette"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Placeholder vignette}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
----
