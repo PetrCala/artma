@@ -17,6 +17,7 @@ Imports:
     lifecycle,
     lintr,
     logger,
+    metafor,
     rlang,
     stringr,
     withr,
