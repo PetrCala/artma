@@ -11,4 +11,7 @@
 #' @keywords internal
 .dummy_use_rlang <- function() rlang::is_true(TRUE)
 
+#' @keywords internal
+.dummy_use_metafor <- function() metafor::rma(yi = 1:10, vi = 1:10)
+
 # nolint end: box_usage_linter, unused_declared_object_linter.
