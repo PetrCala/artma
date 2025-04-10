@@ -1,9 +1,9 @@
 name: Submit to CRAN
 
 on:
-  create:
+  push:
     tags:
-      - v*
+      - "v*"
 
 env:
   SHOULD_USE_DEVTOOLS: "false"
