@@ -1,4 +1,4 @@
-# artma (development version)
+# artma 0.0.0 (development version)
 
 Initial pre-release version of **artma** (Automatic Replication Tools for Meta-Analysis).
 
