@@ -1,5 +1,11 @@
 # nolint start: unused_declared_object_linter, box_usage_linter.
 
+# find_box_path <- function() {
+#   current_box_path <- getOption("box.path", character(0))
+#   pkg_box_path <- find.package("artma")
+#   dev_box_path <- file.path(pkg_box_path, "inst") # For local development
+# }
+
 #' @title Ensure valid box path
 #' @description
 #' Ensure that box imports throughout the projects work. This is done by adding the package path to the box path option if it is not already there.
@@ -44,13 +50,11 @@ runtime_setup <- function(
     logs = artma / libs / logs / index
   )
 
-  withr::with_options(
-    options.load(options_file_name = options_file_name, options_dir = options_dir),
-    {
-      logs$setup_logging()
-      FUN()
-    }
-  )
+  runtime_options <- options.load(options_file_name = options_file_name, options_dir = options_dir)
+  withr::local_options(runtime_options)
+
+  logs$setup_logging()
+  FUN()
 }
 
 # nolint end: unused_declared_object_linter, box_usage_linter.
