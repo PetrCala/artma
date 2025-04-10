@@ -60,17 +60,19 @@ jobs:
           USE_DEVTOOLS: ${{ env.SHOULD_USE_DEVTOOLS }}
           PKG_ARTIFACT: ${{ steps.assets.outputs.PKG_ARTIFACT }}
         run: |
+          built_path <- Sys.getenv("PKG_ARTIFACT")
+          cli::inform("Submitting to CRAN with the artifact under {.path {built_path}}...")
+
           if (Sys.getenv("USE_DEVTOOLS") == 'true') {
-            cli::cli_inform("Submitting via devtools")
+            cli::cli_inform("Submitting via devtools.")
             unlockBinding("yesno", asNamespace("devtools"))
             assign("yesno", function(...) FALSE, asNamespace("devtools"))
             lockBinding("yesno", asNamespace("devtools"))
 
-            devtools::document()
-            devtools::submit_cran()
+            devtools:::upload_cran(pkg = ".", built_path = built_path)
+            devtools:::flag_release(pkg = ".")
           } else {
-            built_path <- Sys.getenv("PKG_ARTIFACT")
-            cli::cli_inform("Submitting via custom script. Using the artifact under {.path {built_path}}...")
+            cli::cli_inform("Submitting via custom script.")
             source("./scripts/R/release.R")
             submit_cran(pkg = ".", built_path = built_path)
           }
