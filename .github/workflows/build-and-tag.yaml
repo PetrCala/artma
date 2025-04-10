@@ -140,16 +140,13 @@ jobs:
 
       - name: Build the .tar.gz
         run: |
-          Rscript -e "
-            devtools::build(
-              pkg = '.',
-              # Make the package tarball name match the artifact name
-              path = './${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}',
-              binary = TRUE,
-              vignettes = TRUE,
-              manual = FALSE
-            )
+          source("./scripts/R/release.R")
+          build_pkg(
+            pkg = ".",
+            path = "./${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}"
+          )
           "
+        shell: Rscript {0}
 
       - name: Upload R package artifact
         uses: actions/upload-artifact@v4

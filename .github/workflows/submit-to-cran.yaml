@@ -6,7 +6,7 @@ on:
       - v*
 
 env:
-  SHOULD_USE_DEVTOOLS: 'false'
+  SHOULD_USE_DEVTOOLS: "false"
 
 jobs:
   getTagName:
@@ -69,8 +69,9 @@ jobs:
             devtools::document()
             devtools::submit_cran()
           } else {
-            cli::cli_inform("Submitting via custom script")
+            built_path <- Sys.getenv("PKG_ARTIFACT")
+            cli::cli_inform("Submitting via custom script. Using the artifact under {.path {built_path}}...")
             source("./scripts/R/release.R")
-            submit_cran(pkg = ".")
+            submit_cran(pkg = ".", built_path = built_path)
           }
         shell: Rscript {0}
