@@ -35,11 +35,3 @@ jobs:
           lintr::lint_package()
         shell: Rscript {0}
 
-      - name: Print error trace
-        if: failure()
-        run: |
-          cli::cli_inform("Linting failed. Printing error trace...")
-          rlang::last_trace()
-        shell: Rscript {0}
-          
-
