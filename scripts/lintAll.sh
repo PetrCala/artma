@@ -29,14 +29,7 @@ if ! Rscript -e "if (!requireNamespace('lintr', quietly = TRUE)) quit(status = 1
     exit 1
 fi
 
-# Lint all R files in the directory
-if [ -n "$GITHUB_EVENT_NAME" ]; then
-    # Github workflow runner: just capture output
-    LINT_OUTPUT=$(Rscript -e "lintr::lint_package()" 2>&1)
-else
-    # Local environment: show output in terminal
-    LINT_OUTPUT=$(Rscript -e "lintr::lint_package()" 2>&1 | tee /dev/tty)
-fi
+LINT_OUTPUT=$(Rscript -e "lintr::lint_package()" 2>&1 | tee /dev/tty)
 
 if [[ "$LINT_OUTPUT" != *"No lints found"* ]]; then
     error "Linting failed"
