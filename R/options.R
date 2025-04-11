@@ -390,7 +390,7 @@ options.load <- function(
 #' @title Modify User Options
 #' @description Modify an existing user options file with new values.
 #'
-#' @param options_file_name *\[character\]* Name of the user options file to modify, including the suffix.
+#' @param options_file_name *\[character, optional\]* Name of the user options file to modify, including the suffix.
 #' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
 #' @param template_path *\[character, optional\]* Full path to the options template file. Defaults to `NULL`.
 #' @param user_input *\[list, optional\]* A named list of user-supplied values for these options. If `NULL` or missing entries exist, the function will prompt the user via `readline()` (for required entries) or use defaults (for optional ones).
@@ -453,7 +453,7 @@ options.modify <- function(
 
 #' @title Options Open
 #' @description Open an options file for editing. Must be run interactively.
-#' @param options_file_name *\[character\]* Name of the user options file to modify, including the suffix.
+#' @param options_file_name *\[character, optional\]* Name of the user options file to modify, including the suffix.
 #' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
 #' @return `NULL` Opens the file for editing
 #' @export
