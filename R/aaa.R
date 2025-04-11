@@ -12,17 +12,7 @@ runtime_setup <- function(
     FUN,
     options_file_name = NULL,
     options_dir = NULL) {
-  # box::use(logs = artma / libs / logs / index)
-  tryCatch(
-    {
-      eval(parse(text = "box::use(logs = artma / libs / logs / index)"))
-    },
-    error = function(e) {
-      message("An error occurred: ", e$message)
-      message("Traceback:")
-      traceback()
-    }
-  )
+  box::use(logs = artma / libs / logs / index)
 
   runtime_options <- options.load(options_file_name = options_file_name, options_dir = options_dir)
   withr::local_options(runtime_options)
