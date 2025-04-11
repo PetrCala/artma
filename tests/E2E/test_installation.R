@@ -1,4 +1,4 @@
-GH_REPO_PATH <- "PetrCala/artma@dev"
+GH_REPO_PATH <- "PetrCala/artma@fix/on-load"
 remotes::install_github(GH_REPO_PATH, force = TRUE)
 library(artma)
 
