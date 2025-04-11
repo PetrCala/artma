@@ -1,12 +1,30 @@
 box::use(artma / libs / validation[validate, assert])
 
-#' Pluralize a word
+#' Pluralize a word based on count
 #'
-#' @param word *\[character\]* The word to pluralize
-#' `character` The pluralized word
+#' @param word *\[character\]* The word to potentially pluralize
+#' @param count *\[integer\]* The count to determine if pluralization is needed
+#' `character` The word, pluralized if count is not 1
 #' @export
-pluralize <- function(word) {
+pluralize <- function(word, count = NULL) {
   validate(is.character(word))
+
+  if (is.null(count)) {
+    if (grepl("[sxz]$", word) || grepl("[sc]h$", word)) {
+      return(paste0(word, "es"))
+    } else if (grepl("[^aeiou]y$", word)) {
+      return(sub("y$", "ies", word))
+    } else {
+      return(paste0(word, "s"))
+    }
+  }
+
+  validate(is.numeric(count))
+
+  if (count == 1) {
+    return(word)
+  }
+
   if (grepl("[sxz]$", word) || grepl("[sc]h$", word)) {
     return(paste0(word, "es"))
   } else if (grepl("[^aeiou]y$", word)) {
@@ -15,7 +33,6 @@ pluralize <- function(word) {
     return(paste0(word, "s"))
   }
 }
-
 #' Find a string in a vector of strings using a substring
 #'
 #' @param vector_of_strings *\[character\]* The vector of strings to search
