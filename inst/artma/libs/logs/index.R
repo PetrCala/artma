@@ -25,7 +25,7 @@ get_logger_path <- function(logger_name) {
 #' @export
 flush_log_files <- function(logger_name = NULL) {
   for (file in list.files(PATHS$DIR_LOGS)) {
-    if (!is.null(logger_name) && file != logger_name) {
+    if (!is.null(logger_name) && all(file != logger_name)) {
       next
     }
     logger_path <- get_logger_path(logger_name = file)
