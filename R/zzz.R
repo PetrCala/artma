@@ -54,15 +54,13 @@ get_valid_boxpath <- function(libname, pkgname) {
 
 #' @title .onUnload hook for package detachment
 #' @description Called when the package is detached.
+#' @note The box imports no longer work after the package is detached.
 #' @return `NULL` Cleans up the package on unload
 #' @keywords internal
 .onUnload <- function(libpath) { # nolint: unused_declared_object_linter.
-  # box::use(
-  #   artma / const[CONST],
-  #   artma / options / utils[remove_options_with_prefix]
-  # )
-
-  # remove_options_with_prefix(prefix = CONST$PACKAGE_NAME)
+  # Remove options with the "artma" prefix
+  opts_to_remove <- names(options())[startsWith(names(options()), "artma")]
+  options(stats::setNames(rep(list(NULL), length(opts_to_remove)), opts_to_remove))
 
   invisible()
 }
