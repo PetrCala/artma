@@ -20,13 +20,17 @@ get_valid_boxpath <- function(libname, pkgname) {
 
   boxpath_defined <- function(path) grepl(path, current_box_path)
 
-  # if (all(c(
-  #   boxpath_defined(pkg_path),
-  #   boxpath_defined(dev_path)
-  # ))) {
-  #   return(current_box_path) # Already valid
-  # }
+  if (all(c(
+    boxpath_defined(pkg_path),
+    boxpath_defined(dev_path)
+  ))) {
+    message("Package path already in box.path option")
+    return(current_box_path) # Already valid
+  }
 
+  message("Adding package path to box.path option")
+  message("Current box.path: ", current_box_path)
+  message("Adding: ", pkg_path)
   unique(c(current_box_path, pkg_path, dev_path))
 }
 
