@@ -126,8 +126,8 @@ prompt_user_required_no_default <- function(opt) { # nolint: object_length_linte
   }
 
   prompt_msg <- switch(opt$prompt, # nolint: unused_declared_object_linter.
-    file = cli::format_inline(" (or enter {.emph {'choose'}} to select a file interactively)"),
-    directory = cli::format_inline(" (or enter {.emph {'choose'}} to select a directory interactively)"),
+    file = cli::format_inline(" (or type in {.emph {'choose'}} to select a file interactively)"),
+    directory = cli::format_inline(" (or type in {.emph {'choose'}} to select a directory interactively)"),
     NULL = "",
     cli::cli_abort(cli::format_inline("Invalid prompt type {.emph {prompt_type}}."))
   )
