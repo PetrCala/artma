@@ -475,6 +475,7 @@ options.open <- function(
 
   file_path <- file.path(options_dir, options_file_name)
   usethis::edit_file(file_path)
+
   return(invisible(NULL))
 }
 
