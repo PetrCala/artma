@@ -465,13 +465,17 @@ options.open <- function(
     artma / options / ask[ask_for_existing_options_file_name]
   )
 
+  if (!rlang::is_interactive()) {
+    cli::cli_alert_warning("Running in non-interactive mode. The user options file cannot be opened.")
+    return(invisible(NULL))
+  }
+
   options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
   options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to open: ")
 
-  cli::cli_inform("Selected file: {.file {file.path(options_dir, options_file_name)}}.")
-
-  # Open the file in the default text editor
-  system(paste(getOption("editor"), file.path(options_dir, options_file_name)))
+  file_path <- file.path(options_dir, options_file_name)
+  usethis::edit_file(file_path)
+  return(invisible(NULL))
 }
 
 #' @title Options Help
@@ -479,7 +483,7 @@ options.open <- function(
 #' Prints information for each requested option (or all options if `options` is `NULL`).
 #'
 #' @param options *\[character, optional\]* A single option name (dot-separated) or a
-#'   character vector thereof. If `NULL`, prints **all** options from
+#'   character vector thereof. If `NULL`, prints **all** options from"
 #'   the template.
 #' @param template_path *\[character, optional\]* Path to the template YAML file.
 #'   Defaults to \code{PATHS$FILE_OPTIONS_TEMPLATE}.
