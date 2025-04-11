@@ -29,8 +29,14 @@ invoke_runtime_methods <- function(methods, df, ...) {
     }
   }
 
-  if (!(is.character(methods) && all(methods %in% supported_methods))) {
-    cli::cli_abort(paste("Invalid runtime methods selected:", glue::glue_collapse(as.character(methods), sep = ", "), "\nTo see a list of available methods, run 'artma::methods.list()'."))
+  if (methods == "all") {
+    methods <- supported_methods
+  } else if (!(is.character(methods) && all(methods %in% supported_methods))) {
+    selected_methods <- glue::glue_collapse(as.character(methods), sep = ", ") # nolint: unused_declared_object_linter.
+    cli::cli_abort(c(
+      "x" = "Invalid runtime methods selected: {.val {selected_methods}}",
+      "i" = "To see a list of available methods, run {.code artma::methods.list()}"
+    ))
   }
 
   logger::log_info("Running the main ARTMA function.")
