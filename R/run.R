@@ -12,7 +12,8 @@
 #' @keywords internal
 invoke_runtime_methods <- function(methods, df, ...) {
   box::use(
-    artma / libs / utils[is_empty]
+    artma / libs / utils[is_empty],
+    artma / libs / string[pluralize]
   )
 
   RUNTIME_METHOD_MODULES <- get_runtime_method_modules() # nolint: box_usage_linter.
@@ -39,8 +40,8 @@ invoke_runtime_methods <- function(methods, df, ...) {
     ))
   }
 
-  logger::log_info("Running the main ARTMA function.")
-  logger::log_info(glue::glue("Invoking {length(methods)} methods..."))
+  cli::cli_h3("Running the main ARTMA function")
+  cli::cli_alert_info("Invoking {length(methods)} {pluralize('method', length(methods))}")
 
   results <- list()
   for (i in seq_along(supported_methods)) {
