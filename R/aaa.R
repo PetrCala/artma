@@ -15,12 +15,12 @@ runtime_setup <- function(
   # box::use(logs = artma / libs / logs / index)
   tryCatch(
     {
-      box::use(logs = artma / libs / logs / index)
+      eval(parse(text = "box::use(logs = artma / libs / logs / index)"))
     },
     error = function(e) {
       message("An error occurred: ", e$message)
-      message("rlang::last_trace():")
-      message(rlang::last_trace())
+      message("Traceback:")
+      traceback()
     }
   )
 
