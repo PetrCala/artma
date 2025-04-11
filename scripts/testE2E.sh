@@ -8,7 +8,7 @@ E2E_TEST_FOLDER_PATH="$PROJECT_ROOT/$E2E_TEST_DIR_NAME"
 
 cd $E2E_TEST_FOLDER_PATH
 
-TEST_FILES=($(find . -name "test_*.R"))
+TEST_FILES=($(find . -name "test-*.R"))
 TEST_FILES_COUNT=${#TEST_FILES[@]}
 
 info "Running $TEST_FILES_COUNT end-to-end tests..."

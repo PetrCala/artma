@@ -18,7 +18,12 @@ get_valid_boxpath <- function(libname, pkgname) {
   pkg_path <- file.path(libname, pkgname)
   dev_path <- file.path(pkg_path, "inst")
 
-  boxpath_defined <- function(path) grepl(path, current_box_path)
+  boxpath_defined <- function(path) {
+    if (length(current_box_path) == 0) {
+      return(FALSE)
+    }
+    grepl(path, current_box_path)
+  }
 
   if (all(c(
     boxpath_defined(pkg_path),

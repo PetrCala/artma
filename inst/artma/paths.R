@@ -1,5 +1,6 @@
 box::use(
-  artma / const[CONST]
+  artma / const[CONST],
+  artma / libs / validation[assert]
 )
 
 
@@ -11,13 +12,21 @@ get_pkg_path <- function() {
   dev_path <- grep(file.path(package_name, "inst$"), box_path, value = TRUE)
 
   if (any(dir.exists(dev_path))) {
-    return(dev_path) # In development
+    if (is.vector(dev_path)) {
+      return(dev_path[1])
+    }
+    return(dev_path)
   }
 
   return(grep(glue::glue("{package_name}$"), box_path, value = TRUE))
 }
 
 PACKAGE_PATH <- get_pkg_path()
+assert(
+  is.character(PACKAGE_PATH) && length(PACKAGE_PATH) == 1,
+  "Package path must be a single character string"
+)
+
 PROJECT_ROOT <- file.path(PACKAGE_PATH, CONST$PACKAGE_NAME)
 DIR_CONFIG <- file.path(PROJECT_ROOT, "config")
 DIR_METHODS <- file.path(PROJECT_ROOT, "methods")
