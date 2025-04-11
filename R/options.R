@@ -325,6 +325,10 @@ options.load <- function(
         options_dir = options_dir
       )
     } else {
+      if (!interactive()) {
+        cli::cli_abort("No user options file to load was provided. Exiting...")
+      }
+
       action <- utils::select.list(
         title = "You have not specified the options file name to load. Please choose one of the following:",
         choices = c("Create a new options file", "Choose from existing options files")
