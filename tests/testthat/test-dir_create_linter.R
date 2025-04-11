@@ -1,5 +1,3 @@
-ensure_valid_boxpath()
-
 box::use(
   testthat[test_that],
   lintr[expect_lint]
