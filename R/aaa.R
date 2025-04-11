@@ -12,13 +12,15 @@ runtime_setup <- function(
     FUN,
     options_file_name = NULL,
     options_dir = NULL) {
-  box::use(logs = artma / libs / logs / index)
+  # box::use(logs = artma / libs / logs / index)
 
   runtime_options <- options.load(options_file_name = options_file_name, options_dir = options_dir)
   withr::local_options(runtime_options)
 
-  logs$setup_logging()
-  FUN()
+  message("Loading runtime options from ", options_file_name, " file.")
+
+  # logs$setup_logging()
+  # FUN()
 }
 
 # nolint end: unused_declared_object_linter, box_usage_linter.
