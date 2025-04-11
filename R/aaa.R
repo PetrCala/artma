@@ -14,6 +14,11 @@ runtime_setup <- function(
     options_dir = NULL) {
   box::use(logs = artma / libs / logs / index)
 
+  if (is.null(options_file_name) && !interactive()) {
+    cli::cli_alert_warning("Running in non-interactive mode without providing an options file name. Please provide an options file name or run in interactive mode.")
+    return(invisible())
+  }
+
   runtime_options <- options.load(options_file_name = options_file_name, options_dir = options_dir)
   withr::local_options(runtime_options)
 
