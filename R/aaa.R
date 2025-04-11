@@ -12,9 +12,6 @@ runtime_setup <- function(
     FUN,
     options_file_name = NULL,
     options_dir = NULL) {
-  message("Current box path: ", getOption("box.path"))
-  message("Current working directory: ", getwd())
-
   box::use(logs = artma / libs / logs / index)
 
   runtime_options <- options.load(options_file_name = options_file_name, options_dir = options_dir)
