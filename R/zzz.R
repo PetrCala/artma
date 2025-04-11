@@ -57,12 +57,12 @@ get_valid_boxpath <- function(libname, pkgname) {
 #' @return `NULL` Cleans up the package on unload
 #' @keywords internal
 .onUnload <- function(libpath) { # nolint: unused_declared_object_linter.
-  box::use(
-    artma / const[CONST],
-    artma / options / utils[remove_options_with_prefix]
-  )
+  # box::use(
+  #   artma / const[CONST],
+  #   artma / options / utils[remove_options_with_prefix]
+  # )
 
-  remove_options_with_prefix(prefix = CONST$PACKAGE_NAME)
+  # remove_options_with_prefix(prefix = CONST$PACKAGE_NAME)
 
   invisible()
 }
