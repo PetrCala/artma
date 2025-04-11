@@ -29,10 +29,7 @@ if ! Rscript -e "if (!requireNamespace('lintr', quietly = TRUE)) quit(status = 1
     exit 1
 fi
 
-Rscript -e "
-devtools::load_all()
-artma::static_setup() # Ensures the correct boxpath and static paths
-"
+Rscript -e "devtools::load_all()"
 
 LINT_OUTPUT=$(Rscript -e "lintr::lint_package()" 2>&1 | tee /dev/tty)
 

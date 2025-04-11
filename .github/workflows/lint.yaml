@@ -30,8 +30,5 @@ jobs:
       - name: Lint
         run: |
           devtools::load_all()
-          artma::static_setup() # Set up boxpaths
-
           lintr::lint_package()
         shell: Rscript {0}
-
