@@ -10,10 +10,10 @@ get_pkg_path <- function() {
   box_path <- getOption("box.path")
   dev_path <- grep(file.path(package_name, "inst$"), box_path, value = TRUE)
 
-  is_dev <- any(dir.exists(dev_path))
-  if (is_dev) {
-    return(dev_path)
+  if (any(dir.exists(dev_path))) {
+    return(dev_path) # In development
   }
+
   return(grep(glue::glue("{package_name}$"), box_path, value = TRUE))
 }
 
