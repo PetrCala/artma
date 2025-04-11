@@ -1,5 +1,3 @@
-static_setup() # nolint: box_usage_linter.
-
 #' Validate a user options file against an options template.
 #'
 #' This function reads a YAML template and an options file, flattens both structures,

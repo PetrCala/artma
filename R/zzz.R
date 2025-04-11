@@ -1,37 +1,68 @@
-artma_box_path <- function() {
-  pkg_box_path <- find.package("artma")
-  dev_box_path <- file.path(pkg_box_path, "inst") # For local development
-
-  unique(c(pkg_box_path, dev_box_path))
+#' Check if the package is being loaded via devtools::load_all()
+#'
+#' @return TRUE if loaded via devtools, FALSE otherwise
+#' @keywords internal
+is_devtools_load <- function() { # nolint: unused_declared_object_linter.
+  identical(Sys.getenv("DEVTOOLS_LOAD"), "true")
 }
 
-.onLoad <- function(libname, pkgname) {
-  op <- options()
-
+#' @title Get valid box path
+#' @description
+#' Construct a box path that will allow box imports for the current package. This is done by adding the package path to the box path option if it is not already there.
+#' @param libname The path to the library.
+#' @param pkgname The name of the package.
+#' @keywords internal
+get_valid_boxpath <- function(libname, pkgname) {
   current_box_path <- getOption("box.path", character(0))
 
+  pkg_path <- file.path(libname, pkgname)
+  dev_path <- file.path(pkg_path, "inst")
 
-  if (!any(grepl("artma$", current_box_path))) { # should end with 'artma'
-    op.artma <- list(box.path = artma_box_path())
-  } else {
-    op.artma <- list()
+  boxpath_defined <- function(path) grepl(path, current_box_path)
+
+  if (all(c(
+    boxpath_defined(pkg_path),
+    boxpath_defined(dev_path)
+  ))) {
+    return(current_box_path) # Already valid
   }
 
-  # op.artma <- list(
-  #   box.path = artma_box_path
-  #   # artma.abc = xyz
-  # )
+  unique(c(current_box_path, pkg_path, dev_path))
+}
+
+#' @title .onLoad hook for package initialization
+#' @description Called when the package is loaded.
+#' @param libname The path to the library.
+#' @param pkgname The name of the package.
+#' @return `NULL` Sets up the package on load
+#' @keywords internal
+.onLoad <- function(libname, pkgname) { # nolint: unused_declared_object_linter.
+  op <- options()
+  op.artma <- list(
+    # artma.abc = xyz
+  )
+
+  # Optional set
   toset <- !(names(op.artma) %in% names(op))
   if (any(toset)) options(op.artma[toset])
+
+  # Mandatory set
+  options(box.path = get_valid_boxpath(libname, pkgname))
 
   invisible()
 }
 
-# .onUnload() <- function(libname, pkgname) {
-#   box::use(
-#     artma / const[CONST],
-#     artma / options / utils[remove_options_with_prefix]
-#   )
+#' @title .onUnload hook for package detachment
+#' @description Called when the package is detached.
+#' @return `NULL` Cleans up the package on unload
+#' @keywords internal
+.onUnload <- function(libpath) { # nolint: unused_declared_object_linter.
+  box::use(
+    artma / const[CONST],
+    artma / options / utils[remove_options_with_prefix]
+  )
 
-#   remove_options_with_prefix(prefix = CONST$PACKAGE_NAME)
-# }
+  remove_options_with_prefix(prefix = CONST$PACKAGE_NAME)
+
+  invisible()
+}
