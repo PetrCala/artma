@@ -452,7 +452,7 @@ options.modify <- function(
 }
 
 #' @title Options Open
-#' @description Open an options file for editing
+#' @description Open an options file for editing. Must be run interactively.
 #' @param options_file_name *\[character\]* Name of the user options file to modify, including the suffix.
 #' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
 #' @return `NULL` Opens the file for editing
