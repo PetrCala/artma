@@ -49,8 +49,6 @@ get_valid_boxpath <- function(libname, pkgname) {
   # Mandatory set
   options(box.path = get_valid_boxpath(libname, pkgname))
 
-  message("Box path after onLoaod: ", getOption("box.path"))
-
   invisible()
 }
 
