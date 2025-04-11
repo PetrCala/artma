@@ -451,6 +451,26 @@ options.modify <- function(
   invisible(NULL)
 }
 
+#' @title Options Open
+#' @description Open an options file for editing
+#' @param options_file_name *\[character\]* Name of the user options file to modify, including the suffix.
+#' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
+#' @return `NULL` Opens the file for editing
+#' @export
+options.open <- function(
+    options_file_name = NULL,
+    options_dir = NULL) {
+  box::use(
+    artma / paths[PATHS],
+    artma / options / ask[ask_for_existing_options_file_name]
+  )
+
+  options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
+  options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to open: ")
+
+  cli::cli_inform("Selected file: {.file {file.path(options_dir, options_file_name)}}.")
+}
+
 #' @title Options Help
 #' @description
 #' Prints information for each requested option (or all options if `options` is `NULL`).
