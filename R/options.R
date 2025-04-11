@@ -469,6 +469,9 @@ options.open <- function(
   options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to open: ")
 
   cli::cli_inform("Selected file: {.file {file.path(options_dir, options_file_name)}}.")
+
+  # Open the file in the default text editor
+  system(paste(getOption("editor"), file.path(options_dir, options_file_name)))
 }
 
 #' @title Options Help
