@@ -10,9 +10,8 @@ box::use(
 #' `numeric` The calculated degrees of freedom.
 #' @export
 calculate_dof <- function(t_value, pcc) {
-  assert(length(t_value) != length(pcc), "The length of 't_value' and 'pcc' must be the same.")
+  assert(length(t_value) == length(pcc), "The length of 't_value' and 'pcc' must be the same.")
 
-  # Q: Is it okay to drop all PCCs outside of the range (-1, 1)?
   lhs <- t_value^2
   rhs <- (1 / (pcc^2)) - 1
   return(lhs * rhs)
