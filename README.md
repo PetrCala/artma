@@ -267,6 +267,7 @@ These packages are required for the package to function correctly when used by o
 - `metafor` - For running meta-analysis related methods
 - `rlang` – Core tidyverse infrastructure: advanced error handling, quosures, tidy evaluation
 - `stringr` – Consistent string manipulation functions
+- `usethis` – Automate package setup and development tasks (e.g., create_test, use_package), open files during runtime
 - `withr` – Temporarily change global state (e.g., options, env vars) within a controlled context
 - `yaml` – Parsing and reading `.yaml` configuration files
 
@@ -294,7 +295,6 @@ These packages are used for development only.
 - `rstudioapi` – Interface with RStudio IDE features programmatically
 - `testthat` – Unit testing framework
 - `tidyverse` – Collection of packages useful for data manipulation and visualization (also helps in testing, debugging)
-- `usethis` – Automate package setup and development tasks (e.g., create_test, use_package)
 
 ## Importing modules
 
