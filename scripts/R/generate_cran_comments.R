@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 
 option_list <- list(
-  optparse::make_option(c("--old-version"),
-    type = "character", default = "Unknown-old",
-    help = "Previous version tag [default = %default]"
+  optparse::make_option(c("--cran-version"),
+    type = "character", default = "Unknown-cran",
+    help = "CRAN version tag [default = %default]"
   ),
   optparse::make_option(c("--new-version"),
     type = "character", default = "Unknown-new",
@@ -47,7 +47,7 @@ write_cmd_check_results <- function(status) {
   return(lines)
 }
 
-write_notes_to_cran_reviewers <- function(old_version, new_version, manual_file = NULL) {
+write_notes_to_cran_reviewers <- function(cran_version, new_version, manual_file = NULL) {
   manual_notes <- character()
 
   if (!is.null(manual_file) && nzchar(manual_file) && file.exists(manual_file)) {
@@ -58,7 +58,7 @@ write_notes_to_cran_reviewers <- function(old_version, new_version, manual_file 
   lines <- c(
     "## Notes to CRAN reviewers",
     "",
-    sprintf("* This is an update from v%s to v%s.", old_version, new_version),
+    sprintf("* This is an update from v%s to v%s.", cran_version, new_version),
     manual_notes
   )
 
@@ -67,7 +67,7 @@ write_notes_to_cran_reviewers <- function(old_version, new_version, manual_file 
 
 main <- function(opts) {
   check_results <- write_cmd_check_results(opts$`check-status`)
-  cran_notes <- write_notes_to_cran_reviewers(opts$`old-version`, opts$`new-version`, opts$`manual-file`)
+  cran_notes <- write_notes_to_cran_reviewers(opts$`cran-version`, opts$`new-version`, opts$`manual-file`)
 
   full_lines <- c(check_results, cran_notes)
 
