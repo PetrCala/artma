@@ -1,17 +1,18 @@
 - [Installing R](#installing-r)
 - [VSCode](#vscode)
-  - [Invoking the run script](#invoking-the-run-script)
-    - [Interactively](#interactively)
-    - [Non-interactively](#non-interactively)
-  - [Closing an open interactive script](#closing-an-open-interactive-script)
-  - [Useful settings](#useful-settings)
+	- [Invoking the run script](#invoking-the-run-script)
+		- [Interactively](#interactively)
+		- [Non-interactively](#non-interactively)
+	- [Closing an open interactive script](#closing-an-open-interactive-script)
+	- [Useful settings](#useful-settings)
 - [Aliases](#aliases)
 - [Rprofile](#rprofile)
+- [Workflows](#workflows)
 - [.Renviron](#renviron)
 - [Installing various R packages](#installing-various-r-packages)
-  - [`systemfonts` on MacOS](#systemfonts-on-macos)
+	- [`systemfonts` on MacOS](#systemfonts-on-macos)
 - [Building the package](#building-the-package)
-  - [To exclude a file from the build](#to-exclude-a-file-from-the-build)
+	- [To exclude a file from the build](#to-exclude-a-file-from-the-build)
 
 ## Installing R
 
@@ -184,6 +185,10 @@ suppressWarnings(suppressMessages({
     library(base)
 }))
 ```
+
+## Workflows
+
+To see example R GitHub workflows, follow [this link](https://github.com/r-lib/actions/blob/v2/examples/README.md).
 
 ## .Renviron
 
