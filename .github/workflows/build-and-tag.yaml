@@ -115,7 +115,7 @@ jobs:
 
       - name: Generate cran-comments.md
         run: |
-          Rscript scripts/R/generate_cran_comments.R \
+          Rscript ./scripts/R/generate_cran_comments.R \
             --cran-version "${{ steps.getCurrentVersions.outputs.CRAN_VERSION }}" \
             --new-version "${{ steps.bumpVersion.outputs.NEW_VERSION }}" \
             --manual-file "manual_cran_comments.md" \
@@ -174,7 +174,7 @@ jobs:
           name: ${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}
           path: |
             ./*.tar.gz
-            **/cran-comments.md
+            ./cran-comments.md
             ./metadata.json
             ./NEWS.md
             ./release_notes.md
@@ -220,7 +220,7 @@ jobs:
           tag_name: ${{ steps.unpackMetadata.outputs.TAG_NAME }}
           files: |
             ./*.tar.gz
-            **/cran-comments.md
+            ./cran-comments.md
             ./metadata.json
             ./NEWS.md
             ./release_notes.md
