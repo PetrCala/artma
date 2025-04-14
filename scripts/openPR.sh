@@ -34,13 +34,20 @@ CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 info "Current branch: $CURRENT_BRANCH"
 info "Should release: $SHOULD_RELEASE"
 
+LABEL_ARG=""
+if [[ $CURRENT_BRANCH == *"release"* ]]; then
+  LABEL_ARG="--label release:next-version"
+fi
+
 # Merge the PR using your personal account
 gh auth switch --hostname github.com --user $PERSONAL_USER
 gh pr create \
   --base master \
   --head $CURRENT_BRANCH \
   --title "$CURRENT_BRANCH" \
-  $(if [[ $CURRENT_BRANCH == *"release"* ]]; then echo "--label \"release:next-version\" \\"; fi) \
-  --assignee "@me"
+  --body - \
+  $LABEL_ARG \
+  --assignee "@me" \
+  --submit
 
 success "Done!"
