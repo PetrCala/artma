@@ -168,6 +168,29 @@ jobs:
           )
         shell: Rscript {0}
 
+      - name: Check expected files exist
+        run: |
+          required_files=(
+            *.tar.gz
+            cran-comments.md
+            metadata.json
+            NEWS.md
+            release_notes.md
+          )
+
+          missing=0
+
+          for file in "${required_files[@]}"; do
+          if ! compgen -G "$file" > /dev/null; then
+            echo "❌ Missing expected file: $file"
+            missing=1
+          fi
+
+          if [ "$missing" -eq 1 ]; then
+            echo "One or more expected files are missing. Failing the job."
+            exit 1
+          fi
+
       - name: Upload R package artifact
         uses: actions/upload-artifact@v4
         with:
@@ -220,11 +243,11 @@ jobs:
         with:
           tag_name: ${{ steps.unpackMetadata.outputs.TAG_NAME }}
           files: |
-            ./*.tar.gz
-            ./cran-comments.md
-            ./metadata.json
-            ./NEWS.md
-            ./release_notes.md
+            *.tar.gz
+            cran-comments.md
+            metadata.json
+            NEWS.md
+            release_notes.md
           body_path: ./release_notes.md
           draft: false
           prerelease: false
