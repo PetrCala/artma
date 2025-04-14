@@ -58,7 +58,6 @@ jobs:
     outputs:
       NEW_VERSION: ${{ steps.setJobOutput.outputs.NEW_VERSION }}
       PKG_ARTIFACT: ${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}
-    secrets: inherit
     steps:
       - name: Check out code
         uses: actions/checkout@v4
