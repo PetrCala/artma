@@ -58,6 +58,7 @@ jobs:
     outputs:
       NEW_VERSION: ${{ steps.setJobOutput.outputs.NEW_VERSION }}
       PKG_ARTIFACT: ${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}
+    secrets: inherit
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -125,8 +126,6 @@ jobs:
         uses: ./.github/workflows/update-news.yaml
         with:
           NEW_VERSION: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
-        secrets:
-          ARTMA_BOT_COMMIT_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
 
       - name: Download NEWS.md 
         uses: actions/download-artifact@v4
