@@ -113,14 +113,6 @@ jobs:
         run: |
           Rscript ./scripts/R/bump_version.R ${{ needs.labelChecks.outputs.SEMVER_LEVEL }}
 
-      - name: Generate cran-comments.md
-        run: |
-          Rscript ./scripts/R/generate_cran_comments.R \
-            --cran-version "${{ steps.getCurrentVersions.outputs.CRAN_VERSION }}" \
-            --new-version "${{ steps.bumpVersion.outputs.NEW_VERSION }}" \
-            --manual-file "manual_cran_comments.md" \
-            --check-status "${{ steps.rcmdCheck.outputs.CHECK_STATUS }}"
-
       - name: Update NEWS.md
         uses: ./.github/actions/composite/updateNews
         with:
@@ -138,6 +130,14 @@ jobs:
         run: |
           Rscript ./scripts/R/get_release_notes.R \
             --new-version "${{ steps.bumpVersion.outputs.NEW_VERSION }}"
+
+      - name: Generate cran-comments.md
+        run: |
+          Rscript ./scripts/R/generate_cran_comments.R \
+            --cran-version "${{ steps.getCurrentVersions.outputs.CRAN_VERSION }}" \
+            --new-version "${{ steps.bumpVersion.outputs.NEW_VERSION }}" \
+            --manual-file "manual_cran_comments.md" \
+            --check-status "${{ steps.rcmdCheck.outputs.CHECK_STATUS }}"
 
       - name: Create job metadata
         id: createJobMetadata
@@ -173,11 +173,12 @@ jobs:
         with:
           name: ${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}
           path: |
-            ./*.tar.gz
-            ./cran-comments.md
-            ./metadata.json
-            ./NEWS.md
-            ./release_notes.md
+            *.tar.gz
+            cran-comments.md
+            metadata.json
+            NEWS.md
+            release_notes.md
+          include-hidden-files: true
 
   createNewVersion:
     uses: ./.github/workflows/create-new-version.yaml
