@@ -1,4 +1,14 @@
 
+<a name="v0.1.24"></a>
+## [v0.1.24](https://github.com/PetrCala/artma/compare/v0.1.23...v0.1.24)
+
+> 2025-04-14
+
+### Bug Fixes
+
+* the cran comments build workflow should now target the file correctly
+
+
 <a name="v0.1.23"></a>
 ## [v0.1.23](https://github.com/PetrCala/artma/compare/v0.1.22...v0.1.23)
 
@@ -7,6 +17,26 @@
 ### Bug Fixes
 
 * change the release notes creation script to be more lenient
+* the update news action now updates with all the existing GH tags
+* replace the invalid slash in the git origin path in the news update workflow
+* remove the unused 'replace' argument in mock df creation
+* ArtmaBot now authenticates through the deploy key when updating the news file
+* the random vector generation now generates floats (was int) from a uniform distribution
+* use the official homebrew action to install homebrew
+* provide explicit pacakge method assignment when reading data
+* remove the homebrew install from the news update workflow
+* minor changes in the open PR script
+* comment out a PR open automation script irrelevant line
+* remove the mishandled 'v' tag
+* workflows to use a composite news creation action
+* more workflow issues
+* secret passing to the build workflow
+* the news update secrets passing
+* the cran submission workflow cli package call
+
+### Features
+
+* reading the data now validates the data frame as well
 
 
 <a name="v0.1.22"></a>
