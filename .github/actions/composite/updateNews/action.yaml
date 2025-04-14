@@ -21,11 +21,6 @@ runs:
         ref: master
         token: ${{ inputs.ARTMA_BOT_COMMIT_TOKEN }}
 
-    - name: Install Homebrew
-      shell: bash
-      run: |
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
     - name: Install git-chglog
       shell: bash
       run: |
