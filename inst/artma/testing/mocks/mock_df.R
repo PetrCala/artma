@@ -27,8 +27,8 @@ create_mock_df <- function(
   #   effect_type <- "random"
   # }
 
-  effect <- generate_random_vector(from = -1, to = 1, length.out = nrow, replace = TRUE)
-  se <- generate_random_vector(from = -1, to = 1, length.out = nrow, replace = TRUE)
+  effect <- generate_random_vector(from = -1, to = 1, length.out = nrow)
+  se <- generate_random_vector(from = -1, to = 1, length.out = nrow)
 
   data_frame <- data.frame(
     effect = effect,
