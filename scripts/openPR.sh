@@ -34,7 +34,7 @@ CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 info "Current branch: $CURRENT_BRANCH"
 info "Should release: $SHOULD_RELEASE"
 
-Merge the PR using your personal account
+# Merge the PR using your personal account
 gh auth switch --hostname github.com --user $PERSONAL_USER
 gh pr create \
   --base master \
