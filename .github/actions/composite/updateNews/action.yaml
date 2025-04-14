@@ -1,0 +1,80 @@
+name: 'Update NEWS.md'
+description: 'Generates and commits NEWS.md using git-chglog'
+
+inputs:
+  NEW_VERSION:
+    required: true
+    description: 'The new version tag (e.g., 1.2.3)'
+  ARTMA_BOT_COMMIT_TOKEN:
+    required: true
+    description: 'Personal access token for ArtmaBot'
+  LARGE_SECRET_PASSPHRASE:
+    required: true
+    description: 'GPG passphrase for committing as ArtmaBot'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Validate actor permissions
+      id: getUserPermissions
+      shell: bash
+      run: |
+        PERMISSION=$(GH_TOKEN=${{ inputs.ARTMA_BOT_COMMIT_TOKEN }} gh api /repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission | jq -r '.permission')
+        echo "HAS_WRITE_ACCESS=${{ contains('write,admin', PERMISSION) }}" >> $GITHUB_OUTPUT
+
+    - name: Exit if no write access
+      if: ${{ steps.getUserPermissions.outputs.HAS_WRITE_ACCESS != 'true' }}
+      shell: bash
+      run: |
+        echo "Actor does not have write access. Skipping."
+        exit 0
+
+    - name: Check out code
+      uses: actions/checkout@v4
+      with:
+        ref: master
+        token: ${{ inputs.ARTMA_BOT_COMMIT_TOKEN }}
+
+    - name: Install Homebrew
+      shell: bash
+      run: |
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+    - name: Install git-chglog
+      shell: bash
+      run: |
+        brew tap git-chglog/git-chglog
+        brew install git-chglog
+
+    - name: Setup git for ArtmaBot
+      uses: ./.github/actions/composite/setupGitForArtmaBot
+      with:
+        GPG_PASSPHRASE: ${{ inputs.LARGE_SECRET_PASSPHRASE }}
+
+    - name: Update NEWS
+      shell: bash
+      run: |
+        git-chglog --output NEWS.md --next-tag "v${{ inputs.NEW_VERSION }}"
+
+    - name: Commit NEWS if changed
+      shell: bash
+      run: |
+        git add NEWS.md
+        if ! git diff --cached --quiet; then
+          git commit -m "chore: update NEWS"
+        else
+          echo "No changes to NEWS.md"
+        fi
+
+    - name: Push changes to master
+      shell: bash
+      run: |
+        git remote set-url origin https://x-access-token:${{ inputs.ARTMA_BOT_COMMIT_TOKEN }}@github.com/${{ github.repository }}.git
+        git pull --rebase origin master
+        git push origin master
+
+    - name: Upload NEWS.md
+      uses: actions/upload-artifact@v4
+      with:
+        name: NEWS.md
+        path: NEWS.md

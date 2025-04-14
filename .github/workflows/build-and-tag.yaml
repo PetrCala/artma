@@ -122,11 +122,13 @@ jobs:
             --check-status "${{ steps.rcmdCheck.outputs.CHECK_STATUS }}"
 
       - name: Update NEWS.md
-        uses: ./.github/workflows/update-news.yaml
+        uses: ./.github/actions/composite/updateNews
         with:
           NEW_VERSION: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
+          ARTMA_BOT_COMMIT_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
+          LARGE_SECRET_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
 
-      - name: Download NEWS.md 
+      - name: Download NEWS.md from previous job
         uses: actions/download-artifact@v4
         with:
           # Gets bundled during the package build
