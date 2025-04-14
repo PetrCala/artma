@@ -15,20 +15,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Validate actor permissions
-      id: getUserPermissions
-      shell: bash
-      run: |
-        PERMISSION=$(GH_TOKEN=${{ inputs.ARTMA_BOT_COMMIT_TOKEN }} gh api /repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission | jq -r '.permission')
-        echo "HAS_WRITE_ACCESS=${{ contains('write,admin', PERMISSION) }}" >> $GITHUB_OUTPUT
-
-    - name: Exit if no write access
-      if: ${{ steps.getUserPermissions.outputs.HAS_WRITE_ACCESS != 'true' }}
-      shell: bash
-      run: |
-        echo "Actor does not have write access. Skipping."
-        exit 0
-
     - name: Check out code
       uses: actions/checkout@v4
       with:
