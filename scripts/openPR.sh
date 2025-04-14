@@ -46,8 +46,8 @@ gh pr create \
   --head $CURRENT_BRANCH \
   --title "$CURRENT_BRANCH" \
   --body - \
+  --fill-verbose \
   $LABEL_ARG \
-  --assignee "@me" \
-  --submit
+  --assignee "@me"
 
 success "Done!"
