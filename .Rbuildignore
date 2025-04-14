@@ -21,3 +21,4 @@
 ^revdep$
 ^assets\.txt$
 ^metadata\.json$
+^\.chglog$
