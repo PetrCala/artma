@@ -21,11 +21,14 @@ runs:
         ref: master
         token: ${{ inputs.ARTMA_BOT_COMMIT_TOKEN }}
 
+    - name: Set up homebrew
+      uses: 'Homebrew/actions/setup-homebrew@master'
+
     - name: Install dependencies
-      uses: tecolicom/actions-use-homebrew-tools@v1.3
-      with:
-        tools: git-chglog
-        cache: yes
+      shell: bash
+      run: |
+        brew tap git-chglog/git-chglog
+        brew install git-chglog
 
     - name: Setup git for ArtmaBot
       uses: ./.github/actions/composite/setupGitForArtmaBot
