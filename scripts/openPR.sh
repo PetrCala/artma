@@ -35,7 +35,7 @@ info "Current branch: $CURRENT_BRANCH"
 info "Should release: $SHOULD_RELEASE"
 
 LABEL_ARG=""
-if [[ $CURRENT_BRANCH == *"release"* ]]; then
+if [[ $SHOULD_RELEASE == "true" ]]; then
   LABEL_ARG="--label release:next-version"
 fi
 
