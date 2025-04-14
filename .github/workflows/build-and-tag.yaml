@@ -123,9 +123,10 @@ jobs:
 
       - name: Update NEWS
         uses: ./.github/workflows/update-news.yaml
-        secrets: inherit
         with:
           NEW_VERSION: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
+        secrets:
+          ARTMA_BOT_COMMIT_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
 
       - name: Download NEWS.md 
         uses: actions/download-artifact@v4
