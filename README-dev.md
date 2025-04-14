@@ -33,6 +33,7 @@
 - [Creating a new package version](#creating-a-new-package-version)
 - [Generating package news](#generating-package-news)
 - [Formatting commits](#formatting-commits)
+  - [Commit lints](#commit-lints)
 - [Code of Conduct](#code-of-conduct)
 
 Welcome to the developer documentation for ARTMA (Automatic Replication Tools for Meta-analysis). This guide covers setup, development workflows, code standards, and other technical details needed for contributing to the project.
@@ -301,6 +302,12 @@ Commits should follow the [conventional commit format](https://www.conventionalc
 - `chore:` for maintenance tasks, dependency updates, etc.
 
 The commit message should have a clear, concise subject line following the format `<type>: <description>`. For example: `feat: add support for custom linting rules`. If needed, add a more detailed description in the commit body, separated from the subject by a blank line. Breaking changes should be noted with a `BREAKING CHANGE:` footer.
+
+## Commit lints
+
+To ensure consistent commit wording across the project, we use a [**commit lint workflow**](.github/workflows/commit-lint.yaml). Here, we follow the `@commitlint/config-conventional` set of lint rules for commit formatting. If any of your commits do not adhere to these rules, your pull request will be rejected.
+
+To see a full list of the commit lint rules, visit [this link](https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional).
 
 # Code of Conduct
 
