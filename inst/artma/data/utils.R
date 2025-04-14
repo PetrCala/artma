@@ -48,11 +48,7 @@ determine_data_type <- function(path, should_validate = TRUE) {
 
   validate(is.character(path))
 
-  if (!file.exists(path)) {
-    cli::cli_abort(cli::format_inline(
-      "The specified data file path {.path {path}} is invalid. No such file found."
-    ))
-  }
+  if (!file.exists(path)) cli::cli_abort("The specified data file path {.path {path}} is invalid. No such file found.")
 
   file_extension <- tools::file_ext(path)
 
