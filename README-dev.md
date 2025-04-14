@@ -290,7 +290,7 @@ We use [**git-chglog**](https://github.com/git-chglog/git-chglog) to automatical
 
 # Formatting commits
 
-Commits should follow the conventional commit format, using specific prefixes to indicate the type of change. Common prefixes include:
+Commits should follow the [conventional commit format](https://www.conventionalcommits.org/en/v1.0.0/), using specific prefixes to indicate the type of change. Common prefixes include:
 
 - `feat:` for new features
 - `fix:` for bug fixes
