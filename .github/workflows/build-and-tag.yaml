@@ -121,7 +121,7 @@ jobs:
             --manual-file "manual_cran_comments.md" \
             --check-status "${{ steps.rcmdCheck.outputs.CHECK_STATUS }}"
 
-      - name: Update NEWS
+      - name: Update NEWS.md
         uses: ./.github/workflows/update-news.yaml
         with:
           NEW_VERSION: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
