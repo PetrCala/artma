@@ -60,7 +60,7 @@ jobs:
         run: |
           git add NEWS.md
           if ! git diff --cached --quiet; then
-            git commit -m "Update NEWS"
+            git commit -m "chore: update NEWS"
             git push
           else
             echo "No changes to NEWS.md"
