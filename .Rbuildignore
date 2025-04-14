@@ -22,3 +22,4 @@
 ^assets\.txt$
 ^metadata\.json$
 ^\.chglog$
+^commitlint\.config\.js$
