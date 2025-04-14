@@ -53,7 +53,7 @@ runs:
     - name: Push changes to master
       shell: bash
       run: |
-        git remote set-url origin https://x-access-token:${{ inputs.ARTMA_BOT_COMMIT_TOKEN }}@github.com/${{ github.repository }}.git
+        git remote set-url origin git@github.com/${{ github.repository }}.git
         git pull --rebase origin master
         git push origin master
 
