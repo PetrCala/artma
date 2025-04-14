@@ -95,13 +95,7 @@
 
 
 <a name="v0.1.7"></a>
-## [v0.1.7](https://github.com/PetrCala/artma/compare/v...v0.1.7)
-
-> 2025-04-04
-
-
-<a name="v"></a>
-## v
+## v0.1.7
 
 > 2025-04-04
 
