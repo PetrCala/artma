@@ -65,16 +65,11 @@ write_notes_to_cran_reviewers <- function(cran_version, new_version, manual_file
   return(lines)
 }
 
-main <- function(opts) {
-  check_results <- write_cmd_check_results(opts$`check-status`)
-  cran_notes <- write_notes_to_cran_reviewers(opts$`cran-version`, opts$`new-version`, opts$`manual-file`)
+check_results <- write_cmd_check_results(opts$`check-status`)
+cran_notes <- write_notes_to_cran_reviewers(opts$`cran-version`, opts$`new-version`, opts$`manual-file`)
 
-  full_lines <- c(check_results, cran_notes)
+full_lines <- c(check_results, cran_notes)
 
-  writeLines(full_lines, con = "cran-comments.md")
+writeLines(full_lines, "cran-comments.md")
 
-  output_path <- file.path(getwd(), "cran-comments.md")
-  cli::cli_inform(sprintf("cran-comments.md generated successfully at %s.\n", output_path))
-}
-
-main(opts)
+cli::cli_inform("cran-comments.md generated successfully at {.path {getwd()}}.")
