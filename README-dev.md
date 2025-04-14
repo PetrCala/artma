@@ -32,6 +32,7 @@
   - [Annotating function argument types](#annotating-function-argument-types)
 - [Creating a new package version](#creating-a-new-package-version)
 - [Generating package news](#generating-package-news)
+- [Formatting commits](#formatting-commits)
 - [Code of Conduct](#code-of-conduct)
 
 Welcome to the developer documentation for ARTMA (Automatic Replication Tools for Meta-analysis). This guide covers setup, development workflows, code standards, and other technical details needed for contributing to the project.
@@ -286,6 +287,20 @@ A new version of the package can be created upon merging a pull request to the m
 # Generating package news
 
 We use [**git-chglog**](https://github.com/git-chglog/git-chglog) to automatically update the `NEWS.md` file from the commit history upon a new version creation. This is done automatically within the build and tag deploy cycle.
+
+# Formatting commits
+
+Commits should follow the conventional commit format, using specific prefixes to indicate the type of change. Common prefixes include:
+
+- `feat:` for new features
+- `fix:` for bug fixes
+- `docs:` for documentation changes
+- `style:` for formatting changes that don't affect code behavior
+- `refactor:` for code restructuring without behavior changes
+- `test:` for adding or modifying tests
+- `chore:` for maintenance tasks, dependency updates, etc.
+
+The commit message should have a clear, concise subject line following the format `<type>: <description>`. For example: `feat: add support for custom linting rules`. If needed, add a more detailed description in the commit body, separated from the subject by a blank line. Breaking changes should be noted with a `BREAKING CHANGE:` footer.
 
 # Code of Conduct
 
