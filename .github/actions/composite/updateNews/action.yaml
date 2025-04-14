@@ -35,6 +35,12 @@ runs:
       with:
         GPG_PASSPHRASE: ${{ inputs.LARGE_SECRET_PASSPHRASE }}
 
+    - name: Fetch the latest changes
+      shell: bash
+      run: |
+        git fetch origin master
+        git fetch --tags
+
     - name: Update NEWS
       shell: bash
       run: |
