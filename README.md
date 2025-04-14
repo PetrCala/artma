@@ -57,6 +57,7 @@
   - [Docstrings and documentation](#docstrings-and-documentation)
     - [Annotating function argument types](#annotating-function-argument-types)
   - [Creating a new package version](#creating-a-new-package-version)
+  - [Generating package news](#generating-package-news)
   - [Code of Conduct](#code-of-conduct)
 
 # For Users
@@ -423,7 +424,11 @@ To denote the expected type of a function argument, use the following syntax in 
 
 ## Creating a new package version
 
-To create a new version of this package, run `./run.sh bump-version <semver-level>`.
+A new version of the package can be created upon merging a pull request to the master branch with the tag `release:new-version`. For details, read through the [release cycle vignette](https://cran.r-project.org/web/packages/artma/vignettes/release-cycle.html).
+
+## Generating package news
+
+We use [**git-chglog**](https://github.com/git-chglog/git-chglog) to automatically update the `NEWS.md` file from the commit history upon a new version creation. This is done automatically within the build and tag deploy cycle.
 
 ## Code of Conduct
 
