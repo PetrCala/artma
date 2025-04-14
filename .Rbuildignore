@@ -8,6 +8,7 @@
 ^\.github$
 ^\.covrignore$
 ^README\.md$
+^README-dev\.md$
 ^local$
 ^utils$
 ^scripts$
