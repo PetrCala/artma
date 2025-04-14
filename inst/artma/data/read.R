@@ -27,5 +27,18 @@ read_data <- function(path = NULL) {
     raise_invalid_data_type_error(data_type)
   )
 
+  # Validate data was read successfully
+  if (!is.data.frame(df)) {
+    cli::cli_abort("Failed to read data from {.path {path}}. Expected a data frame but got {.type {class(df)}}.")
+  }
+
+  if (nrow(df) == 0) {
+    cli::cli_abort("The data frame read from {.path {path}} is empty.")
+  }
+
+  if (ncol(df) == 0) {
+    cli::cli_abort("The data frame read from {.path {path}} has no columns.")
+  }
+
   df
 }
