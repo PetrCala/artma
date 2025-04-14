@@ -309,6 +309,8 @@ To ensure consistent commit wording across the project, we use a [**commit lint 
 
 To see a full list of the commit lint rules, visit [this link](https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional).
 
+You may feel like these requirements are a little too strict, but keeping a unified commit message format **allows us to automate the package release cycle**. To be more specific, we construct the package changelog automatically from the commit history upon every new release. As such, a standardized formatting is required.
+
 # Code of Conduct
 
 Please note that the artma project is released with a [Contributor Code of Conduct](https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html). By contributing to this project, you agree to abide by its terms.
