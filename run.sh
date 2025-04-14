@@ -23,6 +23,7 @@ Commands:
   merge             Merge the currently checked out git branch with another one, and push the changes to the remote repository
   merge-pr          Merge a pull request that targets the master branch
   namespace         Generate the NAMESPACE file
+  open-pr           Open a pull request for the currently checked out git branch
   package           Invoke an R function from this package
   preview-docs      Open a preview of an exported object's documentation.
   setup             Setup the environment
@@ -61,6 +62,7 @@ lint) bash scripts/lintAll.sh "$@" ;;
 merge) bash scripts/mergeAndPush.sh "$@" ;;
 merge-pr) bash scripts/mergePR.sh "$@" ;;
 namespace) Rscript -e "roxygen2::roxygenize()" ;;
+open-pr) bash scripts/openPR.sh "$@" ;;
 package) bash scripts/package.sh "$@" ;;
 preview-docs) bash scripts/previewDocs.sh "$@" ;;
 setup) bash scripts/setup.sh "$@" ;;
