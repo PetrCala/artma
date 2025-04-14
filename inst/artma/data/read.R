@@ -16,8 +16,8 @@ read_data <- function(path = NULL) {
   data_type <- determine_data_type(path, should_validate = TRUE)
 
   df <- switch(data_type,
-    csv = read.csv(path),
-    tsv = read.delim(path),
+    csv = utils::read.csv(path),
+    tsv = utils::read.delim(path),
     xlsx = readxl::read_excel(path),
     # "xls",
     # "xlsm",
