@@ -1,0 +1,292 @@
+<div align="center">
+    <h1>
+        Automatic Replication Tools for Meta-analysis
+    </h1>
+    <h4>
+    Developer Documentation
+    </h4>
+</div>
+
+- [How to run](#how-to-run)
+  - [Using the `run.sh` sript](#using-the-runsh-sript)
+  - [Creating an alias](#creating-an-alias)
+- [Required packages](#required-packages)
+  - [Runtime Dependencies (`Imports`)](#runtime-dependencies-imports)
+  - [Development Dependencies (`Suggests`)](#development-dependencies-suggests)
+- [Importing modules](#importing-modules)
+- [Validating Conditions](#validating-conditions)
+  - [Using the `validate` Function](#using-the-validate-function)
+  - [Examples using the validate function](#examples-using-the-validate-function)
+    - [Valid Conditions](#valid-conditions)
+    - [Invalid Conditions](#invalid-conditions)
+  - [Using the `assert` Function](#using-the-assert-function)
+  - [Examples using the assert function](#examples-using-the-assert-function)
+- [Formatting code](#formatting-code)
+- [Understanding the folder structure](#understanding-the-folder-structure)
+- [Using the options template](#using-the-options-template)
+- [Using `lintr` for Code Quality](#using-lintr-for-code-quality)
+  - [Installation](#installation)
+  - [Usage](#usage)
+  - [Set up box paths](#set-up-box-paths)
+- [Docstrings and documentation](#docstrings-and-documentation)
+  - [Annotating function argument types](#annotating-function-argument-types)
+- [Creating a new package version](#creating-a-new-package-version)
+- [Generating package news](#generating-package-news)
+- [Code of Conduct](#code-of-conduct)
+
+Welcome to the developer documentation for ARTMA (Automatic Replication Tools for Meta-analysis). This guide covers setup, development workflows, code standards, and other technical details needed for contributing to the project.
+
+# How to run
+
+1. Clone the repository using
+
+   ```bash
+   git clone https://github.com/PetrCala/artma.git
+   ```
+
+1. Navigate to the project root
+
+   ```bash
+   cd artma
+   ```
+
+1. Set up the local environment by executing
+
+   ```bash
+   ./run.sh setup
+   ```
+
+1. See the list of available commands by running
+
+   ```bash
+   ./run.sh help
+   ```
+
+## Using the `run.sh` sript
+
+All major actions are ran using the `run.sh` script at the project root. To execute an actions, simply run
+
+```bash
+./run.sh <action-name>
+```
+
+in your terminal.
+
+For example, `./run.sh test` will run all tests in the project.
+
+If you encounter an error saying that the file is not executable, run
+
+```bash
+chmod +x run.sh
+```
+
+to make it so.
+
+## Creating an alias
+
+You can streamline the invocation of actions even further by creating a terminal alias. For this, open your `.bashrc` file on linux-based systems, or your `.zshrc` file on macOS-based systems, or the `.bash-profile` on Windows based systems. There, add the following line
+
+```bash
+# In your terminal profile file
+alias artma='./run.sh' # Or specify the full path to make this even more reliable
+```
+
+Then run
+
+```bash
+source .bashrc # or .zshrc or .bash-profile
+```
+
+to make these changes take effect. Now, you can run the action commands using
+
+```bash
+artma test
+artma lint
+# etc.
+```
+
+# Required packages
+
+Below is a list of required packages and reasoning for why they are needed.
+
+## Runtime Dependencies (`Imports`)
+
+These packages are required for the package to function correctly when used by others.
+
+- `cli` – For styled and structured console output (messages, warnings, etc.)
+- `glue` – For efficient and readable string interpolation
+- `lifecycle` – To manage and signal function lifecycle stages (e.g., deprecated, experimental)
+- `lintr` – Runtime linting (if exposed in package functionality)
+- `logger` – Lightweight logging for debugging or tracking events during runtime
+- `metafor` - For running meta-analysis related methods
+- `rlang` – Core tidyverse infrastructure: advanced error handling, quosures, tidy evaluation
+- `stringr` – Consistent string manipulation functions
+- `usethis` – Automate package setup and development tasks (e.g., create_test, use_package), open files during runtime
+- `withr` – Temporarily change global state (e.g., options, env vars) within a controlled context
+- `yaml` – Parsing and reading `.yaml` configuration files
+
+## Development Dependencies (`Suggests`)
+
+These packages are used for development only.
+
+- `box` – Package and module handling
+- `box.linters` – Box-specific linting support
+- `cli` – Console output and user-friendly messages
+- `covr` – Code coverage reporting
+- `devtools` – Package development tools (e.g., load_all, check, test)
+- `fs` – File system handling with a consistent API
+- `here` – Reliable file path construction within a project
+- `jsonlite` – JSON parsing, used for VSCode interactive terminals or custom config handling
+- `knitr` – Dynamic report generation, especially for vignettes or R Markdown
+- `languageserver` – Provides LSP support for IDE features like autocomplete and linting
+- `mathjaxr` – MathJax support for documentation previews (e.g., vignettes)
+- `optparse` – Command line argument parsing for scripts
+- `pkgbuild` – Tools for building R packages
+- `remotes` – Install packages from GitHub or other remote sources
+- `rex` – Human-readable regular expression construction (useful in testing/linting tools)
+- `rmarkdown` – Rendering and previewing Markdown-based reports
+- `roxygen2` – Inline documentation generation
+- `rstudioapi` – Interface with RStudio IDE features programmatically
+- `testthat` – Unit testing framework
+- `tidyverse` – Collection of packages useful for data manipulation and visualization (also helps in testing, debugging)
+
+# Importing modules
+
+For any imports within the project, we use [the **box** package](https://klmr.me/box/articles/box.html). This emulates Python-like module imports, allowing us to maintain a complex, yet transparent structure of the project. Here, each script behaves as a standalone module, and only the necessary functions are imported from it. This keeps the workspace clean, as it does the source of all functions used across the project. To read more on how to use box, see [the official documentation](https://klmr.me/box/articles/box.html).
+
+# Validating Conditions
+
+In this project, we use several custom validation function to ensure that certain conditions hold true before proceeding with further computations or operations. These help catch errors as early as possible. Inspired by modern error handling practices in R, we leverage the `rlang` package for structured error messages.
+
+## Using the `validate` Function
+
+To quickly check that a condition is met, use the `validate` function. This function checks whether each argument passed to it is either a single logical value (TRUE or FALSE). It validates each condition and aborts with an appropriate error message if any condition does not hold. In case of validating an object type (such as through `is.character`, `is.logical`, etc.), the function prints a verbose message to the user.
+
+## Examples using the validate function
+
+### Valid Conditions
+
+```r
+validate(TRUE, 1 == 1, is.function(print))
+```
+
+### Invalid Conditions
+
+The following examples will abort with an error message:
+
+```r
+validate(FALSE)
+validate(TRUE, 1 == 2, FALSE)
+validate("not a condition")
+```
+
+## Using the `assert` Function
+
+To check that a condition is met, and print a custom verbose message at the same time, use the `assert` function. This works similarly to the assert functions in other languages, such as [Python](https://www.w3schools.com/python/ref_keyword_assert.asp).
+
+## Examples using the assert function
+
+```r
+# The following pass
+assert(TRUE, "This condition is TRUE")
+assert(x == 1, "'x' should be equal to 1") # Passes if x is equal to 1
+assert(grep('word$', 'a string that ends in a custom word'), "The string should end with 'word'")
+
+# The following fail with an error message
+assert(FALSE, "This error message will be printed")
+assert(x == 1, "'x' should be equal to 1") # Fails if x is not equal to 1
+```
+
+# Formatting code
+
+We use `styler` for code formatting. See [the package website here](https://github.com/r-lib/styler?tab=readme-ov-file).
+
+Depending on your IDE of choice, the setup for using _styler_ may differ, so we highly recommend you read through the documentation.
+
+# Understanding the folder structure
+
+This package is structured with most files located in the `inst/artma` folder, following the design principles encouraged by the box package. This setup allows for a modular and clean organization of the package's components. By keeping the R directory focused on exported functions and placing the core logic and internal scripts in the `inst/pkgname folder`, the package leverages box's module-based approach to encapsulate functionality. This structure promotes better code reuse, easier debugging, and improved separation of concerns, aligning with modern software development practices.
+
+During the package installation, the `inst` folder gets bundled too, and becomes thus available fox `box` imports.
+
+# Using the options template
+
+User options are generated in the project from a template file (potentially `options_template.yaml`). This is a nested yaml file, where the end nodes have the following keys:
+
+- **name** (str): Option name.
+- **type** (str): Option type. Must be one of the supported R types (such as `"character"`, `"logical"`,...)
+- **default** (any, optional): Default value for the option.
+- **fixed** (bool, optional): If `true`, this option may not be overwritten by the user in any of the derived user files. Any overwritten fixed options will be reverted to their default upon file validation.
+- **allow_na** (bool, optional): If `true`, this option may be set to `.na`. Otherwise a non-na value will be required when creating the user options file.
+- **prompt** (character, optional): Specifies how a value for this option should be asked for. Accepts the following values:
+  - **"readline"** (default behavior): The user will be prompted through `readline()` with a simple message.
+  - **"file"**: The user will be asked to provide a file path through `tcltk` interactive window.
+  - **"directory"**: The user will be asked to provide a directory path through `tcltk` interactive window.
+- **help** (str, optional): Option help.
+
+# Using `lintr` for Code Quality
+
+This project uses the `lintr` package to ensure code quality and adherence to style guidelines. Below are the steps to set up and use `lintr` in this project.
+
+## Installation
+
+First, install the `lintr` package:
+
+```r
+install.packages("lintr")
+```
+
+This package is also automatically installed through `./run.sh setup`.
+
+## Usage
+
+To lint all R files in your project directory, run the following command in R:
+
+```r
+lintr::lint_dir("path/to/your/project")
+```
+
+To lint a specific file, run the following in R:
+
+```r
+lintr::lint("path/to/your/file.R")
+```
+
+To lint the whole package, run the following **in a shell terminal**:
+
+```bash
+./run.sh lint
+```
+
+## Set up box paths
+
+To make the lints valid for the `box.linters` package, R expects `box.path` to be set to the `inst` folder base. This makes the relative box imports work correctly. During runtime, this is handled by the `ensure_valid_boxpath`, but in development, you must set this path manually.
+
+To do so, put the following into your `.Rprofile`:
+
+```.Rprofile
+# ~/.Rprofile
+option(box.path="<path-to-the-artma-package>/inst")
+```
+
+# Docstrings and documentation
+
+## Annotating function argument types
+
+To denote the expected type of a function argument, use the following syntax in the function docstring:
+
+```R
+#' @param some_arg *\[character, optional\]* This argument does the following. Defaults to `NULL`.
+```
+
+# Creating a new package version
+
+A new version of the package can be created upon merging a pull request to the master branch with the tag `release:new-version`. For details, read through the [release cycle vignette](https://cran.r-project.org/web/packages/artma/vignettes/release-cycle.html).
+
+# Generating package news
+
+We use [**git-chglog**](https://github.com/git-chglog/git-chglog) to automatically update the `NEWS.md` file from the commit history upon a new version creation. This is done automatically within the build and tag deploy cycle.
+
+# Code of Conduct
+
+Please note that the artma project is released with a [Contributor Code of Conduct](https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html). By contributing to this project, you agree to abide by its terms.
