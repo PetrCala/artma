@@ -99,11 +99,13 @@ jobs:
       #     Rscript -e 'revdepcheck::revdep_check(num_workers = 4)'
       #   continue-on-error: false
 
-      - name: Get old version
-        id: getOldVersion
+      - name: Get current versions
+        id: getCurrentVersions
         run: |
-          OLD_VERSION=$(Rscript -e "cat(as.character(desc::desc_get_version()))")
-          echo "OLD_VERSION=$OLD_VERSION" >> $GITHUB_OUTPUT
+          CURRENT_VERSION=$(Rscript -e "cat(as.character(desc::desc_get_version()))")
+          CRAN_VERSION=$(Rscript ./scripts/R/get_cran_version.R)
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "CRAN_VERSION=$CRAN_VERSION" >> $GITHUB_OUTPUT
 
       - name: Bump the package version locally
         id: bumpVersion
@@ -114,7 +116,7 @@ jobs:
         if: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
         run: |
           Rscript scripts/R/generate_cran_comments.R \
-            --old-version "${{ steps.getOldVersion.outputs.OLD_VERSION }}" \
+            --cran-version "${{ steps.getCurrentVersions.outputs.CRAN_VERSION }}" \
             --new-version "${{ steps.bumpVersion.outputs.NEW_VERSION }}" \
             --manual-file "manual_cran_comments.md" \
             --check-status "${{ steps.rcmdCheck.outputs.CHECK_STATUS }}"
@@ -124,12 +126,13 @@ jobs:
         shell: bash
         run: |
           jq -n \
-            --arg OLD_VERSION "${{ steps.getOldVersion.outputs.OLD_VERSION }}" \
+            --arg CURRENT_VERSION "${{ steps.getCurrentVersions.outputs.CURRENT_VERSION }}" \
+            --arg CRAN_VERSION "${{ steps.getCurrentVersions.outputs.CRAN_VERSION }}" \
             --arg NEW_VERSION "${{ steps.bumpVersion.outputs.NEW_VERSION }}" \
             --arg TAG_NAME "v${{ steps.bumpVersion.outputs.NEW_VERSION }}" \
             --arg PKG_ARTIFACT "artma_${{ steps.bumpVersion.outputs.NEW_VERSION }}.tar.gz" \
             --arg SKIP_CRAN "${{ needs.labelChecks.outputs.SKIP_CRAN }}" \
-            '{$OLD_VERSION, $NEW_VERSION, $TAG_NAME, $PKG_ARTIFACT, $SKIP_CRAN}' > metadata.json
+            '{$CURRENT_VERSION, $CRAN_VERSION, $NEW_VERSION, $TAG_NAME, $PKG_ARTIFACT, $SKIP_CRAN}' > metadata.json
 
       - name: Set job output
         id: setJobOutput
