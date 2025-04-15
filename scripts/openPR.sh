@@ -6,6 +6,7 @@ set -e
 
 PERSONAL_USER="PetrCala"
 SHOULD_RELEASE=false
+SKIP_VERSION_BUMP=false
 
 # Check for uncommitted changes
 if [[ -n $(git status --porcelain) ]]; then
@@ -26,6 +27,10 @@ while [[ "$#" -gt 0 ]]; do
     SHOULD_RELEASE=true
     shift
     ;;
+  --no-bump)
+    SKIP_VERSION_BUMP=true
+    shift
+    ;;
   *) shift ;;
   esac
 done
@@ -37,6 +42,9 @@ info "Should release: $SHOULD_RELEASE"
 LABEL_ARG=""
 if [[ $SHOULD_RELEASE == "true" ]]; then
   LABEL_ARG="--label release:next-version"
+fi
+if [[ $SKIP_VERSION_BUMP == "true" ]]; then
+  LABEL_ARG="$LABEL_ARG --label release:skip-version-bump"
 fi
 
 # Merge the PR using your personal account
