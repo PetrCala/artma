@@ -6,7 +6,7 @@
 
 ### Bug Fixes
 
-* the build artifacts read workflow step now reads from a correct file
+* the github workflow artifacts read now uses a more robust code
 
 
 <a name="v0.1.24"></a>
