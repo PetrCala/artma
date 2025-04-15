@@ -58,9 +58,9 @@ jobs:
         if: steps.assets.outputs.SKIP_CRAN != 'true'
         env:
           USE_DEVTOOLS: ${{ env.SHOULD_USE_DEVTOOLS }}
-          PKG_ARTIFACT: ${{ steps.assets.outputs.PKG_ARTIFACT }}
+          BUILD_ARTIFACT: ${{ steps.assets.outputs.BUILD_ARTIFACT }}
         run: |
-          built_path <- Sys.getenv("PKG_ARTIFACT")
+          built_path <- Sys.getenv("BUILD_ARTIFACT")
           cli::cli_inform("Submitting to CRAN with the artifact under {.path {built_path}}...")
 
           if (Sys.getenv("USE_DEVTOOLS") == 'true') {
