@@ -6,7 +6,7 @@
 
 ### Bug Fixes
 
-* the github workflow artifacts read now uses a more robust code
+* add a missing newline to the release artifacts text file
 
 
 <a name="v0.1.24"></a>
