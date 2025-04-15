@@ -160,11 +160,18 @@ jobs:
 
       - name: Build the .tar.gz
         run: |
+          pkg_version <- devtools::as.package('.')$version
+          if (pkg_version != Sys.getenv("NEW_VERSION")) {
+            # This means the version was not bumped
+            cli::cli_abort("Version mismatch: {pkg_version} != {Sys.getenv('NEW_VERSION')}")
+          }
           source("./scripts/R/release.R")
           build_pkg(
             pkg = ".",
             path = "./${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}"
           )
+        env:
+          NEW_VERSION: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
         shell: Rscript {0}
 
       - name: Check release artifacts
