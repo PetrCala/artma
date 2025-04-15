@@ -176,8 +176,11 @@ jobs:
       - name: Read release artifacts
         id: readReleaseArtifacts
         run: |
-          ARTIFACTS=$(paste -sd',' './.github/workflows/release-artifacts.txt')
-          echo "RELEASE_ARTIFACTS=$ARTIFACTS" >> "$GITHUB_OUTPUT"
+          {
+            echo 'RELEASE_ARTIFACTS<<EOF'
+            cat ./.github/workflows/release-artifacts.txt
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Upload R package artifact
         uses: actions/upload-artifact@v4
