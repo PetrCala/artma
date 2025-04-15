@@ -266,6 +266,12 @@ jobs:
       - name: Download all run artifacts
         uses: actions/download-artifact@v4
 
+      - name: Extract the artifacts
+        run: |
+          cp -r prebuild-artifacts/* .
+          ./.github/scripts/checkArtifacts.sh 'prebuild-artifacts.txt'
+          # Build artifacts are a single file, so we need to extract it
+
       - name: Unpack the metadata
         id: unpackMetadata
         run: |
