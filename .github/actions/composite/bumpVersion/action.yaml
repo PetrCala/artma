@@ -56,7 +56,6 @@ runs:
       run: |
         git add ./DESCRIPTION ./**/options_template.yaml
         git commit -m "chore: release v${{ steps.bumpVersion.outputs.NEW_VERSION }}"
-        git push origin master
 
     - name: Push the changes
       shell: bash
