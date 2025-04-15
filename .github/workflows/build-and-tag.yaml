@@ -50,14 +50,15 @@ jobs:
           echo "SKIP_CRAN=$skip_cran" >> "$GITHUB_OUTPUT"
         shell: bash
 
-  build:
+  preBuild:
     runs-on: ubuntu-latest
     needs: [labelChecks]
     if: ${{ needs.labelChecks.outputs.READY_TO_BUILD == 'true' && github.event.pull_request.merged == true }}
     outputs:
-      NEW_VERSION: ${{ steps.setJobOutput.outputs.NEW_VERSION }}
-      PKG_ARTIFACT: ${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}
-      RELEASE_ARTIFACTS: ${{ steps.readReleaseArtifacts.outputs.RELEASE_ARTIFACTS }}
+      OLD_VERSION: ${{ steps.getCurrentVersions.outputs.OLD_VERSION }}
+      NEW_VERSION: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
+      CRAN_VERSION: ${{ steps.getCurrentVersions.outputs.CRAN_VERSION }}
+      ARTIFACTS: ${{ steps.getPrebuildArtifacts.outputs.ARTIFACTS }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -78,6 +79,110 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::remotes, any::devtools, local::.
+
+      - name: Get current versions
+        id: getCurrentVersions
+        run: |
+          OLD_VERSION=$(Rscript -e "cat(as.character(desc::desc_get_version()))")
+          CRAN_VERSION=$(Rscript ./scripts/R/get_cran_version.R)
+          echo "OLD_VERSION=$OLD_VERSION" >> $GITHUB_OUTPUT
+          echo "CRAN_VERSION=$CRAN_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Bump version
+        id: bumpVersion
+        uses: ./.github/actions/composite/bumpVersion
+        with:
+          SEMVER_LEVEL: ${{ needs.labelChecks.outputs.SEMVER_LEVEL }}
+          ARTMA_BOT_COMMIT_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
+          LARGE_SECRET_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
+
+      - name: Update NEWS.md
+        uses: ./.github/actions/composite/updateNews
+        with:
+          NEW_VERSION: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
+          ARTMA_BOT_COMMIT_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
+          LARGE_SECRET_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
+
+      - name: Create release notes
+        run: |
+          Rscript ./scripts/R/get_release_notes.R \
+            --new-version "${{ needs.preBuild.outputs.NEW_VERSION }}"
+
+      - name: Generate cran-comments.md
+        run: |
+          Rscript ./scripts/R/generate_cran_comments.R \
+            --cran-version "${{ steps.getCurrentVersions.outputs.CRAN_VERSION }}" \
+            --new-version "${{ needs.preBuild.outputs.NEW_VERSION }}" \
+            --manual-file "manual_cran_comments.md" \
+            --check-status "${{ steps.rcmdCheck.outputs.CHECK_STATUS }}"
+
+      - name: Create job metadata
+        id: createJobMetadata
+        shell: bash
+        run: |
+          jq -n \
+            --arg OLD_VERSION "${{ needs.preBuild.outputs.OLD_VERSION }}" \
+            --arg CRAN_VERSION "${{ needs.preBuild.outputs.CRAN_VERSION }}" \
+            --arg NEW_VERSION "${{ needs.preBuild.outputs.NEW_VERSION }}" \
+            --arg TAG_NAME "v${{ needs.preBuild.outputs.NEW_VERSION }}" \
+            --arg BUILD_ARTIFACT "artma_${{ needs.preBuild.outputs.NEW_VERSION }}.tar.gz" \
+            --arg SKIP_CRAN "${{ needs.labelChecks.outputs.SKIP_CRAN }}" \
+            '{$OLD_VERSION, $CRAN_VERSION, $NEW_VERSION, $TAG_NAME, $BUILD_ARTIFACT, $SKIP_CRAN}' > metadata.json
+
+      - name: Get prebuild artifacts
+        id: getPrebuildArtifacts
+        run: |
+          ARTIFACTS_FILE_NAME="prebuild-artifacts.txt"
+          ./.github/scripts/checkArtifacts.sh "$ARTIFACTS_FILE_NAME"
+          {
+            echo 'ARTIFACTS<<EOF'
+            cat './.github/workflows/$ARTIFACTS_FILE_NAME'
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload the prebuild artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: prebuild-artifacts
+          path: ${{ steps.getPrebuildArtifacts.outputs.ARTIFACTS }}
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [labelChecks, preBuild]
+    outputs:
+      ARTIFACTS: ${{ steps.getBuildArtifacts.outputs.ARTIFACTS }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          # The ARTMA_BOT_COMMIT_TOKEN is a personal access token tied to ArtmaBot
+          # This is a workaround to allow pushes to a protected branch
+          token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
+
+      - name: Set up pandoc
+        uses: r-lib/actions/setup-pandoc@v2
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::remotes, any::devtools, local::.
+
+      - name: Download prebuild artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: prebuild-artifacts
+
+      - name: Set job metadata
+        id: setJobMetadata
+        run: |
+          while IFS="=" read -r key value; do
+            echo "$key=$value" >> $GITHUB_OUTPUT
+          done < <(jq -r 'to_entries[] | "\(.key)=\(.value)"' metadata.json)
 
       - name: Build documentation
         run: |
@@ -100,64 +205,6 @@ jobs:
       #     Rscript -e 'revdepcheck::revdep_check(num_workers = 4)'
       #   continue-on-error: false
 
-      - name: Get current versions
-        id: getCurrentVersions
-        run: |
-          OLD_VERSION=$(Rscript -e "cat(as.character(desc::desc_get_version()))")
-          CRAN_VERSION=$(Rscript ./scripts/R/get_cran_version.R)
-          echo "OLD_VERSION=$OLD_VERSION" >> $GITHUB_OUTPUT
-          echo "CRAN_VERSION=$CRAN_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Bump version
-        id: bumpVersion
-        run: Rscript ./scripts/R/bump_version.R ${{ needs.labelChecks.outputs.SEMVER_LEVEL }}
-
-      - name: Update NEWS.md
-        uses: ./.github/actions/composite/updateNews
-        with:
-          NEW_VERSION: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
-          ARTMA_BOT_COMMIT_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
-          LARGE_SECRET_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
-
-      - name: Download NEWS.md from previous job
-        uses: actions/download-artifact@v4
-        with:
-          # Gets bundled during the package build
-          name: NEWS.md
-
-      - name: Create release notes
-        run: |
-          Rscript ./scripts/R/get_release_notes.R \
-            --new-version "${{ steps.bumpVersion.outputs.NEW_VERSION }}"
-
-      - name: Generate cran-comments.md
-        run: |
-          Rscript ./scripts/R/generate_cran_comments.R \
-            --cran-version "${{ steps.getCurrentVersions.outputs.CRAN_VERSION }}" \
-            --new-version "${{ steps.bumpVersion.outputs.NEW_VERSION }}" \
-            --manual-file "manual_cran_comments.md" \
-            --check-status "${{ steps.rcmdCheck.outputs.CHECK_STATUS }}"
-
-      - name: Create job metadata
-        id: createJobMetadata
-        shell: bash
-        run: |
-          jq -n \
-            --arg OLD_VERSION "${{ steps.getCurrentVersions.outputs.OLD_VERSION }}" \
-            --arg CRAN_VERSION "${{ steps.getCurrentVersions.outputs.CRAN_VERSION }}" \
-            --arg NEW_VERSION "${{ steps.bumpVersion.outputs.NEW_VERSION }}" \
-            --arg TAG_NAME "v${{ steps.bumpVersion.outputs.NEW_VERSION }}" \
-            --arg PKG_ARTIFACT "artma_${{ steps.bumpVersion.outputs.NEW_VERSION }}.tar.gz" \
-            --arg SKIP_CRAN "${{ needs.labelChecks.outputs.SKIP_CRAN }}" \
-            '{$OLD_VERSION, $CRAN_VERSION, $NEW_VERSION, $TAG_NAME, $PKG_ARTIFACT, $SKIP_CRAN}' > metadata.json
-
-      - name: Set job output
-        id: setJobOutput
-        run: |
-          while IFS="=" read -r key value; do
-            echo "$key=$value" >> $GITHUB_OUTPUT
-          done < <(jq -r 'to_entries[] | "\(.key)=\(.value)"' metadata.json)
-
       - name: Build the .tar.gz
         run: |
           pkg_version <- devtools::as.package('.')$version
@@ -168,43 +215,31 @@ jobs:
           source("./scripts/R/release.R")
           build_pkg(
             pkg = ".",
-            path = "./${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}"
+            path = "./${{ steps.setJobMetadata.outputs.BUILD_ARTIFACT }}"
           )
         env:
-          NEW_VERSION: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
+          NEW_VERSION: ${{ needs.preBuild.outputs.NEW_VERSION }}
         shell: Rscript {0}
 
-      - name: Check release artifacts
-        id: checkReleaseArtifacts
-        run: |
-          ./.github/scripts/checkReleaseArtifacts.sh
-
-      - name: Read release artifacts
-        id: readReleaseArtifacts
+      - name: Get build artifacts
+        id: getBuildArtifacts
         run: |
           {
-            echo 'RELEASE_ARTIFACTS<<EOF'
-            cat ./.github/workflows/release-artifacts.txt
+            echo 'ARTIFACTS<<EOF'
+            echo ${{ steps.setJobMetadata.outputs.BUILD_ARTIFACT }}
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
       - name: Upload R package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}
-          path: ${{ steps.readReleaseArtifacts.outputs.RELEASE_ARTIFACTS }}
+          name: build-artifacts
+          path: ${{ steps.getBuildArtifacts.outputs.ARTIFACTS }}
           include-hidden-files: true
-
-  createNewVersion:
-    uses: ./.github/workflows/create-new-version.yaml
-    needs: [labelChecks, build]
-    with:
-      SEMVER_LEVEL: ${{ needs.labelChecks.outputs.SEMVER_LEVEL }}
-    secrets: inherit
 
   postBuild:
     runs-on: ubuntu-latest
-    needs: [build, createNewVersion]
+    needs: [build]
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -212,10 +247,8 @@ jobs:
           ref: master
           token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
 
-      - name: Download the package artifact
+      - name: Download all run artifacts
         uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.build.outputs.PKG_ARTIFACT }}
 
       - name: Unpack the metadata
         id: unpackMetadata
@@ -234,7 +267,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.unpackMetadata.outputs.TAG_NAME }}
-          files: ${{ needs.build.outputs.RELEASE_ARTIFACTS }}
+          files: |
+            ${{ needs.preBuild.outputs.ARTIFACTS }}
+            ${{ needs.build.outputs.ARTIFACTS }}
           body_path: ./release-notes.md
           draft: false
           prerelease: false
