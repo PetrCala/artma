@@ -17,16 +17,22 @@ opts <- optparse::parse_args(opt_parser)
 new_version <- opts$new_version
 tag <- paste0("v", new_version)
 lines <- readLines("NEWS.md")
-start <- grep(paste0("<a name=\"", tag, "\">"), lines)
-end <- grep("<a name=", lines)
-end <- end[end > start][1] - 1
-
-if (length(start) == 0) {
-  stop(sprintf("Could not find start tag '%s' in NEWS.md", tag))
+anchor_line <- grep(paste0("<a name=\"", tag, "\">"), lines)
+if (length(anchor_line) == 0) {
+  stop(sprintf("Could not find anchor tag '<a name=\"%s\">' in NEWS.md", tag))
 }
 
+# The actual content starts five lines after the anchor: link, empty line, date, empty line, then content
+start <- anchor_line + 5
+end_candidates <- grep("<a name=", lines)
+end <- end_candidates[end_candidates > anchor_line][1] - 1
 if (is.na(end)) {
   end <- length(lines)
 }
 
-writeLines(lines[start:end], "release-notes.md")
+if (start > end) {
+  warning("No release notes found for this version.")
+  writeLines(character(0), "release-notes.md")
+} else {
+  writeLines(lines[start:end], "release-notes.md")
+}
