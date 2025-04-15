@@ -51,7 +51,7 @@ runs:
       run: |
         git add NEWS.md
         if ! git diff --cached --quiet; then
-          git commit -m "chore: update NEWS"
+          git commit -m "docs: update NEWS.md for v${{ inputs.NEW_VERSION }}"
         else
           echo "No changes to NEWS.md"
         fi

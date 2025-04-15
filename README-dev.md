@@ -293,13 +293,17 @@ We use [**git-chglog**](https://github.com/git-chglog/git-chglog) to automatical
 
 Commits should follow the [conventional commit format](https://www.conventionalcommits.org/en/v1.0.0/), using specific prefixes to indicate the type of change. Common prefixes include:
 
+- `build:` for changes that affect the build system or external dependencies
+- `chore:` for maintenance tasks, dependency updates, etc.
+- `ci:` for changes to CI configuration files and scripts
+- `docs:` for documentation changes
 - `feat:` for new features
 - `fix:` for bug fixes
-- `docs:` for documentation changes
-- `style:` for formatting changes that don't affect code behavior
+- `perf:` for performance improvements
 - `refactor:` for code restructuring without behavior changes
+- `revert:` for reverting previous commits
+- `style:` for formatting changes that don't affect code behavior
 - `test:` for adding or modifying tests
-- `chore:` for maintenance tasks, dependency updates, etc.
 
 The commit message should have a clear, concise subject line following the format `<type>: <description>`. For example: `feat: add support for custom linting rules`. If needed, add a more detailed description in the commit body, separated from the subject by a blank line. Breaking changes should be noted with a `BREAKING CHANGE:` footer.
 

@@ -56,7 +56,7 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
 
       - name: Generate version
-        id: bumpVersion 
+        id: bumpVersion
         uses: ./.github/actions/composite/bumpVersion
         with:
           SEMVER_LEVEL: ${{ inputs.SEMVER_LEVEL }}
@@ -65,7 +65,7 @@ jobs:
         run: |
           git checkout master
           git add ./DESCRIPTION ./**/options_template.yaml
-          git commit -m "chore: update version to ${{ steps.bumpVersion.outputs.NEW_VERSION }}"
+          git commit -m "chore: release v${{ steps.bumpVersion.outputs.NEW_VERSION }}"
 
       - name: Push changes to master
         run: |
