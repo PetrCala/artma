@@ -1,4 +1,10 @@
 
+<a name="v0.1.28"></a>
+## [v0.1.28](https://github.com/PetrCala/artma/compare/v0.1.27...v0.1.28)
+
+> 2025-04-15
+
+
 <a name="v0.1.27"></a>
 ## [v0.1.27](https://github.com/PetrCala/artma/compare/v0.1.26...v0.1.27)
 
