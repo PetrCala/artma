@@ -108,10 +108,11 @@ jobs:
           echo "OLD_VERSION=$OLD_VERSION" >> $GITHUB_OUTPUT
           echo "CRAN_VERSION=$CRAN_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Bump the package version locally
+      - name: Bump version
         id: bumpVersion
         run: |
-          Rscript ./scripts/R/bump_version.R ${{ needs.labelChecks.outputs.SEMVER_LEVEL }}
+          NEW_VERSION=$(Rscript ./scripts/R/bump_version.R ${{ needs.labelChecks.outputs.SEMVER_LEVEL }})
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Update NEWS.md
         uses: ./.github/actions/composite/updateNews
