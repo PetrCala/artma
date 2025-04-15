@@ -12,7 +12,7 @@ if [ "$#" -ne 1 ]; then
 fi
 
 ARTIFACTS_FILE_NAME="$1"
-ARTIFACTS_FILE="$(dirname "$0")/../workflows/$ARTIFACTS_FILE_NAME"
+ARTIFACTS_FILE="$(dirname "$0")/$ARTIFACTS_FILE_NAME"
 if [ ! -f "$ARTIFACTS_FILE" ]; then
   echo "❌ Missing expected file: $ARTIFACTS_FILE"
   exit 1
