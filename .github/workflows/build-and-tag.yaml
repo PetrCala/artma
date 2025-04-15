@@ -57,6 +57,7 @@ jobs:
     outputs:
       NEW_VERSION: ${{ steps.setJobOutput.outputs.NEW_VERSION }}
       PKG_ARTIFACT: ${{ steps.setJobOutput.outputs.PKG_ARTIFACT }}
+      RELEASE_ARTIFACTS: ${{ steps.readReleaseArtifacts.outputs.RELEASE_ARTIFACTS }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -175,7 +176,7 @@ jobs:
       - name: Read release artifacts
         id: readReleaseArtifacts
         run: |
-          ARTIFACTS=$(paste -sd',' release-artifacts.txt)
+          ARTIFACTS=$(paste -sd',' './.github/workflows/release-artifacts.txt')
           echo "RELEASE_ARTIFACTS=$ARTIFACTS" >> "$GITHUB_OUTPUT"
 
       - name: Upload R package artifact
@@ -220,17 +221,11 @@ jobs:
           git tag ${{ steps.unpackMetadata.outputs.TAG_NAME }}
           git push origin ${{ steps.unpackMetadata.outputs.TAG_NAME }}
 
-      - name: Read release artifacts
-        id: readReleaseArtifacts
-        run: |
-          ARTIFACTS=$(paste -sd',' release-artifacts.txt)
-          echo "RELEASE_ARTIFACTS=$ARTIFACTS" >> "$GITHUB_OUTPUT"
-
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.unpackMetadata.outputs.TAG_NAME }}
-          files: ${{ steps.readReleaseArtifacts.outputs.RELEASE_ARTIFACTS }}
+          files: ${{ needs.build.outputs.RELEASE_ARTIFACTS }}
           body_path: ./release-notes.md
           draft: false
           prerelease: false
