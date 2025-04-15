@@ -6,7 +6,7 @@
 
 ### Bug Fixes
 
-* the gh release artifacts are now read from a single source of truth file
+* the build artifacts read workflow step now reads from a correct file
 
 
 <a name="v0.1.24"></a>
