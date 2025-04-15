@@ -249,7 +249,8 @@ jobs:
       - name: Upload R package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifacts
+          # If there are multiple artifacts, change the name to 'build-artifacts'
+          name: ${{ steps.getBuildArtifacts.outputs.ARTIFACTS }}
           path: ${{ steps.getBuildArtifacts.outputs.ARTIFACTS }}
           include-hidden-files: true
 
@@ -270,7 +271,7 @@ jobs:
         run: |
           cp -r prebuild-artifacts/* .
           ./.github/scripts/checkArtifacts.sh 'prebuild-artifacts.txt'
-          # Build artifacts are a single file, so we need to extract it
+          # Build artifacts are a single file, so we don't need to extract it
 
       - name: Unpack the metadata
         id: unpackMetadata
