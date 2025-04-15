@@ -1,4 +1,10 @@
 
+<a name="v0.1.26"></a>
+## [v0.1.26](https://github.com/PetrCala/artma/compare/v0.1.25...v0.1.26)
+
+> 2025-04-15
+
+
 <a name="v0.1.25"></a>
 ## [v0.1.25](https://github.com/PetrCala/artma/compare/v0.1.24...v0.1.25)
 
@@ -7,6 +13,10 @@
 ### Bug Fixes
 
 * add a missing newline to the release artifacts text file
+* the github workflow artifacts read now uses a more robust code
+* the build artifacts read workflow step now reads from a correct file
+* the gh release artifacts are now read from a single source of truth file
+* attempt to fix the build artifact upload path
 
 
 <a name="v0.1.24"></a>
