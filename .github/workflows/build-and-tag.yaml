@@ -249,8 +249,7 @@ jobs:
       - name: Upload R package artifact
         uses: actions/upload-artifact@v4
         with:
-          # If there are multiple artifacts, change the name to 'build-artifacts'
-          name: ${{ steps.getBuildArtifacts.outputs.ARTIFACTS }}
+          name: build-artifacts
           path: ${{ steps.getBuildArtifacts.outputs.ARTIFACTS }}
           include-hidden-files: true
 
@@ -264,14 +263,21 @@ jobs:
           ref: master
           token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
 
-      - name: Download all run artifacts
+      - name: Download the artifacts
         uses: actions/download-artifact@v4
+        with:
+          path: |
+            build-artifacts
+            prebuild-artifacts
 
       - name: Extract the artifacts
         run: |
           cp -r prebuild-artifacts/* .
           ./.github/scripts/checkArtifacts.sh 'prebuild-artifacts.txt'
-          # Build artifacts are a single file, so we don't need to extract it
+
+          # Rename the build artifact to include .gz extension as expected
+          mv build-artifacts/* "${{ needs.build.outputs.ARTIFACTS }}"
+          ./.github/scripts/checkArtifacts.sh 'build-artifacts.txt'
 
       - name: Unpack the metadata
         id: unpackMetadata
