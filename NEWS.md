@@ -2,7 +2,11 @@
 <a name="v0.1.25"></a>
 ## [v0.1.25](https://github.com/PetrCala/artma/compare/v0.1.24...v0.1.25)
 
-> 2025-04-14
+> 2025-04-15
+
+### Bug Fixes
+
+* the gh release artifacts are now read from a single source of truth file
 
 
 <a name="v0.1.24"></a>
