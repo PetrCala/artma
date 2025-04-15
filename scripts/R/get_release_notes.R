@@ -29,4 +29,4 @@ if (is.na(end)) {
   end <- length(lines)
 }
 
-writeLines(lines[start:end], "release_notes.md")
+writeLines(lines[start:end], "release-notes.md")
