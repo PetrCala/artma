@@ -169,7 +169,7 @@ jobs:
           ./.github/scripts/checkArtifacts.sh 'prebuild-artifacts.txt'
           {
             echo 'ARTIFACTS<<EOF'
-            cat './.github/workflows/prebuild-artifacts.txt'
+            cat './.github/scripts/prebuild-artifacts.txt'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
