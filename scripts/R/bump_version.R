@@ -85,21 +85,12 @@ bump_version <- function(semver_level = "patch", pkg.repo = ".") {
   new.ver
 }
 
-main <- function() {
-  args <- commandArgs(trailingOnly = TRUE)
+args <- commandArgs(trailingOnly = TRUE)
 
-  if (length(args) < 1) {
-    cli::cli_abort("No semver level provided. Must be one of 'patch', 'minor', or 'major'.")
-  }
-
-  semver_level <- args[1]
-
-  new_version <- bump_version(semver_level = semver_level, pkg.repo = ".")
-
-  cli::cli_inform(sprintf("New version is: %s\n", new_version))
-
-  output_line <- paste0("NEW_VERSION=", new_version)
-  write(output_line, file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
+if (length(args) < 1) {
+  cli::cli_abort("No semver level provided. Must be one of 'patch', 'minor', or 'major'.")
 }
 
-main()
+semver_level <- args[1]
+new_version <- bump_version(semver_level = semver_level, pkg.repo = ".")
+cat(new_version)

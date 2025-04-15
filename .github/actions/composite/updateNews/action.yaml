@@ -62,9 +62,3 @@ runs:
         git remote set-url origin git@github.com:${{ github.repository }}.git
         git pull --rebase origin master
         git push origin master
-
-    - name: Upload NEWS.md
-      uses: actions/upload-artifact@v4
-      with:
-        name: NEWS.md
-        path: NEWS.md

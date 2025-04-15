@@ -7,6 +7,12 @@ inputs:
     description: One of {patch, minor, major}
     required: false
     default: patch
+  ARTMA_BOT_COMMIT_TOKEN:
+    required: true
+    description: 'Personal access token for ArtmaBot'
+  LARGE_SECRET_PASSPHRASE:
+    required: true
+    description: 'GPG passphrase for committing as ArtmaBot'
 
 outputs:
   NEW_VERSION:
@@ -33,8 +39,30 @@ runs:
         extra-packages: any::glue, local::.
         needs: glue
 
+    - name: Setup git for ArtmaBot
+      uses: ./.github/actions/composite/setupGitForArtmaBot
+      with:
+        GPG_PASSPHRASE: ${{ inputs.LARGE_SECRET_PASSPHRASE }}
+
     - name: Bump the package version
       id: bumpVersion
       run: |
-        Rscript ./scripts/R/bump_version.R ${{ inputs.SEMVER_LEVEL }}
+        NEW_VERSION=$(Rscript ./scripts/R/bump_version.R ${{ inputs.SEMVER_LEVEL }})
+        echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
       shell: bash
+
+    - name: Commit the changes
+      shell: bash
+      run: |
+        git add ./DESCRIPTION ./**/options_template.yaml
+        git commit -m "chore: release v${{ steps.bumpVersion.outputs.NEW_VERSION }}"
+        git push origin master
+
+    - name: Push the changes
+      shell: bash
+      run: |
+        git remote set-url origin git@github.com:${{ github.repository }}.git
+        git pull --rebase origin master
+        git push origin master
+
+
