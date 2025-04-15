@@ -15,6 +15,7 @@ jobs:
       READY_TO_BUILD: ${{ steps.labelCheck.outputs.READY_TO_BUILD }}
       SEMVER_LEVEL: ${{ steps.labelCheck.outputs.SEMVER_LEVEL }}
       SKIP_CRAN: ${{ steps.labelCheck.outputs.SKIP_CRAN }}
+      SKIP_VERSION_BUMP: ${{ steps.labelCheck.outputs.SKIP_VERSION_BUMP }}
 
     steps:
       - name: Determine labels from PR
@@ -24,14 +25,19 @@ jobs:
 
           ready_to_build="false"
           skip_cran="false"
+          skip_version_bump="false"
 
-          if echo "$label_names" | jq -e '.[] | select(.name == "release:next-version")' >/dev/null; then
-            ready_to_build="true"
-          fi
+          declare -A label_map=(
+            ["release:next-version"]="ready_to_build"
+            ["release:skip-cran"]="skip_cran"
+            ["release:skip-version-bump"]="skip_version_bump"
+          )
 
-          if echo "$label_names" | jq -e '.[] | select(.name == "release:skip-cran")' >/dev/null; then
-            skip_cran="true"
-          fi
+          for label in "${!label_map[@]}"; do
+            if echo "$label_names" | jq -e ".[] | select(.name == \"$label\")" >/dev/null; then
+              eval "${label_map[$label]}=true"
+            fi
+          done
 
           semver_labels=$(echo "$label_names" | jq -r '[.[] | select(.name | startswith("v-")) | .name]')
           label_count=$(echo "$semver_labels" | jq 'length')
@@ -48,6 +54,7 @@ jobs:
           echo "READY_TO_BUILD=$ready_to_build" >> "$GITHUB_OUTPUT"
           echo "SEMVER_LEVEL=$semver_level" >> "$GITHUB_OUTPUT"
           echo "SKIP_CRAN=$skip_cran" >> "$GITHUB_OUTPUT"
+          echo "SKIP_VERSION_BUMP=$skip_version_bump" >> "$GITHUB_OUTPUT"
         shell: bash
 
   preBuild:
@@ -55,9 +62,7 @@ jobs:
     needs: [labelChecks]
     if: ${{ needs.labelChecks.outputs.READY_TO_BUILD == 'true' && github.event.pull_request.merged == true }}
     outputs:
-      OLD_VERSION: ${{ steps.getCurrentVersions.outputs.OLD_VERSION }}
-      NEW_VERSION: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
-      CRAN_VERSION: ${{ steps.getCurrentVersions.outputs.CRAN_VERSION }}
+      NEW_VERSION: ${{ steps.getNewVersion.outputs.NEW_VERSION }}
       ARTIFACTS: ${{ steps.getPrebuildArtifacts.outputs.ARTIFACTS }}
     steps:
       - name: Check out code
@@ -90,6 +95,7 @@ jobs:
 
       - name: Bump version
         id: bumpVersion
+        if: ${{ needs.labelChecks.outputs.SKIP_VERSION_BUMP != 'true' }}
         uses: ./.github/actions/composite/bumpVersion
         with:
           SEMVER_LEVEL: ${{ needs.labelChecks.outputs.SEMVER_LEVEL }}
@@ -97,22 +103,33 @@ jobs:
           LARGE_SECRET_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
 
       - name: Update NEWS.md
+        if: ${{ needs.labelChecks.outputs.SKIP_VERSION_BUMP != 'true' }}
         uses: ./.github/actions/composite/updateNews
         with:
           NEW_VERSION: ${{ steps.bumpVersion.outputs.NEW_VERSION }}
           ARTMA_BOT_COMMIT_TOKEN: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
           LARGE_SECRET_PASSPHRASE: ${{ secrets.LARGE_SECRET_PASSPHRASE }}
 
+      - name: Get new version
+        id: getNewVersion
+        run: |
+          NEW_VERSION="${{ steps.bumpVersion.outputs.NEW_VERSION }}"
+          if [ -z "$NEW_VERSION" ]; then
+            # If the version was not bumped, use the old version
+            NEW_VERSION="${{ steps.getCurrentVersions.outputs.OLD_VERSION }}"
+          fi
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+
       - name: Create release notes
         run: |
           Rscript ./scripts/R/get_release_notes.R \
-            --new-version "${{ needs.preBuild.outputs.NEW_VERSION }}"
+            --new-version "${{ steps.getNewVersion.outputs.NEW_VERSION }}"
 
       - name: Generate cran-comments.md
         run: |
           Rscript ./scripts/R/generate_cran_comments.R \
             --cran-version "${{ steps.getCurrentVersions.outputs.CRAN_VERSION }}" \
-            --new-version "${{ needs.preBuild.outputs.NEW_VERSION }}" \
+            --new-version "${{ steps.getNewVersion.outputs.NEW_VERSION }}" \
             --manual-file "manual_cran_comments.md" \
             --check-status "${{ steps.rcmdCheck.outputs.CHECK_STATUS }}"
 
@@ -121,11 +138,11 @@ jobs:
         shell: bash
         run: |
           jq -n \
-            --arg OLD_VERSION "${{ needs.preBuild.outputs.OLD_VERSION }}" \
-            --arg CRAN_VERSION "${{ needs.preBuild.outputs.CRAN_VERSION }}" \
-            --arg NEW_VERSION "${{ needs.preBuild.outputs.NEW_VERSION }}" \
-            --arg TAG_NAME "v${{ needs.preBuild.outputs.NEW_VERSION }}" \
-            --arg BUILD_ARTIFACT "artma_${{ needs.preBuild.outputs.NEW_VERSION }}.tar.gz" \
+            --arg OLD_VERSION "${{ steps.getCurrentVersions.outputs.OLD_VERSION }}" \
+            --arg CRAN_VERSION "${{ steps.getCurrentVersions.outputs.CRAN_VERSION }}" \
+            --arg NEW_VERSION "${{ steps.getNewVersion.outputs.NEW_VERSION }}" \
+            --arg TAG_NAME "v${{ steps.getNewVersion.outputs.NEW_VERSION }}" \
+            --arg BUILD_ARTIFACT "artma_${{ steps.getNewVersion.outputs.NEW_VERSION }}.tar.gz" \
             --arg SKIP_CRAN "${{ needs.labelChecks.outputs.SKIP_CRAN }}" \
             '{$OLD_VERSION, $CRAN_VERSION, $NEW_VERSION, $TAG_NAME, $BUILD_ARTIFACT, $SKIP_CRAN}' > metadata.json
 
