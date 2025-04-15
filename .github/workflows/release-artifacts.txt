@@ -1,0 +1,5 @@
+*.tar.gz
+cran-comments.md
+metadata.json
+NEWS.md
+release-notes.md
