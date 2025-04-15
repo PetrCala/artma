@@ -265,10 +265,9 @@ jobs:
 
       - name: Download the artifacts
         uses: actions/download-artifact@v4
-        with:
-          path: |
-            build-artifacts
-            prebuild-artifacts
+
+      - name: Display structure of downloaded artifacts
+        run: ls -R
 
       - name: Extract the artifacts
         run: |
