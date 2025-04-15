@@ -255,7 +255,7 @@ jobs:
 
   postBuild:
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [preBuild, build]
     steps:
       - name: Check out code
         uses: actions/checkout@v4
