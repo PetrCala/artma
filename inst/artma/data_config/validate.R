@@ -1,5 +1,5 @@
 #' Validate that a filename follows the data config file naming convention
-#' @description Check if a filename ends with '.config.json'
+#' @description Check if a filename ends with the data config file suffix
 #' @param filename *\[character\]* The filename to validate
 #' @return *\[logical\]* `TRUE` if the filename is valid, `FALSE` otherwise
 validate_data_config_filename <- function(filename) {
