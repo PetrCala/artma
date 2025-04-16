@@ -24,3 +24,4 @@
 ^\.chglog$
 ^commitlint\.config\.js$
 ^releaes_notes\.md$
+^release-notes\.md$
