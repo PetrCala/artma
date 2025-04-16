@@ -21,18 +21,12 @@ construct_data_config_filename <- function(df_name, should_validate = TRUE) {
 #' Parse a dataframe into a data config
 #'
 #' @param df *\[data.frame\]* The dataframe to parse
-#' @param df_name *\[character\]* The name of the dataframe
 #' @param data_config_dir *\[character, optional\]* The directory to save the data config. If `NULL`, uses the default directory.
 #' @return *\[list\]* The data config
-parse_df_into_data_config <- function(df, df_name, data_config_dir = NULL) {
-  box::use(
-    artma / libs / validation[validate]
-  )
+parse_df_into_data_config <- function(df, data_config_dir = NULL) {
+  box::use(artma / libs / validation[validate])
 
-  validate(
-    is.data.frame(df),
-    is.character(df_name)
-  )
+  validate(is.data.frame(df))
 
   config <- list()
 
