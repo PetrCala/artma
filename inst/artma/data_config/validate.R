@@ -8,6 +8,7 @@ validate_data_config_filename <- function(filename) {
   if (rlang::is_empty(filename)) {
     return(FALSE)
   }
+
   grepl(CONST$REGEX$DATA_CONFIG_FILE_SUFFIX, filename)
 }
 
