@@ -1,6 +1,5 @@
 box::use(
   artma / libs / number_utils[generate_random_vector],
-  artma / testing / test_const[TEST_CONST],
   artma / testing / mocks / mock_utils[create_mock_study_names]
 )
 
@@ -25,10 +24,10 @@ create_mock_df <- function(
   )
 
   if (is.null(nrow)) {
-    nrow <- TEST_CONST$MOCK_DF_NROWS
+    nrow <- CONST$MOCKS$MOCK_DF_NROWS
   }
   if (is.null(n_studies)) {
-    n_studies <- TEST_CONST$MOCK_DF_NSTUDIES
+    n_studies <- CONST$MOCKS$MOCK_DF_NSTUDIES
   }
   study_names <- create_mock_study_names(n_studies = n_studies, total_occurrences = nrow)
 
