@@ -38,7 +38,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # Show help if no arguments or help flags are provided
-if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
   help
   exit 1
 fi
