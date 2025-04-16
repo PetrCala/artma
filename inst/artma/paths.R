@@ -51,7 +51,6 @@ PATHS <- list(
   DIR_USR_DATA = DIR_USR_DATA,
   DIR_USR_CONFIG = DIR_USR_CONFIG,
   DIR_USR_CACHE = DIR_USR_CACHE,
-  DIR_LOGS = file.path(DIR_USR_CACHE, "logs"),
 
   # Files
   FILE_OPTIONS_TEMPLATE = file.path(DIR_OPTIONS_TEMPLATES, "options_template.yaml"),

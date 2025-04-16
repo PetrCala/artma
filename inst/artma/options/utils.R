@@ -31,11 +31,10 @@ remove_options_with_prefix <- function(prefix) {
   opts <- options()
   opts_to_remove <- names(opts)[startsWith(names(opts), prefix)]
 
-  logger::log_debug("Clearing the following options from the options namespace:")
-  logger::log_debug(opts_to_remove)
+  cli::cli_inform("Clearing the following options from the options namespace: {.emph {opts_to_remove}}")
 
   if (length(opts_to_remove) == 0) {
-    logger::log_debug("No options found with the prefix: ", prefix)
+    cli::cli_alert_info("No options found with the prefix: {prefix}")
     return(invisible(NULL))
   }
 
@@ -109,7 +108,7 @@ nested_to_flat <- function(nested, parent_key = NULL, sep = ".") {
 parse_options_file_name <- function(input_string) {
   str_out <- rlang::duplicate(input_string)
 
-  logger::log_debug(cli::format_inline("Parsing the following string into a user options file name: {.emph {input_string}}"))
+  cli::cli_inform("Parsing the following string into a user options file name: {.emph {input_string}}")
 
   tryCatch(
     {

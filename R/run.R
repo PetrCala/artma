@@ -41,13 +41,15 @@ invoke_runtime_methods <- function(methods, df, ...) {
   }
 
   cli::cli_h3("Running the main ARTMA function")
-  cli::cli_inform("Invoking {length(methods)} {pluralize('method', length(methods))}")
+  cli::cli_inform(c(
+    "i" = "Invoking {length(methods)} {pluralize('method', length(methods))} in total."
+  ))
 
   results <- list()
   for (i in seq_along(supported_methods)) {
     method_name <- methods[i]
     if (method_name %in% methods) {
-      logger::log_info(glue::glue("Running the '{method_name}' method..."))
+      cli::cli_inform("{cli::symbol$bullet} Running the {.code {method_name}} method...")
       results[[method_name]] <- RUNTIME_METHOD_MODULES[[method_name]]$run(df = df, ...)
     }
   }
@@ -70,7 +72,7 @@ run <- function(
 
     df <- prepare_data()
     results <- invoke_runtime_methods(methods = methods, df = df)
-    logger::log_success("Done.")
+    cli::cli_alert_success("Done.")
   }
 
   runtime_setup( # nolint: box_usage_linter. # Imported on a package-level

@@ -16,7 +16,6 @@ Imports:
     glue,
     lifecycle,
     lintr,
-    logger,
     metafor,
     rlang,
     stringr,

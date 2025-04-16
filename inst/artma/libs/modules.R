@@ -32,7 +32,7 @@ crawl_and_import_modules <- function(dir_path) {
     module_path <- tools::file_path_as_absolute(file.path(dir_path, f))
 
     box_import_statement <- turn_path_into_box_import(module_path)
-    logger::log_debug(glue::glue("Running the following import statement: '{box_import_statement}'"))
+    cli::cli_inform("Running the following import statement: {.code {box_import_statement}}")
     eval(box_import_statement) # Imports the module
 
     # Calling the module name should now return the module itself
@@ -58,7 +58,7 @@ validate_runtime_method_modules <- function(modules) { # nolint: object_length_l
   }
 
   if (length(modules) == 0) {
-    logger::log_warn("No runtime method modules to validate.")
+    cli::cli_alert_warning("No runtime method modules to validate.")
     return(NULL)
   }
 

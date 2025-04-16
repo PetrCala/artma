@@ -52,7 +52,7 @@ re <- function(df, effect = NULL, se = NULL, method = "DL") {
       return(list(est = re_est, t_value = re_t_value))
     },
     error = function(e) {
-      logger::log_debug(paste("Could not fit the RE model for meta-analysis", meta, ": ", e))
+      cli::cli_alert_danger(paste("Could not fit the RE model for meta-analysis", meta, ": ", e))
       return(list(est = NA, t_value = NA))
     }
   )
@@ -89,7 +89,7 @@ uwls <- function(df, effect = NULL, se = NULL) {
       return(list(est = est, t_value = t_value))
     },
     error = function(e) {
-      logger::log_debug(paste("Could not fit the UWLS model for meta-analysis", meta, ": ", e))
+      cli::cli_alert_danger(paste("Could not fit the UWLS model for meta-analysis", meta, ": ", e))
       return(list(est = NA, t_value = NA))
     }
   )
@@ -135,12 +135,12 @@ hsma <- function(df) {
   # Safety check
   missing_dof <- sum(is.na(df$dof))
   if (missing_dof > 0) {
-    logger::log_debug(paste("Dropping", missing_dof, "missing degrees of freedom for meta-analysis", meta))
+    cli::cli_inform(paste("Dropping", missing_dof, "missing degrees of freedom for meta-analysis", meta))
     df <- df[!is.na(df$dof), ]
   }
 
   if (nrow(df) == 0) {
-    logger::log_debug(paste("No data to calculate HSMA for meta-analysis", meta))
+    cli::cli_alert_warning(paste("No data to calculate HSMA for meta-analysis", meta))
     return(list(est = NA, t_value = NA))
   }
 
@@ -171,7 +171,7 @@ fishers_z <- function(df, method = "ML") {
   re_data <- re_data[!is.na(fishers_z_) & !is.na(se_), ] # Drop NA rows
 
   if (nrow(re_data) == 0) {
-    logger::log_debug(paste("No data to calculate Fisher's z for meta-analysis", meta))
+    cli::cli_alert_warning(paste("No data to calculate Fisher's z for meta-analysis", meta))
     return(list(est = NA, t_value = NA))
   }
 
@@ -193,7 +193,7 @@ pcc_sum_stats <- function(df, log_results = TRUE) {
 
   missing_ss <- is.na(ss_)
   if (sum(missing_ss) > 0) {
-    logger::log_debug(paste("Missing sample sizes when calculating PCC summary statistics for meta-analysis", meta, "Filling these using degrees of freedom."))
+    cli::cli_inform(paste("Missing sample sizes when calculating PCC summary statistics for meta-analysis", meta, "Filling these using degrees of freedom."))
     ss_[is.na(ss_)] <- df$dof[is.na(ss_)] # Replace NA with DoF
   }
   assert(sum(is.na(ss_)) == 0, "Missing sample sizes in the PCC data frame")
@@ -221,8 +221,13 @@ pcc_sum_stats <- function(df, log_results = TRUE) {
   )
 
   if (log_results) {
-    logger::log_info("PCC analysis summary statistics:")
-    logger::log_info(paste("Number of PCC "))
+    cli::cli_inform("PCC analysis summary statistics:")
+    cli::cli_inform(paste("Number of PCC observations:", res$n_observations))
+    cli::cli_inform(paste("Average effect:", res$avg_effect))
+    cli::cli_inform(paste("Average sample size:", res$avg_ss))
+    cli::cli_inform(paste("Median sample size:", res$median_ss))
+    cli::cli_inform(paste("25th percentile of sample size:", res$quantile_1_ss))
+    cli::cli_inform(paste("75th percentile of sample size:", res$quantile_3_ss))
   }
   return(res)
 }

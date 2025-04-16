@@ -119,7 +119,6 @@ These packages are required for the package to function correctly when used by o
 - `glue` – For efficient and readable string interpolation
 - `lifecycle` – To manage and signal function lifecycle stages (e.g., deprecated, experimental)
 - `lintr` – Runtime linting (if exposed in package functionality)
-- `logger` – Lightweight logging for debugging or tracking events during runtime
 - `metafor` - For running meta-analysis related methods
 - `rlang` – Core tidyverse infrastructure: advanced error handling, quosures, tidy evaluation
 - `stringr` – Consistent string manipulation functions

@@ -19,7 +19,7 @@
 fill_missing_values <- function(df, target_col, columns = NULL, missing_value_prefix = "missing value") {
   box::use(artma / libs / validation[is_char_vector_or_empty])
 
-  logger::log_debug(paste0("Filling missing values for col", target_col, "..."))
+  cli::cli_inform("Filling missing values for col {.emph {target_col}}...")
   if (!is_char_vector_or_empty(columns) || !is.null(columns)) {
     cli::cli_abort("The columns parameter must be a character vector or empty")
   }
@@ -89,13 +89,13 @@ fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL,
     t_value = t_values[fillable_rows],
     pcc = pcc[fillable_rows]
   )
-  logger::log_info(paste("Filled", sum(fillable_rows), "missing degrees of freedom."))
+  cli::cli_inform("Filled {sum(fillable_rows)} missing degrees of freedom.")
 
   #' A helper function to drop rows based on a condition
   drop_rows <- function(condition, msg) {
     n_rows_to_drop <- sum(condition)
     if (n_rows_to_drop > 0) {
-      logger::log_info(paste("Dropping", n_rows_to_drop, msg))
+      cli::cli_inform("Dropping {n_rows_to_drop} {msg}")
       return(df[!condition, ])
     }
     return(df)
