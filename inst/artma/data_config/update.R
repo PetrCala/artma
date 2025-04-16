@@ -9,7 +9,13 @@ update_data_config_file <- function(data_config, df_name, data_config_dir = NULL
     artma / paths[PATHS],
     artma / libs / ask[ask_for_overwrite_permission],
     artma / libs / file_utils[ensure_folder_existence],
+    artma / libs / validation[validate],
     artma / data_config / parse[construct_data_config_filename]
+  )
+
+  validate(
+    is.list(data_config),
+    is.character(df_name)
   )
 
   data_config_dir <- if (is.null(data_config_dir)) PATHS$DIR_USR_DATA_CONFIGS else data_config_dir
