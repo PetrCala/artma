@@ -8,12 +8,22 @@ box::use(
 #'
 #' @param effect_type A string indicating the type of effect to generate
 #' @param nrow An integer indicating the number of rows to generate
+#' @param n_studies An integer indicating the number of studies to generate
+#' @param with_creation A boolean indicating whether to create a file with the data frame
+#' @param file_path A string indicating the path of the file to create
 #' @return A data frame object
 #' @export
 create_mock_df <- function(
     effect_type = NULL,
     nrow = NULL,
-    n_studies = NULL) {
+    n_studies = NULL,
+    with_creation = FALSE,
+    file_path = NULL) {
+  box::use(
+    artma / const[CONST],
+    artma / libs / validation[assert]
+  )
+
   if (is.null(nrow)) {
     nrow <- TEST_CONST$MOCK_DF_NROWS
   }
@@ -35,5 +45,24 @@ create_mock_df <- function(
     se = se,
     study = study_names
   )
+
+  if (with_creation) {
+    if (is.null(file_path)) {
+      file_path <- CONST$MOCKS$TMP_DATA_FILE_PATH
+    }
+
+    assert(
+      is.character(file_path) && length(file_path) == 1,
+      "File path must be a single character string"
+    )
+    assert(
+      dir.exists(dirname(file_path)),
+      "File path must be a valid path"
+    )
+
+    cli::cli_alert_info("Creating mock data file: {file_path}")
+    utils::write.csv(data_frame, file_path, row.names = FALSE)
+  }
+
   return(data_frame)
 }

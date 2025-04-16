@@ -33,6 +33,10 @@ CONST <- list(
     )
   ),
   CONFIG_SPECIAL_KEYS = c("description", "details", "type", "optional", "default", "values"),
+  MOCKS = list(
+    TMP_DATA_FILE_NAME = "tmp_data.csv",
+    TMP_OPTIONS_FILE_NAME = "tmp_options.yaml"
+  ),
   REGEX = list(
     OPTIONS_FILE_SUFFIX = "\\.yaml|\\.yml"
   ),
