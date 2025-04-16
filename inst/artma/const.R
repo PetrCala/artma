@@ -31,9 +31,15 @@ CONST <- list(
     MOCK_DF_NROWS = 1000,
     MOCK_DF_NSTUDIES = 50
   ),
-  REGEX = list(
-    OPTIONS_FILE_SUFFIX = "\\.yaml|\\.yml",
-    DATA_CONFIG_FILE_SUFFIX = "\\.config\\.json$"
+  PATTERNS = list(
+    YAML_FILES = list(
+      PLAIN = c(".yaml"),
+      REGEX = "\\.ya(ml|yml)$"
+    ),
+    DATA_CONFIG = list(
+      PLAIN = ".config.json",
+      REGEX = "\\.config\\.json$"
+    )
   ),
   STYLES = list(
     OPTIONS = list(

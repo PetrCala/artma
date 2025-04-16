@@ -79,16 +79,7 @@ clean_string <- function(input_string) {
 }
 
 
-#' Convert a regex to a string
-#'
-#' @param regex *\[character\]* The regex to convert
-#' `character` The converted string
-regex_to_string <- function(regex) {
-  stringr::str_replace_all(regex, "([.\\|()\\[\\]{}^$*+?\\\\-])", "\\\\\\1")
-}
-
 box::export(
-  regex_to_string,
   clean_string,
   find_string_using_substring,
   pluralize

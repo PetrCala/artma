@@ -242,7 +242,7 @@ options.list <- function(options_dir = NULL, should_return_verbose_names = FALSE
 
   options_files <- list.files(
     path = options_dir,
-    pattern = CONST$REGEX$OPTIONS_FILE_SUFFIX,
+    pattern = CONST$PATTERNS$YAML_FILES$REGEX,
     # If we are not going to read the file, full names are unnecessary
     full.names = should_return_verbose_names
   )
