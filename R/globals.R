@@ -25,6 +25,7 @@ utils::globalVariables(c(
   "paths",
   "pluralize",
   "prepare_data",
+  "regex_to_string",
   "remove_options_with_prefix",
   "string",
   "submit_cran",
