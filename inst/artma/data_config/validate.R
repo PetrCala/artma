@@ -3,7 +3,12 @@
 #' @param filename *\[character\]* The filename to validate
 #' @return *\[logical\]* `TRUE` if the filename is valid, `FALSE` otherwise
 validate_data_config_filename <- function(filename) {
-  box::use(artma / const[CONST])
+  box::use(
+    artma / const[CONST],
+  )
+  if (rlang::is_empty(filename)) {
+    return(FALSE)
+  }
   grepl(CONST$REGEX$DATA_CONFIG_FILE_SUFFIX, filename)
 }
 
