@@ -30,6 +30,7 @@ utils::globalVariables(c(
   "string",
   "submit_cran",
   "template",
+  "trim_quotes",
   "utils",
   "validate",
   "validate_option_value",
