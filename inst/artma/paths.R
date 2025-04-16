@@ -54,5 +54,7 @@ PATHS <- list(
   DIR_LOGS = file.path(DIR_USR_CACHE, "logs"),
 
   # Files
-  FILE_OPTIONS_TEMPLATE = file.path(DIR_OPTIONS_TEMPLATES, "options_template.yaml")
+  FILE_OPTIONS_TEMPLATE = file.path(DIR_OPTIONS_TEMPLATES, "options_template.yaml"),
+  FILE_MOCKS_TMP_DATA = file.path(DIR_USR_DATA, CONST$MOCKS$TMP_DATA_FILE_NAME),
+  FILE_MOCKS_TMP_OPTIONS = file.path(DIR_USR_CONFIG, CONST$MOCKS$TMP_OPTIONS_FILE_NAME)
 )
