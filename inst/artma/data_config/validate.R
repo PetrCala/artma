@@ -9,7 +9,7 @@ data_config_filename_is_valid <- function(filename) {
     return(FALSE)
   }
 
-  grepl(CONST$REGEX$DATA_CONFIG_FILE_SUFFIX, filename)
+  grepl(CONST$PATTERNS$DATA_CONFIG$REGEX, filename)
 }
 
 #' @title Check if data config file exists
@@ -30,7 +30,7 @@ df_data_config_exists <- function(df_name, data_config_dir = NULL) {
   data_config_dir <- if (is.null(data_config_dir)) PATHS$DIR_USR_DATA_CONFIGS else data_config_dir
   ensure_folder_existence(data_config_dir)
 
-  pattern <- paste0("^", df_name, CONST$REGEX$DATA_CONFIG_FILE_SUFFIX, "$")
+  pattern <- paste0(df_name, CONST$PATTERNS$DATA_CONFIG$REGEX, "$")
   matching_files <- list.files(path = data_config_dir, pattern = pattern, full.names = TRUE)
   return(length(matching_files) > 0)
 }

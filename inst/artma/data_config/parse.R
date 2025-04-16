@@ -5,13 +5,10 @@
 construct_data_config_filename <- function(df_name) {
   box::use(
     artma / const[CONST],
-    artma / data_config / validate[data_config_filename_is_valid],
-    artma / libs / string[regex_to_string]
+    artma / data_config / validate[data_config_filename_is_valid]
   )
 
-  file_suffix <- regex_to_string(CONST$REGEX$DATA_CONFIG_FILE_SUFFIX)
-
-  filename <- paste0(df_name, file_suffix)
+  filename <- paste0(df_name, CONST$PATTERNS$DATA_CONFIG$PLAIN)
   if (!data_config_filename_is_valid(filename)) {
     cli::cli_abort("The following data config filename is not valid: {.path {filename}}")
   }

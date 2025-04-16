@@ -34,6 +34,7 @@ man/*
 *.Rproj
 .vscode/
 ..Rcheck/
+tests/_snaps/
 
 # Distribution / packaging
 .Python
