@@ -82,5 +82,6 @@ clean_string <- function(input_string) {
 box::export(
   clean_string,
   find_string_using_substring,
-  pluralize
+  pluralize,
+  trim_quotes
 )
