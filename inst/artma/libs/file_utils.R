@@ -6,6 +6,9 @@
 #'  Raise an error in case the folder does not exist.
 #' @export
 ensure_folder_existence <- function(folder_name, require_existence = FALSE) {
+  box::use(artma / libs / validation[validate])
+  validate(is.character(folder_name), is.logical(require_existence))
+
   if (!dir.exists(folder_name)) {
     if (require_existence) {
       cli::cli_abort(
