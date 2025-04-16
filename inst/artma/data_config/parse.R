@@ -24,9 +24,13 @@ construct_data_config_filename <- function(df_name, should_validate = TRUE) {
 #' @return *\[NULL\]* The function is called for its side effects
 write_data_config <- function(config, df_name, data_config_dir = NULL) {
   box::use(
+    artma / paths[PATHS],
     artma / libs / ask[ask_for_overwrite_permission],
-    artma / data_config / validate[data_config_filename_is_valid]
+    artma / libs / file_utils[ensure_folder_existence]
   )
+
+  data_config_dir <- if (is.null(data_config_dir)) PATHS$DIR_USR_DATA_CONFIGS else data_config_dir
+  ensure_folder_existence(data_config_dir)
 
   filename <- construct_data_config_filename(df_name)
   file_path <- file.path(data_config_dir, filename)
@@ -59,9 +63,6 @@ parse_df_into_data_config <- function(df, df_name, data_config_dir = NULL, shoul
     is.data.frame(df),
     is.character(df_name)
   )
-
-  data_config_dir <- if (is.null(data_config_dir)) PATHS$DIR_USR_DATA_CONFIGS else data_config_dir
-  ensure_folder_existence(data_config_dir)
 
   config <- list()
 
