@@ -41,22 +41,20 @@ parse_df_into_data_config <- function(df, df_name, data_config_dir = NULL) {
 
   filename <- construct_data_config_filename(df_name)
 
-  browser()
+  # Create a path to the file
+  file_path <- file.path(data_config_dir, filename)
 
-  # # Create a path to the file
-  # file_path <- file.path(data_config_dir, filename)
+  # Create the file
+  file.create(file_path)
 
-  # # Create the file
-  # file.create(file_path)
+  # Write the dataframe to the file
+  write.csv(df, file_path, row.names = FALSE)
 
-  # # Write the dataframe to the file
-  # write.csv(df, file_path, row.names = FALSE)
-
-  # # Return the data config
-  # list(
-  #   filename = filename,
-  #   file_path = file_path
-  # )
+  # Return the data config
+  list(
+    filename = filename,
+    file_path = file_path
+  )
 }
 
 box::export(
