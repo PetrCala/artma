@@ -60,7 +60,7 @@ create_mock_df <- function(
       "File path must be a valid path"
     )
 
-    cli::cli_alert_info("Creating mock data file: {file_path}")
+    cli::cli_inform("Creating mock data file: {file_path}")
     utils::write.csv(data_frame, file_path, row.names = FALSE)
   }
 

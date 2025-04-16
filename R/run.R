@@ -41,7 +41,7 @@ invoke_runtime_methods <- function(methods, df, ...) {
   }
 
   cli::cli_h3("Running the main ARTMA function")
-  cli::cli_alert_info("Invoking {length(methods)} {pluralize('method', length(methods))}")
+  cli::cli_inform("Invoking {length(methods)} {pluralize('method', length(methods))}")
 
   results <- list()
   for (i in seq_along(supported_methods)) {
