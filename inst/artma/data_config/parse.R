@@ -32,8 +32,7 @@ parse_df_into_data_config <- function(df, df_name, data_config_dir = NULL) {
 
   validate(
     is.data.frame(df),
-    is.character(df_name),
-    is.character(data_config_dir) %||% is.null(data_config_dir)
+    is.character(df_name)
   )
 
   data_config_dir <- if (is.null(data_config_dir)) PATHS$DIR_USR_DATA_CONFIGS else data_config_dir
