@@ -445,7 +445,7 @@ options.modify <- function(
     user_input = new_options,
     should_validate = should_validate,
     should_overwrite = TRUE,
-    action_name = "modified"
+    action_name = "modifying"
   )
 
   invisible(NULL)
@@ -693,7 +693,7 @@ options.fix <- function(
     user_input = fixed_options,
     should_validate = TRUE,
     should_overwrite = TRUE,
-    action_name = "fixed"
+    action_name = "fixing"
   )
 
   invisible(NULL)
@@ -718,7 +718,7 @@ options.create <- function(
     user_input = list(),
     should_validate = TRUE,
     should_overwrite = FALSE,
-    action_name = "created") {
+    action_name = "creating") {
   box::use(
     artma / paths[PATHS],
     artma / options / ask[ask_for_options_file_name],
@@ -743,7 +743,7 @@ options.create <- function(
   options_file_name <- options_file_name %||% ask_for_options_file_name()
   options_file_name <- parse_options_file_name(options_file_name)
 
-  cli::cli_inform("A user options file is being {action_name}: {.path {options_file_name}}...")
+  cli::cli_inform("{stringr::str_to_title(action_name)} a user options file: {.path {options_file_name}}")
 
   options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
   options_file_path <- file.path(options_dir, options_file_name)
@@ -785,8 +785,6 @@ options.create <- function(
 
   ensure_folder_existence(dirname(options_file_path))
   yaml::write_yaml(nested_options, options_file_path)
-
-  cli::cli_inform("User options file {action_name}: {.path {options_file_name}}")
 
   if (should_validate) {
     options.validate(
