@@ -1,5 +1,4 @@
 #' Assign NA to a column in a data frame
-#' @export
 assign_na_col <- function(df, colname) {
   df[[colname]] <- rep(NA, nrow(df))
   return(df)
@@ -10,7 +9,6 @@ assign_na_col <- function(df, colname) {
 #' @param df *\[data.frame\]* The analysis data frame.
 #' @param study_colname [str] The column name holding names of all studies.
 #' `int` The number of studies.
-#' @export
 get_number_of_studies <- function(df) {
   if (!"study" %in% colnames(df)) {
     cli::cli_abort("The data frame does not have a 'study' column.", class = "missing_study_column")
@@ -21,7 +19,6 @@ get_number_of_studies <- function(df) {
 #' @description Raise an error for an invalid data type.
 #' @param data_type [str] The invalid data type.
 #' @return `NULL`
-#' @export
 raise_invalid_data_type_error <- function(data_type) {
   box::use(artma / const[CONST])
 
@@ -39,8 +36,7 @@ raise_invalid_data_type_error <- function(data_type) {
 #' @description Determine a data type based on its path.
 #' @param path [str] The path to the data.
 #' `str` The data type
-#' @export
-determine_data_type <- function(path, should_validate = TRUE) {
+determine_df_type <- function(path, should_validate = TRUE) {
   box::use(
     artma / const[CONST],
     artma / libs / validation[validate]
@@ -60,3 +56,10 @@ determine_data_type <- function(path, should_validate = TRUE) {
 
   file_extension
 }
+
+box::export(
+  assign_na_col,
+  determine_df_type,
+  get_number_of_studies,
+  raise_invalid_data_type_error
+)

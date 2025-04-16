@@ -6,16 +6,16 @@
 read_data <- function(path = NULL) {
   box::use(
     artma / data / utils[
-      determine_data_type,
+      determine_df_type,
       raise_invalid_data_type_error
     ]
   )
 
   path <- if (!is.null(path)) path else getOption("artma.data.source_path")
 
-  data_type <- determine_data_type(path, should_validate = TRUE)
+  df_type <- determine_df_type(path, should_validate = TRUE)
 
-  df <- switch(data_type,
+  df <- switch(df_type,
     csv = utils::read.csv(path),
     tsv = utils::read.delim(path),
     xlsx = readxl::read_excel(path),
@@ -24,7 +24,7 @@ read_data <- function(path = NULL) {
     # "json",
     # "dta",
     # "rds"
-    raise_invalid_data_type_error(data_type)
+    raise_invalid_data_type_error(df_type)
   )
 
   if (!is.data.frame(df)) {
