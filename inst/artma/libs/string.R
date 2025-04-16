@@ -78,10 +78,24 @@ clean_string <- function(input_string) {
   return(str_out)
 }
 
+#' Make a verbose name
+#'
+#' @param input_str *\[character\]* The string to make verbose
+#' `character` The verbose string
+make_verbose_name <- function(input_str) {
+  verbose <- gsub("_", " ", input_str)
+  verbose <- trimws(verbose)
+  verbose <- paste(toupper(substring(verbose, 1, 1)),
+    substring(verbose, 2),
+    sep = ""
+  )
+  verbose
+}
 
 box::export(
   clean_string,
   find_string_using_substring,
+  make_verbose_name,
   pluralize,
   trim_quotes
 )

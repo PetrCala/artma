@@ -20,6 +20,7 @@ utils::globalVariables(c(
   "get_expected_type",
   "index",
   "libs",
+  "make_verbose_name",
   "nested_to_flat",
   "parse_options_file_name",
   "parse_options_from_template",

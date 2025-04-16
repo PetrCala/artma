@@ -11,6 +11,27 @@ CONST <- list(
   ),
   DATE_FORMAT = "%Y-%m-%d %H:%M:%S",
   DATE_ONLY_FORMAT = "%Y-%m-%d",
+  DATA_CONFIG = list(
+    KEYS = list(
+      VAR_NAME = "var_name",
+      VAR_NAME_VERBOSE = "var_name_verbose",
+      VAR_NAME_DESCRIPTION = "var_name_description",
+      DATA_TYPE = "data_type",
+      GROUP_CATEGORY = "group_category",
+      NA_HANDLING = "na_handling",
+      VARIABLE_SUMMARY = "variable_summary",
+      EFFECT_SUM_STATS = "effect_sum_stats",
+      EQUAL = "equal",
+      GLTL = "gltl",
+      BMA = "bma",
+      BMA_REFERENCE_VAR = "bma_reference_var",
+      BMA_TO_LOG = "bma_to_log",
+      BPE = "bpe",
+      BPE_SUM_STATS = "bpe_sum_stats",
+      BPE_EQUAL = "bpe_equal",
+      BPE_GLTL = "bpe_gltl"
+    )
+  ),
   OPTIONS = list(
     VALIDATION_ACTIONS = c(
       "abort_verbose",
@@ -22,9 +43,9 @@ CONST <- list(
       READLINE = "readline",
       FILE = "file",
       DIRECTORY = "directory"
-    )
+    ),
+    SPECIAL_KEYS = c("description", "details", "type", "optional", "default", "values")
   ),
-  CONFIG_SPECIAL_KEYS = c("description", "details", "type", "optional", "default", "values"),
   MOCKS = list(
     TMP_DATA_FILE_NAME = "tmp_data.csv",
     TMP_OPTIONS_FILE_NAME = "tmp_options.yaml",

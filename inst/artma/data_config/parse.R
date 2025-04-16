@@ -21,14 +21,31 @@ construct_data_config_filename <- function(df_name, should_validate = TRUE) {
 #' Parse a dataframe into a data config
 #'
 #' @param df *\[data.frame\]* The dataframe to parse
-#' @param data_config_dir *\[character, optional\]* The directory to save the data config. If `NULL`, uses the default directory.
 #' @return *\[list\]* The data config
-parse_df_into_data_config <- function(df, data_config_dir = NULL) {
-  box::use(artma / libs / validation[validate])
+parse_df_into_data_config <- function(df) {
+  box::use(
+    artma / libs / validation[validate],
+    artma / libs / string[make_verbose_name]
+  )
 
   validate(is.data.frame(df))
 
+  if (nrow(df) == 0) {
+    cli::cli_abort("The dataframe is empty. Please provide a dataframe with at least one row.")
+  }
+
   config <- list()
+
+  for (col in names(df)) {
+    col_config <- list()
+    col_name_clean <- make.names(col) # remove special characters
+    # col_data <- df[[col]]
+
+    col_config[[CONST$DATA_CONFIG$KEYS$VAR_NAME]] <- col
+    col_config[[CONST$DATA_CONFIG$KEYS$VAR_NAME_VERBOSE]] <- make_verbose_name(col)
+
+    config[[col_name_clean]] <- col_config
+  }
 
   config
 }
