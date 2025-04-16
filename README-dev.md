@@ -34,6 +34,7 @@
 - [Generating package news](#generating-package-news)
 - [Formatting commits](#formatting-commits)
   - [Commit lints](#commit-lints)
+- [Running tests](#running-tests)
 - [Code of Conduct](#code-of-conduct)
 
 Welcome to the developer documentation for ARTMA (Automatic Replication Tools for Meta-analysis). This guide covers setup, development workflows, code standards, and other technical details needed for contributing to the project.
@@ -314,6 +315,50 @@ To see a full list of the commit lint rules, visit [this link](https://github.co
 
 You may feel like these requirements are a little too strict, but keeping a unified commit message format **allows us to automate the package release cycle**. To be more specific, we construct the package changelog automatically from the commit history upon every new release. As such, a standardized formatting is required.
 
+# Running tests
+
+Tests can be run in several ways depending on your needs:
+
+1. **Run all tests**:
+
+   ```bash
+   ./run.sh test
+   ```
+
+   This will execute all test files in the project.
+
+1. **Run a specific test file**:
+
+   ```bash
+   ./run.sh test --file path/to/test_file.R
+   ```
+
+   Replace `path/to/test_file.R` with the relative path to your test file from the `tests` directory.
+
+1. **Run tests with a filter**:
+
+   ```bash
+   ./run.sh test --filter "test_name"
+   ```
+
+   This will run only the tests that match the specified filter pattern.
+
+The test script uses `devtools::test()` under the hood, which means you can also run tests directly from R:
+
+```r
+# Run all tests
+devtools::test()
+
+# Run a specific test file
+devtools::test_active_file("tests/testthat/test_file.R")
+
+# Run tests with a filter
+devtools::test(filter = "test_name")
+```
+
+For more information about writing and organizing tests, refer to the [testthat documentation](https://testthat.r-lib.org/).
+
 # Code of Conduct
 
 Please note that the artma project is released with a [Contributor Code of Conduct](https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html). By contributing to this project, you agree to abide by its terms.
+istor Code of Conduct](https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html). By contributing to this project, yFor more information about writing and organizing tests, refer to
