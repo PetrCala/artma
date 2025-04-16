@@ -22,7 +22,7 @@ construct_data_config_filename <- function(df_name, should_validate = TRUE) {
 #'
 #' @param df *\[data.frame\]* The dataframe to parse
 #' @param df_name *\[character\]* The name of the dataframe
-#' @param data_config_dir *\[character\]* The directory to save the data config
+#' @param data_config_dir *\[character, optional\]* The directory to save the data config. If `NULL`, uses the default directory.
 #' @return *\[list\]* The data config
 parse_df_into_data_config <- function(df, df_name, data_config_dir = NULL) {
   box::use(
