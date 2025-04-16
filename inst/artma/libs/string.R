@@ -5,7 +5,6 @@ box::use(artma / libs / validation[validate, assert])
 #' @param word *\[character\]* The word to potentially pluralize
 #' @param count *\[integer\]* The count to determine if pluralization is needed
 #' `character` The word, pluralized if count is not 1
-#' @export
 pluralize <- function(word, count = NULL) {
   validate(is.character(word))
 
@@ -38,7 +37,6 @@ pluralize <- function(word, count = NULL) {
 #' @param vector_of_strings *\[character\]* The vector of strings to search
 #' @param substring *\[character\]* The substring to search for
 #' `character` The string that contains the substring
-#' @export
 find_string_using_substring <- function(vector_of_strings, substring) {
   assert(is.character(substring), "The substring must be a character")
   assert(is.vector(vector_of_strings), "The vector of strings must be a character vector")
@@ -55,7 +53,6 @@ find_string_using_substring <- function(vector_of_strings, substring) {
 #' @title Trim quotes
 #' @description Removes single or double quotes from the beggining and end of a string. Preserves these quotes elsewhere in the string.
 #' @param s *\[character\]* The string to trim quotes for.
-#' @export
 trim_quotes <- function(s) gsub("^(\"|')+|(\"|')+$", "", s)
 
 
@@ -64,7 +61,6 @@ trim_quotes <- function(s) gsub("^(\"|')+|(\"|')+$", "", s)
 #' @param input_string *\[character\]* The string to clean
 #' `character` The cleaned string
 #' @importFrom stringr
-#' @export
 clean_string <- function(input_string) {
   # Remove special characters
   str_out <- stringr::str_replace_all(input_string, "[^a-zA-Z0-9]", "_")
@@ -81,3 +77,19 @@ clean_string <- function(input_string) {
 
   return(str_out)
 }
+
+
+#' Convert a regex to a string
+#'
+#' @param regex *\[character\]* The regex to convert
+#' `character` The converted string
+regex_to_string <- function(regex) {
+  stringr::str_replace_all(regex, "([.\\|()\\[\\]{}^$*+?\\\\-])", "\\\\\\1")
+}
+
+box::export(
+  regex_to_string,
+  clean_string,
+  find_string_using_substring,
+  pluralize
+)

@@ -13,6 +13,7 @@ ensure_folder_existence <- function(folder_name, require_existence = FALSE) {
         class = "folder_not_found"
       )
     }
+    cli::cli_inform("Creating folder {.path {folder_name}}.")
     dir.create(folder_name, recursive = TRUE)
   }
 }
