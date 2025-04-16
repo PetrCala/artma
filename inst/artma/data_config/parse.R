@@ -24,6 +24,7 @@ construct_data_config_filename <- function(df_name, should_validate = TRUE) {
 #' @return *\[list\]* The data config
 parse_df_into_data_config <- function(df) {
   box::use(
+    artma / const[CONST],
     artma / libs / validation[validate],
     artma / libs / string[make_verbose_name]
   )
