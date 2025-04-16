@@ -20,7 +20,6 @@ utils::globalVariables(c(
   "index",
   "is_empty",
   "libs",
-  "logs",
   "nested_to_flat",
   "parse_options_file_name",
   "parse_options_from_template",

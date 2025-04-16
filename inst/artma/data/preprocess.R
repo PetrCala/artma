@@ -72,7 +72,7 @@ preprocess_data <- function(input_data, input_var_list) { # nolint: cyclocomp_li
       input_data[[col_name]] <- as.character(input_data[[col_name]])
     }
   }
-  logger::log_info("Preprocessing finished.")
+  cli::cli_alert_success("Preprocessing finished.")
   return(input_data)
 }
 

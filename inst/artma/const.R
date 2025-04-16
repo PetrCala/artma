@@ -11,14 +11,6 @@ CONST <- list(
   ),
   DATE_FORMAT = "%Y-%m-%d %H:%M:%S",
   DATE_ONLY_FORMAT = "%Y-%m-%d",
-  LOG_PATTERN = "^(INFO|WARN|ERROR|DEBUG|FATAL)\\s+\\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\\]\\s*",
-  LOG_LEVEL_MAP = list(
-    DEBUG = logger::DEBUG,
-    INFO  = logger::INFO,
-    WARN  = logger::WARN,
-    ERROR = logger::ERROR,
-    FATAL = logger::FATAL
-  ),
   OPTIONS = list(
     VALIDATION_ACTIONS = c(
       "abort_verbose",

@@ -83,7 +83,3 @@ logging:
     default: true
     help: "Log to console too (not just to the log file)"
 
-  - name: "flush_logs_on_setup"
-    type: "logical"
-    default: false
-    help: "Flush logs on setup"

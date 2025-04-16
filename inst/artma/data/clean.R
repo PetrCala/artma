@@ -24,12 +24,12 @@ check_for_missing_cols <- function(df, expected_cols) {
 
 #' Convert selected columns to numeric
 convert_columns_to_numeric <- function(df, cols) {
-  logger::log_info(glue::glue_collapse("Converting the following columns to numeric values:", paste(cols, sep = ", ")))
+  cli::cli_inform("Converting the following columns to numeric values: {.emph {cols}}")
   for (col in cols) {
     if (col %in% names(df)) {
       df[[col]] <- as.numeric(as.character(df[[col]]))
     } else {
-      logger::log_warn(paste("Column", col, "does not exist in the dataframe"))
+      cli::cli_alert_warning(paste("Column", col, "does not exist in the dataframe"))
     }
   }
   return(df)
@@ -42,10 +42,10 @@ drop_rows_with_missing_values <- function(df, cols = c("effect")) { # nolint: un
     if (col %in% colnames(df)) {
       missing_rows <- missing_rows | is.na(df[col])
     } else {
-      logger::log_warn(paste0("Unknown column name: ", col, ". Skipping NA values check..."))
+      cli::cli_alert_warning("Unknown column name: {col}. Skipping NA values check...")
     }
   }
-  logger::log_info(glue::glue_collapse("Dropping", sum(missing_rows), "rows where at least one of these columns is missing a value:", paste(cols, sep = ", ")))
+  cli::cli_inform("Dropping {sum(missing_rows)} rows where at least one of these columns is missing a value: {.emph {cols}}")
 
   return(
     df[!missing_rows, ]
@@ -54,7 +54,7 @@ drop_rows_with_missing_values <- function(df, cols = c("effect")) { # nolint: un
 
 #' Recalculate the t-value based on the effect and se columns
 recalculate_t_value <- function(df) {
-  logger::log_debug("Recalculating t-values...")
+  cli::cli_inform("Recalculating t-values...")
   validate_columns(df, c("effect", "se"))
   assert(sum(is.na(df$effect)) == 0, "The 'effect' column contains missing values")
   assert(sum(is.na(df$se)) == 0, "The 'se' column contains missing values")
@@ -66,7 +66,7 @@ recalculate_t_value <- function(df) {
 
 #' Convert string columns to valid R names (remove special characters)
 clean_names <- function(df) {
-  logger::log_debug("Cleaning names...")
+  cli::cli_inform("Cleaning names...")
   df$study <- make.names(df$study)
   df$meta <- make.names(df$meta)
   return(df)
@@ -86,7 +86,7 @@ clean_data <- function(
     clean_names = TRUE,
     recalculate_t_value = TRUE,
     fill_dof = TRUE) {
-  logger::log_debug("Cleaning data...")
+  cli::cli_inform("Cleaning data...")
   cli::cli_abort("NOT IMPLEMENTED")
   source_cols <- c("a", "b", "c")
 
@@ -124,7 +124,7 @@ clean_data <- function(
     df <- recalculate_t_value(df = df) # Recalculate t-values
   }
 
-  logger::log_info(paste("Rows after data cleaning:", nrow(df)))
+  cli::cli_inform("Rows after data cleaning: {.val {nrow(df)}}")
 
   return(df)
 }

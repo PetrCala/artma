@@ -57,7 +57,7 @@ options.validate <- function(
   assert(file.exists(options_path), glue::glue("Options file '{options_path}' does not exist."))
 
   if (verbose) {
-    logger::log_debug(glue::glue("Validating the user options file '{options_file_name}'..."))
+    cli::cli_inform("Validating the user options file {.file {options_file_name}}...")
   }
 
   # Load the YAML files
@@ -111,7 +111,7 @@ options.validate <- function(
 
   print_validation_results <- function() {
     if (length(errors) > 0) {
-      logger::log_error("Validation failed.")
+      cli::cli_alert_danger("Validation failed.")
 
       cli::cli_h1("Validation errors found:")
       for (err in errors) {
@@ -178,7 +178,7 @@ options.copy <- function(
 
   file.copy(options_file_path_from, options_file_path_to, overwrite = TRUE)
 
-  logger::log_info(cli::format_inline("The user options file {.path {options_file_name_from}} has been successfully copied over to {.path {options_file_name_to}}."))
+  cli::cli_alert_success("The user options file {.path {options_file_name_from}} has been successfully copied over to {.path {options_file_name_to}}.")
 }
 
 #' @title Delete user options
@@ -219,7 +219,7 @@ options.delete <- function(
 
     base::file.remove(options_file_path)
 
-    logger::log_info(cli::format_inline("The user options file {.file {file_name}} has been deleted."))
+    cli::cli_alert_success("The user options file {.file {file_name}} has been deleted.")
   }))
 }
 
@@ -252,11 +252,11 @@ options.list <- function(options_dir = NULL, should_return_verbose_names = FALSE
     options_name <- if (should_return_verbose_names) {
       tryCatch(
         {
-          logger::log_debug(cli::format_inline("Reading the options file {.path {file_name}}"))
+          cli::cli_inform("Reading the options file {.path {file_name}}")
           options_name <- yaml::read_yaml(file_name)$general$name
         },
         error = function(cond) {
-          logger::log_warn(cli::format_inline("Failed to read the following options file: {.path {file}}"))
+          cli::cli_alert_warning("Failed to read the following options file: {.path {file}}")
         }
       )
     } else {
@@ -373,7 +373,7 @@ options.load <- function(
     )
   }
 
-  logger::log_debug(glue::glue("Loading options from the following user options file: '{options_file_name}'"))
+  cli::cli_inform("Loading options from the following user options file: {.file {options_file_name}}")
 
   if (should_set_to_namespace) {
     remove_options_with_prefix(CONST$PACKAGE_NAME) # Remove all existing package options
@@ -681,10 +681,10 @@ options.fix <- function(
       cli::cli_abort("Aborting the fixing of a user options file.")
     }
   } else {
-    logger::log_warn("Running in non-interactive mode. The proposed changes will be applied automatically.")
+    cli::cli_alert_info("Running in non-interactive mode. The proposed changes will be applied automatically.")
   }
 
-  logger::log_info(cli::format_inline("Fixing the user options file {.path {options_file_name}}..."))
+  cli::cli_inform("Fixing the user options file {.path {options_file_name}}...")
 
   options.create(
     options_file_name = options_file_name,
@@ -743,7 +743,7 @@ options.create <- function(
   options_file_name <- options_file_name %||% ask_for_options_file_name()
   options_file_name <- parse_options_file_name(options_file_name)
 
-  logger::log_info(cli::format_inline("A user options file is being {action_name}: {.path {options_file_name}}..."))
+  cli::cli_inform("A user options file is being {action_name}: {.path {options_file_name}}...")
 
   options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
   options_file_path <- file.path(options_dir, options_file_name)
@@ -764,10 +764,10 @@ options.create <- function(
     file_exists_msg <- cli::format_inline("An options file {.path {options_file_name}} already exists.")
 
     if (isTRUE(should_overwrite)) {
-      logger::log_info(paste(file_exists_msg, "Overwriting this file..."))
+      cli::cli_inform("{file_exists_msg} Overwriting this file...")
     } else {
       if (!interactive()) {
-        cli::cli_abort(paste(file_exists_msg, "Either allow overwriting or provide a different name."))
+        cli::cli_abort("{file_exists_msg} Either allow overwriting or provide a different name.")
       }
       overwrite_permitted <- utils::select.list(
         title = paste(file_exists_msg, "Do you wish to overwrite the contents of this file?"),
@@ -786,7 +786,7 @@ options.create <- function(
   ensure_folder_existence(dirname(options_file_path))
   yaml::write_yaml(nested_options, options_file_path)
 
-  logger::log_info(cli::format_inline("User options file {action_name}: {.path {options_file_name}}"))
+  cli::cli_inform("User options file {action_name}: {.path {options_file_name}}")
 
   if (should_validate) {
     options.validate(
