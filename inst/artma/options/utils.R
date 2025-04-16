@@ -108,7 +108,7 @@ nested_to_flat <- function(nested, parent_key = NULL, sep = ".") {
 parse_options_file_name <- function(input_string) {
   str_out <- rlang::duplicate(input_string)
 
-  cli::cli_inform("Parsing the following string into a user options file name: {.emph {input_string}}")
+  cli::cli_inform("Parsing the following string into a user options file name: {.file {input_string}}")
 
   tryCatch(
     {
