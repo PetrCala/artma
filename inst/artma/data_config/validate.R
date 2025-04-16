@@ -1,8 +1,8 @@
-#' Validate that a filename follows the data config file naming convention
+#' @title Validate that a filename follows the data config file naming convention
 #' @description Check if a filename ends with the data config file suffix
 #' @param filename *\[character\]* The filename to validate
 #' @return *\[logical\]* `TRUE` if the filename is valid, `FALSE` otherwise
-validate_data_config_filename <- function(filename) {
+data_config_filename_is_valid <- function(filename) {
   box::use(artma / const[CONST])
 
   if (rlang::is_empty(filename)) {
@@ -37,6 +37,6 @@ df_data_config_exists <- function(df_name, data_config_dir = NULL) {
 }
 
 box::export(
-  validate_data_config_filename,
+  data_config_filename_is_valid,
   df_data_config_exists
 )
