@@ -145,16 +145,19 @@ options.validate <- function(
 #' @param options_file_name_from *\[character, optional\]* Name of the options file to copy from. If not provided, the user will be prompted. Defaults to \code{NULL}.
 #' @param options_file_name_to *\[character, optional\]* Name of the options file to copy to. If not provided, the user will be prompted. Defaults to \code{NULL}.
 #' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
+#' @param should_overwrite *\[logical, optional\]* Whether to overwrite an existing file without asking. If `TRUE`, the file will be overwritten without prompting. If `FALSE`, the function will abort if the file already exists. If `NULL` (default), the user will be prompted.
 #' @return `NULL`
 #' @export
 options.copy <- function(
     options_file_name_from = NULL,
     options_file_name_to = NULL,
-    options_dir = NULL) {
+    options_dir = NULL,
+    should_overwrite = NULL) {
   box::use(
     artma / paths[PATHS],
     artma / options / ask[ask_for_options_file_name, ask_for_existing_options_file_name],
-    artma / libs / validation[assert]
+    artma / libs / validation[assert],
+    artma / libs / ask[ask_for_overwrite_permission]
   )
 
   options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
@@ -166,16 +169,11 @@ options.copy <- function(
   options_file_name_to <- options_file_name_to %||% ask_for_options_file_name(prompt = "Please provide a name for your new options file, including the .yaml suffix: ")
   options_file_path_to <- file.path(options_dir, options_file_name_to)
 
-  if (file.exists(options_file_path_to)) {
-    overwrite_permitted <- utils::select.list(
-      title = cli::format_inline("An options file name already exists under the path {.path {options_file_path_to}}. Do you wish to overwrite the contents of this file?"),
-      choices = c("Yes", "No")
-    )
-    if (overwrite_permitted != "Yes") {
-      cli::cli_abort("Aborting the copying of a user options file.")
-    }
-  }
-
+  ask_for_overwrite_permission(
+    options_file_path_to,
+    action_name = "copying a user options file",
+    should_overwrite = should_overwrite
+  )
   file.copy(options_file_path_from, options_file_path_to, overwrite = TRUE)
 
   cli::cli_alert_success("The user options file {.path {options_file_name_from}} has been successfully copied over to {.path {options_file_name_to}}.")

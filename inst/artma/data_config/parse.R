@@ -45,16 +45,17 @@ parse_df_into_data_config <- function(df, df_name, data_config_dir = NULL) {
   file_path <- file.path(data_config_dir, filename)
 
   # Create the file
-  file.create(file_path)
+  cli::cli_inform("Creating data config file: {.path {file_path}}")
+  # file.create(file_path)
 
-  # Write the dataframe to the file
-  write.csv(df, file_path, row.names = FALSE)
+  # # Write the dataframe to the file
+  # utils::write.csv(df, file_path, row.names = FALSE)
 
-  # Return the data config
-  list(
-    filename = filename,
-    file_path = file_path
-  )
+  # # Return the data config
+  # list(
+  #   filename = filename,
+  #   file_path = file_path
+  # )
 }
 
 box::export(
