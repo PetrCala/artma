@@ -7,6 +7,7 @@ utils::globalVariables(c(
   "ask_for_option_value",
   "ask_for_options_file_name",
   "ask_for_options_to_modify",
+  "ask_for_overwrite_permission",
   "assert",
   "assert_options_template_exists",
   "const",
