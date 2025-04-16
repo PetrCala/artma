@@ -39,7 +39,6 @@ ask_for_existing_options_file_name <- function(
 
   box::use(
     artma[options.list],
-    artma / libs / utils[is_empty],
     artma / libs / string[pluralize]
   )
 
@@ -57,7 +56,7 @@ ask_for_existing_options_file_name <- function(
     choices = user_options_file_names,
     multiple = multiple
   )
-  if (is_empty(selected_file_name)) {
+  if (rlang::is_empty(selected_file_name)) {
     cli::cli_abort("No user options file was selected. Aborting...")
   }
   return(selected_file_name)

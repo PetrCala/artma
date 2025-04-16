@@ -111,7 +111,6 @@ prompt_user_with_default <- function(opt) {
 prompt_user_required_no_default <- function(opt) { # nolint: object_length_linter.
   box::use(
     artma / const[CONST],
-    artma / libs / utils[is_empty],
     artma / libs / validation[assert]
   )
 
@@ -144,7 +143,7 @@ prompt_user_required_no_default <- function(opt) { # nolint: object_length_linte
     )
   }
 
-  if ((!nzchar(input_val) || is_empty(input_val)) && !isTRUE(opt$allow_na)) {
+  if ((!nzchar(input_val) || rlang::is_empty(input_val)) && !isTRUE(opt$allow_na)) {
     cli::cli_abort(cli::format_inline(
       "Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} was left blank. Aborting."
     ), call. = FALSE)

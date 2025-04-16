@@ -1,7 +1,6 @@
 box::use(
   artma / data / fill[fill_missing_values],
   artma / data / utils[assign_na_col],
-  artma / libs / utils[is_empty],
   artma / libs / validation[assert, validate_columns],
 )
 
@@ -93,7 +92,7 @@ clean_data <- function(
   # Replace missing columns with NAs
   for (colname in names(source_cols)) {
     df_colname <- source_cols[[colname]] # How the column is named in the data frame
-    if (is_empty(df_colname)) {
+    if (rlang::is_empty(df_colname)) {
       df <- assign_na_col(df, colname)
     }
   }

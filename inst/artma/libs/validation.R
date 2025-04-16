@@ -193,7 +193,7 @@ assert_options_template_exists <- function(path) {
 #' @return *\[boolean\]* A boolean indicating whether or not x is a character vector or empty
 #' @export
 is_char_vector_or_empty <- function(x, throw_error = FALSE) {
-  is_empty <- is.vector(x) && (length(x) == 0 || is.character(x))
+  is_empty <- rlang::is_empty(x)
   if (throw_error && !is_empty) {
     cli::cli_abort("The object is not a character vector or empty")
   }

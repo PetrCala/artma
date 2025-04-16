@@ -3,11 +3,10 @@
 #' @keywords internal
 turn_path_into_box_importable <- function(input_path) {
   box::use(
-    artma / const[CONST],
-    artma / libs / utils[is_empty]
+    artma / const[CONST]
   )
 
-  if (!is.character(input_path) || is_empty(input_path)) {
+  if (!is.character(input_path) || rlang::is_empty(input_path)) {
     cli::cli_abort(cli::format_inline("Invalid path: {.path {input_path}}"))
   }
 
@@ -48,9 +47,7 @@ turn_path_into_box_importable <- function(input_path) {
 #' eval(box_import_statement) # Imports the path
 #' @export
 turn_path_into_box_import <- function(path) {
-  box::use(artma / libs / utils[is_empty])
-
-  if (!is.character(path) || is_empty(path)) {
+  if (!is.character(path) || rlang::is_empty(path)) {
     cli::cli_abort(glue::glue("Invalid path: {path}"))
   }
 

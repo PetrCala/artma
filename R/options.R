@@ -291,7 +291,6 @@ options.load <- function(
     artma / const[CONST],
     artma / paths[PATHS],
     artma / options / utils[nested_to_flat, remove_options_with_prefix],
-    artma / libs / utils[is_empty],
     artma / libs / validation[validate, assert]
   )
 
@@ -309,7 +308,7 @@ options.load <- function(
   if (is.null(options_file_name)) {
     existing_options_files <- options.list(options_dir = options_dir)
 
-    if (is_empty(existing_options_files)) {
+    if (rlang::is_empty(existing_options_files)) {
       if (!create_options_if_null) {
         cli::cli_abort("No user options file to load was provided. Exiting...")
       }
@@ -344,7 +343,7 @@ options.load <- function(
           title = "Please choose an options file to load:",
           choices = existing_options_files
         )
-        if (is_empty(options_file_name)) {
+        if (rlang::is_empty(options_file_name)) {
           cli::cli_abort("No user options file was selected. Aborting...")
         }
       } else {

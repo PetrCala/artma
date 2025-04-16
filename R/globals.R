@@ -18,7 +18,6 @@ utils::globalVariables(c(
   "flatten_template_options",
   "get_expected_type",
   "index",
-  "is_empty",
   "libs",
   "nested_to_flat",
   "parse_options_file_name",

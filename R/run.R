@@ -12,7 +12,6 @@
 #' @keywords internal
 invoke_runtime_methods <- function(methods, df, ...) {
   box::use(
-    artma / libs / utils[is_empty],
     artma / libs / string[pluralize]
   )
 
@@ -25,7 +24,7 @@ invoke_runtime_methods <- function(methods, df, ...) {
       choices = supported_methods,
       multiple = TRUE
     )
-    if (is_empty(methods)) {
+    if (rlang::is_empty(methods)) {
       cli::cli_abort("No runtime methods were selected. Aborting...")
     }
   }
