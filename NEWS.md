@@ -1,8 +1,18 @@
 
+<a name="v0.1.30"></a>
+## [v0.1.30](https://github.com/PetrCala/artma/compare/v0.1.29...v0.1.30)
+
+> 2025-04-16
+
+
 <a name="v0.1.29"></a>
 ## [v0.1.29](https://github.com/PetrCala/artma/compare/v0.1.28...v0.1.29)
 
 > 2025-04-15
+
+### Bug Fixes
+
+* the cran submission workflow now parses the correct artifact name
 
 
 <a name="v0.1.28"></a>
