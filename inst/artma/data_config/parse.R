@@ -60,7 +60,7 @@ parse_df_into_data_config <- function(df) {
     col_config[[CONST$DATA_CONFIG$KEYS$VAR_NAME_DESCRIPTION]] <- col_name_verbose
     col_config[[CONST$DATA_CONFIG$KEYS$DATA_TYPE]] <- col_data_type
     col_config[[CONST$DATA_CONFIG$KEYS$NA_HANDLING]] <- getOption(
-      "artma.data_config.na_handling"
+      "artma.data.na_handling"
     )
 
     config[[col_name_clean]] <- col_config
