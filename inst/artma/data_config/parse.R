@@ -55,13 +55,26 @@ parse_df_into_data_config <- function(df) {
       }
     )
 
-    col_config[[CONST$DATA_CONFIG$KEYS$VAR_NAME]] <- col
-    col_config[[CONST$DATA_CONFIG$KEYS$VAR_NAME_VERBOSE]] <- col_name_verbose
-    col_config[[CONST$DATA_CONFIG$KEYS$VAR_NAME_DESCRIPTION]] <- col_name_verbose
-    col_config[[CONST$DATA_CONFIG$KEYS$DATA_TYPE]] <- col_data_type
-    col_config[[CONST$DATA_CONFIG$KEYS$NA_HANDLING]] <- getOption(
+    KEYS <- CONST$DATA_CONFIG$KEYS
+    col_config[[KEYS$VAR_NAME]] <- col
+    col_config[[KEYS$VAR_NAME_VERBOSE]] <- col_name_verbose
+    col_config[[KEYS$VAR_NAME_DESCRIPTION]] <- col_name_verbose
+    col_config[[KEYS$DATA_TYPE]] <- col_data_type
+    col_config[[KEYS$GROUP_CATEGORY]] <- NA # 1, 1, 2, 3, ...
+    col_config[[KEYS$NA_HANDLING]] <- getOption(
       "artma.data.na_handling"
     )
+    col_config[[KEYS$VARIABLE_SUMMARY]] <- NA
+    col_config[[KEYS$EFFECT_SUM_STATS]] <- NA
+    col_config[[KEYS$EQUAL]] <- NA
+    col_config[[KEYS$GLTL]] <- NA
+    col_config[[KEYS$BMA]] <- NA
+    col_config[[KEYS$BMA_REFERENCE_VAR]] <- NA
+    col_config[[KEYS$BMA_TO_LOG]] <- NA
+    col_config[[KEYS$BPE]] <- NA
+    col_config[[KEYS$BPE_SUM_STATS]] <- NA
+    col_config[[KEYS$BPE_EQUAL]] <- NA
+    col_config[[KEYS$BPE_GLTL]] <- NA
 
     config[[col_name_clean]] <- col_config
   }
@@ -72,6 +85,7 @@ parse_df_into_data_config <- function(df) {
   #   lapply(column_configs, function(x) x$config),
   #   vapply(column_configs, function(x) x$name, character(1))
   # )
+  browser()
 
   config
 }
