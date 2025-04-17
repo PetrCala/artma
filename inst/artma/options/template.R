@@ -39,6 +39,16 @@ flatten_template_options <- function(x, parent = NULL) {
   flattened
 }
 
+#' @title Print options help text
+#' @description Print options help text
+#' @param help *\[character\]* The help text to print
+#' @keywords internal
+print_options_help_text <- function(help) {
+  help_key <- cli::format_inline("{.strong Help}: ")
+  help_body <- cli::format_inline(help)
+  writeLines(paste0(help_key, help_body))
+}
+
 #' @title Resolve a fixed option
 #' @description Resolve a fixed option, either using a default value or throwing an error if no default is provided.
 #' @param opt [list] Option definition.
@@ -83,9 +93,7 @@ prompt_user_with_default <- function(opt) {
   cli::cli_text("{.strong Option name}: {CONST$STYLES$OPTIONS$NAME(opt$name)}")
   cli::cli_text("{.strong Type}: {CONST$STYLES$OPTIONS$TYPE(opt$type)}")
 
-  if (!is.null(opt$help)) {
-    cli::cli_text("{.strong Help}: {.emph {gsub('%default', opt$default, opt$help)}}")
-  }
+  if (!is.null(opt$help)) print_options_help_text(opt$help)
 
   cli::cli_text("{.strong Default}: {CONST$STYLES$OPTIONS$DEFAULT(opt$default)}")
 
@@ -106,9 +114,12 @@ prompt_user_with_default <- function(opt) {
 #' @title Prompt user for a required value with no default
 #' @description Prompt the user for a value, displaying the option name, type, and help.
 #' @param opt [list] Option definition.
+#' @param default_prompt_type *\[character\]* The type of prompt to use. Defaults to "readline".
 #' `any` The user-provided value.
 #' @keywords internal
-prompt_user_required_no_default <- function(opt) { # nolint: object_length_linter.
+prompt_user_required_no_default <- function(
+    opt,
+    default_prompt_type = "readline") {
   box::use(
     artma / const[CONST],
     artma / libs / validation[assert]
@@ -120,14 +131,13 @@ prompt_user_required_no_default <- function(opt) { # nolint: object_length_linte
   cli::cli_text("{.strong Option name}: {CONST$STYLES$OPTIONS$NAME(opt$name)}")
   cli::cli_text("{.strong Type}: {CONST$STYLES$OPTIONS$TYPE(opt$type)}")
 
-  if (!is.null(opt$help)) {
-    cli::cli_text("{.strong Help}: {.emph {opt$help}}")
-  }
+  if (!is.null(opt$help)) print_options_help_text(opt$help)
 
-  prompt_msg <- switch(opt$prompt, # nolint: unused_declared_object_linter.
+  prompt_type <- if (is.null(opt$prompt)) default_prompt_type else opt$prompt
+  prompt_msg <- switch(prompt_type, # nolint: unused_declared_object_linter.
     file = cli::format_inline(" (or type in {.emph {'choose'}} to select a file interactively)"),
     directory = cli::format_inline(" (or type in {.emph {'choose'}} to select a directory interactively)"),
-    NULL = "",
+    readline = "",
     cli::cli_abort(cli::format_inline("Invalid prompt type {.emph {prompt_type}}."))
   )
 
