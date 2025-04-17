@@ -151,6 +151,7 @@ prompt_user_required_no_default <- function(
       directory = tcltk::tk_choose.dir(default = getwd(), caption = "Select directory"),
       cli::cli_abort(cli::format_inline("Interactive selection is not supported for type {.emph {prompt_type}}."))
     )
+    Sys.sleep(0.5) # Allow tk to print the closing message into the console
   }
 
   if ((!nzchar(input_val) || rlang::is_empty(input_val)) && !isTRUE(opt$allow_na)) {
