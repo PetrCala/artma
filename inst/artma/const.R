@@ -30,7 +30,8 @@ CONST <- list(
       BPE_SUM_STATS = "bpe_sum_stats",
       BPE_EQUAL = "bpe_equal",
       BPE_GLTL = "bpe_gltl"
-    )
+    ),
+    DATA_TYPES = c("dummy", "category", "int", "float", "perc", "empty", "unknown")
   ),
   OPTIONS = list(
     VALIDATION_ACTIONS = c(
