@@ -31,6 +31,10 @@ while [[ "$#" -gt 0 ]]; do
     SKIP_VERSION_BUMP=true
     shift
     ;;
+  --skip-cran)
+    SKIP_CRAN=true
+    shift
+    ;;
   *) shift ;;
   esac
 done
@@ -45,6 +49,9 @@ if [[ $SHOULD_RELEASE == "true" ]]; then
 fi
 if [[ $SKIP_VERSION_BUMP == "true" ]]; then
   LABEL_ARG="$LABEL_ARG --label release:skip-version-bump"
+fi
+if [[ $SKIP_CRAN == "true" ]]; then
+  LABEL_ARG="$LABEL_ARG --label release:skip-cran"
 fi
 
 # Merge the PR using your personal account
