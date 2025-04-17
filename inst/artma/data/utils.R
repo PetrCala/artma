@@ -57,9 +57,47 @@ determine_df_type <- function(path, should_validate = TRUE) {
   file_extension
 }
 
+determine_vector_type <- function(data, recognized_data_types = NULL) {
+  box::use(
+    artma / libs / validation[validate]
+  )
+
+  validate(is.vector(data))
+
+  data_type <- if (length(data[!is.na(data)]) == 0) {
+    "empty"
+  } else if (is.logical(data)) {
+    "dummy"
+  } else if (is.character(data)) {
+    "category"
+  } else if (is.numeric(data)) {
+    clean_data <- data[!is.na(data)]
+    if (all(clean_data == floor(clean_data))) {
+      if (all(clean_data >= 0 & clean_data <= 100)) {
+        "perc"
+      } else {
+        "int"
+      }
+    } else {
+      "float"
+    }
+  } else {
+    "unknown"
+  }
+
+  if (!is.null(recognized_data_types)) {
+    if (!(data_type %in% recognized_data_types)) {
+      cli::cli_abort("The data type {.val {data_type}} is not supported. Please use one of the following types: {.val {recognized_data_types}}.")
+    }
+  }
+
+  data_type
+}
+
 box::export(
   assign_na_col,
   determine_df_type,
+  determine_vector_type,
   get_number_of_studies,
   raise_invalid_data_type_error
 )

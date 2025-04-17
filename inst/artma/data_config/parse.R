@@ -25,6 +25,7 @@ construct_data_config_filename <- function(df_name, should_validate = TRUE) {
 parse_df_into_data_config <- function(df) {
   box::use(
     artma / const[CONST],
+    artma / data / utils[determine_vector_type],
     artma / libs / validation[validate],
     artma / libs / string[make_verbose_name]
   )
@@ -39,14 +40,38 @@ parse_df_into_data_config <- function(df) {
 
   for (col in names(df)) {
     col_config <- list()
-    col_name_clean <- make.names(col) # remove special characters
-    # col_data <- df[[col]]
+    col_name_clean <- make.names(col)
+    col_name_verbose <- make_verbose_name(col)
+    col_data <- df[[col]]
+
+    col_data_type <- tryCatch(
+      determine_vector_type(
+        data = col_data,
+        recognized_data_types = CONST$DATA_CONFIG$DATA_TYPES
+      ),
+      error = function(e) {
+        cli::cli_alert_warning("Failed to determine the data type of the column {.val {col}}.")
+        "unknown"
+      }
+    )
 
     col_config[[CONST$DATA_CONFIG$KEYS$VAR_NAME]] <- col
-    col_config[[CONST$DATA_CONFIG$KEYS$VAR_NAME_VERBOSE]] <- make_verbose_name(col)
+    col_config[[CONST$DATA_CONFIG$KEYS$VAR_NAME_VERBOSE]] <- col_name_verbose
+    col_config[[CONST$DATA_CONFIG$KEYS$VAR_NAME_DESCRIPTION]] <- col_name_verbose
+    col_config[[CONST$DATA_CONFIG$KEYS$DATA_TYPE]] <- col_data_type
+    col_config[[CONST$DATA_CONFIG$KEYS$NA_HANDLING]] <- getOption(
+      "artma.data_config.na_handling"
+    )
 
     config[[col_name_clean]] <- col_config
   }
+
+  # column_configs <- lapply(names(df), process_column, df = df)
+
+  # config <- stats::setNames(
+  #   lapply(column_configs, function(x) x$config),
+  #   vapply(column_configs, function(x) x$name, character(1))
+  # )
 
   config
 }

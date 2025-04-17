@@ -24,6 +24,7 @@ utils::globalVariables(c(
   "nested_to_flat",
   "parse_options_file_name",
   "parse_options_from_template",
+  "parse_template_enum_value",
   "paths",
   "pluralize",
   "prepare_data",

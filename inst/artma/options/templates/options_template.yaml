@@ -10,6 +10,11 @@ data:
     type: "character"
     prompt: "file"
     help: "Full path to your dataset source"
+  
+  - name: "na_handling"
+    type: "enum: stop|warn|ignore"
+    # default: "stop"
+    help: "How to handle missing values"
 
 #   - name: "data_file"
 #     type: "character"
@@ -65,21 +70,4 @@ data:
 #     type: "integer"
 #     default: -1
 #     help: "Number of columns to read from the data file"
-
-logging:
-  - name: "log_file_name"
-    type: "character"
-    default: "artma.log"
-    help: "The name of the log file"
-
-  - name: "log_level"
-    type: "character"
-    default: "INFO"
-    allow_na: false
-    help: "The level of logging"
-
-  - name: "log_to_console"
-    type: "logical"
-    default: true
-    help: "Log to console too (not just to the log file)"
 

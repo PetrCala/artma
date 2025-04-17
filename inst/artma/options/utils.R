@@ -103,6 +103,20 @@ nested_to_flat <- function(nested, parent_key = NULL, sep = ".") {
   flat
 }
 
+#' @title Parse template enum value
+#' @description Parse a template enum value
+#' @param opt_type *\[character\]* A template enum value
+#' @return *\[character\]* A vector of valid values
+parse_template_enum_value <- function(opt_type) {
+  if (!startsWith(opt_type, "enum:")) {
+    cli::cli_abort("The option type must start with 'enum:'.")
+  }
+  enum_str <- sub("^enum:", "", opt_type)
+  values <- strsplit(enum_str, "\\|(?=(?:[^']*'[^']*')*[^']*$)", perl = TRUE)[[1]]
+  trimmed_values <- gsub("^\\s*'?|'?\\s*$", "", values)
+  trimmed_values
+}
+
 #' @title Parse options file name
 #' @description Parse a string into one that can be used as an options file name. If this fails, raise an error.
 parse_options_file_name <- function(input_string) {
@@ -176,7 +190,7 @@ validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
 
   # Handle enumerations, e.g. "enum: red|blue|green"
   if (startsWith(opt_type, "enum:")) {
-    valid_values <- strsplit(sub("^enum:", "", opt_type), "\\|")[[1]]
+    valid_values <- parse_template_enum_value(opt_type)
     if (!val %in% valid_values) {
       return(
         cli::format_inline(
@@ -202,6 +216,7 @@ box::export(
   get_option_group,
   nested_to_flat,
   parse_options_file_name,
+  parse_template_enum_value,
   remove_options_with_prefix,
   validate_option_value
 )
