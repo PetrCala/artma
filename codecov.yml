@@ -12,3 +12,15 @@ coverage:
         target: auto
         threshold: 1%
         informational: true
+
+component_management:
+  individual_components:
+    - component_id: R
+      name: R
+      paths:
+        - R/
+    - component_id: inst
+      name: artms inst folder
+      paths:
+        - inst/artma/
+
