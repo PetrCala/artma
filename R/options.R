@@ -213,7 +213,10 @@ options.delete <- function(
     options_file_path <- file.path(options_dir, file_name)
 
     validate(is.logical(skip_confirmation))
-    assert(file.exists(options_file_path), cli::format_inline("The user options file does not exist under the following path: {.file {options_file_path}}"))
+    if (!file.exists(options_file_path)) {
+      cli::cli_inform("The user options file {.file {file_name}} does not exist. Skipping deletion.")
+      return(invisible(NULL))
+    }
 
     base::file.remove(options_file_path)
 

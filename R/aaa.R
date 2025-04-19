@@ -2,7 +2,7 @@
 
 #' @title Runtime Setup
 #' @description
-#' A function user as a wrapper for runtime functions invocation to ensure crucial fucntionality, such as imports, logging, etc., all work as expected.
+#' A function user as a wrapper for runtime functions invocation to ensure crucial fucntionality, such as imports, etc., all work as expected.
 #'
 #' @param FUN [function] The function to be called after the setup.
 #' @param options_file_name *\[character\]* Name of the options file to use, including the suffix.
