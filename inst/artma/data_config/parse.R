@@ -85,7 +85,6 @@ parse_df_into_data_config <- function(df) {
   #   lapply(column_configs, function(x) x$config),
   #   vapply(column_configs, function(x) x$name, character(1))
   # )
-  browser()
 
   config
 }
