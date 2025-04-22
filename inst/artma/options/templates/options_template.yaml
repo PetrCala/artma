@@ -19,3 +19,12 @@ data:
         {cli::symbol$bullet} {.strong stop}: Abort if any missing values are found
         {cli::symbol$bullet} {.strong median}: Replace missing values with the variable's median
         {cli::symbol$bullet} {.strong mean}: Replace missing values with the variable's mean
+
+  # - name: "config"
+  #   type: "list"
+  #   prompt: "custom"
+  #   prompt_function: "prompt_data_config"
+  #   help: |
+  #     A list of configuration options for the data.
+  #     Each variable in the dataset requires a list of configuration options.
+  #     For more details, read the 'data_config' vignette.
