@@ -57,10 +57,6 @@ CONST <- list(
     YAML_FILES = list(
       PLAIN = c(".yaml"),
       REGEX = "\\.ya(ml|yml)$"
-    ),
-    DATA_CONFIG = list(
-      PLAIN = ".config.json",
-      REGEX = "\\.config\\.json$"
     )
   ),
   STYLES = list(
