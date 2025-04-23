@@ -17,7 +17,11 @@ runtime_setup <- function(
     return(invisible())
   }
 
-  runtime_options <- options.load(options_file_name = options_file_name, options_dir = options_dir)
+  runtime_options <- options.load(
+    options_file_name = options_file_name,
+    options_dir = options_dir,
+    should_validate = TRUE
+  )
   withr::local_options(runtime_options)
 
   FUN()
