@@ -38,6 +38,7 @@ utils::globalVariables(c(
   "validate",
   "validate_option_value",
   "validate_runtime_method_modules",
+  "validate_user_input",
   "validate_value_type",
   "validation",
   "write_data_config"
