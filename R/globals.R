@@ -17,6 +17,7 @@ utils::globalVariables(c(
   "file_utils",
   "flat_to_nested",
   "flatten_template_options",
+  "get_data_config",
   "get_expected_type",
   "index",
   "libs",
