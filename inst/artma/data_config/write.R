@@ -70,6 +70,10 @@ fix_data_config <- function(
 
   # TODO this should check the invalid setup and overwrite it
 
+  # For automatic options, overwrite the whole config (its invalid/missing values)
+  # onto values that are valid
+  # For manual options, only suggest these changes and ask for confirmation
+
   df_path <- getOption("artma.data.source_path")
   df <- read_data(df_path)
 
