@@ -76,12 +76,11 @@ resolve_fixed_option <- function(opt, user_input) {
   }
 }
 
-#' @title Prompt user for a value with default
-#' @description Prompt the user for a value, displaying the option name, type, help, and default value.
+#' @title Prompt user for a required value with no default
+#' @description Prompt the user for a value, displaying the option name, type, and help.
 #' @param opt [list] Option definition.
-#' `any` The user-provided value or the default value.
 #' @keywords internal
-prompt_user_with_default <- function(opt) {
+prompt_user_for_option_value <- function(opt) {
   box::use(
     artma / const[CONST],
     artma / libs / validation[assert]
@@ -92,61 +91,45 @@ prompt_user_with_default <- function(opt) {
   cli::cli_h1("Provide Option Value")
   cli::cli_text("{.strong Option name}: {CONST$STYLES$OPTIONS$NAME(opt$name)}")
   cli::cli_text("{.strong Type}: {CONST$STYLES$OPTIONS$TYPE(opt$type)}")
-
-  if (!is.null(opt$help)) print_options_help_text(opt$help)
-
-  cli::cli_text("{.strong Default}: {CONST$STYLES$OPTIONS$DEFAULT(opt$default)}")
-
-  input_val <- readline(
-    # Here we assume that for opts with defaults, there is no need to choose interactively
-    # This includes, for example, selecting folders, file paths, etc.
-    prompt = cli::format_inline("Enter value (or press {.code <Enter>} to accept default): ")
-  )
-
-
-  if (nzchar(input_val)) {
-    return(input_val)
-  } else {
-    return(opt$default)
+  if (!is.null(opt$default)) {
+    cli::cli_text("{.strong Default}: {CONST$STYLES$OPTIONS$DEFAULT(opt$default)}")
   }
-}
-
-#' @title Prompt user for a required value with no default
-#' @description Prompt the user for a value, displaying the option name, type, and help.
-#' @param opt [list] Option definition.
-#' @param default_prompt_type *\[character\]* The type of prompt to use. Defaults to "readline".
-#' `any` The user-provided value.
-#' @keywords internal
-prompt_user_required_no_default <- function(
-    opt,
-    default_prompt_type = "readline") {
-  box::use(
-    artma / const[CONST],
-    artma / libs / validation[assert]
-  )
-
-  assert(interactive(), "Running in a non-interactive mode. Cannot prompt for required option.")
-
-  cli::cli_h1("Option Value Required")
-  cli::cli_text("{.strong Option name}: {CONST$STYLES$OPTIONS$NAME(opt$name)}")
-  cli::cli_text("{.strong Type}: {CONST$STYLES$OPTIONS$TYPE(opt$type)}")
 
   if (!is.null(opt$help)) print_options_help_text(opt$help)
 
-  prompt_type <- if (is.null(opt$prompt)) default_prompt_type else opt$prompt
-  prompt_msg <- switch(prompt_type, # nolint: unused_declared_object_linter.
-    file = cli::format_inline(" (or type in {.emph {'choose'}} to select a file interactively)"),
-    directory = cli::format_inline(" (or type in {.emph {'choose'}} to select a directory interactively)"),
-    readline = "",
+  prompt_type <- if (is.null(opt$prompt)) CONST$OPTIONS$DEFAULT_PROMPT_TYPE else opt$prompt
+
+  if (prompt_type == CONST$OPTIONS$PROMPT_TYPES$FUNCTION) {
+    if (is.null(opt$prompt_function)) {
+      cli::cli_abort(cli::format_inline("Prompt function not provided for option {.strong {opt$name}}."))
+    }
+    box_import_str <- glue::glue("box::use(prompts = artma / options / prompts[{opt$prompt_function}])")
+    tryCatch(
+      {
+        eval(parse(text = box_import_str))
+        prompt_function <- get(opt$prompt_function, prompts)
+      },
+      error = function(e) {
+        cli::cli_abort(cli::format_inline("Prompt function {.strong {opt$prompt_function}} not found."))
+      }
+    )
+    return(prompt_function())
+  }
+
+  # nolint start: unused_declared_object_linter.
+  base_msg <- cli::format_inline("Enter a value for {.strong {opt$name}}")
+  choose_msg <- switch(prompt_type,
+    "file" = cli::format_inline(" (or type in {.emph {'choose'}} to select a file interactively)"),
+    "directory" = cli::format_inline(" (or type in {.emph {'choose'}} to select a directory interactively)"),
+    "readline" = "",
     cli::cli_abort(cli::format_inline("Invalid prompt type {.emph {prompt_type}}."))
   )
-
-  input_val <- readline(
-    prompt = cli::format_inline("Enter a value for {.strong {opt$name}}{prompt_msg}: ")
-  )
+  default_msg <- if (!is.null(opt$default)) cli::format_inline(" (or press {.code <Enter>} to accept default: {.strong {opt$default}})") else ""
+  input_val <- readline(prompt = cli::format_inline("{base_msg}{choose_msg}{default_msg}: "))
+  # nolint end: unused_declared_object_linter.
 
   if (input_val == "choose") {
-    input_val <- switch(opt$prompt,
+    input_val <- switch(prompt_type,
       file = tcltk::tk_choose.files(default = "", caption = "Select file", multi = FALSE),
       directory = tcltk::tk_choose.dir(default = getwd(), caption = "Select directory"),
       cli::cli_abort(cli::format_inline("Interactive selection is not supported for type {.emph {prompt_type}}."))
@@ -154,10 +137,18 @@ prompt_user_required_no_default <- function(
     Sys.sleep(0.5) # Allow tk to print the closing message into the console
   }
 
-  if ((!nzchar(input_val) || rlang::is_empty(input_val)) && !isTRUE(opt$allow_na)) {
-    cli::cli_abort(cli::format_inline(
-      "Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} was left blank. Aborting."
-    ), call. = FALSE)
+  val_is_empty <- (!nzchar(input_val) || rlang::is_empty(input_val))
+
+  if (val_is_empty) {
+    if (!is.null(opt$default)) {
+      return(opt$default)
+    } else if (isTRUE(opt$allow_na)) {
+      return(NA)
+    } else {
+      cli::cli_abort(cli::format_inline(
+        "Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} was left blank. Aborting."
+      ), call. = FALSE)
+    }
   }
 
   return(input_val)
@@ -168,14 +159,12 @@ prompt_user_required_no_default <- function(
 #' @param opt [list] The option definition.
 #' @param user_input [list] A named list of user-provided values.
 #' @param is_interactive [logical(1)] Whether to prompt the user for missing/required values.
-#' @param should_ask_for_default_options [logical(1)] Whether to prompt the user for options that have a default value. Defaults to FALSE.
-#' `any` The resolved value for the option.
 #' @keywords internal
 resolve_option_value <- function(
     opt,
-    user_input,
-    is_interactive = interactive(),
-    should_ask_for_default_options = FALSE) {
+    user_input) {
+  is_interactive <- interactive()
+
   if (isTRUE(opt$fixed)) {
     return(resolve_fixed_option(opt, user_input))
   }
@@ -188,8 +177,8 @@ resolve_option_value <- function(
   # 2) No user value, check default
   if (!is.null(opt$default)) {
     # If interactive, prompt to allow override (optional)
-    if (is_interactive && should_ask_for_default_options) {
-      return(prompt_user_with_default(opt))
+    if (is_interactive && isTRUE(opt$confirm_default)) {
+      return(prompt_user_for_option_value(opt))
     } else {
       # Non-interactive => silently use default
       return(opt$default)
@@ -203,12 +192,11 @@ resolve_option_value <- function(
         "Required option '{opt$name}' not provided, and no default is available."
       ), call. = FALSE)
     } else {
-      return(prompt_user_required_no_default(opt))
+      return(prompt_user_for_option_value(opt))
     }
   }
 
-  # 4) Not required, no default => NULL
-  return(NULL)
+  cli::cli_abort("Unreachable code reached.")
 }
 
 
@@ -221,6 +209,10 @@ resolve_option_value <- function(
 coerce_option_value <- function(val, opt) {
   # If the value is NULL, there's nothing to coerce
   if (is.null(val)) {
+    return(val)
+  }
+
+  if (is.na(val) && isTRUE(opt$allow_na)) {
     return(val)
   }
 
@@ -277,7 +269,7 @@ parse_options_from_template <- function(
 
   parsed_options <- list()
   for (opt in options_def) {
-    val <- resolve_option_value(opt, user_input, interactive())
+    val <- resolve_option_value(opt, user_input)
     val <- coerce_option_value(val, opt)
     # We do not validate here, only after all options are parsed
     parsed_options[[opt$name]] <- val

@@ -43,8 +43,10 @@ CONST <- list(
     PROMPT_TYPES = list(
       READLINE = "readline",
       FILE = "file",
-      DIRECTORY = "directory"
+      DIRECTORY = "directory",
+      FUNCTION = "function"
     ),
+    DEFAULT_PROMPT_TYPE = "readline",
     SPECIAL_KEYS = c("description", "details", "type", "optional", "default", "values")
   ),
   MOCKS = list(
