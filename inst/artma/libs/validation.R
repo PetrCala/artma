@@ -150,24 +150,21 @@ validate_value_type <- function(value, expected_type) {
   )
 }
 
-#' Assert Conditions
-#'
-#' This function asserts that a condition is TRUE. If the condition is FALSE,
+#' @title Assert Conditions
+#' @description This function asserts that a condition is TRUE. If the condition is FALSE,
 #' the function aborts with an appropriate error message including the failed
 #' condition and a backtrace.
-#'
 #' @param condition_to_validate *\[logical\]* The condition to validate.
-#' @param error_message [character(1), optional] The error message to display if the condition is FALSE.
-#'
+#' @param msg [character(1), optional] The error message to display if the condition is FALSE.
 #' @return `NULL`. The function is called for its side effects.
 #' @export
-assert <- function(condition_to_validate, error_message = NULL) {
-  if (is.null(error_message)) {
-    error_message <- paste("Assertion failed:", deparse(substitute(condition_to_validate)))
+assert <- function(condition_to_validate, msg = NULL) {
+  if (is.null(msg)) {
+    msg <- paste("Assertion failed:", deparse(substitute(condition_to_validate)))
   }
   if (!condition_to_validate) {
     cli::cli_abort(
-      message = error_message,
+      message = msg,
       .subclass = "assertion_error"
     )
   }
