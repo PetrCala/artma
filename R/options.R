@@ -61,8 +61,9 @@ options.validate <- function(
   }
 
   # Load the YAML files
-  template <- yaml::read_yaml(template_path)
   options_file <- yaml::read_yaml(options_path)
+  template <- yaml::read_yaml(template_path)
+  template[["temp"]] <- NULL
 
   template_defs <- flatten_template_options(template) # Flatten the template
   flat_options <- nested_to_flat(options_file) # Flatten the options
@@ -277,6 +278,7 @@ options.list <- function(options_dir = NULL, should_return_verbose_names = FALSE
 #' @param load_with_prefix *\[logical, optional\]* Whether the options should be loaded with the package prefix. Defaults to TRUE.
 #' @param should_validate *\[logical, optional\]* Whether the options should be validated after loading. Defaults to TRUE.
 #' @param should_set_to_namespace *\[logical, optional\]* Whether the options should be set in the options() namespace. Defaults to TRUE.
+#' @param should_add_temp_options *\[logical, optional\]* Whether the options should be added to the temporary options. Defaults to FALSE.
 #' @param should_return *\[logical, optional\]* Whether the function should return the list of options. Defaults to FALSE.
 #' @return *\[list|NULL\]* The loaded options as a list or `NULL`.
 #' @export
@@ -287,6 +289,7 @@ options.load <- function(
     load_with_prefix = TRUE,
     should_validate = TRUE,
     should_set_to_namespace = FALSE, # Be careful when setting this to TRUE - consider using withr::with_options instead
+    should_add_temp_options = FALSE,
     should_return = TRUE) {
   box::use(
     artma / const[CONST],
@@ -374,6 +377,11 @@ options.load <- function(
   }
 
   cli::cli_inform("Loading options from the following user options file: {.file {options_file_name}}")
+
+  if (should_add_temp_options) {
+    prefixed_options[["artma.temp.file_name"]] <- options_file_name
+    prefixed_options[["artma.temp.dir_name"]] <- options_dir
+  }
 
   if (should_set_to_namespace) {
     remove_options_with_prefix(CONST$PACKAGE_NAME) # Remove all existing package options
