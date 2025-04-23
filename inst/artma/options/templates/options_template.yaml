@@ -42,3 +42,22 @@ data:
       A list of configuration options for the data.
       Each variable in the dataset requires a list of configuration options.
       For more details, read the 'data_config' vignette.
+
+
+temp:
+  # A set of options that are only set at runtime but never stored in the options file.
+  - name: "file_name"
+    type: "character"
+    allow_na: true
+    default: null
+    help: |
+      Name of the file under which the options is stored.
+      This is not required during the file creation, but the option value is added upon loading the file.
+
+  - name: "dir_name"
+    type: "character"
+    allow_na: true
+    default: null
+    help: |
+      Name of the directory to save the options to.
+      This is not required during the file creation, but the option value is added upon loading the file.

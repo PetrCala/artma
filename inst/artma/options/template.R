@@ -264,6 +264,7 @@ parse_options_from_template <- function(
   assert_options_template_exists(path)
 
   raw_template_options <- yaml::read_yaml(path)
+  raw_template_options[["temp"]] <- NULL
 
   options_def <- flatten_template_options(raw_template_options)
 

@@ -20,8 +20,10 @@ runtime_setup <- function(
   runtime_options <- options.load(
     options_file_name = options_file_name,
     options_dir = options_dir,
-    should_validate = TRUE
+    should_validate = TRUE,
+    should_add_temp_options = TRUE # Load to the options() namespace
   )
+
   withr::local_options(runtime_options)
 
   FUN()
