@@ -210,6 +210,23 @@ validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
   )
 }
 
+#' @title Validate user input
+#' @description Validate user input to ensure it does not contain the package name prefix.
+#' @param user_input [list] A list of user input.
+#' @return `NULL`
+validate_user_input <- function(user_input) {
+  pkg_name <- CONST$PACKAGE_NAME
+
+  # None of the names should start with the package name
+  has_pkg_prefix <- vapply(names(user_input), function(x) startsWith(x, pkg_name), logical(1))
+  if (any(has_pkg_prefix)) {
+    invalid_names <- names(user_input)[has_pkg_prefix] # nolint: unused_declared_object_linter.
+    cli::cli_abort("Please provide the names of the options without the '{pkg_name}' prefix. Got: {.code {invalid_names}}.")
+  }
+
+  return(invisible(NULL))
+}
+
 box::export(
   flat_to_nested,
   get_expected_type,
@@ -218,5 +235,6 @@ box::export(
   parse_options_file_name,
   parse_template_enum_value,
   remove_options_with_prefix,
-  validate_option_value
+  validate_option_value,
+  validate_user_input
 )

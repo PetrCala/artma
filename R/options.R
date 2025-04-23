@@ -416,7 +416,8 @@ options.modify <- function(
       ask_for_existing_options_file_name,
       ask_for_options_to_modify
     ],
-    artma / libs / validation[assert, validate]
+    artma / libs / validation[assert, validate],
+    artma / options / utils[validate_user_input]
   )
 
   options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to modify: ")
@@ -443,6 +444,8 @@ options.modify <- function(
 
     user_input <- ask_for_options_to_modify()
   }
+
+  validate_user_input(user_input)
 
   new_options <- utils::modifyList(current_options, user_input)
 
