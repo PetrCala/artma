@@ -1,3 +1,13 @@
+#' @title Read template
+#' @description Read a template YAML file and remove the temp block.
+#' @param template_path *\[character\]* Path to the template YAML file.
+#' @return A list of template options.
+read_template <- function(template_path) {
+  template <- yaml::read_yaml(template_path)
+  template[["temp"]] <- NULL
+  template
+}
+
 #' @title Flatten nested template options
 #' @description Recursively flatten nested template options into a single list of
 #' option definitions with flattened destination names (e.g., x.y.z).
@@ -37,6 +47,44 @@ flatten_template_options <- function(x, parent = NULL) {
   }
 
   flattened
+}
+
+#' @title Collect leaf paths from template
+#' @description Returns a character vector of fully-qualified option names
+#' @param template_path *\[character\]* Path to the template YAML file
+#' @return A character vector of fully-qualified option names
+collect_leaf_paths <- function(template_path) {
+  template <- read_template(template_path)
+  defs <- flatten_template_options(template)
+  vapply(defs, `[[`, character(1), "name")
+}
+
+#' @title Flatten user options
+#' @description Flattens a nested user-supplied YAML object *but* stops at template leaves
+#' @param user_options *\[list\]* A nested list returned by yaml::read_yaml()
+#' @param leaf_set *\[character\]* A character vector with the leaf paths
+#' @param parent *\[character\]* The current parent path
+flatten_user_options <- function(user_options, leaf_set, parent = NULL) {
+  flat <- list()
+
+  for (nm in names(user_options)) {
+    path <- if (is.null(parent)) nm else paste(parent, nm, sep = ".")
+
+    # ──► If we've reached a declared template leaf, take the whole value as-is
+    if (path %in% leaf_set || !is.list(user_options[[nm]])) {
+      flat[[path]] <- user_options[[nm]]
+      next
+    }
+
+    # Otherwise keep descending
+    flat <- c(flat, flatten_user_options(
+      user_options = user_options[[nm]],
+      leaf_set = leaf_set,
+      parent = path
+    ))
+  }
+
+  flat
 }
 
 #' @title Print options help text
@@ -263,9 +311,7 @@ parse_options_from_template <- function(
   )
   assert_options_template_exists(path)
 
-  raw_template_options <- yaml::read_yaml(path)
-  raw_template_options[["temp"]] <- NULL
-
+  raw_template_options <- read_template(path)
   options_def <- flatten_template_options(raw_template_options)
 
   parsed_options <- list()
@@ -285,6 +331,9 @@ parse_options_from_template <- function(
 }
 
 box::export(
+  collect_leaf_paths,
   flatten_template_options,
-  parse_options_from_template
+  flatten_user_options,
+  parse_options_from_template,
+  read_template
 )

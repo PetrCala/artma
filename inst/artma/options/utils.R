@@ -74,34 +74,6 @@ flat_to_nested <- function(flat_option_list) {
   nested_list
 }
 
-#' @title Nested to flat
-#' @description Convert a list of nested options to a flat one
-#' @param nested [list] A list of nested options
-#' @param parent_key *\[character, optional\]* Parent key for the nested options. Defaults to `NULL`.
-#' @param sep *\[character, optional\]* Separator to use when concatenating the level names. Defaulst to '.'.
-nested_to_flat <- function(nested, parent_key = NULL, sep = ".") {
-  if (!is.list(nested)) {
-    cli::cli_abort("The options must be passed as a nested list.")
-  }
-
-  flat <- list()
-
-  for (name in names(nested)) {
-    if (is.null(parent_key)) {
-      new_key <- name
-    } else {
-      new_key <- paste(parent_key, name, sep = sep)
-    }
-
-    if (is.list(nested[[name]])) {
-      flat <- c(flat, nested_to_flat(nested[[name]], new_key, sep))
-    } else {
-      flat[[new_key]] <- nested[[name]]
-    }
-  }
-
-  flat
-}
 
 #' @title Parse template enum value
 #' @description Parse a template enum value
@@ -233,7 +205,6 @@ box::export(
   flat_to_nested,
   get_expected_type,
   get_option_group,
-  nested_to_flat,
   parse_options_file_name,
   parse_template_enum_value,
   remove_options_with_prefix,

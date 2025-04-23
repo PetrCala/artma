@@ -30,10 +30,9 @@ options.validate <- function(
     artma / options / ask[ask_for_existing_options_file_name],
     artma / options / utils[
       get_expected_type,
-      nested_to_flat,
       validate_option_value
     ],
-    artma / options / template[flatten_template_options],
+    artma / options / template[flatten_template_options, flatten_user_options, read_template, collect_leaf_paths],
     artma / libs / validation[validate_value_type, assert, validate, assert_options_template_exists]
   )
 
@@ -61,12 +60,12 @@ options.validate <- function(
   }
 
   # Load the YAML files
-  options_file <- yaml::read_yaml(options_path)
-  template <- yaml::read_yaml(template_path)
-  template[["temp"]] <- NULL
+  user_yaml <- yaml::read_yaml(options_path)
+  template <- read_template(template_path)
+  leaf_set <- collect_leaf_paths(template_path)
 
   template_defs <- flatten_template_options(template) # Flatten the template
-  flat_options <- nested_to_flat(options_file) # Flatten the options
+  flat_options <- flatten_user_options(user_options = user_yaml, leaf_set = leaf_set) # Flatten the options
 
   errors <- list()
 
@@ -276,6 +275,7 @@ options.list <- function(options_dir = NULL, should_return_verbose_names = FALSE
 #' @param options_dir *\[character, optional\]* Path to the folder in which to look for user options files. Defaults to `NULL`.
 #' @param create_options_if_null *\[logical, optional\]* If set to TRUE and the options file name is set to NULL, the function will prompt the user to create a new options file. Defaults to TRUE.
 #' @param load_with_prefix *\[logical, optional\]* Whether the options should be loaded with the package prefix. Defaults to TRUE.
+#' @param template_path *\[character, optional\]* Path to the template YAML file. Defaults to `NULL`.
 #' @param should_validate *\[logical, optional\]* Whether the options should be validated after loading. Defaults to TRUE.
 #' @param should_set_to_namespace *\[logical, optional\]* Whether the options should be set in the options() namespace. Defaults to TRUE.
 #' @param should_add_temp_options *\[logical, optional\]* Whether the options should be added to the temporary options. Defaults to FALSE.
@@ -287,6 +287,7 @@ options.load <- function(
     options_dir = NULL,
     create_options_if_null = TRUE,
     load_with_prefix = TRUE,
+    template_path = NULL,
     should_validate = TRUE,
     should_set_to_namespace = FALSE, # Be careful when setting this to TRUE - consider using withr::with_options instead
     should_add_temp_options = FALSE,
@@ -294,11 +295,14 @@ options.load <- function(
   box::use(
     artma / const[CONST],
     artma / paths[PATHS],
-    artma / options / utils[nested_to_flat, remove_options_with_prefix],
-    artma / libs / validation[validate, assert]
+    artma / options / utils[remove_options_with_prefix],
+    artma / options / template[flatten_user_options, collect_leaf_paths],
+    artma / libs / validation[validate, assert, assert_options_template_exists]
   )
 
   options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
+  template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
+  assert_options_template_exists(template_path)
 
   validate(
     is.character(options_dir),
@@ -365,7 +369,8 @@ options.load <- function(
   nested_options <- yaml::read_yaml(options_file_path)
 
   parent_key <- if (load_with_prefix) CONST$PACKAGE_NAME else NULL
-  prefixed_options <- nested_to_flat(nested = nested_options, parent_key = parent_key)
+  leaf_set <- collect_leaf_paths(template_path)
+  prefixed_options <- flatten_user_options(user_options = nested_options, leaf_set = leaf_set, parent = parent_key)
 
   if (should_validate) {
     options.validate(
@@ -508,7 +513,7 @@ options.help <- function(
   box::use(
     artma / const[CONST],
     artma / paths[PATHS],
-    artma / options / template[flatten_template_options],
+    artma / options / template[flatten_template_options, read_template],
     artma / libs / validation[assert, assert_options_template_exists, validate]
   )
 
@@ -521,7 +526,7 @@ options.help <- function(
   template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
   assert_options_template_exists(template_path)
 
-  template_raw <- yaml::read_yaml(template_path)
+  template_raw <- read_template(template_path)
   template_defs <- flatten_template_options(template_raw)
 
   # Build a named lookup table: name -> option definition
@@ -604,7 +609,7 @@ options.fix <- function(
     artma / const[CONST],
     artma / paths[PATHS],
     artma / options / ask[ask_for_existing_options_file_name, ask_for_option_value],
-    artma / options / utils[nested_to_flat, parse_options_file_name],
+    artma / options / utils[parse_options_file_name],
     artma / libs / validation[validate]
   )
 
@@ -732,10 +737,9 @@ options.create <- function(
   box::use(
     artma / paths[PATHS],
     artma / options / ask[ask_for_options_file_name],
-    artma / options / template[parse_options_from_template],
+    artma / options / template[parse_options_from_template, flatten_user_options, collect_leaf_paths],
     artma / options / utils[
       flat_to_nested,
-      nested_to_flat,
       parse_options_file_name
     ],
     artma / libs / file_utils[ensure_folder_existence],
@@ -787,7 +791,8 @@ options.create <- function(
         cli::cli_abort("Aborting the overwriting of a user options file.")
       }
     }
-    current_options <- nested_to_flat(yaml::read_yaml(options_file_path))
+    leaf_set <- collect_leaf_paths(template_path)
+    current_options <- flatten_user_options(user_options = yaml::read_yaml(options_file_path), leaf_set = leaf_set)
     utils::modifyList(current_options, user_input)
   }
 
