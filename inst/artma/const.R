@@ -31,7 +31,8 @@ CONST <- list(
       BPE_EQUAL = "bpe_equal",
       BPE_GLTL = "bpe_gltl"
     ),
-    DATA_TYPES = c("dummy", "category", "int", "float", "perc", "empty", "unknown")
+    DATA_TYPES = c("dummy", "category", "int", "float", "perc", "empty", "unknown"),
+    SETUP_TYPES = c("auto", "manual")
   ),
   OPTIONS = list(
     VALIDATION_ACTIONS = c(
