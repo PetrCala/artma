@@ -29,8 +29,8 @@ data:
     prompt: "readline"
     help: |
       How to configure the data:
-        {cli::symbol$bullet} {.strong auto}: Automatically generate the data configuration
-        {cli::symbol$bullet} {.strong manual}: Manually configure the data configuration
+        {cli::symbol$bullet} {.strong auto}: Automatically generate and validate the data configuration
+        {cli::symbol$bullet} {.strong manual}: Manually configure and validate the data configuration
 
   - name: "config"
     type: "list"
