@@ -6,7 +6,7 @@ parse_df_into_data_config <- function(df) {
   box::use(
     artma / const[CONST],
     artma / data / utils[determine_vector_type],
-    artma / libs / validation[validate],
+    artma / libs / validation[validate, assert],
     artma / libs / string[make_verbose_name]
   )
 
@@ -19,7 +19,6 @@ parse_df_into_data_config <- function(df) {
   config <- list()
 
   for (col in names(df)) {
-    col_config <- list()
     col_name_clean <- make.names(col)
     col_name_verbose <- make_verbose_name(col)
     col_data <- df[[col]]
@@ -35,26 +34,32 @@ parse_df_into_data_config <- function(df) {
       }
     )
 
-    KEYS <- CONST$DATA_CONFIG$KEYS
-    col_config[[KEYS$VAR_NAME]] <- col
-    col_config[[KEYS$VAR_NAME_VERBOSE]] <- col_name_verbose
-    col_config[[KEYS$VAR_NAME_DESCRIPTION]] <- col_name_verbose
-    col_config[[KEYS$DATA_TYPE]] <- col_data_type
-    col_config[[KEYS$GROUP_CATEGORY]] <- NA # 1, 1, 2, 3, ...
-    col_config[[KEYS$NA_HANDLING]] <- getOption(
-      "artma.data.na_handling"
+    col_config <- list(
+      "var_name" = col,
+      "var_name_verbose" = col_name_verbose,
+      "var_name_description" = col_name_verbose,
+      "data_type" = col_data_type,
+      "group_category" = NA,
+      "na_handling" = getOption(
+        "artma.data.na_handling"
+      ),
+      "variable_summary" = NA,
+      "effect_sum_stats" = NA,
+      "equal" = NA,
+      "gltl" = NA,
+      "bma" = NA,
+      "bma_reference_var" = NA,
+      "bma_to_log" = NA,
+      "bpe" = NA,
+      "bpe_sum_stats" = NA,
+      "bpe_equal" = NA,
+      "bpe_gltl" = NA
     )
-    col_config[[KEYS$VARIABLE_SUMMARY]] <- NA
-    col_config[[KEYS$EFFECT_SUM_STATS]] <- NA
-    col_config[[KEYS$EQUAL]] <- NA
-    col_config[[KEYS$GLTL]] <- NA
-    col_config[[KEYS$BMA]] <- NA
-    col_config[[KEYS$BMA_REFERENCE_VAR]] <- NA
-    col_config[[KEYS$BMA_TO_LOG]] <- NA
-    col_config[[KEYS$BPE]] <- NA
-    col_config[[KEYS$BPE_SUM_STATS]] <- NA
-    col_config[[KEYS$BPE_EQUAL]] <- NA
-    col_config[[KEYS$BPE_GLTL]] <- NA
+
+    assert(
+      all(names(col_config) %in% CONST$DATA_CONFIG$KEYS),
+      msg = "The column {.val {col}} has an invalid data config key."
+    )
 
     config[[col_name_clean]] <- col_config
   }
