@@ -215,6 +215,8 @@ validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
 #' @param user_input [list] A list of user input.
 #' @return `NULL`
 validate_user_input <- function(user_input) {
+  box::use(artma / const[CONST])
+
   pkg_name <- CONST$PACKAGE_NAME
 
   # None of the names should start with the package name
