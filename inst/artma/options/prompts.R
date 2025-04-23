@@ -1,5 +1,5 @@
 prompt_data_config <- function() {
-  cli::cli_abort("Not implemented yet.")
+  cli::cli_inform("This option is not yet implemented.")
 }
 
 box::export(
