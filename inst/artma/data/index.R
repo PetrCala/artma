@@ -9,7 +9,7 @@ prepare_data <- function() {
   cli::cli_inform("Preparing data for analysis.")
 
   df <- read_data()
-  df <- preprocess_data(df)
+  # df <- preprocess_data(df)
   # df <- clean_data(df)
   # validate_data(df)
   # create_artifacts(df)
