@@ -2,8 +2,7 @@
 #' @description Update the data config.
 #' @param changes *\[list\]* The changes to the data config.
 #' @return *\[list\]* The updated data config.
-update_data_config <- function(
-    changes) {
+update_data_config <- function(changes) {
   current_config <- getOption("artma.data.config")
   options_file_name <- getOption("artma.temp.file_name")
   options_dir <- getOption("artma.temp.dir_name")
@@ -47,14 +46,14 @@ fix_data_config <- function(
     create_if_missing = TRUE) {
   box::use(artma / data_config / utils[data_config_is_valid])
 
-  config <- getOption("artma.data.config")
+  current_config <- getOption("artma.data.config")
 
-  if (data_config_is_valid(config)) {
+  if (data_config_is_valid(current_config)) {
     cli::cli_alert_success("The data config is valid.")
     return(invisible(NULL))
   }
 
-  if ((is.na(config) || is.null(config)) && !create_if_missing) {
+  if ((is.na(current_config) || is.null(current_config)) && !create_if_missing) {
     cli::cli_abort("The data config has not been created yet.")
   }
 
@@ -63,6 +62,14 @@ fix_data_config <- function(
     artma / data / read[read_data],
     artma / data_config / parse[parse_df_into_data_config]
   )
+
+  if (!is.list(current_config)) current_config <- list()
+
+  # TODO this should be automatically detected - for now, overwrite the whole config
+  # invalid_config <- current_config
+
+  # TODO this should check the invalid setup and overwrite it
+
   df_path <- getOption("artma.data.source_path")
   df <- read_data(df_path)
 
