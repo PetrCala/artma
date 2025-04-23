@@ -599,7 +599,6 @@ options.fix <- function(
 
   validate(is.logical(force_default_overwrites))
 
-
   options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to fix: ")
   options_file_name <- parse_options_file_name(options_file_name)
 
