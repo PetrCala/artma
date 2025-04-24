@@ -12,4 +12,13 @@ data_config_is_valid <- function(
   return(FALSE)
 }
 
-box::export(data_config_is_valid)
+
+#' Get all values for a specific field from the data config
+#' @param config *\[list\]* The data config to extract values from
+#' @param field *\[character\]* The field name to extract from each config item
+#' @return *\[vector\]* Vector of values extracted from the specified field
+get_config_values <- function(config, field) {
+  unname(unlist(lapply(config, `[[`, field)))
+}
+
+box::export(data_config_is_valid, get_config_values)

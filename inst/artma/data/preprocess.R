@@ -8,22 +8,23 @@
 preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
   box::use(
     artma / data_config / read[get_data_config],
+    artma / data_config / utils[get_config_values],
     artma / libs / validation[validate]
   )
 
   validate(is.data.frame(input_data))
 
-  data_config <- get_data_config()
+  config <- get_data_config()
 
   # Remove redundant columns
-  expected_col_n <- length(data_config)
+  expected_col_n <- length(config)
   while (ncol(input_data) > expected_col_n) {
     input_data <- input_data[, -ncol(input_data)]
   }
 
   # Variable name validity check
   varnames <- colnames(input_data)
-  expected_varnames <- vapply(data_config, function(x) x$var_name, FUN.VALUE = character(1))
+  expected_varnames <- get_config_values(config, "var_name")
 
   # Check if all columns of the first vector are in the second one and vice versa
   if (!all(varnames %in% expected_varnames) || !all(expected_varnames %in% varnames)) {
@@ -47,7 +48,7 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
   }
 
 
-  # # Remove redundant rows
+  # Remove redundant rows
   # while (is.na(input_data[nrow(input_data), "study_name"])) {
   #   input_data <- input_data[-nrow(input_data), ]
   # }
