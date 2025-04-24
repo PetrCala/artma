@@ -67,3 +67,8 @@ create_mock_df <- function(
 
   return(data_frame)
 }
+
+
+box::export(
+  create_mock_df
+)

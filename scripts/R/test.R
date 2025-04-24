@@ -52,6 +52,7 @@ test <- function() {
   #     config <- get_data_config(fix_if_invalid = TRUE)
   #   }
   # )
+  devtools::test()
 }
 
 test()
