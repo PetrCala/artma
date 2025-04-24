@@ -57,6 +57,8 @@ fix_data_config <- function(
     cli::cli_abort("The data config has not been created yet.")
   }
 
+  cli::cli_inform("Creating a new data config...")
+
   box::use(
     artma / const[CONST],
     artma / data / read[read_data],
