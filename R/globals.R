@@ -11,6 +11,7 @@ utils::globalVariables(c(
   "assert",
   "assert_options_template_exists",
   "collect_leaf_paths",
+  "compute_optional_columns",
   "const",
   "crawl_and_import_modules",
   "data",
