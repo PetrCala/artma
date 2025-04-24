@@ -8,9 +8,15 @@ get_data_config <- function(
     fix_if_invalid = FALSE) {
   box::use(
     artma / const[CONST],
+    artma / libs / validation[validate],
     artma / data_config / parse[parse_df_into_data_config],
     artma / data_config / utils[data_config_is_valid],
     artma / data_config / write[fix_data_config]
+  )
+
+  validate(
+    is.logical(create_if_missing),
+    is.logical(fix_if_invalid)
   )
 
   config <- getOption("artma.data.config")
@@ -29,6 +35,7 @@ get_data_config <- function(
 
   # The config does not create yet - we can safely create it
   config <- fix_data_config(create_if_missing = create_if_missing)
+  validate(is.list(config))
   return(config)
 }
 

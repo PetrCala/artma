@@ -11,13 +11,10 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
     artma / libs / validation[validate]
   )
 
-  data_config <- get_data_config(fix_if_invalid = TRUE)
+  validate(is.data.frame(input_data))
 
-  # TODO enable this
-  # validate(
-  #   is.data.frame(input_data),
-  #   is.data.frame(input_var_list)
-  # )
+  data_config <- get_data_config()
+
   # # Remove redundant columns
   # expected_col_n <- nrow(input_var_list)
   # while (ncol(input_data) > expected_col_n) {
