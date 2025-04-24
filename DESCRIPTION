@@ -17,6 +17,7 @@ Imports:
     lifecycle,
     lintr,
     metafor,
+    purrr,
     rlang,
     stringr,
     usethis,

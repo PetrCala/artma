@@ -25,6 +25,7 @@ utils::globalVariables(c(
   "get_data_config",
   "get_expected_type",
   "get_option_defs",
+  "get_required_columns",
   "index",
   "libs",
   "make_verbose_name",

@@ -121,6 +121,7 @@ These packages are required for the package to function correctly when used by o
 - `lifecycle` – To manage and signal function lifecycle stages (e.g., deprecated, experimental)
 - `lintr` – Runtime linting (if exposed in package functionality)
 - `metafor` - For running meta-analysis related methods
+- `purrr` - Vector preprocessing.
 - `rlang` – Core tidyverse infrastructure: advanced error handling, quosures, tidy evaluation
 - `stringr` – Consistent string manipulation functions
 - `usethis` – Automate package setup and development tasks (e.g., create_test, use_package), open files during runtime
