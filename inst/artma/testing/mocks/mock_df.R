@@ -45,6 +45,7 @@ create_mock_df <- function(
 
   colnames_map <- if (is.null(colnames_map)) list() else colnames_map
   assert(is.list(colnames_map), "Column names must be a named list")
+  colnames_map <- lapply(colnames_map, make.names)
 
   base_colnames <- get_standardized_colnames()
   base_colnames_map <- stats::setNames(as.list(base_colnames), base_colnames)

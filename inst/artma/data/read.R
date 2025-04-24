@@ -1,8 +1,7 @@
 #' @title Read data
-#' @description Read data from a path. Returns a data frame.
-#' @param path [str] The path to the data source. If NULL, the options data source path is used.
+#' @description Read data from a path. Returns a data frame. Always read column names as syntactically valid.
+#' @param path *\[str, optional\]* The path to the data source. If NULL, the options data source path is used.
 #' @return *\[data.frame\]* The data frame.
-#' @export
 read_data <- function(path = NULL) {
   box::use(
     artma / data / utils[
@@ -39,5 +38,13 @@ read_data <- function(path = NULL) {
     cli::cli_abort("The data frame read from {.path {path}} has no columns.")
   }
 
+  valid_names <- make.names(names(df))
+  if (!all(valid_names == names(df))) {
+    cli::cli_alert_danger("The column names of the data frame read from {.path {path}} are not syntactically valid. They have been converted to syntactically valid names.")
+    names(df) <- valid_names
+  }
+
   df
 }
+
+box::export(read_data)

@@ -1,5 +1,5 @@
 #' @title Standardize column names
-#' @description Standardize the column names of a data frame to a single source of truth set of column names.
+#' @description DERPRECATED Standardize the column names of a data frame to a single source of truth set of column names.
 #' @param df *\[data.frame\]* The data frame to standardize
 #' @param map *\[list\]* A list of column name mappings
 #' @return *\[data.frame\]* The standardized data frame
@@ -13,6 +13,7 @@ standardize_column_names <- function(df, map = NULL) {
   validate(is.data.frame(df))
 
   map <- if (is.null(map)) get_option_group("artma.data.colnames") else map
+  map <- lapply(map, make.names) # Handle non-standard column names
 
   required_colnames <- get_required_colnames()
 
@@ -53,18 +54,19 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
 
   validate(is.data.frame(input_data))
 
-  # Standardize column names
-  cli::cli_inform("Standardizing column names...")
-  input_data <- standardize_column_names(input_data)
+  config <- get_data_config()
 
   # Compute optional columns
   # TODO
 
-  config <- get_data_config()
-
   # Remove redundant columns
   expected_col_n <- length(config)
+  cli::cli_inform("Removing redundant columns...")
   while (ncol(input_data) > expected_col_n) {
+    col_to_remove <- colnames(input_data)[ncol(input_data)]
+    if (!all(is.na(input_data[[col_to_remove]]))) {
+      cli::cli_abort("Cannot remove column {.val {col_to_remove}} as it contains non-NA values.")
+    }
     input_data <- input_data[, -ncol(input_data)]
   }
 
@@ -97,7 +99,8 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
 
   # Remove redundant rows
   cli::cli_inform("Removing redundant rows...")
-  while (is.na(input_data[nrow(input_data), "study"])) {
+  study_col <- getOption("artma.data.colnames.study")
+  while (is.na(input_data[nrow(input_data), study_col])) {
     input_data <- input_data[-nrow(input_data), ]
   }
 
