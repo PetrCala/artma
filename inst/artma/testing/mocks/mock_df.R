@@ -38,7 +38,7 @@ create_mock_df <- function(
 
   effect <- generate_random_vector(from = -1, to = 1, length.out = nrow)
   se <- generate_random_vector(from = -1, to = 1, length.out = nrow)
-  n_obs <- generate_random_vector(from = 10, to = 1000, length.out = nrow)
+  n_obs <- generate_random_vector(from = 10, to = 1000, length.out = nrow, integer = TRUE)
 
   data_frame <- data.frame(
     effect = effect,
