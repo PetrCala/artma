@@ -38,11 +38,13 @@ create_mock_df <- function(
 
   effect <- generate_random_vector(from = -1, to = 1, length.out = nrow)
   se <- generate_random_vector(from = -1, to = 1, length.out = nrow)
+  n_obs <- generate_random_vector(from = 10, to = 1000, length.out = nrow)
 
   data_frame <- data.frame(
     effect = effect,
     se = se,
-    study = study_names
+    study = study_names,
+    n_obs = n_obs
   )
 
   if (with_file_creation) {
