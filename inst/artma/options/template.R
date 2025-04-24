@@ -296,7 +296,14 @@ coerce_option_value <- function(val, opt) {
   }
 
   if (isTRUE(opt$standardize)) {
-    val <- make.names(val)
+    standard_val <- make.names(val)
+    if (standard_val != val) {
+      box::use(artma / const[CONST])
+      cli::cli_alert_warning(
+        "Option {CONST$STYLES$OPTIONS$NAME(opt$name)} does not allow non-standard values. Standardizing from {CONST$STYLES$OPTIONS$VALUE(val)} to {CONST$STYLES$OPTIONS$VALUE(standard_val)}."
+      )
+    }
+    val <- standard_val
   }
 
   tryCatch(
