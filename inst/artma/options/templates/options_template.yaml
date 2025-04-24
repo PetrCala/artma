@@ -88,7 +88,6 @@ data:
       Each variable in the dataset requires a list of configuration options.
       For more details, read the 'data_config' vignette.
 
-
 temp:
   # A set of options that are only set at runtime but never stored in the options file.
   file_name:
