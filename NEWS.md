@@ -1,8 +1,42 @@
 
+<a name="v0.2.0"></a>
+## [v0.2.0](https://github.com/PetrCala/artma/compare/v0.1.30...v0.2.0)
+
+> 2025-04-24
+
+
 <a name="v0.1.30"></a>
 ## [v0.1.30](https://github.com/PetrCala/artma/compare/v0.1.29...v0.1.30)
 
 > 2025-04-16
+
+### Bug Fixes
+
+* add a missing import to the data config parsing function
+* add a missing export from the string module
+* rewrite the data config validation test to use the renamed function
+
+### Code Refactoring
+
+* rename the determine df type function (data_type -> df_type)
+* rename the data config file update function to better reflect its purpose
+* move the data config write function to a standalone module
+* decouple logic in data config writing/parsing
+* regex validation now happens against a more robust const object, add tests
+* rename the data config filename validation function
+* replace the internal 'is_empty' function with the in-built rlang function
+* remove the test constant and move the data into CONST.R
+
+### Features
+
+* add the body of data config parsing, add verbose string creation function
+* add various utility functions for parsing and writing the data config files
+* by default, the options copy now asks for overwrite permission in interactive mode
+* add functions for parsing data frames into data configs
+* add a function that validates an existence of a data config file
+* add a function for validating data config filenames
+* add a placeholder folder for data config files handling
+* remove the logger package, use 'cli' for all console logging
 
 
 <a name="v0.1.29"></a>
