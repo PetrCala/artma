@@ -3,7 +3,7 @@ general:
     type: "character"
     default: "0.2.0"
     fixed: true
-    help: "Version of the ARTMA package under which these options were generated"
+    help: "Version of the artma package under which these options were generated"
 
 data:
   source_path:

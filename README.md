@@ -80,9 +80,9 @@ We have a whole [README file](README-dev.md) for developers, so feel free to tak
 
 # Using options
 
-We leverage the in-built R options namespace to define custom runtime options. However, ARTMA provides a vast number of custom options to fit your needs, so we use a custom-tailored solution to ensure your options are easily accessible and do not interfere with other R runtime options.
+We leverage the in-built R options namespace to define custom runtime options. However, artma provides a vast number of custom options to fit your needs, so we use a custom-tailored solution to ensure your options are easily accessible and do not interfere with other R runtime options.
 
-All ARTMA related options are stored in hierarchical `.yaml` files, stored in a temporary `options` folder. This folder, together with the options files themselves, is created at runtime, such as when invoking `artma::options.create()`.
+All artma related options are stored in hierarchical `.yaml` files, stored in a temporary `options` folder. This folder, together with the options files themselves, is created at runtime, such as when invoking `artma::options.create()`.
 
 A user options file holds a hierarchical structure, such as in the following exmample:
 
@@ -95,7 +95,7 @@ general:
 
 ## Creating an options file
 
-If you do not have a user options file at a runtime of an ARTMA runtime method, you will be prompted to create one upon the call to that function, right before that function main body runs.
+If you do not have a user options file at a runtime of an artma runtime method, you will be prompted to create one upon the call to that function, right before that function main body runs.
 
 In case you wish to do so explicitly, you can call `artma::options.create()`.
 
@@ -137,8 +137,8 @@ To see what methods are available, you can run `artma::methods.list()`. The outp
 
 ## Defining custom methods
 
-If you wish to use a custom method in the ARTMA package, it should be enough to add it to the `methods` folder. However, it must adhere to several principles in order to be parsed corretly:
+If you wish to use a custom method in the artma package, it should be enough to add it to the `methods` folder. However, it must adhere to several principles in order to be parsed corretly:
 
-- Each method (module) recognized by ARTMA must have a `run` function. This serves as the entrypoint for the method. The function **must accept the several specific parameters**, common across all runtime methods. To see these, open the definition of any of the existing methods and search for non-default parameters. These are the ones you have to use in every case.
+- Each method (module) recognized by artma must have a `run` function. This serves as the entrypoint for the method. The function **must accept the several specific parameters**, common across all runtime methods. To see these, open the definition of any of the existing methods and search for non-default parameters. These are the ones you have to use in every case.
 
 If you wish to use any custom parameters for your function, you can define them through options. To understand how to do so, see the [Adding new options section](#adding-new-options).

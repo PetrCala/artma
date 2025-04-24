@@ -12,6 +12,7 @@
 #' @keywords internal
 invoke_runtime_methods <- function(methods, df, ...) {
   box::use(
+    artma / const[CONST],
     artma / libs / string[pluralize]
   )
 
@@ -39,7 +40,7 @@ invoke_runtime_methods <- function(methods, df, ...) {
     ))
   }
 
-  cli::cli_h3("Running the main ARTMA function")
+  cli::cli_h3("Running the main {.emph {CONST$PACKAGE_NAME}} function")
   cli::cli_inform(c(
     "i" = "Invoking {length(methods)} {pluralize('method', length(methods))} in total."
   ))
@@ -55,8 +56,8 @@ invoke_runtime_methods <- function(methods, df, ...) {
   results
 }
 
-#' @title Run ARTMA
-#' @description Run ARTMA with the specified methods and options.
+#' @title Run artma
+#' @description Run artma with the specified methods and options.
 #' @param methods *\[character, optional\]* A character vector of the methods to invoke. Defaults to NULL.
 #' @param options_file_name *\[character, optional\]* The name of the options file to use. Defaults to NULL.
 #' @param options_dir *\[character, optional\]* The directory containing the options file. Defaults to NULL.
