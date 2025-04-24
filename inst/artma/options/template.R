@@ -8,6 +8,16 @@ read_template <- function(template_path) {
   template
 }
 
+#' @title Check if a node is an option definition
+#' @description Check if a node is an option definition.
+#' @param e [list] A list of template options.
+#' @return A logical value.
+#' @keywords internal
+is_option_def <- function(e) {
+  is.list(e) &&
+    all(c("type", "help") %in% names(e))
+}
+
 #' @title Flatten nested template options
 #' @description Recursively flatten nested template options into a single list of
 #' option definitions with flattened destination names (e.g., x.y.z).
@@ -16,33 +26,22 @@ read_template <- function(template_path) {
 #' `list` A list of flattened option definitions.
 #' @export
 flatten_template_options <- function(x, parent = NULL) {
-  # A helper function to recognize a final option definition.
-  is_option_def <- function(e) {
-    is.list(e) &&
-      all(c("name", "type") %in% names(e))
-  }
-
   flattened <- list()
 
-  # If x itself is a list of final option definitions.
-  if (is.list(x) && all(vapply(x, FUN = is_option_def, FUN.VALUE = logical(1)))) {
-    for (i in seq_along(x)) {
-      # If there's a parent path, update the destination.
-      if (!is.null(parent)) {
-        # Concatenate parent path with the current name value.
-        x[[i]]$name <- paste(parent, x[[i]]$name, sep = ".")
-      }
-      flattened[[length(flattened) + 1]] <- x[[i]]
-    }
-    return(flattened)
-  }
+  for (nm in names(x)) {
+    path <- if (is.null(parent)) nm else paste(parent, nm, sep = ".")
+    node <- x[[nm]]
 
-  # If not a list of option definitions, x should be a list of subcategories.
-  if (is.list(x)) {
-    for (name in names(x)) {
-      # Build the new parent path by appending the current name.
-      new_parent <- if (is.null(parent)) name else paste(parent, name, sep = ".")
-      flattened <- c(flattened, flatten_template_options(x[[name]], new_parent))
+    # ──► A leaf?  (= list that has a 'type' field)
+    if (is_option_def(node)) {
+      node$name <- path # <── add the synthetic name
+      flattened[[length(flattened) + 1L]] <- node
+      next
+    }
+
+    # Otherwise keep descending
+    if (is.list(node)) {
+      flattened <- c(flattened, flatten_template_options(node, path))
     }
   }
 
@@ -161,7 +160,7 @@ prompt_user_for_option_value <- function(opt) {
         cli::cli_abort(cli::format_inline("Prompt function {.strong {opt$prompt_function}} not found."))
       }
     )
-    return(prompt_function())
+    return(prompt_function(opt = opt))
   }
 
   # nolint start: unused_declared_object_linter.
