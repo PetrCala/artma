@@ -27,50 +27,60 @@ data:
       type: "character"
       allow_na: true
       default: .na
+      standardize: true
       help: "Column containing observation IDs"
 
     study:
       type: "character"
+      standardize: true
       help: "Column containing study names"
 
     study_id:
       type: "character"
       allow_na: true
       default: .na
+      standardize: true
       help: "Column containing study IDs"
 
     effect:
       type: "character"
+      standardize: true
       help: "Column containing effect estimates"
 
     se:
       type: "character"
+      standardize: true
       help: "Column containing standard errors"
 
     t_stat:
       type: "character"
+      standardize: true
       allow_na: true
       default: .na
       help: "Column containing t-statistics"
 
     n_obs:
       type: "character"
+      standardize: true
       help: "Column containing the number of observations"
 
     study_size:
       type: "character"
+      standardize: true
       allow_na: true
       default: .na
       help: "Column containing the study sizes, i.e. the number of estimates per study"
 
     reg_df:
       type: "character"
+      standardize: true
       allow_na: true
       default: .na
       help: "Column containing the degrees of freedom for the regression"
 
     precision:
       type: "character"
+      standardize: true
       allow_na: true
       default: .na
       help: "Column containing the precision of the effect estimates"

@@ -295,6 +295,10 @@ coerce_option_value <- function(val, opt) {
     return(val)
   }
 
+  if (isTRUE(opt$standardize)) {
+    val <- make.names(val)
+  }
+
   tryCatch(
     {
       coerced_val <- switch(opt$type,
