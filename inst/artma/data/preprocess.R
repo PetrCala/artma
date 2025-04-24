@@ -1,22 +1,25 @@
 #' @title Standardize column names
 #' @description Standardize the column names of a data frame to a single source of truth set of column names.
 #' @param df *\[data.frame\]* The data frame to standardize
+#' @param map *\[list\]* A list of column name mappings
 #' @return *\[data.frame\]* The standardized data frame
-standardize_column_names <- function(df) {
+standardize_column_names <- function(df, map = NULL) {
   box::use(
     artma / data / utils[get_required_colnames],
     artma / options / utils[get_option_group],
-    artma / libs / validation[assert]
+    artma / libs / validation[assert, validate]
   )
 
-  map <- get_option_group("artma.data.colnames")
+  validate(is.data.frame(df))
+
+  map <- if (is.null(map)) get_option_group("artma.data.colnames") else map
 
   required_colnames <- get_required_colnames()
 
   # Check that every required column is mapped in the user options file
-  miss_req <- setdiff(required_colnames, names(map))
-  if (length(miss_req)) {
-    cli::cli_abort("Missing mapping for required columns: {.val {miss_req}}")
+  missing_required <- base::setdiff(required_colnames, names(map))
+  if (length(missing_required)) {
+    cli::cli_abort("Missing mapping for required columns: {.val {missing_required}}")
   }
 
   # Check that every required column exists in the data frame
@@ -30,9 +33,9 @@ standardize_column_names <- function(df) {
   reverse_map <- stats::setNames(names(map), unlist(map))
   names(df)[names(df) %in% names(reverse_map)] <- reverse_map[names(df)[names(df) %in% names(reverse_map)]]
 
-  missing_req <- setdiff(names(required_colnames), names(map))
-  if (length(missing_req)) {
-    cli::cli_abort("Failed to standardize the following columns: {.val {missing_req}}")
+  missing_required <- setdiff(required_colnames, colnames(df))
+  if (length(missing_required)) {
+    cli::cli_abort("Failed to standardize the following columns: {.val {missing_required}}")
   }
 
   df
