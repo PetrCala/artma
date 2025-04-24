@@ -15,15 +15,19 @@ get_data_config <- function(
 
   config <- getOption("artma.data.config")
 
-  if (data_config_is_valid(config)) {
-    return(config)
+  config_exists <- !is.na(config) && !is.null(config)
+
+  if (isTRUE(config_exists)) {
+    if (data_config_is_valid(config)) {
+      return(config)
+    }
+
+    if (!fix_if_invalid) {
+      cli::cli_abort("The data config is invalid. Please run {.code artma::config.fix()} to fix it.")
+    }
   }
 
-  if (!fix_if_invalid) {
-    cli::cli_abort("The data config is invalid. Please run {.code artma::config.fix()} to fix it.")
-  }
-
-  # The config does not create yet - we need to create it
+  # The config does not create yet - we can safely create it
   config <- fix_data_config(create_if_missing = create_if_missing)
   return(config)
 }
