@@ -37,7 +37,7 @@
 - [Running tests](#running-tests)
 - [Code of Conduct](#code-of-conduct)
 
-Welcome to the developer documentation for ARTMA (Automatic Replication Tools for Meta-analysis). This guide covers setup, development workflows, code standards, and other technical details needed for contributing to the project.
+Welcome to the developer documentation for artma (Automatic Replication Tools for Meta-analysis). This guide covers setup, development workflows, code standards, and other technical details needed for contributing to the project.
 
 # How to run
 

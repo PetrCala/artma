@@ -1,4 +1,4 @@
-#' @title ARTMA main
+#' @title artma main
 #' @param options *\[character\]* Name of the user options file to use.
 #' @param options_dir *\[character\]* Path to the directory that contains user options.
 #' @param FUN *\[function\]* The function to be called after the setup.
@@ -10,7 +10,7 @@ main <- function(
     FUN = NULL) {
   if (is.null(FUN)) {
     FUN <- function() {
-      cli::cli_inform("ARTMA main function")
+      cli::cli_inform("{.emph artma} main function")
     }
   }
 
