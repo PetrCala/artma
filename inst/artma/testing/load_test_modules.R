@@ -1,5 +1,4 @@
 box::use(
-  artma / paths[PATHS],
   artma / libs / modules[crawl_and_import_modules]
 )
 
@@ -9,7 +8,7 @@ box::use(
 #' @param pattern *\[character\]* A regular expression to filter module file names.
 #' @return *\[list\]* A named list of objects imported from the modules.
 load_test_modules <- function(dir_path, pattern) {
-  modules <- crawl_and_import_modules(dir_path = dir_path, pattern = pattern)
+  modules <- suppressMessages(crawl_and_import_modules(dir_path = dir_path, pattern = pattern))
   results <- list()
   for (module in modules) {
     for (name in names(module)) {
