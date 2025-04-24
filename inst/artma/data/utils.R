@@ -4,6 +4,14 @@ assign_na_col <- function(df, colname) {
   return(df)
 }
 
+#' @title Get required columns
+#' @description Get a vector of columns required by the analysis to exist in the data frame.
+get_required_columns <- function() {
+  box::use(
+    artma / options / template[read_template]
+  )
+}
+
 #' Get the number of studies in an analysis data frame.
 #'
 #' @param df *\[data.frame\]* The analysis data frame.
