@@ -7,7 +7,7 @@ assign_na_col <- function(df, colname) {
 #' @title Get required columns
 #' @description Get a vector of columns required by the analysis to exist in the data frame.
 #' @return *\[character\]* A vector of column names.
-get_required_columns <- function() {
+get_required_colnames <- function() {
   box::use(artma / options / template[get_option_defs])
   `%>%` <- stringr::`%>%` # nolint: object_name_linter
 
@@ -115,6 +115,6 @@ box::export(
   determine_df_type,
   determine_vector_type,
   get_number_of_studies,
-  get_required_columns,
+  get_required_colnames,
   raise_invalid_data_type_error
 )

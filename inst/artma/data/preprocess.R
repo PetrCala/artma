@@ -1,41 +1,41 @@
-standardize_column_names <- function(df, schema) {
-  map <- getOption("data.colnames")
+#' @title Standardize column names
+#' @description Standardize the column names of a data frame to a single source of truth set of column names.
+#' @param df *\[data.frame\]* The data frame to standardize
+#' @return *\[data.frame\]* The standardized data frame
+standardize_column_names <- function(df) {
+  box::use(
+    artma / data / utils[get_required_colnames],
+    artma / options / utils[get_option_group],
+    artma / libs / validation[assert]
+  )
 
-  # # canonical schema -------------------------------------------------------
-  # schema <- list(
-  #   required = c("obs_id", "study_id", "study_name",
-  #                "effect", "se", "n_obs"),
-  #   optional = c("t_stat", "study_size", "reg_df", "precision")
-  # )
+  map <- get_option_group("artma.data.colnames")
 
-  # `%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
+  required_colnames <- get_required_colnames()
 
-
-  # 2a ─ check required elements are supplied
-  miss_req <- setdiff(schema$required, names(map))
+  # Check that every required column is mapped in the user options file
+  miss_req <- setdiff(required_colnames, names(map))
   if (length(miss_req)) {
-    abort(paste(
-      "Missing mapping for required columns:",
-      paste(miss_req, collapse = ", ")
-    ))
+    cli::cli_abort("Missing mapping for required columns: {.val {miss_req}}")
   }
 
-  # 2b ─ check that every mapped raw column exists in `df`
-  absent_raw <- map[!map %in% names(df)]
-  if (length(absent_raw)) {
-    abort(paste(
-      "These columns are absent in the data frame:",
-      paste(absent_raw, collapse = ", ")
-    ))
+  # Check that every required column exists in the data frame
+  mapped_cols <- unlist(unname(map[names(map) %in% required_colnames]))
+  absent_required <- mapped_cols[!mapped_cols %in% names(df)]
+  if (length(absent_required)) {
+    cli::cli_abort("These required columns are absent in the data frame: {.val {absent_required}}")
   }
 
-  # 2c ─ rename, keeping only columns we care about
-  df_std <- df |> rename(!!!setNames(names(map), map))
+  # Rename columns to standardized names - only when present in the data frame
+  reverse_map <- stats::setNames(names(map), unlist(map))
+  names(df)[names(df) %in% names(reverse_map)] <- reverse_map[names(df)[names(df) %in% names(reverse_map)]]
 
-  # 2d ─ attach original names for later
-  attr(df_std, "original_names") <- map
+  missing_req <- setdiff(names(required_colnames), names(map))
+  if (length(missing_req)) {
+    cli::cli_abort("Failed to standardize the following columns: {.val {missing_req}}")
+  }
 
-  df_std
+  df
 }
 
 #' @title Preprocess the raw data
@@ -51,7 +51,11 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
   validate(is.data.frame(input_data))
 
   # Standardize column names
+  cli::cli_inform("Standardizing column names...")
   input_data <- standardize_column_names(input_data)
+
+  # Compute optional columns
+  # TODO
 
   config <- get_data_config()
 
@@ -66,6 +70,7 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
   expected_varnames <- get_config_values(config, "var_name")
 
   # Check if all columns of the first vector are in the second one and vice versa
+  cli::cli_inform("Checking variable names...")
   if (!all(varnames %in% expected_varnames) || !all(expected_varnames %in% varnames)) {
     missing_from_var_list <- varnames[!varnames %in% expected_varnames]
     missing_from_data <- expected_varnames[!expected_varnames %in% varnames]
@@ -77,6 +82,7 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
   }
 
   # Check for correct ordering
+  cli::cli_inform("Checking variable names order...")
   if (!identical(varnames, expected_varnames)) {
     problematic_indexes <- which(varnames != expected_varnames)
     cli::cli_abort(c(
@@ -86,27 +92,29 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
     ))
   }
 
-
   # Remove redundant rows
-  # while (is.na(input_data[nrow(input_data), "study_name"])) {
-  #   input_data <- input_data[-nrow(input_data), ]
-  # }
+  cli::cli_inform("Removing redundant rows...")
+  while (is.na(input_data[nrow(input_data), "study"])) {
+    input_data <- input_data[-nrow(input_data), ]
+  }
 
-  # # Preprocess and enforce correct data types
-  # for (col_name in varnames) {
-  #   col_data_type <- input_var_list$data_type[input_var_list$var_name == col_name]
-  #   if (col_data_type == "int" || col_data_type == "dummy") {
-  #     input_data[[col_name]] <- as.integer(input_data[[col_name]])
-  #   } else if (col_data_type == "float" || col_data_type == "perc") {
-  #     input_data[[col_name]] <- as.numeric(input_data[[col_name]])
-  #   } else if (col_data_type == "category") {
-  #     input_data[[col_name]] <- as.character(input_data[[col_name]])
-  #   }
-  # }
-  # cli::cli_alert_success("Preprocessing finished.")
-  # return(input_data)
+  # Preprocess and enforce correct data types
+  cli::cli_inform("Enforcing correct data types...")
+  for (col_name in make.names(varnames)) {
+    col_data_type <- config[[col_name]]$data_type
+    if (col_data_type == "int" || col_data_type == "dummy") {
+      input_data[[col_name]] <- as.integer(input_data[[col_name]])
+    } else if (col_data_type == "float" || col_data_type == "perc") {
+      input_data[[col_name]] <- as.numeric(input_data[[col_name]])
+    } else if (col_data_type == "category") {
+      input_data[[col_name]] <- as.character(input_data[[col_name]])
+    }
+  }
+  cli::cli_alert_success("Preprocessing finished.")
+  return(input_data)
 }
 
 box::export(
-  preprocess_data
+  preprocess_data,
+  standardize_column_names
 )
