@@ -31,8 +31,9 @@ get_data_config <- function(
     }
   }
 
-  # The config does not create yet - we can safely create it
-  config <- fix_data_config(create_if_missing = create_if_missing)
+  # The config does not exist yet - we can safely create it
+  cli::cli_inform("Creating a new data config.")
+  config <- suppressMessages(fix_data_config(create_if_missing = create_if_missing))
   return(config)
 }
 
