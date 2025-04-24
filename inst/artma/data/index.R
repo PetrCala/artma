@@ -21,7 +21,5 @@ prepare_data <- function() {
 }
 
 box::export(
-  prepare_data,
-  preprocess_data,
-  read_data
+  prepare_data
 )
