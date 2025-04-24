@@ -10,6 +10,7 @@ box::use(
 #' @param n_studies An integer indicating the number of studies to generate
 #' @param with_file_creation A boolean indicating whether to create a file with the data frame
 #' @param file_path A string indicating the path of the file to create
+#' @param colnames_map A list of column names to use for the data frame
 #' @return A data frame object
 #' @export
 create_mock_df <- function(
@@ -17,10 +18,12 @@ create_mock_df <- function(
     nrow = NULL,
     n_studies = NULL,
     with_file_creation = FALSE,
-    file_path = NULL) {
+    file_path = NULL,
+    colnames_map = NULL) {
   box::use(
     artma / const[CONST],
-    artma / libs / validation[assert]
+    artma / libs / validation[assert],
+    artma / data / utils[get_standardized_colnames]
   )
 
   if (is.null(nrow)) {
@@ -40,11 +43,30 @@ create_mock_df <- function(
   se <- generate_random_vector(from = -1, to = 1, length.out = nrow)
   n_obs <- generate_random_vector(from = 10, to = 1000, length.out = nrow, integer = TRUE)
 
+  colnames_map <- if (is.null(colnames_map)) list() else colnames_map
+  assert(is.list(colnames_map), "Column names must be a named list")
+
+  base_colnames <- get_standardized_colnames()
+  base_colnames_map <- stats::setNames(as.list(base_colnames), base_colnames)
+  colnames_map <- utils::modifyList(base_colnames_map, colnames_map)
+  assert(all(names(colnames_map) %in% base_colnames), "All column names must be in the base column names")
+
   data_frame <- data.frame(
-    effect = effect,
-    se = se,
-    study = study_names,
-    n_obs = n_obs
+    stats::setNames(
+      list(
+        effect = effect,
+        se = se,
+        study = study_names,
+        n_obs = n_obs,
+        obs_id = NA,
+        study_id = NA,
+        t_stat = NA,
+        study_size = NA,
+        reg_df = NA,
+        precision = NA
+      ),
+      unname(unlist(colnames_map))
+    )
   )
 
   if (with_file_creation) {
