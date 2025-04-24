@@ -1,8 +1,3 @@
-box::use(
-  artma / libs / number_utils[generate_random_vector],
-  artma / testing / mocks / mock_utils[create_mock_study_names]
-)
-
 #' Create and return a mock meta-analysis data frame object
 #'
 #' @param effect_type A string indicating the type of effect to generate
@@ -22,26 +17,11 @@ create_mock_df <- function(
     colnames_map = NULL) {
   box::use(
     artma / const[CONST],
+    artma / libs / number_utils[generate_random_vector],
     artma / libs / validation[assert],
-    artma / data / utils[get_standardized_colnames]
+    artma / data / utils[get_standardized_colnames],
+    artma / testing / mocks / mock_utils[create_mock_study_names]
   )
-
-  if (is.null(nrow)) {
-    nrow <- CONST$MOCKS$MOCK_DF_NROWS
-  }
-  if (is.null(n_studies)) {
-    n_studies <- CONST$MOCKS$MOCK_DF_NSTUDIES
-  }
-  study_names <- create_mock_study_names(n_studies = n_studies, total_occurrences = nrow)
-
-  # TODO
-  # if (is.null(effect_type)) {
-  #   effect_type <- "random"
-  # }
-
-  effect <- generate_random_vector(from = -1, to = 1, length.out = nrow)
-  se <- generate_random_vector(from = -1, to = 1, length.out = nrow)
-  n_obs <- generate_random_vector(from = 10, to = 1000, length.out = nrow, integer = TRUE)
 
   colnames_map <- if (is.null(colnames_map)) list() else colnames_map
   assert(is.list(colnames_map), "Column names must be a named list")
@@ -52,16 +32,35 @@ create_mock_df <- function(
   colnames_map <- utils::modifyList(base_colnames_map, colnames_map)
   assert(all(names(colnames_map) %in% base_colnames), "All column names must be in the base column names")
 
+  # TODO
+  # if (is.null(effect_type)) {
+  #   effect_type <- "random"
+  # }
+
+  if (is.null(nrow)) {
+    nrow <- CONST$MOCKS$MOCK_DF_NROWS
+  }
+  if (is.null(n_studies)) {
+    n_studies <- CONST$MOCKS$MOCK_DF_NSTUDIES
+  }
+  study_names <- create_mock_study_names(n_studies = n_studies, total_occurrences = nrow)
+  study_id <- as.integer(factor(study_names, levels = unique(study_names)))
+  obs_id <- base::seq.int(from = 1, to = nrow, by = 1)
+
+  effect <- generate_random_vector(from = -1, to = 1, length.out = nrow)
+  se <- generate_random_vector(from = -1, to = 1, length.out = nrow)
+  n_obs <- generate_random_vector(from = 10, to = 1000, length.out = nrow, integer = TRUE)
+
   data_frame <- data.frame(
     stats::setNames(
       list(
+        obs_id = obs_id,
+        study = study_names,
+        study_id = study_id,
         effect = effect,
         se = se,
-        study = study_names,
-        n_obs = n_obs,
-        obs_id = NA,
-        study_id = NA,
         t_stat = NA,
+        n_obs = n_obs,
         study_size = NA,
         reg_df = NA,
         precision = NA
