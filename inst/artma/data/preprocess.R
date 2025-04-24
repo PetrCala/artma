@@ -47,17 +47,16 @@ standardize_column_names <- function(df, map = NULL) {
 #' @return *\[data.frame\]* The preprocessed data
 preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
   box::use(
+    artma / data / utils[get_required_colnames],
     artma / data_config / read[get_data_config],
     artma / data_config / utils[get_config_values],
-    artma / libs / validation[validate]
+    artma / libs / validation[validate],
+    artma / options / utils[get_option_group]
   )
 
   validate(is.data.frame(input_data))
 
   config <- get_data_config()
-
-  # Compute optional columns
-  # TODO
 
   # Remove redundant columns
   expected_col_n <- length(config)
@@ -95,6 +94,28 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
       "i" = "Problematic indexes and their column names: {.val {problematic_indexes}}",
       "i" = "Data frame has '{.val {varnames[problematic_indexes]}}' but expected variable list has '{.val {expected_varnames[problematic_indexes]}}'."
     ))
+  }
+
+  custom_colnames <- get_option_group("artma.data.colnames")
+
+  # Check that every required column is mapped in the user options file
+  required_colnames <- get_required_colnames()
+  missing_required <- base::setdiff(required_colnames, names(custom_colnames))
+  if (length(missing_required)) {
+    cli::cli_abort("Missing mapping for required columns: {.val {missing_required}}")
+  }
+
+  # Check that no required columns are mapped to NA
+  na_required <- required_colnames[is.na(custom_colnames[required_colnames])]
+  if (length(na_required)) {
+    cli::cli_abort("Required columns cannot be mapped to NA: {.val {na_required}}")
+  }
+
+  # Check that every defined column is present in the data frame
+  defined_colnames <- custom_colnames[!is.na(custom_colnames)]
+  missing_defined <- defined_colnames[!unlist(defined_colnames) %in% colnames(input_data)]
+  if (length(missing_defined)) {
+    cli::cli_abort("The following columns are defined in the user options file but not present in the data frame: {.val {missing_defined}}")
   }
 
   # Remove redundant rows
