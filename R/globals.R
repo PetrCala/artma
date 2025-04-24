@@ -28,6 +28,7 @@ utils::globalVariables(c(
   "get_required_colnames",
   "index",
   "libs",
+  "load_test_modules",
   "make_verbose_name",
   "parse_options_file_name",
   "parse_options_from_template",
