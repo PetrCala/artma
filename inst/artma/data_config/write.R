@@ -61,8 +61,10 @@ fix_data_config <- function(
 
   box::use(
     artma / const[CONST],
+    artma / libs / validation[assert],
     artma / data / read[read_data],
-    artma / data_config / parse[parse_df_into_data_config]
+    artma / data_config / parse[parse_df_into_data_config],
+    artma / data_config / utils[data_config_is_valid]
   )
 
   if (!is.list(current_config)) current_config <- list()
@@ -92,6 +94,7 @@ fix_data_config <- function(
   )
 
   fixed_config <- suppressMessages(update_data_config(changes = config))
+  assert(data_config_is_valid(fixed_config), "The data config could not be fixed.")
 
   cli::cli_alert_success("The data config has been fixed.")
   return(fixed_config)
