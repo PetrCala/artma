@@ -58,9 +58,8 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
 
   config <- get_data_config()
 
-  # Remove redundant columns
-  expected_col_n <- length(config)
   cli::cli_inform("Removing redundant columns...")
+  expected_col_n <- length(config)
   while (ncol(input_data) > expected_col_n) {
     col_to_remove <- colnames(input_data)[ncol(input_data)]
     if (!all(is.na(input_data[[col_to_remove]]))) {
@@ -69,11 +68,9 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
     input_data <- input_data[, -ncol(input_data)]
   }
 
-  # Variable name validity check
   varnames <- colnames(input_data)
   expected_varnames <- get_config_values(config, "var_name")
 
-  # Check if all columns of the first vector are in the second one and vice versa
   cli::cli_inform("Checking variable names...")
   if (!all(varnames %in% expected_varnames) || !all(expected_varnames %in% varnames)) {
     missing_from_var_list <- varnames[!varnames %in% expected_varnames]
@@ -85,7 +82,6 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
     ))
   }
 
-  # Check for correct ordering
   cli::cli_inform("Checking variable names order...")
   if (!identical(varnames, expected_varnames)) {
     problematic_indexes <- which(varnames != expected_varnames)
@@ -98,34 +94,32 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
 
   custom_colnames <- get_option_group("artma.data.colnames")
 
-  # Check that every required column is mapped in the user options file
+  cli::cli_inform("Checking that every required column is mapped in the user options file...")
   required_colnames <- get_required_colnames()
   missing_required <- base::setdiff(required_colnames, names(custom_colnames))
   if (length(missing_required)) {
     cli::cli_abort("Missing mapping for required columns: {.val {missing_required}}")
   }
 
-  # Check that no required columns are mapped to NA
+  cli::cli_inform("Checking that no required columns are mapped to NA...")
   na_required <- required_colnames[is.na(custom_colnames[required_colnames])]
   if (length(na_required)) {
     cli::cli_abort("Required columns cannot be mapped to NA: {.val {na_required}}")
   }
 
-  # Check that every defined column is present in the data frame
+  cli::cli_inform("Checking that every defined column is present in the data frame...")
   defined_colnames <- custom_colnames[!is.na(custom_colnames)]
   missing_defined <- defined_colnames[!unlist(defined_colnames) %in% colnames(input_data)]
   if (length(missing_defined)) {
     cli::cli_abort("The following columns are defined in the user options file but not present in the data frame: {.val {missing_defined}}")
   }
 
-  # Remove redundant rows
   cli::cli_inform("Removing redundant rows...")
   study_col <- getOption("artma.data.colnames.study")
   while (is.na(input_data[nrow(input_data), study_col])) {
     input_data <- input_data[-nrow(input_data), ]
   }
 
-  # Preprocess and enforce correct data types
   cli::cli_inform("Enforcing correct data types...")
   for (col_name in make.names(varnames)) {
     col_data_type <- config[[col_name]]$data_type
