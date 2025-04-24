@@ -34,7 +34,7 @@ create_mock_study_names <- function(n_studies, total_occurrences) {
 
   occurrences <- random_occurrences(total_occurrences, n_studies)
 
-  result <- unlist(base::Map(rep, study_names, occurrences))
+  result <- unname(unlist(base::Map(rep, study_names, occurrences)))
 
   return(result)
 }
