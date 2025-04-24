@@ -1,17 +1,17 @@
 general:
-  - name: "artma_version"
+  artma_version:
     type: "character"
     default: "0.1.30"
     fixed: true
     help: "Version of the ARTMA package under which these options were generated"
 
 data:
-  - name: "source_path"
+  source_path:
     type: "character"
     prompt: "file"
     help: "Full path to your dataset source"
-  
-  - name: "na_handling"
+
+  na_handling:
     type: "enum: stop|median|mean"
     default: "stop"
     confirm_default: true
@@ -21,8 +21,53 @@ data:
         {cli::symbol$bullet} {.strong stop}: Abort if any missing values are found
         {cli::symbol$bullet} {.strong median}: Replace missing values with the variable's median
         {cli::symbol$bullet} {.strong mean}: Replace missing values with the variable's mean
-      
-  - name: "config_setup"
+
+  colnames:
+    obs_id:
+      type: "character"
+      help: "Column containing observation IDs"
+
+    study_id:
+      type: "character"
+      help: "Column containing study IDs"
+
+    effect:
+      type: "character"
+      help: "Column containing effect estimates"
+
+    se:
+      type: "character"
+      help: "Column containing standard errors"
+
+    t_stat:
+      type: "character"
+      allow_na: true
+      default: .na
+      help: "Column containing t-statistics"
+
+    n_obs:
+      type: "character"
+      help: "Column containing the number of observations"
+
+    study_size:
+      type: "character"
+      allow_na: true
+      default: .na
+      help: "Column containing the study sizes, i.e. the number of estimates per study"
+
+    reg_df:
+      type: "character"
+      allow_na: true
+      default: .na
+      help: "Column containing the degrees of freedom for the regression"
+
+    precision:
+      type: "character"
+      allow_na: true
+      default: .na
+      help: "Column containing the precision of the effect estimates"
+
+  config_setup:
     type: "enum: auto|manual"
     default: "auto"
     confirm_default: true
@@ -32,7 +77,7 @@ data:
         {cli::symbol$bullet} {.strong auto}: Automatically generate and validate the data configuration
         {cli::symbol$bullet} {.strong manual}: Manually configure and validate the data configuration
 
-  - name: "config"
+  config:
     type: "list"
     default: .na
     allow_na: true
@@ -46,7 +91,7 @@ data:
 
 temp:
   # A set of options that are only set at runtime but never stored in the options file.
-  - name: "file_name"
+  file_name:
     type: "character"
     allow_na: true
     default: null
@@ -54,7 +99,7 @@ temp:
       Name of the file under which the options is stored.
       This is not required during the file creation, but the option value is added upon loading the file.
 
-  - name: "dir_name"
+  dir_name:
     type: "character"
     allow_na: true
     default: null
