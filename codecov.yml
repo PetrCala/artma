@@ -20,7 +20,7 @@ component_management:
       paths:
         - R/
     - component_id: inst
-      name: artms inst folder
+      name: artma inst folder
       paths:
         - inst/artma/
 
