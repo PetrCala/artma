@@ -13,10 +13,7 @@ test <- function() {
   mock_df_path <- PATHS$FILE_MOCKS_TMP_DATA
   mock_df <- create_mock_df(
     with_file_creation = TRUE,
-    file_path = mock_df_path,
-    colnames_map = list(
-      "study" = "my-custom-study-column-name"
-    )
+    file_path = mock_df_path
   )
 
   # Artma methods
@@ -30,7 +27,7 @@ test <- function() {
       "data.na_handling" = "stop",
       "data.config_setup" = "auto",
       "data.colnames.obs_id" = NA,
-      "data.colnames.study" = "my-custom-study-column-name",
+      "data.colnames.study" = "study",
       "data.colnames.study_id" = NA,
       "data.colnames.effect" = "effect",
       "data.colnames.se" = "se",
