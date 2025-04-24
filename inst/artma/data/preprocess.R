@@ -1,8 +1,44 @@
-#' Preprocess the raw excel data:
-#' - Adjust the source data dimensions
-#' - Transform ALL columns into the correct data type.
-#'
-#' Check column validity, add winsorized statistics (Effect, SE, t-stat)
+standardize_column_names <- function(df, schema) {
+  map <- getOption("data.colnames")
+
+  # # canonical schema -------------------------------------------------------
+  # schema <- list(
+  #   required = c("obs_id", "study_id", "study_name",
+  #                "effect", "se", "n_obs"),
+  #   optional = c("t_stat", "study_size", "reg_df", "precision")
+  # )
+
+  # `%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
+
+
+  # 2a ─ check required elements are supplied
+  miss_req <- setdiff(schema$required, names(map))
+  if (length(miss_req)) {
+    abort(paste(
+      "Missing mapping for required columns:",
+      paste(miss_req, collapse = ", ")
+    ))
+  }
+
+  # 2b ─ check that every mapped raw column exists in `df`
+  absent_raw <- map[!map %in% names(df)]
+  if (length(absent_raw)) {
+    abort(paste(
+      "These columns are absent in the data frame:",
+      paste(absent_raw, collapse = ", ")
+    ))
+  }
+
+  # 2c ─ rename, keeping only columns we care about
+  df_std <- df |> rename(!!!setNames(names(map), map))
+
+  # 2d ─ attach original names for later
+  attr(df_std, "original_names") <- map
+
+  df_std
+}
+
+#' @title Preprocess the raw data
 #' @param input_data *\[data.frame\]* Main data frame
 #' @return *\[data.frame\]* The preprocessed data
 preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
@@ -13,6 +49,9 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
   )
 
   validate(is.data.frame(input_data))
+
+  # Standardize column names
+  input_data <- standardize_column_names(input_data)
 
   config <- get_data_config()
 

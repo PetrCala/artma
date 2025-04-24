@@ -196,3 +196,29 @@ is_char_vector_or_empty <- function(x, throw_error = FALSE) {
   }
   return(is_empty)
 }
+
+#' @title Check if an option path is valid
+#' @description Check if an option path is valid
+#' @param opt_path *\[character\]* The option path to check.
+#' @return *\[logical\]* Whether the option path is valid.
+#' @examples
+#' validate_opt_path("data.colnames") # passes
+#' validate_opt_path("data.colnames.obs_id") # passes
+#' validate_opt_path(c("data.colnames", "data.colnames.obs_id")) # fails
+#' validate_opt_path(NULL) # passes
+#' @export
+validate_opt_path <- function(opt_path) {
+  if (is.null(opt_path)) {
+    return(invisible(NULL))
+  }
+  if (!is.character(opt_path)) {
+    cli::cli_abort("The option path must be a character string.")
+  }
+  if (length(opt_path) != 1) {
+    cli::cli_abort("The option path must be a single character string.")
+  }
+  if (!grepl("^[[:alnum:]_]+(\\.[[:alnum:]_]+)*$", opt_path)) {
+    cli::cli_abort("The option path must be a single word or dot-separated path (e.g. 'data' or 'data.colnames')")
+  }
+  return(invisible(NULL))
+}

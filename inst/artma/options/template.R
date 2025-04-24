@@ -86,6 +86,33 @@ flatten_user_options <- function(user_options, leaf_set, parent = NULL) {
   flat
 }
 
+#' @title Get option definitions
+#' @description Get option definitions from a template file.
+#' @param template_path *\[character\]* Path to the template YAML file.
+#' @param opt_path *\[character\]* The name of the option group to get, separated by dots. Defaults to `NULL`.
+#' @return A list of option definitions.
+get_option_defs <- function(template_path, opt_path = NULL) {
+  box::use(
+    artma / paths[PATHS],
+    artma / libs / validation[assert_options_template_exists, validate_opt_path]
+  )
+
+  validate_opt_path(opt_path)
+
+  template_path <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
+  assert_options_template_exists(template_path)
+
+  raw_template_options <- read_template(template_path)
+  options_def <- flatten_template_options(raw_template_options)
+
+  if (is.null(opt_path)) {
+    return(options_def)
+  }
+
+  options_def[startsWith(vapply(options_def, `[[`, character(1), "name"), opt_path)]
+}
+
+
 #' @title Print options help text
 #' @description Print options help text
 #' @param help *\[character\]* The help text to print
@@ -333,6 +360,7 @@ box::export(
   collect_leaf_paths,
   flatten_template_options,
   flatten_user_options,
+  get_option_defs,
   parse_options_from_template,
   read_template
 )
