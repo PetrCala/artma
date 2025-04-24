@@ -19,6 +19,7 @@ utils::globalVariables(c(
   "flat_to_nested",
   "flatten_template_options",
   "flatten_user_options",
+  "get_config_values",
   "get_data_config",
   "get_expected_type",
   "index",
