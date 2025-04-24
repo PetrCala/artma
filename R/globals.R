@@ -30,6 +30,8 @@ utils::globalVariables(c(
   "paths",
   "pluralize",
   "prepare_data",
+  "preprocess_data",
+  "read_data",
   "read_template",
   "remove_options_with_prefix",
   "string",

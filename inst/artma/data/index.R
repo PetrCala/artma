@@ -1,5 +1,6 @@
 box::use(
-  artma / data / read[read_data]
+  artma / data / read[read_data],
+  artma / data / preprocess[preprocess_data]
 )
 
 #' @title Prepare data
@@ -9,7 +10,7 @@ prepare_data <- function() {
   cli::cli_inform("Preparing data for analysis.")
 
   df <- read_data()
-  # df <- preprocess_data(df)
+  df <- preprocess_data(df)
   # df <- clean_data(df)
   # validate_data(df)
   # create_artifacts(df)
@@ -18,5 +19,6 @@ prepare_data <- function() {
 
 box::export(
   prepare_data,
+  preprocess_data,
   read_data
 )
