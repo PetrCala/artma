@@ -88,10 +88,10 @@ flatten_user_options <- function(user_options, leaf_set, parent = NULL) {
 
 #' @title Get option definitions
 #' @description Get option definitions from a template file.
-#' @param template_path *\[character\]* Path to the template YAML file.
-#' @param opt_path *\[character\]* The name of the option group to get, separated by dots. Defaults to `NULL`.
+#' @param template_path *\[character, optional\]* Path to the template YAML file. Defaults to `NULL`.
+#' @param opt_path *\[character, optional\]* The name of the option group to get, separated by dots. Defaults to `NULL`.
 #' @return A list of option definitions.
-get_option_defs <- function(template_path, opt_path = NULL) {
+get_option_defs <- function(template_path = NULL, opt_path = NULL) {
   box::use(
     artma / paths[PATHS],
     artma / libs / validation[assert_options_template_exists, validate_opt_path]

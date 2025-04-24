@@ -6,10 +6,18 @@ assign_na_col <- function(df, colname) {
 
 #' @title Get required columns
 #' @description Get a vector of columns required by the analysis to exist in the data frame.
+#' @return *\[character\]* A vector of column names.
 get_required_columns <- function() {
-  box::use(
-    artma / options / template[read_template]
-  )
+  box::use(artma / options / template[get_option_defs])
+  `%>%` <- stringr::`%>%` # nolint: object_name_linter
+
+  opt_path <- "data.colnames"
+  required_colnames <- get_option_defs(opt_path = opt_path) %>%
+    purrr::keep(~ !isTRUE(.x$allow_na)) %>%
+    purrr::map_chr("name") %>%
+    stringr::str_remove(paste0("^", opt_path, "\\."))
+
+  required_colnames
 }
 
 #' Get the number of studies in an analysis data frame.
@@ -107,5 +115,6 @@ box::export(
   determine_df_type,
   determine_vector_type,
   get_number_of_studies,
+  get_required_columns,
   raise_invalid_data_type_error
 )

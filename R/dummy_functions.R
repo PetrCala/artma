@@ -14,4 +14,7 @@
 #' @keywords internal
 .dummy_use_metafor <- function() metafor::rma(yi = 1:10, vi = 1:10)
 
+#' @keywords internal
+.dummy_use_purrr <- function() purrr::map_chr(1:10, ~.x)
+
 # nolint end: box_usage_linter, unused_declared_object_linter.
