@@ -34,7 +34,7 @@ test <- function() {
       "data.colnames.t_stat" = NA,
       "data.colnames.n_obs" = "n_obs",
       "data.colnames.study_size" = NA,
-      "data.colnames.reg_df" = NA,
+      "data.colnames.reg_dof" = NA,
       "data.colnames.precision" = NA
     ),
     should_overwrite = TRUE,
