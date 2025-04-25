@@ -47,6 +47,7 @@ utils::globalVariables(c(
   "submit_cran",
   "template",
   "trim_quotes",
+  "t_stat",
   "utils",
   "validate",
   "validate_opt_path",
