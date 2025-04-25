@@ -126,6 +126,7 @@ calc:
         {cli::symbol$bullet} {.strong stop}: Abort if any zero standard errors are found
         {cli::symbol$bullet} {.strong warn}: Warn if any zero standard errors are found
         {cli::symbol$bullet} {.strong ignore}: Ignore zero standard errors
+
 temp:
   # A set of options that are only set at runtime but never stored in the options file.
   file_name:
