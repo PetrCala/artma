@@ -10,6 +10,7 @@
 #' @export
 fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL, drop_negative = NULL, drop_zero = NULL) {
   box::use(dof_calc = artma / calc / dof)
+  verbose <- getOption("artma.verbose", 3)
 
   pcc <- df$effect
   t_values <- df$t_value
@@ -28,13 +29,18 @@ fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL,
     t_value = t_values[fillable_rows],
     pcc = pcc[fillable_rows]
   )
-  cli::cli_inform("Filled {sum(fillable_rows)} missing degrees of freedom.")
+
+  if (verbose >= 3) {
+    cli::cli_inform("Filled {sum(fillable_rows)} missing degrees of freedom.")
+  }
 
   #' A helper function to drop rows based on a condition
   drop_rows <- function(condition, msg) {
     n_rows_to_drop <- sum(condition)
     if (n_rows_to_drop > 0) {
-      cli::cli_inform("Dropping {n_rows_to_drop} {msg}")
+      if (verbose >= 3) {
+        cli::cli_inform("Dropping {n_rows_to_drop} {msg}")
+      }
       return(df[!condition, ])
     }
     return(df)

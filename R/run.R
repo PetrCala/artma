@@ -40,16 +40,20 @@ invoke_runtime_methods <- function(methods, df, ...) {
     ))
   }
 
-  cli::cli_h3("Running the main {.emph {CONST$PACKAGE_NAME}} function")
-  cli::cli_inform(c(
-    "i" = "Invoking {length(methods)} {pluralize('method', length(methods))} in total."
-  ))
+  if (getOption("artma.verbose", 3) >= 3) {
+    cli::cli_h3("Running the main {.emph {CONST$PACKAGE_NAME}} function")
+    cli::cli_inform(c(
+      "i" = "Invoking {length(methods)} {pluralize('method', length(methods))} in total."
+    ))
+  }
 
   results <- list()
   for (i in seq_along(supported_methods)) {
     method_name <- methods[i]
     if (method_name %in% methods) {
-      cli::cli_inform("{cli::symbol$bullet} Running the {.code {method_name}} method…")
+      if (getOption("artma.verbose", 3) >= 3) {
+        cli::cli_inform("{cli::symbol$bullet} Running the {.code {method_name}} method…")
+      }
       results[[method_name]] <- RUNTIME_METHOD_MODULES[[method_name]]$run(df = df, ...)
     }
   }
@@ -72,7 +76,9 @@ run <- function(
 
     df <- prepare_data()
     results <- invoke_runtime_methods(methods = methods, df = df)
-    cli::cli_alert_success("Done.")
+    if (getOption("artma.verbose", 3) >= 3) {
+      cli::cli_alert_success("Done.")
+    }
   }
 
   runtime_setup( # nolint: box_usage_linter. # Imported on a package-level

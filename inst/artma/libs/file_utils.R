@@ -16,7 +16,9 @@ ensure_folder_existence <- function(folder_name, require_existence = FALSE) {
         class = "folder_not_found"
       )
     }
-    cli::cli_inform("Creating folder {.path {folder_name}}.")
+    if (getOption("artma.verbose", 3) >= 4) {
+      cli::cli_inform("Creating folder {.path {folder_name}}.")
+    }
     dir.create(folder_name, recursive = TRUE)
   }
 }
@@ -41,7 +43,9 @@ validate_files <- function(files) {
       )
     }
   }
-  cli::cli_inform("All necessary files located successfully.")
+  if (getOption("artma.verbose", 3) >= 4) {
+    cli::cli_inform("All necessary files located successfully.")
+  }
 }
 
 

@@ -20,6 +20,8 @@ methods.list <- function() {
 
   RUNTIME_METHOD_MODULES <- get_runtime_method_modules()
 
-  cli::cli_h1("{.file {CONST$PACKAGE_NAME}} ({packageVersion(CONST$PACKAGE_NAME)}) runtime methods:")
-  cli::cli_ul(names(RUNTIME_METHOD_MODULES))
+  if (getOption("artma.verbose", 3) >= 2) {
+    cli::cli_h1("{.file {CONST$PACKAGE_NAME}} ({packageVersion(CONST$PACKAGE_NAME)}) runtime methods:")
+    cli::cli_ul(names(RUNTIME_METHOD_MODULES))
+  }
 }

@@ -14,8 +14,8 @@ run <- function(df) {
   )
 
   config <- get_data_config()
-  opt <- get_option_group("methods.variable_summary_stats")
-  verbose <- getOption("artma.verbose")
+  opt <- get_option_group("artma.methods.variable_summary_stats")
+  verbose <- getOption("artma.verbose", 3)
 
   variable_stat_names <- CONST$VARIABLE_SUMMARY_STATS$NAMES
   desired_vars <- names(config)[vapply(config, function(x) isTRUE(x$variable_summary), logical(1))]
