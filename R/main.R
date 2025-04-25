@@ -10,7 +10,9 @@ main <- function(
     FUN = NULL) {
   if (is.null(FUN)) {
     FUN <- function() {
-      cli::cli_inform("{.emph artma} main function")
+      if (getOption("artma.verbose", 3) >= 2) {
+        cli::cli_inform("{.emph artma} main function")
+      }
     }
   }
 

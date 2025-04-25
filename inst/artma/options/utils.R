@@ -31,10 +31,14 @@ remove_options_with_prefix <- function(prefix) {
   opts <- options()
   opts_to_remove <- names(opts)[startsWith(names(opts), prefix)]
 
-  cli::cli_inform("Clearing the following options from the options namespace: {.emph {opts_to_remove}}")
+  if (getOption("artma.verbose", 3) >= 4) {
+    cli::cli_inform("Clearing the following options from the options namespace: {.emph {opts_to_remove}}")
+  }
 
   if (length(opts_to_remove) == 0) {
-    cli::cli_alert_info("No options found with the prefix: {prefix}")
+    if (getOption("artma.verbose", 3) >= 3) {
+      cli::cli_alert_info("No options found with the prefix: {prefix}")
+    }
     return(invisible(NULL))
   }
 
@@ -94,7 +98,9 @@ parse_template_enum_value <- function(opt_type) {
 parse_options_file_name <- function(input_string) {
   str_out <- rlang::duplicate(input_string)
 
-  cli::cli_inform("Parsing the following string into a user options file name: {.file {input_string}}")
+  if (getOption("artma.verbose", 3) >= 4) {
+    cli::cli_inform("Parsing the following string into a user options file name: {.file {input_string}}")
+  }
 
   tryCatch(
     {
@@ -106,12 +112,12 @@ parse_options_file_name <- function(input_string) {
       str_out <- stringr::str_trim(str_out, side = "both")
     },
     error = function(e) {
-      cli::cli_abort(cli::format_inline("There was an error parsing the following into a valid user options file name: {.emph {input_string}}"))
+      cli::cli_abort("There was an error parsing the following into a valid user options file name: {.emph {input_string}}")
     }
   )
 
   if (!grepl(".yaml$|.yml$", str_out)) {
-    cli::cli_abort(cli::format_inline("Please provide the name of the options file with .yaml suffix. Got: {.emph {str_out}}."))
+    cli::cli_abort("Please provide the name of the options file with .yaml suffix. Got: {.emph {str_out}}.")
   }
 
   str_out
@@ -127,7 +133,7 @@ get_expected_type <- function(opt_def) {
   if (!is.null(opt_def$action) && opt_def$action == "store_true") {
     return("logical")
   }
-  cli::cli_abort(glue::glue("Invalid template definition for the option '{opt_def}'. Could not determine the expected value type."))
+  cli::cli_abort("Invalid template definition for the option '{opt_def}'. Could not determine the expected value type.")
 }
 
 #' @title Validate option type

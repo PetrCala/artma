@@ -29,7 +29,9 @@ parse_df_into_data_config <- function(df) {
         recognized_data_types = CONST$DATA_CONFIG$DATA_TYPES
       ),
       error = function(e) {
-        cli::cli_alert_warning("Failed to determine the data type of the column {.val {col}}.")
+        if (getOption("artma.verbose", 3) >= 2) {
+          cli::cli_alert_warning("Failed to determine the data type of the column {.val {col}}.")
+        }
         "unknown"
       }
     )

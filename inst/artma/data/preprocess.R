@@ -10,7 +10,9 @@ box::use(
 #' @return *\[data.frame\]* The data frame with the redundant columns removed
 #' @keywords internal
 remove_redundant_columns <- function(df) {
-  cli::cli_inform("Removing redundant columns…")
+  if (getOption("artma.verbose", 3) >= 4) {
+    cli::cli_inform("Removing redundant columns…")
+  }
   expected_col_n <- length(get_data_config())
   while (ncol(df) > expected_col_n) {
     col_to_remove <- colnames(df)[ncol(df)]
@@ -28,11 +30,14 @@ remove_redundant_columns <- function(df) {
 #' @return *\[data.frame\]* The data frame with the redundant columns removed
 #' @keywords internal
 verify_variable_names <- function(df) {
+  if (getOption("artma.verbose", 3) >= 4) {
+    cli::cli_inform("Checking variable names…")
+  }
+
   varnames <- colnames(df)
   config <- get_data_config()
   expected_varnames <- get_config_values(config, "var_name")
 
-  cli::cli_inform("Checking variable names…")
   if (!setequal(varnames, expected_varnames)) {
     missing_from_var_list <- setdiff(varnames, expected_varnames)
     missing_from_data <- setdiff(expected_varnames, varnames)
@@ -52,7 +57,10 @@ verify_variable_names <- function(df) {
 #' @return *\[data.frame\]* The data frame with the redundant columns removed
 #' @keywords internal
 verify_variable_order <- function(df) {
-  cli::cli_inform("Checking variable name order…")
+  if (getOption("artma.verbose", 3) >= 4) {
+    cli::cli_inform("Checking variable name order…")
+  }
+
   varnames <- colnames(df)
   config <- get_data_config()
   expected_varnames <- get_config_values(config, "var_name")
@@ -74,7 +82,10 @@ verify_variable_order <- function(df) {
 #' @return *\[data.frame\]* The data frame with the empty rows removed
 #' @keywords internal
 remove_empty_rows <- function(df) {
-  cli::cli_inform("Removing empty rows…")
+  if (getOption("artma.verbose", 3) >= 4) {
+    cli::cli_inform("Removing empty rows…")
+  }
+
   required_colnames <- get_required_colnames()
   na_rows <- which(purrr::map_lgl(seq_len(nrow(df)), ~ all(is.na(df[., required_colnames, drop = FALSE]))))
   if (length(na_rows)) {
@@ -90,7 +101,10 @@ remove_empty_rows <- function(df) {
 #' @return *\[data.frame\]* The data frame with the redundant columns removed
 #' @keywords internal
 check_required_non_empty <- function(df) {
-  cli::cli_inform("Checking that required columns contain no empty cells…")
+  if (getOption("artma.verbose", 3) >= 4) {
+    cli::cli_inform("Checking that required columns contain no empty cells…")
+  }
+
   required_colnames <- get_required_colnames()
 
   invalid_cols <- which(vapply(required_colnames, function(x) any(is.na(df[[x]])), logical(1)))
@@ -113,7 +127,10 @@ check_required_non_empty <- function(df) {
 #' @return *\[data.frame\]* The data frame with the correct data types enforced
 #' @keywords internal
 enforce_data_types <- function(df) {
-  cli::cli_inform("Enforcing correct data types…")
+  if (getOption("artma.verbose", 3) >= 4) {
+    cli::cli_inform("Enforcing correct data types…")
+  }
+
   config <- get_data_config()
   for (col_name in make.names(colnames(df))) {
     dtype <- config[[col_name]]$data_type
@@ -134,7 +151,9 @@ enforce_data_types <- function(df) {
 #' @return *\[data.frame\]* The data frame with the invalid values enforced
 #' @keywords internal
 enforce_correct_values <- function(df) {
-  cli::cli_inform("Checking for invalid values…")
+  if (getOption("artma.verbose", 3) >= 4) {
+    cli::cli_inform("Checking for invalid values…")
+  }
 
   box::use(artma / libs / validation[assert])
 
@@ -146,7 +165,9 @@ enforce_correct_values <- function(df) {
     assert(length(zero_se_rows) == 0, "The 'se' column contains zero values")
   } else if (se_zero_handling == "warn") {
     if (length(zero_se_rows) > 0) {
-      cli::cli_warn("The 'se' column contains zero values in {length(zero_se_rows)} rows")
+      if (getOption("artma.verbose", 3) >= 3) {
+        cli::cli_warn("The 'se' column contains zero values in {length(zero_se_rows)} rows")
+      }
     }
   }
 

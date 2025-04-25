@@ -30,12 +30,15 @@ re <- function(df, effect = NULL, se = NULL, method = "DL") {
   if (is.null(effect)) effect <- df$effect
   if (is.null(se)) se <- df$se
   validate(length(effect) == nrow(df), length(se) == nrow(df))
+  verbose <- getOption("artma.verbose", 3)
 
   result <- tryCatch(
     {
       meta <- unique(df$meta)
       if (length(meta) != 1) {
-        cli::cli_inform("Could not calculate RE for multiple meta-analyses")
+        if (verbose >= 2) {
+          cli::cli_alert_warning("Could not calculate RE for multiple meta-analyses")
+        }
         return(list(est = NA, t_value = NA))
       }
 
@@ -52,7 +55,9 @@ re <- function(df, effect = NULL, se = NULL, method = "DL") {
       return(list(est = re_est, t_value = re_t_value))
     },
     error = function(e) {
-      cli::cli_alert_danger(paste("Could not fit the RE model for meta-analysis", meta, ": ", e))
+      if (verbose >= 2) {
+        cli::cli_alert_warning("Could not fit the RE model for meta-analysis {.emph {meta}}: {e}")
+      }
       return(list(est = NA, t_value = NA))
     }
   )
@@ -73,6 +78,7 @@ uwls <- function(df, effect = NULL, se = NULL) {
   if (is.null(effect)) effect <- df$effect
   if (is.null(se)) se <- df$se
   validate(length(effect) == nrow(df), length(se) == nrow(df))
+  verbose <- getOption("artma.verbose", 3)
 
   meta <- unique(df$meta)
   validate(length(meta) == 1)
@@ -89,7 +95,9 @@ uwls <- function(df, effect = NULL, se = NULL) {
       return(list(est = est, t_value = t_value))
     },
     error = function(e) {
-      cli::cli_alert_danger(paste("Could not fit the UWLS model for meta-analysis", meta, ": ", e))
+      if (verbose >= 2) {
+        cli::cli_alert_warning("Could not fit the UWLS model for meta-analysis {.emph {meta}}: {e}")
+      }
       return(list(est = NA, t_value = NA))
     }
   )
@@ -130,17 +138,22 @@ uwls3 <- function(df) {
 hsma <- function(df) {
   meta <- unique(df$meta)
   assert(sum(is.na(df$effect)) == 0, paste("Missing effect values in the PCC data frame for meta-analysis", meta))
+  verbose <- getOption("artma.verbose", 3)
 
 
   # Safety check
   missing_dof <- sum(is.na(df$dof))
   if (missing_dof > 0) {
-    cli::cli_inform(paste("Dropping", missing_dof, "missing degrees of freedom for meta-analysis", meta))
+    if (verbose >= 3) {
+      cli::cli_inform("Dropping {missing_dof} missing degrees of freedom for meta-analysis {.emph {meta}}")
+    }
     df <- df[!is.na(df$dof), ]
   }
 
   if (nrow(df) == 0) {
-    cli::cli_alert_warning(paste("No data to calculate HSMA for meta-analysis", meta))
+    if (verbose >= 2) {
+      cli::cli_alert_warning("No data to calculate HSMA for meta-analysis {.emph {meta}}")
+    }
     return(list(est = NA, t_value = NA))
   }
 
@@ -161,7 +174,7 @@ hsma <- function(df) {
 fishers_z <- function(df, method = "ML") {
   meta <- unique(df$meta)
   n_ <- df$dof
-
+  verbose <- getOption("artma.verbose", 3)
 
   # Sometimes the log produces NaNs - handled below
   fishers_z_ <- suppressWarnings(0.5 * log((1 + df$effect) / (1 - df$effect)))
@@ -171,7 +184,9 @@ fishers_z <- function(df, method = "ML") {
   re_data <- re_data[!is.na(fishers_z_) & !is.na(se_), ] # Drop NA rows
 
   if (nrow(re_data) == 0) {
-    cli::cli_alert_warning(paste("No data to calculate Fisher's z for meta-analysis", meta))
+    if (verbose >= 2) {
+      cli::cli_alert_warning("No data to calculate Fisher's z for meta-analysis {.emph {meta}}")
+    }
     return(list(est = NA, t_value = NA))
   }
 
@@ -186,14 +201,17 @@ fishers_z <- function(df, method = "ML") {
 
 #' Calculate various summary statistics associated with the PCC data frame
 #' @export
-pcc_sum_stats <- function(df, log_results = TRUE) {
+pcc_sum_stats <- function(df) {
   meta <- unique(df$meta)
   obs_ <- nrow(df)
   ss_ <- df$sample_size # The sample size to calculate the statistics from
+  verbose <- getOption("artma.verbose", 3)
 
   missing_ss <- is.na(ss_)
   if (sum(missing_ss) > 0) {
-    cli::cli_inform(paste("Missing sample sizes when calculating PCC summary statistics for meta-analysis", meta, "Filling these using degrees of freedom."))
+    if (verbose >= 3) {
+      cli::cli_inform("Missing sample sizes when calculating PCC summary statistics for meta-analysis {.emph {meta}}. Filling these using degrees of freedom.")
+    }
     ss_[is.na(ss_)] <- df$dof[is.na(ss_)] # Replace NA with DoF
   }
   assert(sum(is.na(ss_)) == 0, "Missing sample sizes in the PCC data frame")
@@ -220,7 +238,7 @@ pcc_sum_stats <- function(df, log_results = TRUE) {
     ss_lt_3200 = get_ss_lt(3200)
   )
 
-  if (log_results) {
+  if (verbose >= 3) {
     cli::cli_inform("PCC analysis summary statistics:")
     cli::cli_inform(paste("Number of PCC observations:", res$n_observations))
     cli::cli_inform(paste("Average effect:", res$avg_effect))

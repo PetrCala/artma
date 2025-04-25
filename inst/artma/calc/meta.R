@@ -12,7 +12,9 @@ t_stat <- function(effect, se) {
 
   zero_se_rows <- which(se == 0)
   if (length(zero_se_rows) > 0) {
-    cli::cli_alert_warning("Introducing infinite t-values for {length(zero_se_rows)} rows with zero standard errors")
+    if (getOption("artma.verbose", 3) >= 2) {
+      cli::cli_alert_warning("Introducing infinite t-values for {length(zero_se_rows)} rows with zero standard errors")
+    }
     t_values[zero_se_rows] <- Inf
   }
 
@@ -34,11 +36,14 @@ reg_dof <- function(n_obs, n_predictors) n_obs - n_predictors
 #' @param reg_dof *\[numeric, optional\]* The degrees of freedom for the regression. Has to be provided if `se` is not provided.
 #' @return *\[numeric\]* The precision of the effect estimates
 precision <- function(se = NULL, reg_dof = NULL) {
+  verbose <- getOption("artma.verbose", 3)
   precision_type <- getOption("artma.calc.precision_type")
   if (precision_type == "1/SE") {
     zero_se_rows <- which(se == 0)
     if (length(zero_se_rows) > 0) {
-      cli::cli_alert_warning("Introducing infinite precision values for {length(zero_se_rows)} rows with zero standard errors")
+      if (verbose >= 2) {
+        cli::cli_alert_warning("Introducing infinite precision values for {length(zero_se_rows)} rows with zero standard errors")
+      }
     }
     return(1 / se)
   }

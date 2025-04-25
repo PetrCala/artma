@@ -49,7 +49,9 @@ fix_data_config <- function(
   current_config <- getOption("artma.data.config")
 
   if (data_config_is_valid(current_config)) {
-    cli::cli_alert_success("The data config is valid.")
+    if (getOption("artma.verbose", 3) >= 3) {
+      cli::cli_alert_success("The data config is valid.")
+    }
     return(invisible(NULL))
   }
 
@@ -57,7 +59,9 @@ fix_data_config <- function(
     cli::cli_abort("The data config has not been created yet.")
   }
 
-  cli::cli_inform("Creating a new data config…")
+  if (getOption("artma.verbose", 3) >= 4) {
+    cli::cli_inform("Creating a new data config…")
+  }
 
   box::use(
     artma / const[CONST],
@@ -96,7 +100,10 @@ fix_data_config <- function(
   fixed_config <- suppressMessages(update_data_config(changes = config))
   assert(data_config_is_valid(fixed_config), "The data config could not be fixed.")
 
-  cli::cli_alert_success("The data config has been fixed.")
+  if (getOption("artma.verbose", 3) >= 3) {
+    cli::cli_alert_success("The data config has been fixed.")
+  }
+
   return(fixed_config)
 }
 

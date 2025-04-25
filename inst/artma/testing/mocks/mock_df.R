@@ -76,7 +76,9 @@ create_mock_df <- function(
       "File path must be a valid path"
     )
 
-    cli::cli_inform("Creating mock data file: {file_path}")
+    if (getOption("artma.verbose", 3) >= 4) {
+      cli::cli_inform("Creating mock data file: {file_path}")
+    }
     utils::write.csv(data_frame, file_path, row.names = FALSE)
   }
 
