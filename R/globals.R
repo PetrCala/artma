@@ -28,6 +28,7 @@ utils::globalVariables(c(
   "get_option_defs",
   "get_required_colnames",
   "get_standardized_colnames",
+  "get_usr_colname",
   "index",
   "libs",
   "load_test_modules",

@@ -24,6 +24,23 @@ get_required_colnames <- function() {
   get_standardized_colnames(filter_fn = ~ !isTRUE(.x$allow_na))
 }
 
+#' @title Get a column name
+#' @description Get a user defined column name from the options namespace.
+#' @param standardized_colname [str] The standardized column name.
+#' @return [str] The column name.
+get_usr_colname <- function(standardized_colname) {
+  box::use(artma / libs / validation[assert])
+  assert(standardized_colname %in% get_standardized_colnames())
+
+  colname <- getOption(paste0("artma.data.colnames.", standardized_colname))
+
+  # Default to the standardized name if not defined
+  if (is.null(colname) || is.na(colname)) colname <- standardized_colname
+
+  colname
+}
+
+
 #' Get the number of studies in an analysis data frame.
 #'
 #' @param df *\[data.frame\]* The analysis data frame.
@@ -118,6 +135,7 @@ box::export(
   assign_na_col,
   determine_df_type,
   determine_vector_type,
+  get_usr_colname,
   get_number_of_studies,
   get_required_colnames,
   get_standardized_colnames,
