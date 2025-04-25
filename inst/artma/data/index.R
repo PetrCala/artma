@@ -13,8 +13,6 @@ prepare_data <- function() {
 
   df <- read_data()
   df <- preprocess_data(df)
-  # df <- clean_data(df)
-  # validate_data(df)
   df <- compute_optional_columns(df)
   # create_artifacts(df)
   df
