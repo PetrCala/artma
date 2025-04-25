@@ -9,11 +9,13 @@
 run <- function(df) {
   box::use(
     artma / const[CONST],
-    artma / data_config / read[get_data_config]
+    artma / data_config / read[get_data_config],
+    artma / options / index[get_option_group]
   )
 
   config <- get_data_config()
-  use_verbose_names <- getOption("artma.methods.variable_summary_stats.use_verbose_names")
+  opt <- get_option_group("methods.variable_summary_stats")
+  verbose <- getOption("artma.verbose")
 
   variable_stat_names <- CONST$VARIABLE_SUMMARY_STATS$NAMES
   desired_vars <- names(config)[vapply(config, function(x) isTRUE(x$variable_summary), logical(1))]
@@ -23,7 +25,9 @@ run <- function(df) {
   colnames(df_out) <- variable_stat_names
 
   if (length(desired_vars) == 0) {
-    cli::cli_alert_warning("No variables selected to compute summary statistics for.")
+    if (verbose >= 2) {
+      cli::cli_alert_warning("No variables selected to compute summary statistics for.")
+    }
     return(list(df_out, c()))
   }
 
@@ -32,7 +36,7 @@ run <- function(df) {
   for (var_name in desired_vars) {
     var_data <- as.vector(unlist(subset(df, select = var_name))) # Roundabout way, because types
     var_class <- config[[var_name]]$data_type
-    var_name_display <- if (use_verbose_names) config[[var_name]]$var_name_verbose else var_name
+    var_name_display <- if (opt$use_verbose_names) config[[var_name]]$var_name_verbose else var_name
     row_idx <- match(var_name, desired_vars) # Append data to this row
 
     # Missing all data
@@ -42,11 +46,11 @@ run <- function(df) {
       next
     }
 
-    var_mean <- round(mean(var_data, na.rm = TRUE), 3)
-    var_median <- round(median(var_data, na.rm = TRUE), 3)
-    var_sd <- round(sd(var_data, na.rm = TRUE), 3)
-    var_min <- round(min(var_data, na.rm = TRUE), 3)
-    var_max <- round(max(var_data, na.rm = TRUE), 3)
+    var_mean <- round(base::mean(var_data, na.rm = TRUE), 3)
+    var_median <- round(stats::median(var_data, na.rm = TRUE), 3)
+    var_sd <- round(stats::sd(var_data, na.rm = TRUE), 3)
+    var_min <- round(base::min(var_data, na.rm = TRUE), 3)
+    var_max <- round(base::max(var_data, na.rm = TRUE), 3)
     var_obs <- sum(!is.na(var_data) & var_data != 0)
     var_missing <- round((sum(is.na(var_data)) / length(var_data)) * 100, 1)
     var_missing_verbose <- paste0(as.character(var_missing), "%")
@@ -63,6 +67,9 @@ run <- function(df) {
       var_missing_verbose
     )
     df_out[row_idx, ] <- row_data
+  }
+  if (verbose >= 3) {
+    cli::cat_print(df_out)
   }
   list(df_out, missing_data_vars)
 }
