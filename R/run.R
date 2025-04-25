@@ -26,7 +26,7 @@ invoke_runtime_methods <- function(methods, df, ...) {
       multiple = TRUE
     )
     if (rlang::is_empty(methods)) {
-      cli::cli_abort("No runtime methods were selected. Aborting…")
+      cli::cli_abort("No runtime methods were selected. Aborting...")
     }
   }
 
@@ -52,7 +52,7 @@ invoke_runtime_methods <- function(methods, df, ...) {
     method_name <- methods[i]
     if (method_name %in% methods) {
       if (getOption("artma.verbose", 3) >= 3) {
-        cli::cli_inform("{cli::symbol$bullet} Running the {.code {method_name}} method…")
+        cli::cli_inform("{cli::symbol$bullet} Running the {.code {method_name}} method...")
       }
       results[[method_name]] <- RUNTIME_METHOD_MODULES[[method_name]]$run(df = df, ...)
     }
