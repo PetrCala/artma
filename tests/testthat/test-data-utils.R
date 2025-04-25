@@ -1,8 +1,7 @@
 test_that("standardize_column_names handles missing required columns in options correctly", {
   box::use(
     artma / libs / validation[assert],
-    artma / data / preprocess[standardize_column_names],
-    artma / data / utils[get_required_colnames]
+    artma / data / utils[get_required_colnames, standardize_column_names]
   )
 
   mock_colnames <- MOCKS$create_mock_options_colnames()
@@ -54,8 +53,7 @@ test_that("standardize_column_names handles missing required columns in options 
 
 test_that("standardize_column_names handles missing required columns in data correctly", {
   box::use(
-    artma / data / preprocess[standardize_column_names],
-    artma / data / utils[get_required_colnames]
+    artma / data / utils[get_required_colnames, standardize_column_names]
   )
 
   required_colnames <- get_required_colnames()
@@ -93,7 +91,7 @@ test_that("standardize_column_names handles missing required columns in data cor
 })
 
 test_that("standardize_column_names standardizes non-standard column names", {
-  box::use(artma / data / preprocess[standardize_column_names])
+  box::use(artma / data / utils[standardize_column_names])
 
   non_standard_name <- make.names("non-standard-study-column-name")
   mock_colnames <- MOCKS$create_mock_options_colnames(
@@ -112,7 +110,7 @@ test_that("standardize_column_names standardizes non-standard column names", {
 })
 
 test_that("standardize_column_names passes when all required columns are present", {
-  box::use(artma / data / preprocess[standardize_column_names])
+  box::use(artma / data / utils[standardize_column_names])
 
   mock_colnames <- MOCKS$create_mock_options_colnames()
   FIXTURES$with_custom_colnames(mock_colnames)
