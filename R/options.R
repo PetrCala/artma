@@ -56,7 +56,7 @@ options.validate <- function(
   assert(file.exists(options_path), glue::glue("Options file '{options_path}' does not exist."))
 
   if (verbose) {
-    cli::cli_inform("Validating the user options file {.file {options_file_name}}...")
+    cli::cli_inform("Validating the user options file {.file {options_file_name}}…")
   }
 
   # Load the YAML files
@@ -318,7 +318,7 @@ options.load <- function(
 
     if (rlang::is_empty(existing_options_files)) {
       if (!create_options_if_null) {
-        cli::cli_abort("No user options file to load was provided. Exiting...")
+        cli::cli_abort("No user options file to load was provided. Exiting…")
       }
       can_proceed <- utils::select.list(
         title = "We have not found any option files to load for you. Would you like to create one now?",
@@ -333,7 +333,7 @@ options.load <- function(
       )
     } else {
       if (!interactive()) {
-        cli::cli_abort("No user options file to load was provided. Exiting...")
+        cli::cli_abort("No user options file to load was provided. Exiting…")
       }
 
       action <- utils::select.list(
@@ -352,10 +352,10 @@ options.load <- function(
           choices = existing_options_files
         )
         if (rlang::is_empty(options_file_name)) {
-          cli::cli_abort("No user options file was selected. Aborting...")
+          cli::cli_abort("No user options file was selected. Aborting…")
         }
       } else {
-        cli::cli_abort("No action was chosen for loading user options. Exiting...")
+        cli::cli_abort("No action was chosen for loading user options. Exiting…")
       }
     }
   }
@@ -699,7 +699,7 @@ options.fix <- function(
     cli::cli_alert_info("Running in non-interactive mode. The proposed changes will be applied automatically.")
   }
 
-  cli::cli_inform("Fixing the user options file {.path {options_file_name}}...")
+  cli::cli_inform("Fixing the user options file {.path {options_file_name}}…")
 
   options.create(
     options_file_name = options_file_name,
@@ -778,7 +778,7 @@ options.create <- function(
     file_exists_msg <- cli::format_inline("An options file {.path {options_file_name}} already exists.")
 
     if (isTRUE(should_overwrite)) {
-      cli::cli_inform("{file_exists_msg} Overwriting this file...")
+      cli::cli_inform("{file_exists_msg} Overwriting this file…")
     } else {
       if (!interactive()) {
         cli::cli_abort("{file_exists_msg} Either allow overwriting or provide a different name.")

@@ -45,7 +45,7 @@ crawl_and_import_modules <- function(dir_path, pattern = "\\.R$") {
     # Calling the module name should now return the module itself
     imported_module <- eval(parse(text = module_name))
     if (!inherits(imported_module, "box$mod")) {
-      cli::cli_abort(glue::glue("Failed to import {module_name} as a box module. Aborting..."))
+      cli::cli_abort(glue::glue("Failed to import {module_name} as a box module. Aborting…"))
     }
     modules[[module_name]] <- imported_module
   }

@@ -48,7 +48,7 @@ ask_for_existing_options_file_name <- function(
 
   user_options_file_names <- options.list(options_dir = options_dir) # nolint: box_usage_linter.
   if (length(user_options_file_names) == 0) {
-    cli::cli_abort("No existing user options files were found. Aborting...")
+    cli::cli_abort("No existing user options files were found. Aborting…")
   }
 
   selected_file_name <- utils::select.list(
@@ -57,7 +57,7 @@ ask_for_existing_options_file_name <- function(
     multiple = multiple
   )
   if (rlang::is_empty(selected_file_name)) {
-    cli::cli_abort("No user options file was selected. Aborting...")
+    cli::cli_abort("No user options file was selected. Aborting…")
   }
   return(selected_file_name)
 }

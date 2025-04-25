@@ -26,7 +26,7 @@ invoke_runtime_methods <- function(methods, df, ...) {
       multiple = TRUE
     )
     if (rlang::is_empty(methods)) {
-      cli::cli_abort("No runtime methods were selected. Aborting...")
+      cli::cli_abort("No runtime methods were selected. Aborting…")
     }
   }
 
@@ -49,7 +49,7 @@ invoke_runtime_methods <- function(methods, df, ...) {
   for (i in seq_along(supported_methods)) {
     method_name <- methods[i]
     if (method_name %in% methods) {
-      cli::cli_inform("{cli::symbol$bullet} Running the {.code {method_name}} method...")
+      cli::cli_inform("{cli::symbol$bullet} Running the {.code {method_name}} method…")
       results[[method_name]] <- RUNTIME_METHOD_MODULES[[method_name]]$run(df = df, ...)
     }
   }

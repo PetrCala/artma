@@ -135,7 +135,7 @@ add_precision_column <- function(df) {
 compute_optional_columns <- function(df) {
   box::use(magrittr[`%>%`])
 
-  cli::cli_inform("Computing and validating optional columns...")
+  cli::cli_inform("Computing and validating optional columns…")
 
   df %>%
     add_obs_id_column() %>%
