@@ -31,7 +31,7 @@ test_that("standardize_column_names handles missing required columns in options 
     ),
     list(
       name = "all missing columns",
-      mock_colnames = list(),
+      mock_colnames = lapply(mock_colnames, function(x) NULL),
       expected_error = "Missing mapping for required columns:"
     ),
     list(
@@ -43,11 +43,9 @@ test_that("standardize_column_names handles missing required columns in options 
 
   for (scenario in scenarios) {
     mock_df <- MOCKS$create_mock_df(colnames_map = scenario$mock_colnames)
+    FIXTURES$with_custom_colnames(scenario$mock_colnames)
     expect_error(
-      standardize_column_names(
-        df = mock_df,
-        map = scenario$mock_colnames
-      ),
+      standardize_column_names(df = mock_df),
       scenario$expected_error,
       info = paste("Scenario:", scenario$name)
     )
@@ -82,11 +80,12 @@ test_that("standardize_column_names handles missing required columns in data cor
 
   for (scenario in scenarios) {
     mock_colnames <- MOCKS$create_mock_options_colnames()
+    FIXTURES$with_custom_colnames(mock_colnames)
     mock_df <- MOCKS$create_mock_df(colnames_map = mock_colnames)
     mock_df <- mock_df[, -which(names(mock_df) %in% scenario$missing_colnames)]
 
     expect_error(
-      standardize_column_names(mock_df, mock_colnames),
+      standardize_column_names(mock_df),
       scenario$expected_error,
       info = paste("Scenario:", scenario$name)
     )
@@ -102,11 +101,12 @@ test_that("standardize_column_names standardizes non-standard column names", {
       "study" = non_standard_name
     )
   )
+  FIXTURES$with_custom_colnames(mock_colnames)
   mock_df <- MOCKS$create_mock_df(colnames_map = mock_colnames)
   expect_true(non_standard_name %in% colnames(mock_df))
   expect_true(!"study" %in% colnames(mock_df))
 
-  standardized_df <- standardize_column_names(mock_df, mock_colnames)
+  standardized_df <- standardize_column_names(mock_df)
   expect_true(!non_standard_name %in% colnames(standardized_df))
   expect_true("study" %in% colnames(standardized_df))
 })
@@ -115,10 +115,11 @@ test_that("standardize_column_names passes when all required columns are present
   box::use(artma / data / preprocess[standardize_column_names])
 
   mock_colnames <- MOCKS$create_mock_options_colnames()
+  FIXTURES$with_custom_colnames(mock_colnames)
   mock_df <- MOCKS$create_mock_df(colnames_map = mock_colnames)
 
   expect_error(
-    standardize_column_names(mock_df, mock_colnames),
+    standardize_column_names(mock_df),
     NA,
     info = "Standardizing column names should pass when all required columns are present"
   )
