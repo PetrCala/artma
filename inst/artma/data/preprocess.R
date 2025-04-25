@@ -217,12 +217,12 @@ enforce_data_types <- function(df) {
 
 #' @title Preprocess data
 #' @description Preprocess the raw data frame.
-#' @param input_data *[data.frame]* Raw data frame to clean.
+#' @param df *[data.frame]* Raw data frame to clean.
 #' @return *[data.frame]* The validated, type‑safe, and trimmed data frame.
-preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
+preprocess_data <- function(df) {
   box::use(magrittr[`%>%`])
 
-  input_data %>%
+  df %>%
     remove_redundant_columns() %>%
     verify_variable_names() %>%
     verify_variable_order() %>%
