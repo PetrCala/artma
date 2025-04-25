@@ -19,7 +19,7 @@ get_data_config <- function(
 
   config <- getOption("artma.data.config")
 
-  config_exists <- !is.na(config) && !is.null(config)
+  config_exists <- is.list(config)
 
   if (isTRUE(config_exists)) {
     if (data_config_is_valid(config)) {

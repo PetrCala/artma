@@ -12,14 +12,11 @@ BugReports: https://github.com/PetrCala/artma/issues
 Depends:
     R (>= 4.0.0)
 Imports:
-    cli,
     glue,
     lifecycle,
     lintr,
     metafor,
-    purrr,
-    rlang,
-    stringr,
+    tidyverse,
     usethis,
     withr,
     yaml
@@ -30,7 +27,6 @@ Suggests:
     devtools,
     fs,
     here,
-    jsonlite,
     knitr,
     languageserver,
     mathjaxr,
@@ -40,9 +36,7 @@ Suggests:
     rex,
     rmarkdown,
     roxygen2,
-    rstudioapi,
-    testthat,
-    tidyverse
+    testthat
 VignetteBuilder: 
     knitr
 Config/testthat/edition: 3
