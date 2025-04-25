@@ -71,7 +71,7 @@ data:
       default: .na
       help: "Column containing the study sizes, i.e. the number of estimates per study"
 
-    reg_df:
+    reg_dof:
       type: "character"
       standardize: true
       allow_na: true

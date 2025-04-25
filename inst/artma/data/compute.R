@@ -109,6 +109,12 @@ add_study_size_column <- function(df) {
   df
 }
 
+# add_reg_dof_column <- function(df) {}
+
+add_precision_column <- function(df) {
+
+}
+
 
 
 #' @title Compute optional columns
