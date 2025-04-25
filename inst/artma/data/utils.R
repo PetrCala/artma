@@ -5,7 +5,7 @@ assign_na_col <- function(df, colname) {
 }
 
 #' @title Get standard column names
-#' @description Get a vector of column names from the data config.
+#' @description Get a vector of column names from the user options template.
 #' @param filter_fn *\[function\]* A function to filter the option definitions.
 #' @return *\[character\]* A vector of column names.
 get_standardized_colnames <- function(filter_fn = function(x) TRUE) {
