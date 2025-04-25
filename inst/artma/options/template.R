@@ -295,19 +295,18 @@ coerce_option_value <- function(val, opt) {
     return(val)
   }
 
-  if (isTRUE(opt$standardize)) {
-    standard_val <- make.names(val)
-    if (standard_val != val) {
-      box::use(artma / const[CONST])
-      cli::cli_alert_warning(
-        "Option {CONST$STYLES$OPTIONS$NAME(opt$name)} does not allow non-standard values. Standardizing from {CONST$STYLES$OPTIONS$VALUE(val)} to {CONST$STYLES$OPTIONS$VALUE(standard_val)}."
-      )
+  enforce_na_allowed <- function(val, opt) {
+    if (is.na(val) && !isTRUE(opt$allow_na)) {
+      cli::cli_abort(glue::glue(
+        "Option '{opt$name}' does not allow NA values."
+      ), call. = FALSE)
     }
-    val <- standard_val
   }
 
   tryCatch(
     {
+      enforce_na_allowed(val, opt)
+
       coerced_val <- switch(opt$type,
         character = as.character(val),
         integer = as.integer(val),
@@ -316,14 +315,22 @@ coerce_option_value <- function(val, opt) {
         list = as.list(val),
         val
       )
+
+      if (isTRUE(opt$standardize) && opt$type == "character") {
+        standard_val <- make.names(coerced_val)
+        if (standard_val != coerced_val && !is.na(coerced_val)) {
+          box::use(artma / const[CONST])
+          cli::cli_alert_warning(
+            "Option {CONST$STYLES$OPTIONS$NAME(opt$name)} does not allow non-standard values. Standardizing from {CONST$STYLES$OPTIONS$VALUE(val)} to {CONST$STYLES$OPTIONS$VALUE(standard_val)}."
+          )
+        }
+        coerced_val <- standard_val
+      }
+
       # In come invalid cases, the coercion will return NA.
       # We re-throw an error and catch it to return the original value.
       # This makes it easier to find the invalid value afterwards.
-      if (is.na(coerced_val) && !isTRUE(opt$allow_na)) {
-        cli::cli_abort(glue::glue(
-          "Option '{opt_name}' does not allow NA values."
-        ), call. = FALSE)
-      }
+      enforce_na_allowed(coerced_val, opt)
       coerced_val
     },
     error = function(e) val # Return the original value if coercion fails
