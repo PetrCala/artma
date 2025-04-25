@@ -6,7 +6,8 @@ read_data <- function(path = NULL) {
   box::use(
     artma / data / utils[
       determine_df_type,
-      raise_invalid_data_type_error
+      raise_invalid_data_type_error,
+      standardize_column_names
     ]
   )
 
@@ -38,11 +39,7 @@ read_data <- function(path = NULL) {
     cli::cli_abort("The data frame read from {.path {path}} has no columns.")
   }
 
-  valid_names <- make.names(names(df))
-  if (!all(valid_names == names(df))) {
-    cli::cli_alert_danger("The column names of the data frame read from {.path {path}} are not syntactically valid. They have been converted to syntactically valid names.")
-    names(df) <- valid_names
-  }
+  df <- standardize_column_names(df)
 
   df
 }

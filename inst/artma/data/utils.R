@@ -24,23 +24,6 @@ get_required_colnames <- function() {
   get_standardized_colnames(filter_fn = ~ !isTRUE(.x$allow_na))
 }
 
-#' @title Get a column name
-#' @description Get a user defined column name from the options namespace.
-#' @param standardized_colname [str] The standardized column name.
-#' @return [str] The column name.
-get_usr_colname <- function(standardized_colname) {
-  box::use(artma / libs / validation[assert])
-  assert(standardized_colname %in% get_standardized_colnames())
-
-  colname <- getOption(paste0("artma.data.colnames.", standardized_colname))
-
-  # Default to the standardized name if not defined
-  if (is.null(colname) || is.na(colname)) colname <- standardized_colname
-
-  colname
-}
-
-
 #' Get the number of studies in an analysis data frame.
 #'
 #' @param df *\[data.frame\]* The analysis data frame.
@@ -52,6 +35,50 @@ get_number_of_studies <- function(df) {
   }
   return(length(table(df$study)))
 }
+
+#' @title Standardize column names
+#' @description Standardize the column names of a data frame to a single source of truth set of column names.
+#' @param df *\[data.frame\]* The data frame to standardize
+#' @return *\[data.frame\]* The standardized data frame
+standardize_column_names <- function(df) {
+  box::use(
+    artma / libs / validation[validate],
+    artma / options / utils[get_option_group]
+  )
+
+  validate(is.data.frame(df))
+
+  names(df) <- make.names(names(df))
+
+  map <- get_option_group("artma.data.colnames")
+  map <- lapply(map, make.names) # Handle non-standard column names
+  required_colnames <- get_required_colnames()
+
+  # Check that every required column is mapped in the user options file
+  missing_required <- base::setdiff(required_colnames, names(map))
+  if (length(missing_required)) {
+    cli::cli_abort("Missing mapping for required columns: {.val {missing_required}}")
+  }
+
+  # Check that every required column exists in the data frame
+  mapped_cols <- unlist(unname(map[names(map) %in% required_colnames]))
+  absent_required <- mapped_cols[!mapped_cols %in% names(df)]
+  if (length(absent_required)) {
+    cli::cli_abort("These required columns are absent in the data frame: {.val {absent_required}}")
+  }
+
+  # Rename columns to standardized names - only when present in the data frame
+  reverse_map <- stats::setNames(names(map), unlist(map))
+  names(df)[names(df) %in% names(reverse_map)] <- reverse_map[names(df)[names(df) %in% names(reverse_map)]]
+
+  missing_required <- setdiff(required_colnames, colnames(df))
+  if (length(missing_required)) {
+    cli::cli_abort("Failed to standardize the following columns: {.val {missing_required}}")
+  }
+
+  df
+}
+
 
 #' @description Raise an error for an invalid data type.
 #' @param data_type [str] The invalid data type.
@@ -135,9 +162,9 @@ box::export(
   assign_na_col,
   determine_df_type,
   determine_vector_type,
-  get_usr_colname,
   get_number_of_studies,
   get_required_colnames,
   get_standardized_colnames,
-  raise_invalid_data_type_error
+  raise_invalid_data_type_error,
+  standardize_column_names
 )
