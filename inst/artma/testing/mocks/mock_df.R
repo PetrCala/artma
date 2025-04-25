@@ -51,23 +51,16 @@ create_mock_df <- function(
   se <- generate_random_vector(from = -1, to = 1, length.out = nrow)
   n_obs <- generate_random_vector(from = 10, to = 1000, length.out = nrow, integer = TRUE)
 
-  data_frame <- data.frame(
-    stats::setNames(
-      list(
-        obs_id = obs_id,
-        study = study_names,
-        study_id = study_id,
-        effect = effect,
-        se = se,
-        t_stat = NA,
-        n_obs = n_obs,
-        study_size = NA,
-        reg_df = NA,
-        precision = NA
-      ),
-      unname(unlist(colnames_map))
-    )
+  base_df <- list(
+    obs_id = obs_id,
+    study = study_names,
+    study_id = study_id,
+    effect = effect,
+    se = se,
+    n_obs = n_obs
   )
+  df_names <- unname(unlist(vapply(names(base_df), function(x) colnames_map[x], FUN.VALUE = list(1))))
+  data_frame <- data.frame(stats::setNames(base_df, df_names))
 
   if (with_file_creation) {
     if (is.null(file_path)) {
