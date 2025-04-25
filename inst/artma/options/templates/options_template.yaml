@@ -127,6 +127,15 @@ calc:
         {cli::symbol$bullet} {.strong warn}: Warn if any zero standard errors are found
         {cli::symbol$bullet} {.strong ignore}: Ignore zero standard errors
 
+methods:
+  variable_summary_stats:
+    use_verbose_names:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, print out the descriptive variable names. If `FALSE`,
+        print out the data frame column names. Defaults to `TRUE`.
+
 temp:
   # A set of options that are only set at runtime but never stored in the options file.
   file_name:
