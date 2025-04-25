@@ -57,6 +57,8 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
   validate(is.data.frame(input_data))
 
   config <- get_data_config()
+  required_colnames <- get_required_colnames()
+  custom_colnames <- get_option_group("artma.data.colnames")
 
   cli::cli_inform("Removing redundant columns...")
   expected_col_n <- length(config)
@@ -92,10 +94,7 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
     ))
   }
 
-  custom_colnames <- get_option_group("artma.data.colnames")
-
   cli::cli_inform("Checking that every required column is mapped in the user options file...")
-  required_colnames <- get_required_colnames()
   missing_required <- base::setdiff(required_colnames, names(custom_colnames))
   if (length(missing_required)) {
     cli::cli_abort("Missing mapping for required columns: {.val {missing_required}}")
@@ -114,10 +113,22 @@ preprocess_data <- function(input_data) { # nolint: cyclocomp_linter
     cli::cli_abort("The following columns are defined in the user options file but not present in the data frame: {.val {missing_defined}}")
   }
 
-  cli::cli_inform("Removing redundant rows...")
-  study_col <- getOption("artma.data.colnames.study")
-  while (is.na(input_data[nrow(input_data), study_col])) {
-    input_data <- input_data[-nrow(input_data), ]
+  cli::cli_inform("Checking that required columns are non-empty...")
+  required_usr_colnames <- unname(unlist(custom_colnames[names(custom_colnames) %in% required_colnames]))
+  col_lengths <- vapply(input_data[, required_usr_colnames], function(x) sum(!is.na(x)), numeric(1))
+  if (length(unique(col_lengths)) > 1) {
+    cli::cli_abort(c(
+      "x" = "Required columns ({required_usr_colnames}) have different numbers of non-NA values:",
+      "i" = "{col_lengths}",
+      "i" = "Please make sure none of these columns have empty values."
+    ))
+  }
+
+  cli::cli_inform("Removing empty rows...")
+  na_rows <- rev(which(is.na(input_data[, required_usr_colnames])))
+  if (length(na_rows) > 0) {
+    input_data <- input_data[-na_rows, ]
+    cli::cli_alert_success("Removed {.val {length(na_rows)}} empty rows.")
   }
 
   cli::cli_inform("Enforcing correct data types...")
