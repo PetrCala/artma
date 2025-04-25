@@ -50,6 +50,13 @@ CONST <- list(
     DEFAULT_PROMPT_TYPE = "readline",
     SPECIAL_KEYS = c("description", "details", "type", "optional", "default", "values")
   ),
+  VARIABLE_SUMMARY_STATS = list(
+    NAMES = c(
+      "Var Name", "Var Class", "Mean", "Median",
+      "Min", "Max", "SD", "Obs", "Missing obs"
+    ),
+    DESIRED_VARS = c("effect", "se", "sample_size", "dof")
+  ),
   MOCKS = list(
     TMP_DATA_FILE_NAME = "tmp_data.csv",
     TMP_OPTIONS_FILE_NAME = "tmp_options.yaml",
