@@ -12,10 +12,14 @@ BugReports: https://github.com/PetrCala/artma/issues
 Depends:
     R (>= 4.0.0)
 Imports:
+    cli,
     glue,
     lifecycle,
     lintr,
     metafor,
+    purrr,
+    rlang,
+    stringr,
     tidyverse,
     usethis,
     withr,
