@@ -30,6 +30,7 @@
   - [Creating an options file](#creating-an-options-file)
   - [Loading an options file](#loading-an-options-file)
   - [Adding new options](#adding-new-options)
+  - [Controlling verbosity](#controlling-verbosity)
 - [Using methods](#using-methods)
   - [Using available methods](#using-available-methods)
   - [Defining custom methods](#defining-custom-methods)
@@ -124,6 +125,38 @@ Notice that each option is **automatically prefixed by the name of the package**
 ## Adding new options
 
 <!-- TODO -->
+
+## Controlling verbosity
+
+The package provides configurable verbosity levels through the options file. You can control how much information is displayed during package operations by setting the `verbose` option in your options file. The verbosity levels are:
+
+| Verbosity Level | Description                                         |
+| --------------- | --------------------------------------------------- |
+| 1               | Errors only - only stop() conditions                |
+| 2               | Warnings + errors - warning() and stop() conditions |
+| 3               | Info - short progress/high-level info (default)     |
+| 4               | Debug/trace - everything including internals        |
+
+The verbosity level is controlled by an integer value, with higher numbers indicating more verbose output. The default level is 3.
+
+To change the verbosity level, simply modify the `verbose` value in your options file. For example, to set minimal verbosity (only errors), you would set:
+
+```yaml
+verbose: 1
+```
+
+The verbosity level can be set differently for each options file, allowing you to have different levels of detail for different analyses or workflows.
+
+Remember that you can set the option value using the following call:
+
+```R
+artma::options.modify(
+  option_file_name="your_opt_file.yaml",
+  list('verbose' = 1)
+)
+```
+
+To check the current verbosity level, run `getOption('artma.verbose')`.
 
 # Using methods
 

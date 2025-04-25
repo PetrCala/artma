@@ -26,6 +26,7 @@ utils::globalVariables(c(
   "get_data_config",
   "get_expected_type",
   "get_option_defs",
+  "get_option_group",
   "get_required_colnames",
   "get_standardized_colnames",
   "index",

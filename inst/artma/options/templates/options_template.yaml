@@ -136,6 +136,19 @@ methods:
         If `TRUE`, print out the descriptive variable names. If `FALSE`,
         print out the data frame column names. Defaults to `TRUE`.
 
+verbose:
+  type: "integer"
+  default: 3
+  help: |
+    The verbosity level of the package.
+    The higher the number, the more verbose the package.
+    Defaults to 3.
+    Verbosity levels:
+      {cli::symbol$bullet} {.strong 1}: Errors only - only stop() conditions
+      {cli::symbol$bullet} {.strong 2}: Warnings + errors - warning() and stop() conditions
+      {cli::symbol$bullet} {.strong 3}: Info - short progress/high-level info (default)
+      {cli::symbol$bullet} {.strong 4}: Debug/trace - everything including internals
+
 temp:
   # A set of options that are only set at runtime but never stored in the options file.
   file_name:

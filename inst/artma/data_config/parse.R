@@ -43,7 +43,7 @@ parse_df_into_data_config <- function(df) {
       "na_handling" = getOption(
         "artma.data.na_handling"
       ),
-      "variable_summary" = NA,
+      "variable_summary" = is.numeric(col_data),
       "effect_sum_stats" = NA,
       "equal" = NA,
       "gltl" = NA,
