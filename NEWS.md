@@ -1,8 +1,44 @@
 
+<a name="v0.2.1"></a>
+## [v0.2.1](https://github.com/PetrCala/artma/compare/v0.2.0...v0.2.1)
+
+> 2025-04-25
+
+
 <a name="v0.2.0"></a>
 ## [v0.2.0](https://github.com/PetrCala/artma/compare/v0.1.30...v0.2.0)
 
 > 2025-04-24
+
+### Bug Fixes
+
+* fix the data config top level module import error
+* parsing option templates is now done through leaf paths
+* remove an unimported function
+* add a missing CONST import to the options utils module
+* add a missing argument to the main function
+* parsing the user options now properly displays help, modify the template to accommodate that
+* options now accept enum types
+
+### Code Refactoring
+
+* change the parsing of the options template to allow nested nodes
+* change the way the data config parsing function is structured
+* the 'assert' function now accepts a 'msg' argument
+
+### Features
+
+* partially enable data preprocessing, clean up cli messages
+* add functions for modifying, fixing, and fetching data configurations
+* add temporary options for better path awareness
+* implement a function to get a data config from the options file
+* prompts can now be defined through custom options
+* remove the unused data config methods - update through opt files now
+
+### BREAKING CHANGE
+
+
+the new templates are now incompatible with old ones
 
 
 <a name="v0.1.30"></a>
