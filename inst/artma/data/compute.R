@@ -112,10 +112,21 @@ add_study_size_column <- function(df) {
 # add_reg_dof_column <- function(df) {}
 
 add_precision_column <- function(df) {
+  box::use(calc = artma / calc / index)
 
+  if ("precision" %in% colnames(df)) {
+    if (any(is.na(df$precision))) {
+      cli::cli_abort("The column {.val precision} must not contain missing values.")
+    }
+    if (!is.numeric(df$precision)) {
+      cli::cli_abort("The column {.val precision} must be numeric.")
+    }
+  } else {
+    df$precision <- calc$precision(se = df$se, reg_dof = df$reg_dof)
+  }
+
+  df
 }
-
-
 
 #' @title Compute optional columns
 #' @description Compute optional columns that the user did not provide.
@@ -130,7 +141,8 @@ compute_optional_columns <- function(df) {
     add_obs_id_column() %>%
     add_study_id_column() %>%
     add_t_stat_column() %>%
-    add_study_size_column()
+    add_study_size_column() %>%
+    add_precision_column()
 }
 
 box::export(compute_optional_columns)

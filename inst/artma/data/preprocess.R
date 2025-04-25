@@ -67,24 +67,6 @@ verify_variable_order <- function(df) {
   df
 }
 
-#' @title Check that required columns are non-empty
-#' @description Check that required columns are non-empty.
-#' @param df *\[data.frame\]* The data frame to check that required columns are non-empty for
-#' @return *\[data.frame\]* The data frame with the redundant columns removed
-#' @keywords internal
-check_required_non_empty <- function(df) {
-  cli::cli_inform("Checking that required columns are non-empty…")
-  required_colnames <- get_required_colnames()
-  col_lengths <- vapply(df[, required_colnames, drop = FALSE], function(x) sum(!is.na(x)), numeric(1))
-  if (length(unique(col_lengths)) > 1) {
-    cli::cli_abort(c(
-      "x" = "Required columns have different counts of non-NA values.",
-      "i" = "{required_colnames}: {col_lengths}",
-      "i" = "Make sure none have empty cells."
-    ))
-  }
-  df
-}
 
 #' @title Remove empty rows
 #' @description Remove rows that are empty.
@@ -94,13 +76,36 @@ check_required_non_empty <- function(df) {
 remove_empty_rows <- function(df) {
   cli::cli_inform("Removing empty rows…")
   required_colnames <- get_required_colnames()
-  na_rows <- rev(which(is.na(df[, required_colnames, drop = FALSE])))
+  na_rows <- which(purrr::map_lgl(seq_len(nrow(df)), ~ all(is.na(df[., required_colnames, drop = FALSE]))))
   if (length(na_rows)) {
     df <- df[-na_rows, ]
     cli::cli_alert_success("Removed {.val {length(na_rows)}} empty rows.")
   }
   df
 }
+
+#' @title Check that required columns contain no empty cells
+#' @description Check that required columns contain no empty cells.
+#' @param df *\[data.frame\]* The data frame to check that required columns contain no empty cells for
+#' @return *\[data.frame\]* The data frame with the redundant columns removed
+#' @keywords internal
+check_required_non_empty <- function(df) {
+  cli::cli_inform("Checking that required columns contain no empty cells…")
+  required_colnames <- get_required_colnames()
+
+  invalid_cols <- which(vapply(required_colnames, function(x) any(is.na(df[[x]])), logical(1)))
+  if (length(invalid_cols) > 0) {
+    box::use(artma / const[CONST])
+    cli::cli_abort(c(
+      "x" = "Missing values found in required columns: {.val {required_colnames[invalid_cols]}}",
+      "i" = "To use {.emph {CONST$PACKAGE_NAME}} runtime methods, please ensure that the required columns contain no empty cells."
+    ))
+  }
+
+  df
+}
+
+
 
 #' @title Enforce correct data types
 #' @description Enforce correct data types.
@@ -123,6 +128,33 @@ enforce_data_types <- function(df) {
   df
 }
 
+#' @title Check for invalid values
+#' @description Check for invalid values and enforce correct ones
+#' @param df *\[data.frame\]* The data frame to check for invalid values for
+#' @return *\[data.frame\]* The data frame with the invalid values enforced
+#' @keywords internal
+enforce_correct_values <- function(df) {
+  cli::cli_inform("Checking for invalid values…")
+
+  box::use(artma / libs / validation[assert])
+
+  se_zero_handling <- getOption("artma.calc.se_zero_handling")
+
+  zero_se_rows <- which(df$se == 0)
+
+  if (se_zero_handling == "stop") {
+    assert(length(zero_se_rows) == 0, "The 'se' column contains zero values")
+  } else if (se_zero_handling == "warn") {
+    if (length(zero_se_rows) > 0) {
+      cli::cli_warn("The 'se' column contains zero values in {length(zero_se_rows)} rows")
+    }
+  }
+
+  df
+}
+
+
+
 #' @title Preprocess data
 #' @description Preprocess the raw data frame.
 #' @param df *[data.frame]* Raw data frame to clean.
@@ -134,9 +166,10 @@ preprocess_data <- function(df) {
     remove_redundant_columns() %>%
     verify_variable_names() %>%
     verify_variable_order() %>%
-    check_required_non_empty() %>%
     remove_empty_rows() %>%
-    enforce_data_types()
+    check_required_non_empty() %>%
+    enforce_data_types() %>%
+    enforce_correct_values()
 }
 
 box::export(preprocess_data)

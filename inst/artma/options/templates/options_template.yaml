@@ -106,6 +106,26 @@ data:
       Each variable in the dataset requires a list of configuration options.
       For more details, read the 'data_config' vignette.
 
+calc:
+  precision_type:
+    type: "enum: '1/SE'|'DoF'"
+    default: "1/SE"
+    help: |
+      The type of precision to calculate:
+        {cli::symbol$bullet} {.strong 1/SE}: Calculate precision as 1/SE
+        {cli::symbol$bullet} {.strong DoF}: Calculate precision as sqrt(DoF)
+
+  se_zero_handling:
+    type: "enum: stop|warn|ignore"
+    default: "stop"
+    help: |
+      Having standard errors equal to zero can lead to division by zero errors, introducing infinite t-statistics.
+      By default, the package will stop if any zero standard errors are found.
+      You can change this behavior by setting the option to 'warn' or 'ignore'.
+      How to handle zero standard errors:
+        {cli::symbol$bullet} {.strong stop}: Abort if any zero standard errors are found
+        {cli::symbol$bullet} {.strong warn}: Warn if any zero standard errors are found
+        {cli::symbol$bullet} {.strong ignore}: Ignore zero standard errors
 temp:
   # A set of options that are only set at runtime but never stored in the options file.
   file_name:

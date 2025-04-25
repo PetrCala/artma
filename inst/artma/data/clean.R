@@ -1,7 +1,5 @@
 box::use(
-  artma / data / fill[fill_missing_values],
-  artma / data / utils[assign_na_col],
-  artma / libs / validation[assert, validate_columns],
+  artma / data / fill[fill_missing_values]
 )
 
 #' Check that a data frame contains all the expected columns
@@ -34,43 +32,6 @@ convert_columns_to_numeric <- function(df, cols) {
   return(df)
 }
 
-#' Drop observations with a missing effect
-drop_rows_with_missing_values <- function(df, cols = c("effect")) { # nolint: unnecessary_concatenation_linter.
-  missing_rows <- rep(FALSE, nrow(df))
-  for (col in cols) {
-    if (col %in% colnames(df)) {
-      missing_rows <- missing_rows | is.na(df[col])
-    } else {
-      cli::cli_alert_warning("Unknown column name: {col}. Skipping NA values check...")
-    }
-  }
-  cli::cli_inform("Dropping {sum(missing_rows)} rows where at least one of these columns is missing a value: {.emph {cols}}")
-
-  return(
-    df[!missing_rows, ]
-  )
-}
-
-#' Recalculate the t-value based on the effect and se columns
-recalculate_t_value <- function(df) {
-  cli::cli_inform("Recalculating t-values...")
-  validate_columns(df, c("effect", "se"))
-  assert(sum(is.na(df$effect)) == 0, "The 'effect' column contains missing values")
-  assert(sum(is.na(df$se)) == 0, "The 'se' column contains missing values")
-  t_values <- df$effect / df$se
-  t_values[is.infinite(t_values)] <- NA
-  df$t_value <- t_values
-  return(df)
-}
-
-#' Convert string columns to valid R names (remove special characters)
-clean_names <- function(df) {
-  cli::cli_inform("Cleaning names...")
-  df$study <- make.names(df$study)
-  df$meta <- make.names(df$meta)
-  return(df)
-}
-
 
 #' Clean a data frame for analysis
 #'
@@ -89,14 +50,6 @@ clean_data <- function(
   cli::cli_abort("NOT IMPLEMENTED")
   source_cols <- c("a", "b", "c")
 
-  # Replace missing columns with NAs
-  for (colname in names(source_cols)) {
-    df_colname <- source_cols[[colname]] # How the column is named in the data frame
-    if (rlang::is_empty(df_colname)) {
-      df <- assign_na_col(df, colname)
-    }
-  }
-
   # Subset to relevant colnames - use colname if available, column source if not
   get_colname <- function(col) source_cols[[col]] %||% col
   relevant_colnames <- unlist(lapply(names(source_cols), get_colname))
@@ -105,9 +58,6 @@ clean_data <- function(
 
   # Rename the columns
   colnames(df) <- names(source_cols)
-
-  # Drop NA values
-  df <- drop_rows_with_missing_values(df, cols = c("effect", "se"))
 
   # Ensure numeric values
   df <- convert_columns_to_numeric(df, cols = c("effect", "se", "sample_size", "dof"))
