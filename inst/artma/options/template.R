@@ -113,16 +113,6 @@ get_option_defs <- function(template_path = NULL, opt_path = NULL) {
 }
 
 
-#' @title Print options help text
-#' @description Print options help text
-#' @param help *\[character\]* The help text to print
-#' @keywords internal
-print_options_help_text <- function(help) {
-  help_key <- cli::format_inline("{.strong Help}: ")
-  help_body <- cli::format_inline(help)
-  writeLines(paste0(help_key, help_body))
-}
-
 #' @title Resolve a fixed option
 #' @description Resolve a fixed option, either using a default value or throwing an error if no default is provided.
 #' @param opt [list] Option definition.
@@ -157,7 +147,8 @@ resolve_fixed_option <- function(opt, user_input) {
 prompt_user_for_option_value <- function(opt) {
   box::use(
     artma / const[CONST],
-    artma / libs / validation[assert]
+    artma / libs / validation[assert],
+    artma / options / utils[print_options_help_text]
   )
 
   assert(interactive(), "Running in a non-interactive mode. Cannot prompt for required option.")

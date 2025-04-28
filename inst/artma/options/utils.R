@@ -207,12 +207,25 @@ validate_user_input <- function(user_input) {
   return(invisible(NULL))
 }
 
+#' @title Print options help text
+#' @description Print options help text
+#' @param help *\[character\]* The help text to print
+#' @return `NULL`
+#' @export
+print_options_help_text <- function(help) {
+  help_key <- cli::format_inline("{.strong Help}: ")
+  help_body <- cli::format_inline(help)
+  writeLines(paste0(help_key, help_body))
+}
+
+
 box::export(
   flat_to_nested,
   get_expected_type,
   get_option_group,
   parse_options_file_name,
   parse_template_enum_value,
+  print_options_help_text,
   remove_options_with_prefix,
   validate_option_value,
   validate_user_input
