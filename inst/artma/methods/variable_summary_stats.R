@@ -6,7 +6,7 @@
 #' @param names_verbose *\[logical\]* If `TRUE`, print out the descriptive variable names. If `FALSE`,
 #' print out the data frame column names. Defaults to `TRUE`.
 #' @return *\[list\]* A list containing a data frame of summary statistics and a vector of variables with missing data.
-run <- function(df) {
+variable_summary_stats <- function(df) {
   box::use(
     artma / const[CONST],
     artma / libs / validation[assert],
@@ -78,6 +78,10 @@ run <- function(df) {
   }
   list(df_out, missing_data_vars)
 }
+
+box::use(artma / libs / cache[cache_cli])
+
+run <- cache_cli(variable_summary_stats)
 
 box::export(
   run
