@@ -136,6 +136,14 @@ methods:
         If `TRUE`, print out the descriptive variable names. If `FALSE`,
         print out the data frame column names. Defaults to `TRUE`.
 
+output:
+  number_of_decimals:
+    type: "integer"
+    default: 3
+    help: |
+      The number of decimals to round the output to.
+      Defaults to 3.
+
 verbose:
   type: "integer"
   default: 3
