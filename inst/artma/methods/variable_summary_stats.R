@@ -9,6 +9,7 @@
 run <- function(df) {
   box::use(
     artma / const[CONST],
+    artma / libs / validation[assert],
     artma / data_config / read[get_data_config],
     artma / options / index[get_option_group]
   )
@@ -46,14 +47,18 @@ run <- function(df) {
       next
     }
 
-    var_mean <- round(base::mean(var_data, na.rm = TRUE), 3)
-    var_median <- round(stats::median(var_data, na.rm = TRUE), 3)
-    var_sd <- round(stats::sd(var_data, na.rm = TRUE), 3)
-    var_min <- round(base::min(var_data, na.rm = TRUE), 3)
-    var_max <- round(base::max(var_data, na.rm = TRUE), 3)
+    round_to <- getOption("artma.output.number_of_decimals", 3)
+    assert(round_to >= 0, "Number of decimals must be greater than or equal to 0.")
+
+    var_mean <- round(base::mean(var_data, na.rm = TRUE), round_to)
+    var_median <- round(stats::median(var_data, na.rm = TRUE), round_to)
+    var_sd <- round(stats::sd(var_data, na.rm = TRUE), round_to)
+    var_min <- round(base::min(var_data, na.rm = TRUE), round_to)
+    var_max <- round(base::max(var_data, na.rm = TRUE), round_to)
     var_obs <- sum(!is.na(var_data) & var_data != 0)
     var_missing <- round((sum(is.na(var_data)) / length(var_data)) * 100, 1)
     var_missing_verbose <- paste0(as.character(var_missing), "%")
+
     # Aggregate and append to the main DF
     row_data <- c(
       var_name_display,
