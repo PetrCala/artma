@@ -20,5 +20,11 @@
 #' @keywords internal
 .dummy_use_tidyverse <- function() tidyverse::tidyverse_packages()
 
+#' @keywords internal
+.dummy_use_memoise <- function() memoise::memoise(identity)
+
+#' @keywords internal
+.dummy_use_digest <- function() digest::digest("")
+
 
 # nolint end: box_usage_linter, unused_declared_object_linter.

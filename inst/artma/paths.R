@@ -33,6 +33,8 @@ DIR_METHODS <- file.path(PROJECT_ROOT, "methods")
 DIR_OPTIONS <- file.path(PROJECT_ROOT, "options")
 DIR_OPTIONS_TEMPLATES <- file.path(DIR_OPTIONS, "templates")
 DIR_TESTING <- file.path(PROJECT_ROOT, "testing")
+
+# Alternative to 'rappdirs' (https://github.com/r-lib/rappdirs)
 DIR_USR_DATA <- tools::R_user_dir(CONST$PACKAGE_NAME, which = "data")
 DIR_USR_CONFIG <- tools::R_user_dir(CONST$PACKAGE_NAME, which = "config")
 DIR_USR_CACHE <- tools::R_user_dir(CONST$PACKAGE_NAME, which = "cache")
