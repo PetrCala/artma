@@ -61,7 +61,8 @@ CONST <- list(
     TMP_DATA_FILE_NAME = "tmp_data.csv",
     TMP_OPTIONS_FILE_NAME = "tmp_options.yaml",
     MOCK_DF_NROWS = 1000,
-    MOCK_DF_NSTUDIES = 50
+    MOCK_DF_NSTUDIES = 50,
+    MOCK_DF_SEED = 123
   ),
   PATTERNS = list(
     YAML_FILES = list(

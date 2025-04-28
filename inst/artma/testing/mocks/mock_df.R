@@ -6,6 +6,7 @@
 #' @param with_file_creation A boolean indicating whether to create a file with the data frame
 #' @param file_path A string indicating the path of the file to create
 #' @param colnames_map A list of column names to use for the data frame
+#' @param seed An integer indicating the seed to use for the random number generator
 #' @return A data frame object
 #' @export
 create_mock_df <- function(
@@ -14,7 +15,8 @@ create_mock_df <- function(
     n_studies = NULL,
     with_file_creation = FALSE,
     file_path = NULL,
-    colnames_map = NULL) {
+    colnames_map = NULL,
+    seed = NULL) {
   box::use(
     artma / const[CONST],
     artma / libs / number_utils[generate_random_vector],
@@ -22,6 +24,8 @@ create_mock_df <- function(
     artma / data / utils[get_standardized_colnames],
     artma / testing / mocks / mock_utils[create_mock_study_names]
   )
+
+  if (!is.null(seed)) set.seed(seed) else set.seed(CONST$MOCKS$MOCK_DF_SEED)
 
   colnames_map <- if (is.null(colnames_map)) list() else colnames_map
   assert(is.list(colnames_map), "Column names must be a named list")

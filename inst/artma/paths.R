@@ -51,7 +51,7 @@ PATHS <- list(
   DIR_MOCKS = file.path(DIR_TESTING, "mocks"),
   DIR_FIXTURES = file.path(DIR_TESTING, "fixtures"),
 
-  # Persistent user data directories
+  # Persistent user data directories (alternative to 'rappdirs')
   DIR_USR_DATA = DIR_USR_DATA,
   DIR_USR_CONFIG = DIR_USR_CONFIG,
   DIR_USR_CACHE = DIR_USR_CACHE,
