@@ -13,9 +13,11 @@ Depends:
     R (>= 4.0.0)
 Imports:
     cli,
+    digest,
     glue,
     lifecycle,
     lintr,
+    memoise,
     metafor,
     purrr,
     rlang,

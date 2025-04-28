@@ -117,9 +117,11 @@ Below is a list of required packages and reasoning for why they are needed.
 These packages are required for the package to function correctly when used by others.
 
 - `cli` – For styled and structured console output (messages, warnings, etc.)
+- `digest` - For caching.
 - `glue` – For efficient and readable string interpolation
 - `lifecycle` – To manage and signal function lifecycle stages (e.g., deprecated, experimental)
 - `lintr` – Runtime linting (if exposed in package functionality)
+- `memoise` - For caching.
 - `metafor` - For running meta-analysis related methods
 - `purrr` - Vector preprocessing.
 - `rlang` – Core tidyverse infrastructure: advanced error handling, quosures, tidy evaluation

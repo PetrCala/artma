@@ -18,11 +18,32 @@ new_artifact <- function(value, log, meta) {
 #' @return `NULL`
 #' @export
 print.cached_artifact <- function(x, ...) {
-  cli::cli_h1("Artifact")
-  cli::cli_text("Value: {x$value}")
-  cli::cli_text("Log: {x$log}")
-  cli::cli_text("Meta: {x$meta}")
+  header <- "Artifact"
+  cat(header, "\n", sep = "")
+
+  cat("Value:\n")
+  print(x$value)
+
+  cat("\nLog (", length(x$log), " entr", if (length(x$log) == 1) "y" else "ies",
+    ")\n",
+    sep = ""
+  )
+  if (length(x$log)) {
+    cat("  • ", vapply(x$log, `[[`, "", "message"), sep = "\n  • ")
+  }
+
+  cat("\n\nMeta:\n")
+  str(x$meta, give.attr = FALSE, comp.str = "")
+
+  invisible(x)
 }
+
+# -------------------------------------------------------------------------
+# explicitly register the S3 method (needed when pkg not attached)
+# -------------------------------------------------------------------------
+#' @export
+#' @method print cached_artifact
+NULL
 
 #' @title Capture cli
 #' @description Capture cli
@@ -31,13 +52,20 @@ print.cached_artifact <- function(x, ...) {
 #' @export
 capture_cli <- function(expr) {
   log <- list()
+
   value <- withCallingHandlers(
     expr,
     cli_message = function(c) {
-      log <<- append(log, list(c))
-      # Let it print now, or muffle if you prefer
+      log <<- append(log, list(
+        list(
+          message = conditionMessage(c), # always a plain string
+          classes = class(c)
+        )
+      ))
+      ## DO NOT muffle – we still want the message to appear live
     }
   )
+
   list(value = value, log = log)
 }
 
@@ -45,14 +73,25 @@ capture_cli <- function(expr) {
 #' @description Replay log
 #' @param log *\[list\]* The log to replay
 #' @return `NULL`
+#' @examples
+#' \dontrun{
+#' # Run this in a regular R session _after_ you've used any cache_cli wrapper
+#' cache <- memoise::cache_filesystem(rappdirs::user_cache_dir("artma"))
+#' keys <- cache$keys() # hashes of all artifacts
+#' art <- cache$get(keys[[1]]) # read the first one
+#'
+#' art$value # <- model, plot, etc.
+#' art$log # <- list of stored cli conditions
+#'
+#' # To watch the console story again
+#' replay_log(art$log)
+#' }
 #' @export
 replay_log <- function(log) {
-  for (cond in log) {
-    # replay as-is
-    cli::cli_inform(cond$message, .envir = parent.frame())
-    # or, if you muffled earlier, you can show a subtle “(cached)” tag:
-    # cli::cli_alert_info("{cond$message} {.dim (cached)}")
+  for (entry in log) {
+    cli::cli_inform(entry$message, .envir = parent.frame())
   }
+  invisible(NULL)
 }
 
 #' @title Cache cli
@@ -90,16 +129,15 @@ cache_cli <- function(fun,
                       extra_keys = list(),
                       invalidate_fun = NULL, # optional custom invalidator
                       cache = NULL) {
-  force(fun) # lock the original function inside the closure
+  base::force(fun) # lock the original function inside the closure
 
-  box::use(artma / paths[PATHS])
-
-  .cache_dir <- PATHS$DIR_USR_CACHE
-  if (!dir.exists(.cache_dir)) dir.create(.cache_dir, recursive = TRUE)
-
-  .cli_cache <- memoise::cache_filesystem(.cache_dir)
-
-  cache <- if (is.null(cache)) .cli_cache else cache
+  # — pick / create the cache ------------------------------------------------
+  if (is.null(cache)) {
+    box::use(artma / paths[PATHS])
+    cache_dir <- PATHS$DIR_USR_CACHE
+    if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
+    cache <- memoise::cache_filesystem(cache_dir)
+  }
 
   ## The worker that actually does the heavy lifting --------------------------
   worker <- function(...) {
@@ -119,7 +157,7 @@ cache_cli <- function(fun,
   function(...) {
     # Allow user-supplied invalidator
     if (!is.null(invalidate_fun) && isTRUE(invalidate_fun(...))) {
-      worker_memoised$forget(...)
+      worker_memoised$forget(worker_memoised, ...)
     }
 
     art <- worker_memoised(...)
@@ -129,7 +167,6 @@ cache_cli <- function(fun,
     art$value
   }
 }
-
 
 box::export(
   cache_cli,
