@@ -526,6 +526,7 @@ options.help <- function(
   box::use(
     artma / const[CONST],
     artma / paths[PATHS],
+    artma / options / utils[print_options_help_text],
     artma / options / template[flatten_template_options, read_template],
     artma / libs / validation[assert, assert_options_template_exists, validate]
   )
@@ -587,7 +588,7 @@ options.help <- function(
       cli::cli_text("{.strong Option name:} {opt_styles$NAME(nm)}")
       cli::cli_text("{.strong Type:} {opt_styles$TYPE(tp)}")
       cli::cli_text("{.strong Default:} {opt_styles$DEFAULT(def)}")
-      cli::cli_text("{.strong Help:} {.emph {hlp}}")
+      print_options_help_text(hlp)
       cli::cli_rule()
       cli::cat_line()
     }

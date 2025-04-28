@@ -40,6 +40,7 @@ utils::globalVariables(c(
   "pluralize",
   "prepare_data",
   "preprocess_data",
+  "print_options_help_text",
   "read_data",
   "read_template",
   "remove_options_with_prefix",
