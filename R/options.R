@@ -114,7 +114,7 @@ options.validate <- function(
       cli::cli_alert_danger(err$message)
     }
 
-    if (getOption("artma.verbose", 3) >= 2) {
+    if (getOption("artma.verbose", 2) >= 2) {
       cli::cli_h3("Possible Resolutions:")
       cli::cli_ul()
       cli::cli_li("Run {.code artma::options.help(c('opt.name1', 'opt.name2', ...))} to view detailed descriptions of the specified options.")
@@ -381,7 +381,7 @@ options.load <- function(
 
   if (should_validate) {
     withr::with_options(
-      list("artma.verbose" = 4),
+      list("artma.verbose" = min(getOption("artma.verbose", 2), 2)),
       options.validate(
         options_file_name = options_file_name,
         options_dir = options_dir,
@@ -646,7 +646,7 @@ options.fix <- function(
   }
 
   errors <- withr::with_options(
-    list("artma.verbose" = 4),
+    list("artma.verbose" = min(getOption("artma.verbose", 2), 2)),
     options.validate(
       options_file_name = options_file_name,
       options_dir = options_dir,
@@ -833,7 +833,7 @@ options.create <- function(
 
   if (should_validate) {
     withr::with_options(
-      list("artma.verbose" = 4),
+      list("artma.verbose" = min(getOption("artma.verbose", 2), 2)),
       options.validate(
         options_file_name = options_file_name,
         options_dir = options_dir,
