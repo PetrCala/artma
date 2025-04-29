@@ -787,7 +787,7 @@ options.create <- function(
   options_file_name <- options_file_name %||% ask_for_options_file_name()
   options_file_name <- parse_options_file_name(options_file_name)
 
-  if (getOption("artma.verbose", 3) >= 3) {
+  if (getOption("artma.verbose", 4) >= 4) {
     cli::cli_inform("{stringr::str_to_title(action_name)} a user options file: {.path {options_file_name}}")
   }
 
@@ -842,6 +842,10 @@ options.create <- function(
         failure_action = "abort_verbose"
       )
     )
+  }
+
+  if (getOption("artma.verbose", 3) >= 3) {
+    cli::cli_alert_success("{stringr::str_to_title(action_name)} a user options file {.path {options_file_name}} was successful.")
   }
 
   invisible(options_file_name)
