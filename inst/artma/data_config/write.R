@@ -44,12 +44,17 @@ update_data_config <- function(changes) {
 #' @return *\[list\]* The fixed data config.
 fix_data_config <- function(
     create_if_missing = TRUE) {
-  box::use(artma / data_config / utils[data_config_is_valid])
+  box::use(
+    artma / data_config / utils[data_config_is_valid],
+    artma / libs / utils[get_verbosity]
+  )
 
   current_config <- getOption("artma.data.config")
 
   if (data_config_is_valid(current_config)) {
-    cli::cli_alert_success("The data config is valid.")
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_success("The data config is valid.")
+    }
     return(invisible(NULL))
   }
 
@@ -57,7 +62,9 @@ fix_data_config <- function(
     cli::cli_abort("The data config has not been created yet.")
   }
 
-  cli::cli_inform("Creating a new data config...")
+  if (get_verbosity() >= 4) {
+    cli::cli_inform("Creating a new data config…")
+  }
 
   box::use(
     artma / const[CONST],
@@ -96,7 +103,10 @@ fix_data_config <- function(
   fixed_config <- suppressMessages(update_data_config(changes = config))
   assert(data_config_is_valid(fixed_config), "The data config could not be fixed.")
 
-  cli::cli_alert_success("The data config has been fixed.")
+  if (get_verbosity() >= 3) {
+    cli::cli_alert_success("The data config has been fixed.")
+  }
+
   return(fixed_config)
 }
 

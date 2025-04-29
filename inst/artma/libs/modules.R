@@ -22,6 +22,8 @@
 #' my_custom_module$another_method()
 #' modules$my_custom_module$some_method()
 crawl_and_import_modules <- function(dir_path, pattern = "\\.R$") {
+  box::use(artma / libs / utils[get_verbosity])
+
   dir_path <- normalizePath(dir_path, mustWork = FALSE)
   if (!dir.exists(dir_path)) {
     cli::cli_abort(glue::glue("Non-existent directory when importing modules: {dir_path}"))
@@ -39,13 +41,15 @@ crawl_and_import_modules <- function(dir_path, pattern = "\\.R$") {
     module_path <- tools::file_path_as_absolute(file.path(dir_path, f))
 
     box_import_statement <- turn_path_into_box_import(module_path)
-    cli::cli_inform("Running the following import statement: {.code {box_import_statement}}")
+    if (get_verbosity() >= 4) {
+      cli::cli_inform("Running the following import statement: {.code {box_import_statement}}")
+    }
     eval(box_import_statement) # Imports the module
 
     # Calling the module name should now return the module itself
     imported_module <- eval(parse(text = module_name))
     if (!inherits(imported_module, "box$mod")) {
-      cli::cli_abort(glue::glue("Failed to import {module_name} as a box module. Aborting..."))
+      cli::cli_abort(glue::glue("Failed to import {module_name} as a box module. Aborting…"))
     }
     modules[[module_name]] <- imported_module
   }
@@ -59,13 +63,17 @@ crawl_and_import_modules <- function(dir_path, pattern = "\\.R$") {
 #' @param modules [list[box.module]] A list of modules to validate.
 #' @return `NULL` Validates the object structure
 validate_runtime_method_modules <- function(modules) { # nolint: object_length_linter.
+  box::use(artma / libs / utils[get_verbosity])
+
   if (!is.list(modules)) {
     obj_class <- class(modules)
     cli::cli_abort(glue::glue("Invalid runtime method modules object: {modules}. Class: '{obj_class}'. Expected: 'list'."))
   }
 
   if (length(modules) == 0) {
-    cli::cli_alert_warning("No runtime method modules to validate.")
+    if (get_verbosity() >= 2) {
+      cli::cli_alert_warning("No runtime method modules to validate.")
+    }
     return(NULL)
   }
 
@@ -86,8 +94,24 @@ validate_runtime_method_modules <- function(modules) { # nolint: object_length_l
 }
 
 
+#' @title Get the exports of a package
+#' @description Get the exports of a package.
+#' @param pkg [character] The name of the package to get the exports of.
+#' @return [character] A vector of the exports of the package.
+get_pkg_exports <- function(pkg) {
+  import_statement <- glue::glue("box::use(mod = {pkg})")
+  eval(parse(text = import_statement))
+  ns <- attr(mod, "namespace")
+  exports <- base::getNamespaceExports(ns)
+  funs <- Filter(
+    function(x) is.function(get(x, envir = ns, inherits = FALSE)),
+    exports
+  )
+  funs
+}
 
 box::export(
   crawl_and_import_modules,
+  get_pkg_exports,
   validate_runtime_method_modules
 )

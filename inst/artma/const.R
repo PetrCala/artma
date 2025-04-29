@@ -50,11 +50,26 @@ CONST <- list(
     DEFAULT_PROMPT_TYPE = "readline",
     SPECIAL_KEYS = c("description", "details", "type", "optional", "default", "values")
   ),
+  VARIABLE_SUMMARY_STATS = list(
+    NAMES = c(
+      "Var Name", "Var Class", "Mean", "Median",
+      "Min", "Max", "SD", "Obs", "Missing obs"
+    ),
+    DESIRED_VARS = c("effect", "se", "sample_size", "dof")
+  ),
+  EFFECT_SUMMARY_STATS = list(
+    NAMES = c(
+      "Var Name", "Var Class", "Mean", "CI lower", "CI upper", "Weighted Mean",
+      "WM CI lower", "WM CI upper", "Median", "Min", "Max", "SD", "Obs"
+    ),
+    DESIRED_VARS = c("effect", "se", "sample_size", "dof")
+  ),
   MOCKS = list(
     TMP_DATA_FILE_NAME = "tmp_data.csv",
     TMP_OPTIONS_FILE_NAME = "tmp_options.yaml",
     MOCK_DF_NROWS = 1000,
-    MOCK_DF_NSTUDIES = 50
+    MOCK_DF_NSTUDIES = 50,
+    MOCK_DF_SEED = 123
   ),
   PATTERNS = list(
     YAML_FILES = list(
@@ -62,6 +77,7 @@ CONST <- list(
       REGEX = "\\.ya(ml|yml)$"
     )
   ),
+  DEFAULT_VERBOSITY = 3,
   STYLES = list(
     OPTIONS = list(
       NAME = cli::col_magenta,

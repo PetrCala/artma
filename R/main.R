@@ -10,7 +10,10 @@ main <- function(
     FUN = NULL) {
   if (is.null(FUN)) {
     FUN <- function() {
-      cli::cli_inform("{.emph artma} main function")
+      box::use(artma / libs / utils[get_verbosity])
+      if (get_verbosity() >= 2) {
+        cli::cli_inform("{.emph artma} main function")
+      }
     }
   }
 

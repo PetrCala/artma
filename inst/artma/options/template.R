@@ -113,16 +113,6 @@ get_option_defs <- function(template_path = NULL, opt_path = NULL) {
 }
 
 
-#' @title Print options help text
-#' @description Print options help text
-#' @param help *\[character\]* The help text to print
-#' @keywords internal
-print_options_help_text <- function(help) {
-  help_key <- cli::format_inline("{.strong Help}: ")
-  help_body <- cli::format_inline(help)
-  writeLines(paste0(help_key, help_body))
-}
-
 #' @title Resolve a fixed option
 #' @description Resolve a fixed option, either using a default value or throwing an error if no default is provided.
 #' @param opt [list] Option definition.
@@ -130,21 +120,24 @@ print_options_help_text <- function(help) {
 #' `any` The resolved value for the fixed option.
 #' @keywords internal
 resolve_fixed_option <- function(opt, user_input) {
+  box::use(
+    artma / const[CONST],
+    artma / libs / utils[get_verbosity]
+  )
+
   if (!is.null(user_input[[opt$name]])) {
     if (user_input[[opt$opt_name]] == opt$default) {
       return(opt$default)
     }
     # User tried to set a value for a fixed option to a non-default value
-    cli::cli_alert_warning(glue::glue(
-      "Ignoring user-provided value for fixed option '{opt_name}'."
-    ), call. = FALSE)
+    if (get_verbosity() >= 2) {
+      cli::cli_alert_warning("Ignoring user-provided value for fixed option {CONST$STYLES$OPTIONS$NAME(opt$name)}.")
+    }
   }
   if (!is.null(opt$default)) {
     return(opt$default)
-  } else if (is.null(opt_default)) {
-    cli::cli_abort(glue::glue(
-      "Required option '{opt_name}' is fixed, but no default is provided."
-    ), call. = FALSE)
+  } else if (is.null(opt$default)) {
+    cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} is fixed, but no default is provided.")
   } else {
     return(NULL) # Not required, no default
   }
@@ -157,7 +150,8 @@ resolve_fixed_option <- function(opt, user_input) {
 prompt_user_for_option_value <- function(opt) {
   box::use(
     artma / const[CONST],
-    artma / libs / validation[assert]
+    artma / libs / validation[assert],
+    artma / options / utils[print_options_help_text]
   )
 
   assert(interactive(), "Running in a non-interactive mode. Cannot prompt for required option.")
@@ -219,9 +213,7 @@ prompt_user_for_option_value <- function(opt) {
     } else if (isTRUE(opt$allow_na)) {
       return(NA)
     } else {
-      cli::cli_abort(cli::format_inline(
-        "Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} was left blank. Aborting."
-      ), call. = FALSE)
+      cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} was left blank. Aborting.")
     }
   }
 
@@ -262,9 +254,7 @@ resolve_option_value <- function(
   # 3) No user value, no default
   if (is.null(opt$default)) {
     if (!is_interactive) {
-      cli::cli_abort(glue::glue(
-        "Required option '{opt$name}' not provided, and no default is available."
-      ), call. = FALSE)
+      cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} not provided, and no default is available.")
     } else {
       return(prompt_user_for_option_value(opt))
     }
@@ -281,6 +271,11 @@ resolve_option_value <- function(
 #' `any` The coerced value.
 #' @keywords internal
 coerce_option_value <- function(val, opt) {
+  box::use(
+    artma / const[CONST],
+    artma / libs / utils[get_verbosity]
+  )
+
   # If the value is NULL, there's nothing to coerce
   if (is.null(val)) {
     return(val)
@@ -297,9 +292,7 @@ coerce_option_value <- function(val, opt) {
 
   enforce_na_allowed <- function(val, opt) {
     if (is.na(val) && !isTRUE(opt$allow_na)) {
-      cli::cli_abort(glue::glue(
-        "Option '{opt$name}' does not allow NA values."
-      ), call. = FALSE)
+      cli::cli_abort("Option {CONST$STYLES$OPTIONS$NAME(opt$name)} does not allow NA values.")
     }
   }
 
@@ -319,10 +312,11 @@ coerce_option_value <- function(val, opt) {
       if (isTRUE(opt$standardize) && opt$type == "character") {
         standard_val <- make.names(coerced_val)
         if (standard_val != coerced_val && !is.na(coerced_val)) {
-          box::use(artma / const[CONST])
-          cli::cli_alert_warning(
-            "Option {CONST$STYLES$OPTIONS$NAME(opt$name)} does not allow non-standard values. Standardizing from {CONST$STYLES$OPTIONS$VALUE(val)} to {CONST$STYLES$OPTIONS$VALUE(standard_val)}."
-          )
+          if (get_verbosity() >= 2) {
+            cli::cli_alert_warning(
+              "Option {CONST$STYLES$OPTIONS$NAME(opt$name)} does not allow non-standard values. Standardizing from {CONST$STYLES$OPTIONS$VALUE(val)} to {CONST$STYLES$OPTIONS$VALUE(standard_val)}."
+            )
+          }
         }
         coerced_val <- standard_val
       }

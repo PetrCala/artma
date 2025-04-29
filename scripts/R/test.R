@@ -7,7 +7,8 @@ test <- function() {
     artma / const[CONST],
     artma / paths[PATHS],
     artma / testing / mocks / mock_df[create_mock_df],
-    artma / data_config / parse[parse_df_into_data_config]
+    artma / data_config / parse[parse_df_into_data_config],
+    artma / libs / utils[get_verbosity]
   )
 
   mock_df_path <- PATHS$FILE_MOCKS_TMP_DATA
@@ -18,11 +19,14 @@ test <- function() {
 
   # Artma methods
   options_file_name <- CONST$MOCKS$TMP_OPTIONS_FILE_NAME
-  # artma::methods.list()
+
+  withr::local_options(list("artma.verbose" = 3))
   artma::options.delete(options_file_name = options_file_name, skip_confirmation = TRUE)
   artma::options.create(
     options_file_name = options_file_name,
     user_input = list(
+      "verbose" = get_verbosity(),
+      "cache.use_cache" = TRUE,
       "data.source_path" = mock_df_path,
       "data.na_handling" = "stop",
       "data.config_setup" = "auto",
@@ -37,11 +41,12 @@ test <- function() {
       "data.colnames.reg_dof" = NA,
       "data.colnames.precision" = NA
     ),
-    should_overwrite = TRUE,
+    should_overwrite = TRUE
   )
 
   artma::run(
-    methods = c("all"),
+    # methods = c("all"),
+    methods = c("variable_summary_stats"),
     options_file_name = options_file_name
   )
 

@@ -11,10 +11,12 @@ add_obs_id_column <- function(df) {
     n_invalid_idxs <- length(invalid_idxs)
 
     if (n_invalid_idxs > 0) {
-      cli::cli_alert_warning(c(
-        "!" = "Found {n_invalid_idxs} invalid observation IDs in the column {.val obs_id}.",
-        "i" = "Resetting them to sequential integers."
-      ))
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning(c(
+          "!" = "Found {n_invalid_idxs} invalid observation IDs in the column {.val obs_id}.",
+          "i" = "Resetting them to sequential integers."
+        ))
+      }
       df$obs_id[invalid_idxs] <- seq_len(nrow(df))[invalid_idxs]
     }
   }
@@ -28,6 +30,8 @@ add_obs_id_column <- function(df) {
 #' @return *\[data.frame\]* The data frame with the study ID column.
 #' @keywords internal
 add_study_id_column <- function(df) {
+  box::use(artma / libs / utils[get_verbosity])
+
   study_names <- df$study
 
   if (!length(study_names) == nrow(df)) {
@@ -39,10 +43,12 @@ add_study_id_column <- function(df) {
   if ("study_id" %in% colnames(df)) {
     invalid_or_missing_ids <- which(is.na(df$study_id) | df$study_id != valid_ids)
     if (length(invalid_or_missing_ids) > 0) {
-      cli::cli_alert_warning(c(
-        "!" = "Found {length(invalid_or_missing_ids)} invalid or missing study IDs in the column {.val {colname}}.",
-        "i" = "Resetting them to sequential integers."
-      ))
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning(c(
+          "!" = "Found {length(invalid_or_missing_ids)} invalid or missing study IDs in the column {.val study_id}.",
+          "i" = "Resetting them to sequential integers."
+        ))
+      }
     }
   }
 
@@ -89,6 +95,8 @@ add_t_stat_column <- function(df) {
 #' @return *\[data.frame\]* The data frame with the study size column.
 #' @keywords internal
 add_study_size_column <- function(df) {
+  box::use(artma / libs / utils[get_verbosity])
+
   study_id_col <- df$study_id
 
   freq_table <- table(study_id_col)
@@ -97,10 +105,12 @@ add_study_size_column <- function(df) {
   if ("study_size" %in% colnames(df)) {
     invalid_or_missing_ids <- which(is.na(df$study_size) | df$study_size != study_size_col)
     if (length(invalid_or_missing_ids) > 0) {
-      cli::cli_alert_warning(c(
-        "!" = "Found {length(invalid_or_missing_ids)} invalid or missing study sizes in the column {.val study_size}.",
-        "i" = "Resetting them to the expected values."
-      ))
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning(c(
+          "!" = "Found {length(invalid_or_missing_ids)} invalid or missing study sizes in the column {.val study_size}.",
+          "i" = "Resetting them to the expected values."
+        ))
+      }
     }
   }
 
@@ -133,9 +143,12 @@ add_precision_column <- function(df) {
 #' @param df *\[data.frame\]* The data frame to compute the optional columns for.
 #' @return *\[data.frame\]* The data frame with the optional columns.
 compute_optional_columns <- function(df) {
+  box::use(artma / libs / utils[get_verbosity])
   box::use(magrittr[`%>%`])
 
-  cli::cli_inform("Computing and validating optional columns...")
+  if (get_verbosity() >= 4) {
+    cli::cli_inform("Computing and validating optional columns…")
+  }
 
   df %>%
     add_obs_id_column() %>%

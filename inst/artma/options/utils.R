@@ -28,13 +28,19 @@ get_option_group <- function(prefix) {
 #' @param prefix A string representing the prefix of the options to remove.
 #' @return `NULL`
 remove_options_with_prefix <- function(prefix) {
+  box::use(artma / libs / utils[get_verbosity])
+
   opts <- options()
   opts_to_remove <- names(opts)[startsWith(names(opts), prefix)]
 
-  cli::cli_inform("Clearing the following options from the options namespace: {.emph {opts_to_remove}}")
+  if (get_verbosity() >= 4) {
+    cli::cli_inform("Clearing the following options from the options namespace: {.emph {opts_to_remove}}")
+  }
 
   if (length(opts_to_remove) == 0) {
-    cli::cli_alert_info("No options found with the prefix: {prefix}")
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_info("No options found with the prefix: {prefix}")
+    }
     return(invisible(NULL))
   }
 
@@ -92,9 +98,13 @@ parse_template_enum_value <- function(opt_type) {
 #' @title Parse options file name
 #' @description Parse a string into one that can be used as an options file name. If this fails, raise an error.
 parse_options_file_name <- function(input_string) {
+  box::use(artma / libs / utils[get_verbosity])
+
   str_out <- rlang::duplicate(input_string)
 
-  cli::cli_inform("Parsing the following string into a user options file name: {.file {input_string}}")
+  if (get_verbosity() >= 4) {
+    cli::cli_inform("Parsing the following string into a user options file name: {.file {input_string}}")
+  }
 
   tryCatch(
     {
@@ -106,12 +116,12 @@ parse_options_file_name <- function(input_string) {
       str_out <- stringr::str_trim(str_out, side = "both")
     },
     error = function(e) {
-      cli::cli_abort(cli::format_inline("There was an error parsing the following into a valid user options file name: {.emph {input_string}}"))
+      cli::cli_abort("There was an error parsing the following into a valid user options file name: {.emph {input_string}}")
     }
   )
 
   if (!grepl(".yaml$|.yml$", str_out)) {
-    cli::cli_abort(cli::format_inline("Please provide the name of the options file with .yaml suffix. Got: {.emph {str_out}}."))
+    cli::cli_abort("Please provide the name of the options file with .yaml suffix. Got: {.emph {str_out}}.")
   }
 
   str_out
@@ -127,7 +137,7 @@ get_expected_type <- function(opt_def) {
   if (!is.null(opt_def$action) && opt_def$action == "store_true") {
     return("logical")
   }
-  cli::cli_abort(glue::glue("Invalid template definition for the option '{opt_def}'. Could not determine the expected value type."))
+  cli::cli_abort("Invalid template definition for the option '{opt_def}'. Could not determine the expected value type.")
 }
 
 #' @title Validate option type
@@ -201,12 +211,25 @@ validate_user_input <- function(user_input) {
   return(invisible(NULL))
 }
 
+#' @title Print options help text
+#' @description Print options help text
+#' @param help *\[character\]* The help text to print
+#' @return `NULL`
+#' @export
+print_options_help_text <- function(help) {
+  help_key <- cli::format_inline("{.strong Help}: ")
+  help_body <- cli::format_inline(help)
+  writeLines(paste0(help_key, help_body))
+}
+
+
 box::export(
   flat_to_nested,
   get_expected_type,
   get_option_group,
   parse_options_file_name,
   parse_template_enum_value,
+  print_options_help_text,
   remove_options_with_prefix,
   validate_option_value,
   validate_user_input

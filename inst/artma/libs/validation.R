@@ -37,7 +37,7 @@ parse_condition <- function(cond_expr, env = parent.frame()) {
   arg_expr <- cond_call[[2]] # e.g. "my_var" or a literal "1"
   arg_label <- deparse(arg_expr) # text version of the argument
 
-  # Attempt to evaluate the argument in 'env' for a "Got: ..." message
+  # Attempt to evaluate the argument in 'env' for a "Got: …" message
   # There's no guarantee that 'arg_expr' is a symbol, might be a literal, so we wrap in tryCatch.
   arg_value <- tryCatch(
     eval(arg_expr, envir = env),

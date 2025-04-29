@@ -52,7 +52,7 @@ build-ignore) Rscript -e "usethis::use_build_ignore('$@')" ;;
 bump-version) bash scripts/bumpVersion.sh "$@" ;;
 check) Rscript -e "devtools::check()" ;;
 check-no-install) Rscript -e "devtools::check(args = c('--no-install'))" ;;
-clear-cache) bash scripts/clearCache.sh "$@" ;;
+clear-cache) Rscript -e "source(\"scripts/R/clear_cache.R\")" ;;
 coverage) Rscript -e "covr::package_coverage()" ;;
 deps) Rscript -e "devtools::install_deps(dependencies = TRUE)" ;;
 desc-normalize) Rscript -e "desc::desc_normalize()" ;;
