@@ -17,22 +17,20 @@ new_artifact <- function(value, log, meta) {
 #' @param ... *\[any\]* Additional arguments
 #' @return `NULL`
 print.cached_artifact <- function(x, ...) {
-  header <- "Artifact"
-  cat(header, "\n", sep = "")
+  cli::cli_h3("Artifact")
 
-  cat("Value:\n")
-  print(x$value)
+  cli::cli_text("{.bold Value:} {.val {x$value}}")
+  cli::cli_text("{.bold Log:} ({length(x$log)} entries)")
 
-  cat("\nLog (", length(x$log), " entr", if (length(x$log) == 1) "y" else "ies",
-    ")\n",
-    sep = ""
-  )
-  if (length(x$log)) {
-    cat("  • ", vapply(x$log, `[[`, "", "message"), sep = "\n  • ")
+  if (length(x$log) > 0) {
+    msgs <- vapply(x$log, `[[`, "", "message")
+    cli::cli_bullets(msgs)
   }
 
-  cat("\n\nMeta:\n")
-  str(x$meta, give.attr = FALSE, comp.str = "")
+  cli::cli_text("{.bold Meta:}")
+  for (line in utils::capture.output(utils::str(x$meta, give.attr = FALSE, comp.str = ""))) {
+    cli::cli_text(line)
+  }
 
   invisible(x)
 }
@@ -83,7 +81,7 @@ last_cli_print <- function(calls = sys.calls(), add_pkg_prefix = FALSE) {
 #'   * **fun**     – the original helper (e.g. "cli_inform")
 #'   * **message** – fully rendered, ready-to-print text
 #'
-#' The expression’s own value is returned unchanged in `value`.
+#' The expression's own value is returned unchanged in `value`.
 #'
 capture_cli <- function(expr) {
   expr <- substitute(expr) # preserve NSE
@@ -210,7 +208,7 @@ cache_cli <- function(fun,
   function(...) {
     # Allow user-supplied invalidator
     if (!is.null(invalidate_fun) && isTRUE(invalidate_fun(...))) {
-      worker_memoised$forget(worker_memoised, ...)
+      memoise::forget(worker_memoised)
     }
 
     art <- worker_memoised(...)

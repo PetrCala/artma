@@ -93,18 +93,18 @@ test_that("invalidate_fun forces recomputation and new artifact", {
   cached_modeller(-1) # should bypass cache
   keys_after <- tmp_cache$keys()
 
-  expect_gt(length(keys_after), length(keys_before))
+  expect_false(identical(sort(keys_before), sort(keys_after)))
 })
 
 test_that("print.cached_artifact produces a human-readable summary", {
   local_cli_silence()
 
-  box::use(artma / libs / cache[new_artifact])
+  box::use(artma / libs / cache[new_artifact, print.cached_artifact])
 
   art <- new_artifact(99, list(), list(note = "demo"))
-  out <- testthat::capture_messages(print(art))
+  out <- testthat::capture_messages(print.cached_artifact(art))
 
-  expect_match(out, "Artifact", fixed = TRUE)
-  expect_match(out, "Value:", fixed = TRUE)
-  expect_match(out, "Log:", fixed = TRUE)
+  expect_true(any(grepl("Artifact", out, fixed = TRUE)))
+  expect_true(any(grepl("Value:", out, fixed = TRUE)))
+  expect_true(any(grepl("Log:", out, fixed = TRUE)))
 })
