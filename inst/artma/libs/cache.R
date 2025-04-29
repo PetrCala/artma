@@ -182,6 +182,10 @@ cache_cli <- function(fun,
                       invalidate_fun = NULL) {
   base::force(fun) # lock the original function inside the closure
 
+  if (!getOption("artma.cache.use_cache", TRUE)) {
+    return(fun)
+  }
+
   # — pick / create the cache ------------------------------------------------
   if (is.null(cache)) {
     box::use(artma / paths[PATHS])
