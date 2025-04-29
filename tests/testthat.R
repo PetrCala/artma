@@ -1,4 +1,4 @@
 library(testthat)
 library(artma)
 
-testthat::test_check("artma")
+testthat::test_check("artma", reporter = "summary")
