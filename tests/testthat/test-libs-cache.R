@@ -24,10 +24,12 @@ test_that("capture_cli traps cli conditions and replay_log re-emits them", {
   # ----- log handling -------------------------------------------------------
   expect_type(res$log, "list")
   expect_length(res$log, 1L)
-  expect_s3_class(res$log[[1]], "condition")
+  expect_type(res$log[[1]], "list")
+  expect_type(res$log[[1]]$fun, "character")
+  expect_type(res$log[[1]]$message, "character")
 
   # replay should print exactly once
-  out <- testthat::capture_output(replay_log(res$log))
+  out <- testthat::capture_messages(replay_log(res$log))
   expect_match(out, "Hello", fixed = TRUE)
 })
 
