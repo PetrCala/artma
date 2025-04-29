@@ -34,7 +34,7 @@ test_that("capture_cli traps cli conditions and replay_log re-emits them", {
 })
 
 test_that("cache_cli memoises value + log and replays on hit", {
-  box::use(artma / libs / cache[cache_cli])
+  box::use(artma / libs / cache[cache_cli, get_artifact])
 
   local_cli_silence()
 
@@ -44,7 +44,7 @@ test_that("cache_cli memoises value + log and replays on hit", {
   cached_modeller <- cache_cli(fake_modeller, cache = tmp_cache)
 
   ## --- 1st call: cold ------------------------------------------------------
-  first_console <- testthat::capture_output(
+  first_console <- testthat::capture_messages(
     v1 <- cached_modeller(10)
   )
   expect_equal(v1, 20)
@@ -53,7 +53,7 @@ test_that("cache_cli memoises value + log and replays on hit", {
   expect_length(tmp_cache$keys(), 1L)
 
   ## --- 2nd call: warm ------------------------------------------------------
-  second_console <- testthat::capture_output(
+  second_console <- testthat::capture_messages(
     v2 <- cached_modeller(10)
   )
   expect_equal(v2, 20)
@@ -66,7 +66,7 @@ test_that("cache_cli memoises value + log and replays on hit", {
 
   ## --- inspect the artifact -----------------------------------------------
   key <- tmp_cache$keys()[[1]]
-  art <- tmp_cache$get(key)
+  art <- get_artifact(tmp_cache, key)
   expect_s3_class(art, "cached_artifact")
   expect_length(art$log, 1L)
   expect_match(art$log[[1]]$message, "Running model", fixed = TRUE)
@@ -102,7 +102,7 @@ test_that("print.cached_artifact produces a human-readable summary", {
   box::use(artma / libs / cache[new_artifact])
 
   art <- new_artifact(99, list(), list(note = "demo"))
-  out <- testthat::capture_output(print(art))
+  out <- testthat::capture_messages(print(art))
 
   expect_match(out, "Artifact", fixed = TRUE)
   expect_match(out, "Value:", fixed = TRUE)

@@ -5,7 +5,8 @@
 #' @param meta *\[list\]* The meta data to cache
 #' @return `NULL`
 new_artifact <- function(value, log, meta) {
-  base::structure(list(value = value, log = log, meta = meta), # nolint: undesirable_function_linter.
+  base::structure( # nolint: undesirable_function_linter.
+    list(value = value, log = log, meta = meta),
     class = "cached_artifact"
   )
 }
@@ -168,6 +169,14 @@ replay_log <- function(log, ..., .envir = parent.frame()) {
 #'   .run_models_impl,
 #'   extra_keys = list(pkg_ver = utils::packageVersion("yourpkg"))
 #' )
+#'
+#' # get the artifact
+#' art <- get_artifact(cache, key)
+#' art$value # <- model, plot, etc.
+#' art$log # <- list of stored cli conditions
+#'
+#' # To watch the console story again
+#' replay_log(art$log)
 #' }
 cache_cli <- function(fun,
                       extra_keys = list(),
@@ -212,9 +221,28 @@ cache_cli <- function(fun,
   }
 }
 
+#' @title Get artifact
+#' @description Get artifact
+#' @param cache *\[memoise::cache_filesystem\]* The cache to use
+#' @param key *\[character\]* The key to get
+#' @return *\[cached_artifact\]* The artifact
+#' @examples
+#' \dontrun{
+#' cache <- memoise::cache_filesystem(rappdirs::user_cache_dir("artma"))
+#' keys <- cache$keys() # hashes of all artifacts
+#' art <- get_artifact(cache, keys[[1]]) # read the first one
+#'
+#' art$value # <- model, plot, etc.
+#' art$log # <- list of stored cli conditions
+#' }
+get_artifact <- function(cache, key) {
+  cache$get(key)$value
+}
+
 box::export(
   cache_cli,
   capture_cli,
+  get_artifact,
   last_cli_print,
   new_artifact,
   print.cached_artifact,
