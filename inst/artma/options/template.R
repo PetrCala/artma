@@ -120,14 +120,17 @@ get_option_defs <- function(template_path = NULL, opt_path = NULL) {
 #' `any` The resolved value for the fixed option.
 #' @keywords internal
 resolve_fixed_option <- function(opt, user_input) {
-  box::use(artma / const[CONST])
+  box::use(
+    artma / const[CONST],
+    artma / libs / utils[get_verbosity]
+  )
 
   if (!is.null(user_input[[opt$name]])) {
     if (user_input[[opt$opt_name]] == opt$default) {
       return(opt$default)
     }
     # User tried to set a value for a fixed option to a non-default value
-    if (getOption("artma.verbose", 3) >= 2) {
+    if (get_verbosity() >= 2) {
       cli::cli_alert_warning("Ignoring user-provided value for fixed option {CONST$STYLES$OPTIONS$NAME(opt$name)}.")
     }
   }
@@ -268,7 +271,10 @@ resolve_option_value <- function(
 #' `any` The coerced value.
 #' @keywords internal
 coerce_option_value <- function(val, opt) {
-  box::use(artma / const[CONST])
+  box::use(
+    artma / const[CONST],
+    artma / libs / utils[get_verbosity]
+  )
 
   # If the value is NULL, there's nothing to coerce
   if (is.null(val)) {
@@ -306,7 +312,7 @@ coerce_option_value <- function(val, opt) {
       if (isTRUE(opt$standardize) && opt$type == "character") {
         standard_val <- make.names(coerced_val)
         if (standard_val != coerced_val && !is.na(coerced_val)) {
-          if (getOption("artma.verbose", 3) >= 2) {
+          if (get_verbosity() >= 2) {
             cli::cli_alert_warning(
               "Option {CONST$STYLES$OPTIONS$NAME(opt$name)} does not allow non-standard values. Standardizing from {CONST$STYLES$OPTIONS$VALUE(val)} to {CONST$STYLES$OPTIONS$VALUE(standard_val)}."
             )

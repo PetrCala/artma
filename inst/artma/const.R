@@ -70,6 +70,7 @@ CONST <- list(
       REGEX = "\\.ya(ml|yml)$"
     )
   ),
+  DEFAULT_VERBOSITY = 3,
   STYLES = list(
     OPTIONS = list(
       NAME = cli::col_magenta,

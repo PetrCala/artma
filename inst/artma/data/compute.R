@@ -11,7 +11,7 @@ add_obs_id_column <- function(df) {
     n_invalid_idxs <- length(invalid_idxs)
 
     if (n_invalid_idxs > 0) {
-      if (verbose >= 2) {
+      if (get_verbosity() >= 2) {
         cli::cli_alert_warning(c(
           "!" = "Found {n_invalid_idxs} invalid observation IDs in the column {.val obs_id}.",
           "i" = "Resetting them to sequential integers."
@@ -30,8 +30,9 @@ add_obs_id_column <- function(df) {
 #' @return *\[data.frame\]* The data frame with the study ID column.
 #' @keywords internal
 add_study_id_column <- function(df) {
+  box::use(artma / libs / utils[get_verbosity])
+
   study_names <- df$study
-  verbose <- getOption("artma.verbose", 3)
 
   if (!length(study_names) == nrow(df)) {
     cli::cli_abort("The number of study names must be equal to the number of rows in the data frame.")
@@ -42,7 +43,7 @@ add_study_id_column <- function(df) {
   if ("study_id" %in% colnames(df)) {
     invalid_or_missing_ids <- which(is.na(df$study_id) | df$study_id != valid_ids)
     if (length(invalid_or_missing_ids) > 0) {
-      if (verbose >= 2) {
+      if (get_verbosity() >= 2) {
         cli::cli_alert_warning(c(
           "!" = "Found {length(invalid_or_missing_ids)} invalid or missing study IDs in the column {.val study_id}.",
           "i" = "Resetting them to sequential integers."
@@ -94,8 +95,9 @@ add_t_stat_column <- function(df) {
 #' @return *\[data.frame\]* The data frame with the study size column.
 #' @keywords internal
 add_study_size_column <- function(df) {
+  box::use(artma / libs / utils[get_verbosity])
+
   study_id_col <- df$study_id
-  verbose <- getOption("artma.verbose", 3)
 
   freq_table <- table(study_id_col)
   study_size_col <- vapply(study_id_col, function(x) freq_table[as.character(x)], FUN.VALUE = integer(1))
@@ -103,7 +105,7 @@ add_study_size_column <- function(df) {
   if ("study_size" %in% colnames(df)) {
     invalid_or_missing_ids <- which(is.na(df$study_size) | df$study_size != study_size_col)
     if (length(invalid_or_missing_ids) > 0) {
-      if (verbose >= 2) {
+      if (get_verbosity() >= 2) {
         cli::cli_alert_warning(c(
           "!" = "Found {length(invalid_or_missing_ids)} invalid or missing study sizes in the column {.val study_size}.",
           "i" = "Resetting them to the expected values."
@@ -141,9 +143,10 @@ add_precision_column <- function(df) {
 #' @param df *\[data.frame\]* The data frame to compute the optional columns for.
 #' @return *\[data.frame\]* The data frame with the optional columns.
 compute_optional_columns <- function(df) {
+  box::use(artma / libs / utils[get_verbosity])
   box::use(magrittr[`%>%`])
 
-  if (getOption("artma.verbose", 3) >= 4) {
+  if (get_verbosity() >= 4) {
     cli::cli_inform("Computing and validating optional columns…")
   }
 

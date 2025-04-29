@@ -33,6 +33,7 @@ utils::globalVariables(c(
   "get_pkg_exports",
   "get_required_colnames",
   "get_standardized_colnames",
+  "get_verbosity",
   "index",
   "last_cli_print",
   "libs",

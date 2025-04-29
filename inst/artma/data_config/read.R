@@ -9,6 +9,7 @@ get_data_config <- function(
   box::use(
     artma / libs / validation[validate],
     artma / data_config / utils[data_config_is_valid],
+    artma / libs / utils[get_verbosity],
     artma / data_config / write[fix_data_config]
   )
 
@@ -32,7 +33,7 @@ get_data_config <- function(
   }
 
   # The config does not exist yet - we can safely create it
-  if (getOption("artma.verbose", 3) >= 4) {
+  if (get_verbosity() >= 4) {
     cli::cli_inform("Creating a new data config…")
   }
 

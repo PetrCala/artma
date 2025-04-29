@@ -9,8 +9,10 @@
 #' @return *\[data.frame\]* The modified data frame with updated degrees of freedom.
 #' @export
 fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL, drop_negative = NULL, drop_zero = NULL) {
-  box::use(dof_calc = artma / calc / dof)
-  verbose <- getOption("artma.verbose", 3)
+  box::use(
+    artma / libs / utils[get_verbosity],
+    dof_calc = artma / calc / dof
+  )
 
   pcc <- df$effect
   t_values <- df$t_value
@@ -30,7 +32,7 @@ fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL,
     pcc = pcc[fillable_rows]
   )
 
-  if (verbose >= 3) {
+  if (get_verbosity() >= 3) {
     cli::cli_inform("Filled {sum(fillable_rows)} missing degrees of freedom.")
   }
 
@@ -38,7 +40,7 @@ fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL,
   drop_rows <- function(condition, msg) {
     n_rows_to_drop <- sum(condition)
     if (n_rows_to_drop > 0) {
-      if (verbose >= 3) {
+      if (get_verbosity() >= 3) {
         cli::cli_inform("Dropping {n_rows_to_drop} {msg}")
       }
       return(df[!condition, ])
