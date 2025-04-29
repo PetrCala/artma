@@ -10,7 +10,9 @@ box::use(
 #' @return *\[data.frame\]* The data frame with the redundant columns removed
 #' @keywords internal
 remove_redundant_columns <- function(df) {
-  if (getOption("artma.verbose", 3) >= 4) {
+  box::use(artma / libs / utils[get_verbosity])
+
+  if (get_verbosity() >= 4) {
     cli::cli_inform("Removing redundant columns…")
   }
   expected_col_n <- length(get_data_config())
@@ -30,7 +32,9 @@ remove_redundant_columns <- function(df) {
 #' @return *\[data.frame\]* The data frame with the redundant columns removed
 #' @keywords internal
 verify_variable_names <- function(df) {
-  if (getOption("artma.verbose", 3) >= 4) {
+  box::use(artma / libs / utils[get_verbosity])
+
+  if (get_verbosity() >= 4) {
     cli::cli_inform("Checking variable names…")
   }
 
@@ -57,7 +61,9 @@ verify_variable_names <- function(df) {
 #' @return *\[data.frame\]* The data frame with the redundant columns removed
 #' @keywords internal
 verify_variable_order <- function(df) {
-  if (getOption("artma.verbose", 3) >= 4) {
+  box::use(artma / libs / utils[get_verbosity])
+
+  if (get_verbosity() >= 4) {
     cli::cli_inform("Checking variable name order…")
   }
 
@@ -82,7 +88,9 @@ verify_variable_order <- function(df) {
 #' @return *\[data.frame\]* The data frame with the empty rows removed
 #' @keywords internal
 remove_empty_rows <- function(df) {
-  if (getOption("artma.verbose", 3) >= 4) {
+  box::use(artma / libs / utils[get_verbosity])
+
+  if (get_verbosity() >= 4) {
     cli::cli_inform("Removing empty rows…")
   }
 
@@ -101,7 +109,9 @@ remove_empty_rows <- function(df) {
 #' @return *\[data.frame\]* The data frame with the redundant columns removed
 #' @keywords internal
 check_required_non_empty <- function(df) {
-  if (getOption("artma.verbose", 3) >= 4) {
+  box::use(artma / libs / utils[get_verbosity])
+
+  if (get_verbosity() >= 4) {
     cli::cli_inform("Checking that required columns contain no empty cells…")
   }
 
@@ -127,7 +137,9 @@ check_required_non_empty <- function(df) {
 #' @return *\[data.frame\]* The data frame with the correct data types enforced
 #' @keywords internal
 enforce_data_types <- function(df) {
-  if (getOption("artma.verbose", 3) >= 4) {
+  box::use(artma / libs / utils[get_verbosity])
+
+  if (get_verbosity() >= 4) {
     cli::cli_inform("Enforcing correct data types…")
   }
 
@@ -151,7 +163,9 @@ enforce_data_types <- function(df) {
 #' @return *\[data.frame\]* The data frame with the invalid values enforced
 #' @keywords internal
 enforce_correct_values <- function(df) {
-  if (getOption("artma.verbose", 3) >= 4) {
+  box::use(artma / libs / utils[get_verbosity])
+
+  if (get_verbosity() >= 4) {
     cli::cli_inform("Checking for invalid values…")
   }
 
@@ -165,7 +179,7 @@ enforce_correct_values <- function(df) {
     assert(length(zero_se_rows) == 0, "The 'se' column contains zero values")
   } else if (se_zero_handling == "warn") {
     if (length(zero_se_rows) > 0) {
-      if (getOption("artma.verbose", 3) >= 3) {
+      if (get_verbosity() >= 3) {
         cli::cli_warn("The 'se' column contains zero values in {length(zero_se_rows)} rows")
       }
     }

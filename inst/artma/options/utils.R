@@ -28,15 +28,17 @@ get_option_group <- function(prefix) {
 #' @param prefix A string representing the prefix of the options to remove.
 #' @return `NULL`
 remove_options_with_prefix <- function(prefix) {
+  box::use(artma / libs / utils[get_verbosity])
+
   opts <- options()
   opts_to_remove <- names(opts)[startsWith(names(opts), prefix)]
 
-  if (getOption("artma.verbose", 3) >= 4) {
+  if (get_verbosity() >= 4) {
     cli::cli_inform("Clearing the following options from the options namespace: {.emph {opts_to_remove}}")
   }
 
   if (length(opts_to_remove) == 0) {
-    if (getOption("artma.verbose", 3) >= 3) {
+    if (get_verbosity() >= 3) {
       cli::cli_alert_info("No options found with the prefix: {prefix}")
     }
     return(invisible(NULL))
@@ -96,9 +98,11 @@ parse_template_enum_value <- function(opt_type) {
 #' @title Parse options file name
 #' @description Parse a string into one that can be used as an options file name. If this fails, raise an error.
 parse_options_file_name <- function(input_string) {
+  box::use(artma / libs / utils[get_verbosity])
+
   str_out <- rlang::duplicate(input_string)
 
-  if (getOption("artma.verbose", 3) >= 4) {
+  if (get_verbosity() >= 4) {
     cli::cli_inform("Parsing the following string into a user options file name: {.file {input_string}}")
   }
 

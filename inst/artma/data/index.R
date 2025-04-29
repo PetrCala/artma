@@ -2,7 +2,9 @@
 #' @description Prepare data for analysis. This includes reading, preprocessing, cleaning, and validating the data.
 #' @return *\[data.frame\]* The prepared data frame.
 prepare_data <- function() {
-  if (getOption("artma.verbose", 3) >= 4) {
+  box::use(artma / libs / utils[get_verbosity])
+
+  if (get_verbosity() >= 4) {
     cli::cli_inform("Preparing data for analysis.")
   }
 

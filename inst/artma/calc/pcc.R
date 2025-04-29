@@ -27,16 +27,16 @@ pcc_variance <- function(df, offset = 0) {
 #' @param method *\[character\]* The method to use for the RE calculation. Defaults to "DL". Other common options include "ML" and "REML".
 #' @export
 re <- function(df, effect = NULL, se = NULL, method = "DL") {
+  box::use(artma / libs / utils[get_verbosity])
   if (is.null(effect)) effect <- df$effect
   if (is.null(se)) se <- df$se
   validate(length(effect) == nrow(df), length(se) == nrow(df))
-  verbose <- getOption("artma.verbose", 3)
 
   result <- tryCatch(
     {
       meta <- unique(df$meta)
       if (length(meta) != 1) {
-        if (verbose >= 2) {
+        if (get_verbosity() >= 2) {
           cli::cli_alert_warning("Could not calculate RE for multiple meta-analyses")
         }
         return(list(est = NA, t_value = NA))
@@ -55,7 +55,7 @@ re <- function(df, effect = NULL, se = NULL, method = "DL") {
       return(list(est = re_est, t_value = re_t_value))
     },
     error = function(e) {
-      if (verbose >= 2) {
+      if (get_verbosity() >= 2) {
         cli::cli_alert_warning("Could not fit the RE model for meta-analysis {.emph {meta}}: {e}")
       }
       return(list(est = NA, t_value = NA))
@@ -75,10 +75,10 @@ re <- function(df, effect = NULL, se = NULL, method = "DL") {
 #' `list` A list with properties "est", "t_value".
 #' @export
 uwls <- function(df, effect = NULL, se = NULL) {
+  box::use(artma / libs / utils[get_verbosity])
   if (is.null(effect)) effect <- df$effect
   if (is.null(se)) se <- df$se
   validate(length(effect) == nrow(df), length(se) == nrow(df))
-  verbose <- getOption("artma.verbose", 3)
 
   meta <- unique(df$meta)
   validate(length(meta) == 1)
@@ -95,7 +95,7 @@ uwls <- function(df, effect = NULL, se = NULL) {
       return(list(est = est, t_value = t_value))
     },
     error = function(e) {
-      if (verbose >= 2) {
+      if (get_verbosity() >= 2) {
         cli::cli_alert_warning("Could not fit the UWLS model for meta-analysis {.emph {meta}}: {e}")
       }
       return(list(est = NA, t_value = NA))
@@ -138,20 +138,20 @@ uwls3 <- function(df) {
 hsma <- function(df) {
   meta <- unique(df$meta)
   assert(sum(is.na(df$effect)) == 0, paste("Missing effect values in the PCC data frame for meta-analysis", meta))
-  verbose <- getOption("artma.verbose", 3)
 
+  box::use(artma / libs / utils[get_verbosity])
 
   # Safety check
   missing_dof <- sum(is.na(df$dof))
   if (missing_dof > 0) {
-    if (verbose >= 3) {
+    if (get_verbosity() >= 3) {
       cli::cli_inform("Dropping {missing_dof} missing degrees of freedom for meta-analysis {.emph {meta}}")
     }
     df <- df[!is.na(df$dof), ]
   }
 
   if (nrow(df) == 0) {
-    if (verbose >= 2) {
+    if (get_verbosity() >= 2) {
       cli::cli_alert_warning("No data to calculate HSMA for meta-analysis {.emph {meta}}")
     }
     return(list(est = NA, t_value = NA))
@@ -172,9 +172,10 @@ hsma <- function(df) {
 #' @note For the calculation, all studies should be present in the dataset.
 #' @export
 fishers_z <- function(df, method = "ML") {
+  box::use(artma / libs / utils[get_verbosity])
+
   meta <- unique(df$meta)
   n_ <- df$dof
-  verbose <- getOption("artma.verbose", 3)
 
   # Sometimes the log produces NaNs - handled below
   fishers_z_ <- suppressWarnings(0.5 * log((1 + df$effect) / (1 - df$effect)))
@@ -184,7 +185,7 @@ fishers_z <- function(df, method = "ML") {
   re_data <- re_data[!is.na(fishers_z_) & !is.na(se_), ] # Drop NA rows
 
   if (nrow(re_data) == 0) {
-    if (verbose >= 2) {
+    if (get_verbosity() >= 2) {
       cli::cli_alert_warning("No data to calculate Fisher's z for meta-analysis {.emph {meta}}")
     }
     return(list(est = NA, t_value = NA))
@@ -202,14 +203,15 @@ fishers_z <- function(df, method = "ML") {
 #' Calculate various summary statistics associated with the PCC data frame
 #' @export
 pcc_sum_stats <- function(df) {
+  box::use(artma / libs / utils[get_verbosity])
+
   meta <- unique(df$meta)
   obs_ <- nrow(df)
   ss_ <- df$sample_size # The sample size to calculate the statistics from
-  verbose <- getOption("artma.verbose", 3)
 
   missing_ss <- is.na(ss_)
   if (sum(missing_ss) > 0) {
-    if (verbose >= 3) {
+    if (get_verbosity() >= 3) {
       cli::cli_inform("Missing sample sizes when calculating PCC summary statistics for meta-analysis {.emph {meta}}. Filling these using degrees of freedom.")
     }
     ss_[is.na(ss_)] <- df$dof[is.na(ss_)] # Replace NA with DoF
@@ -238,7 +240,7 @@ pcc_sum_stats <- function(df) {
     ss_lt_3200 = get_ss_lt(3200)
   )
 
-  if (verbose >= 3) {
+  if (get_verbosity() >= 3) {
     cli::cli_inform("PCC analysis summary statistics:")
     cli::cli_inform(paste("Number of PCC observations:", res$n_observations))
     cli::cli_inform(paste("Average effect:", res$avg_effect))

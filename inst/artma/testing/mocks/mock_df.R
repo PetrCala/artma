@@ -21,6 +21,7 @@ create_mock_df <- function(
     artma / const[CONST],
     artma / libs / number_utils[generate_random_vector],
     artma / libs / validation[assert],
+    artma / libs / utils[get_verbosity],
     artma / data / utils[get_standardized_colnames],
     artma / testing / mocks / mock_utils[create_mock_study_names]
   )
@@ -80,7 +81,7 @@ create_mock_df <- function(
       "File path must be a valid path"
     )
 
-    if (getOption("artma.verbose", 3) >= 4) {
+    if (get_verbosity() >= 4) {
       cli::cli_inform("Creating mock data file: {file_path}")
     }
     utils::write.csv(data_frame, file_path, row.names = FALSE)

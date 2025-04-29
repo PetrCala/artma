@@ -6,7 +6,10 @@
 #'  Raise an error in case the folder does not exist.
 #' @export
 ensure_folder_existence <- function(folder_name, require_existence = FALSE) {
-  box::use(artma / libs / validation[validate])
+  box::use(
+    artma / libs / validation[validate],
+    artma / libs / utils[get_verbosity]
+  )
   validate(is.character(folder_name), is.logical(require_existence))
 
   if (!dir.exists(folder_name)) {
@@ -16,7 +19,7 @@ ensure_folder_existence <- function(folder_name, require_existence = FALSE) {
         class = "folder_not_found"
       )
     }
-    if (getOption("artma.verbose", 3) >= 4) {
+    if (get_verbosity() >= 4) {
       cli::cli_inform("Creating folder {.path {folder_name}}.")
     }
     dir.create(folder_name, recursive = TRUE)
@@ -31,6 +34,8 @@ ensure_folder_existence <- function(folder_name, require_existence = FALSE) {
 #' @param files*\[vector\]* A vector of strings.
 #' @export
 validate_files <- function(files) {
+  box::use(artma / libs / utils[get_verbosity])
+
   for (file in files) {
     if (!file.exists(file)) {
       cli::cli_abort(
@@ -43,7 +48,7 @@ validate_files <- function(files) {
       )
     }
   }
-  if (getOption("artma.verbose", 3) >= 4) {
+  if (get_verbosity() >= 4) {
     cli::cli_inform("All necessary files located successfully.")
   }
 }

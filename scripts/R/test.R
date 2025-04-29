@@ -7,7 +7,8 @@ test <- function() {
     artma / const[CONST],
     artma / paths[PATHS],
     artma / testing / mocks / mock_df[create_mock_df],
-    artma / data_config / parse[parse_df_into_data_config]
+    artma / data_config / parse[parse_df_into_data_config],
+    artma / libs / utils[get_verbosity]
   )
 
   mock_df_path <- PATHS$FILE_MOCKS_TMP_DATA
@@ -24,7 +25,7 @@ test <- function() {
   artma::options.create(
     options_file_name = options_file_name,
     user_input = list(
-      "verbose" = getOption("artma.verbose", 3),
+      "verbose" = get_verbosity(),
       "data.source_path" = mock_df_path,
       "data.na_handling" = "stop",
       "data.config_setup" = "auto",

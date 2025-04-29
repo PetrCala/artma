@@ -7,6 +7,7 @@ parse_df_into_data_config <- function(df) {
     artma / const[CONST],
     artma / data / utils[determine_vector_type],
     artma / libs / validation[validate, assert],
+    artma / libs / utils[get_verbosity],
     artma / libs / string[make_verbose_name]
   )
 
@@ -29,7 +30,7 @@ parse_df_into_data_config <- function(df) {
         recognized_data_types = CONST$DATA_CONFIG$DATA_TYPES
       ),
       error = function(e) {
-        if (getOption("artma.verbose", 3) >= 2) {
+        if (get_verbosity() >= 2) {
           cli::cli_alert_warning("Failed to determine the data type of the column {.val {col}}.")
         }
         "unknown"

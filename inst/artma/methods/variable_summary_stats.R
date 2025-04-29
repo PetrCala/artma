@@ -11,12 +11,12 @@ variable_summary_stats <- function(df) {
     artma / const[CONST],
     artma / libs / validation[assert],
     artma / data_config / read[get_data_config],
-    artma / options / index[get_option_group]
+    artma / options / index[get_option_group],
+    artma / libs / utils[get_verbosity]
   )
 
   config <- get_data_config()
   opt <- get_option_group("artma.methods.variable_summary_stats")
-  verbose <- getOption("artma.verbose", 3)
 
   variable_stat_names <- CONST$VARIABLE_SUMMARY_STATS$NAMES
   desired_vars <- names(config)[vapply(config, function(x) isTRUE(x$variable_summary), logical(1))]
@@ -26,7 +26,7 @@ variable_summary_stats <- function(df) {
   colnames(df_out) <- variable_stat_names
 
   if (length(desired_vars) == 0) {
-    if (verbose >= 2) {
+    if (get_verbosity() >= 2) {
       cli::cli_alert_warning("No variables selected to compute summary statistics for.")
     }
     return(list(df_out, c()))
@@ -73,7 +73,7 @@ variable_summary_stats <- function(df) {
     )
     df_out[row_idx, ] <- row_data
   }
-  if (verbose >= 3) {
+  if (get_verbosity() >= 3) {
     cli::cat_print(df_out)
   }
   list(df_out, missing_data_vars)

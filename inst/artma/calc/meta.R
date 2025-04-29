@@ -4,7 +4,10 @@
 #' @param se *\[numeric\]* The standard error
 #' @return *\[numeric\]* The t-statistic
 t_stat <- function(effect, se) {
-  box::use(artma / libs / validation[assert])
+  box::use(
+    artma / libs / validation[assert],
+    artma / libs / utils[get_verbosity]
+  )
   assert(sum(is.na(effect)) == 0, "The 'effect' column contains missing values")
   assert(sum(is.na(se)) == 0, "The 'se' column contains missing values")
 
@@ -12,7 +15,7 @@ t_stat <- function(effect, se) {
 
   zero_se_rows <- which(se == 0)
   if (length(zero_se_rows) > 0) {
-    if (getOption("artma.verbose", 3) >= 2) {
+    if (get_verbosity() >= 2) {
       cli::cli_alert_warning("Introducing infinite t-values for {length(zero_se_rows)} rows with zero standard errors")
     }
     t_values[zero_se_rows] <- Inf
@@ -36,12 +39,13 @@ reg_dof <- function(n_obs, n_predictors) n_obs - n_predictors
 #' @param reg_dof *\[numeric, optional\]* The degrees of freedom for the regression. Has to be provided if `se` is not provided.
 #' @return *\[numeric\]* The precision of the effect estimates
 precision <- function(se = NULL, reg_dof = NULL) {
-  verbose <- getOption("artma.verbose", 3)
+  box::use(artma / libs / utils[get_verbosity])
+
   precision_type <- getOption("artma.calc.precision_type")
   if (precision_type == "1/SE") {
     zero_se_rows <- which(se == 0)
     if (length(zero_se_rows) > 0) {
-      if (verbose >= 2) {
+      if (get_verbosity() >= 2) {
         cli::cli_alert_warning("Introducing infinite precision values for {length(zero_se_rows)} rows with zero standard errors")
       }
     }

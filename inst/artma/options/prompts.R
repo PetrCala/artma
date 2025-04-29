@@ -2,7 +2,8 @@
 # These functions are imported into the `template.R` file, which is used to prompt the user for options.
 
 prompt_data_config <- function(opt, ...) {
-  if (getOption("artma.verbose", 3) >= 2) {
+  box::use(artma / libs / utils[get_verbosity])
+  if (get_verbosity() >= 2) {
     cli::cli_alert_warning("This option is not yet implemented.")
   }
 }
