@@ -142,8 +142,8 @@ replay_log <- function(log, ..., .envir = parent.frame()) {
 #' @description Cache cli
 #' @param fun *\[function\]* The function to cache
 #' @param extra_keys *\[list\]* Additional keys
-#' @param invalidate_fun *\[function\]* Optional custom invalidator
 #' @param cache *\[memoise::cache_filesystem\]* The cache to use
+#' @param invalidate_fun *\[function\]* Optional custom invalidator
 #' @return `NULL`
 #' @examples
 #' \dontrun{
@@ -178,8 +178,8 @@ replay_log <- function(log, ..., .envir = parent.frame()) {
 #' }
 cache_cli <- function(fun,
                       extra_keys = list(),
-                      invalidate_fun = NULL, # optional custom invalidator
-                      cache = NULL) {
+                      cache = NULL,
+                      invalidate_fun = NULL) {
   base::force(fun) # lock the original function inside the closure
 
   # — pick / create the cache ------------------------------------------------
