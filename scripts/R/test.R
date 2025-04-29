@@ -18,11 +18,13 @@ test <- function() {
 
   # Artma methods
   options_file_name <- CONST$MOCKS$TMP_OPTIONS_FILE_NAME
-  # artma::methods.list()
+
+  withr::local_options(list("artma.verbose" = 2))
   artma::options.delete(options_file_name = options_file_name, skip_confirmation = TRUE)
   artma::options.create(
     options_file_name = options_file_name,
     user_input = list(
+      "verbose" = getOption("artma.verbose", 3),
       "data.source_path" = mock_df_path,
       "data.na_handling" = "stop",
       "data.config_setup" = "auto",
@@ -37,7 +39,7 @@ test <- function() {
       "data.colnames.reg_dof" = NA,
       "data.colnames.precision" = NA
     ),
-    should_overwrite = TRUE,
+    should_overwrite = TRUE
   )
 
   artma::run(
