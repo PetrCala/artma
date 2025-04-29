@@ -787,7 +787,9 @@ options.create <- function(
   options_file_name <- options_file_name %||% ask_for_options_file_name()
   options_file_name <- parse_options_file_name(options_file_name)
 
-  cli::cli_inform("{stringr::str_to_title(action_name)} a user options file: {.path {options_file_name}}")
+  if (getOption("artma.verbose", 3) >= 3) {
+    cli::cli_inform("{stringr::str_to_title(action_name)} a user options file: {.path {options_file_name}}")
+  }
 
   options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
   options_file_path <- file.path(options_dir, options_file_name)
