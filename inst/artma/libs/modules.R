@@ -90,8 +90,24 @@ validate_runtime_method_modules <- function(modules) { # nolint: object_length_l
 }
 
 
+#' @title Get the exports of a package
+#' @description Get the exports of a package.
+#' @param pkg [character] The name of the package to get the exports of.
+#' @return [character] A vector of the exports of the package.
+get_pkg_exports <- function(pkg) {
+  import_statement <- glue::glue("box::use(mod = {pkg})")
+  eval(parse(text = import_statement))
+  ns <- attr(mod, "namespace")
+  exports <- base::getNamespaceExports(ns)
+  funs <- Filter(
+    function(x) is.function(get(x, envir = ns, inherits = FALSE)),
+    exports
+  )
+  funs
+}
 
 box::export(
   crawl_and_import_modules,
+  get_pkg_exports,
   validate_runtime_method_modules
 )
