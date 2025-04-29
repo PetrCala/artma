@@ -19,7 +19,7 @@ test <- function() {
   # Artma methods
   options_file_name <- CONST$MOCKS$TMP_OPTIONS_FILE_NAME
 
-  withr::local_options(list("artma.verbose" = 2))
+  withr::local_options(list("artma.verbose" = 3))
   artma::options.delete(options_file_name = options_file_name, skip_confirmation = TRUE)
   artma::options.create(
     options_file_name = options_file_name,
