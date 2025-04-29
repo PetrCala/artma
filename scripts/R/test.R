@@ -26,6 +26,7 @@ test <- function() {
     options_file_name = options_file_name,
     user_input = list(
       "verbose" = get_verbosity(),
+      "cache.use_cache" = TRUE,
       "data.source_path" = mock_df_path,
       "data.na_handling" = "stop",
       "data.config_setup" = "auto",
@@ -44,7 +45,8 @@ test <- function() {
   )
 
   artma::run(
-    methods = c("all"),
+    # methods = c("all"),
+    methods = c("variable_summary_stats"),
     options_file_name = options_file_name
   )
 

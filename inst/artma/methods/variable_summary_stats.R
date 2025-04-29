@@ -5,7 +5,7 @@
 #' @param df *\[data.frame\]* The input data frame.
 #' @param names_verbose *\[logical\]* If `TRUE`, print out the descriptive variable names. If `FALSE`,
 #' print out the data frame column names. Defaults to `TRUE`.
-#' @return *\[list\]* A list containing a data frame of summary statistics and a vector of variables with missing data.
+#' @return *\[data.frame\]* A data frame of summary statistics.
 variable_summary_stats <- function(df) {
   box::use(
     artma / const[CONST],
@@ -18,19 +18,23 @@ variable_summary_stats <- function(df) {
   config <- get_data_config()
   opt <- get_option_group("artma.methods.variable_summary_stats")
 
+  if (get_verbosity() >= 4) {
+    cli::cli_alert_info("Computing variable summary statistics")
+  }
+
   variable_stat_names <- CONST$VARIABLE_SUMMARY_STATS$NAMES
   desired_vars <- names(config)[vapply(config, function(x) isTRUE(x$variable_summary), logical(1))]
-
-  # Initialize output data frame
-  df_out <- data.frame(matrix(nrow = length(desired_vars), ncol = length(variable_stat_names)))
-  colnames(df_out) <- variable_stat_names
 
   if (length(desired_vars) == 0) {
     if (get_verbosity() >= 2) {
       cli::cli_alert_warning("No variables selected to compute summary statistics for.")
     }
-    return(list(df_out, c()))
+    return(data.frame())
   }
+
+  # Initialize output data frame
+  df_out <- data.frame(matrix(nrow = length(desired_vars), ncol = length(variable_stat_names)))
+  colnames(df_out) <- variable_stat_names
 
   # Iterate over all desired variables and append summary statistics to the main DF
   missing_data_vars <- c()
@@ -73,16 +77,21 @@ variable_summary_stats <- function(df) {
     )
     df_out[row_idx, ] <- row_data
   }
+
   if (get_verbosity() >= 3) {
+    cli::cli_h3("Variable summary statistics:")
     cli::cat_print(df_out)
   }
-  list(df_out, missing_data_vars)
+
+  if (length(missing_data_vars) > 0 && get_verbosity() >= 2) {
+    cli::cli_alert_warning("Missing data for {.val {length(missing_data_vars)}} variables: {.val {missing_data_vars}}")
+  }
+
+  df_out
 }
 
 box::use(artma / libs / cache[cache_cli])
 
 run <- cache_cli(variable_summary_stats)
 
-box::export(
-  run
-)
+box::export(run)

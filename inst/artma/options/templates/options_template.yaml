@@ -136,6 +136,19 @@ methods:
         If `TRUE`, print out the descriptive variable names. If `FALSE`,
         print out the data frame column names. Defaults to `TRUE`.
 
+  effect_summary_stats:
+    conf_level:
+      type: "numeric"
+      default: 0.95
+      help: |
+        The confidence level for the confidence intervals. Defaults to 0.95 (95%).
+
+    formal_output:
+      type: "logical"
+      default: false
+      help: |
+        If `TRUE`, return the table in a form that can be used in LaTeX. Defaults to `FALSE`.
+
 output:
   number_of_decimals:
     type: "integer"
@@ -155,6 +168,22 @@ verbose:
       {cli::symbol$bullet} {.strong 2}: Warnings + errors - warning() and stop() conditions
       {cli::symbol$bullet} {.strong 3}: Info - short progress/high-level info (default)
       {cli::symbol$bullet} {.strong 4}: Debug/trace - everything including internals
+
+cache:
+  use_cache:
+    type: "logical"
+    default: true
+    help: |
+      If `TRUE`, use caching to speed up the package.
+      If `FALSE`, do not use caching.
+
+  cache_age:
+    type: "integer"
+    default: 3600
+    help: |
+      The age of the cache in seconds.
+      Defaults to 3600 seconds (1 hour).
+      If the cache is older than this, it will be invalidated.
 
 temp:
   # A set of options that are only set at runtime but never stored in the options file.
