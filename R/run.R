@@ -73,7 +73,10 @@ run <- function(
     options_file_name = NULL,
     options_dir = NULL) {
   main <- function() {
-    box::use(artma / data / index[prepare_data], artma / libs / utils[get_verbosity])
+    box::use(
+      artma / data / index[prepare_data],
+      artma / libs / utils[get_verbosity]
+    )
 
     df <- prepare_data()
     results <- invoke_runtime_methods(methods = methods, df = df)
