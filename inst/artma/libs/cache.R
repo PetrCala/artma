@@ -84,11 +84,68 @@ last_cli_print <- function(calls = sys.calls(), add_pkg_prefix = FALSE) {
 #' The expression's own value is returned unchanged in `value`.
 #'
 capture_cli <- function(expr) {
+  box::use(artma / libs / modules[get_pkg_exports])
+
   expr <- substitute(expr) # preserve NSE
   logs <- list()
 
+  pkg_funs <- get_pkg_exports("cli")
+  cat_helpers <- pkg_funs[grepl("^cat_", pkg_funs)]
+  ns_cli <- asNamespace("cli") # cli’s namespace environment
+  originals <- list() # to keep the real helpers
+
+  ## ------------------------------------------------------------------
+  ## 1. Monkey-patch every requested cat_*() helper
+  ## ------------------------------------------------------------------
+  make_wrapper <- function(orig_fun, fun_name) {
+    force(orig_fun)
+    force(fun_name)
+
+    function(...) {
+      captured <- character()
+      tc <- textConnection("captured", "w", local = TRUE)
+
+      on.exit(close(tc), add = TRUE) # always close the connection
+
+      withr::with_output_sink(tc, {
+        withr::with_message_sink(tc, { # messages very rarely used, but safe
+          invisible(orig_fun(...))
+        })
+      })
+
+      logs <<- append(
+        logs,
+        # TODO The captured output should be stored not as the following, but
+        # in a way that allows the exact same print to be replayed
+        list(list(fun = fun_name, message = cli::ansi_string(captured)))
+      )
+      invisible(NULL)
+    }
+  }
+
+  for (fn in cat_helpers) {
+    if (exists(fn, envir = ns_cli, inherits = FALSE)) {
+      originals[[fn]] <- get(fn, envir = ns_cli)
+      unlockBinding(fn, ns_cli)
+      assign(fn, make_wrapper(originals[[fn]], fn), envir = ns_cli)
+      lockBinding(fn, ns_cli)
+    }
+  }
+
+  ## Always restore originals
+  on.exit(
+    {
+      for (fn in names(originals)) {
+        unlockBinding(fn, ns_cli)
+        assign(fn, originals[[fn]], envir = ns_cli)
+        lockBinding(fn, ns_cli)
+      }
+    },
+    add = TRUE
+  )
+
   ## -----------------------------------------------------------
-  ##  Condition handler: record + silence the message
+  ##  2. Condition handler: record + silence the message
   ## -----------------------------------------------------------
   handler <- function(cnd) {
     str_msg <- cnd$args$text$str # For 'alert' based messages
