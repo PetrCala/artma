@@ -11,6 +11,7 @@
 - [.Renviron](#renviron)
 - [Installing various R packages](#installing-various-r-packages)
 	- [`systemfonts` on MacOS](#systemfonts-on-macos)
+	- [Other packages on MacOS](#other-packages-on-macos)
 - [Building the package](#building-the-package)
 	- [To exclude a file from the build](#to-exclude-a-file-from-the-build)
 
@@ -208,6 +209,16 @@ Add the following to `~/.R/Makevars` for _systemfonts_ package installation to s
 
 ```make
 OBJCXXFLAGS += ${CXX17STD}
+```
+
+### Other packages on MacOS
+
+For some packages, the clang compiler is set to **gnu23** by default, which runs into compilation issues.
+
+To avoid this, set the compiler to **gnu17** by adding the following line into your `~/.R/Makevars` file:
+
+```make
+CFLAGS = -std=gnu17
 ```
 
 ## Building the package
