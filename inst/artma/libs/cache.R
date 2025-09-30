@@ -89,7 +89,7 @@ call_cli_default <- function(msg) {
   }
 
   if (!is.null(message_text) && length(message_text) > 0L) {
-    cat(message_text, sep = "\n")
+    cli::cli_inform(paste(message_text, collapse = "\n"))
   }
 
   invisible(NULL)
@@ -253,15 +253,14 @@ replay_log <- function(log, ..., .envir = parent.frame()) {
         error = function(err) {
           kind <- entry$cli_type
           if (is.null(kind) || length(kind) == 0L) kind <- "unknown"
-          warning(
+          cli::cli_warn(
             sprintf(
               "Failed to replay CLI condition of type '%s': %s",
               kind,
               conditionMessage(err)
-            ),
-            call. = FALSE
+            )
           )
-          cat(entry$message, sep = "\n")
+          cli::cli_inform(paste(entry$message, collapse = "\n"))
         }
       )
       next
@@ -269,9 +268,8 @@ replay_log <- function(log, ..., .envir = parent.frame()) {
 
     if (identical(entry$kind, "call")) {
       if (!exists(entry$fun, envir = ns_cli, inherits = FALSE)) {
-        warning(
+        cli::cli_warn(
           sprintf("Cannot replay CLI helper '%s' because it is not available.", entry$fun),
-          call. = FALSE
         )
         next
       }
@@ -282,7 +280,7 @@ replay_log <- function(log, ..., .envir = parent.frame()) {
       next
     }
 
-    warning("Unrecognised cache log entry; skipping.", call. = FALSE)
+    cli::cli_warn("Unrecognised cache log entry; skipping.")
   }
 
   invisible(NULL)
@@ -398,12 +396,11 @@ cache_cli <- function(fun,
         should_invalidate <- tryCatch(
           isTRUE(rlang::exec(invalidate_fun, !!!dots)),
           error = function(err) {
-            warning(
+            cli::cli_warn(
               sprintf(
                 "cache invalidator failed and was ignored: %s",
                 conditionMessage(err)
-              ),
-              call. = FALSE
+              )
             )
             FALSE
           }
@@ -416,12 +413,11 @@ cache_cli <- function(fun,
         tryCatch(
           memoise::forget(worker_memoised),
           error = function(err) {
-            warning(
+            cli::cli_warn(
               sprintf(
                 "cache invalidator failed to reset memoised state: %s",
                 conditionMessage(err)
-              ),
-              call. = FALSE
+              )
             )
           }
         )
@@ -450,12 +446,11 @@ cache_cli <- function(fun,
         tryCatch(
           rlang::exec(drop_worker_cache, !!!dots),
           error = function(err) {
-            warning(
+            cli::cli_warn(
               sprintf(
                 "Failed to evict stale cache entry: %s",
                 conditionMessage(err)
-              ),
-              call. = FALSE
+              )
             )
             FALSE
           }
@@ -468,12 +463,11 @@ cache_cli <- function(fun,
             art <- rlang::exec(worker_memoised, !!!dots)
           },
           error = function(err) {
-            warning(
+            cli::cli_warn(
               sprintf(
                 "Failed to refresh stale cache entry: %s",
                 conditionMessage(err)
-              ),
-              call. = FALSE
+              )
             )
             art <- old_art
           },
@@ -490,12 +484,11 @@ cache_cli <- function(fun,
       tryCatch(
         replay_log(log_to_replay),
         error = function(err) {
-          warning(
+          cli::cli_warn(
             sprintf(
               "Failed to replay cached CLI output: %s",
               conditionMessage(err)
-            ),
-            call. = FALSE
+            )
           )
         }
       )
