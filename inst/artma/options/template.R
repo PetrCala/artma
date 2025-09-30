@@ -105,9 +105,8 @@ get_option_defs <- function(template_path = NULL, opt_path = NULL) {
   raw_template_options <- read_template(template_path)
   options_def <- flatten_template_options(raw_template_options)
 
-  if (is.null(opt_path)) {
+  if (is.null(opt_path))
     return(options_def)
-  }
 
   options_def[startsWith(vapply(options_def, `[[`, character(1), "name"), opt_path)]
 }
@@ -126,17 +125,16 @@ resolve_fixed_option <- function(opt, user_input) {
   )
 
   if (!is.null(user_input[[opt$name]])) {
-    if (user_input[[opt$opt_name]] == opt$default) {
+    if (user_input[[opt$opt_name]] == opt$default)
       return(opt$default)
-    }
     # User tried to set a value for a fixed option to a non-default value
     if (get_verbosity() >= 2) {
       cli::cli_alert_warning("Ignoring user-provided value for fixed option {CONST$STYLES$OPTIONS$NAME(opt$name)}.")
     }
   }
-  if (!is.null(opt$default)) {
+  if (!is.null(opt$default))
     return(opt$default)
-  } else if (is.null(opt$default)) {
+  if (is.null(opt$default)) {
     cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} is fixed, but no default is provided.")
   } else {
     return(NULL) # Not required, no default
@@ -208,13 +206,11 @@ prompt_user_for_option_value <- function(opt) {
   val_is_empty <- (!nzchar(input_val) || rlang::is_empty(input_val))
 
   if (val_is_empty) {
-    if (!is.null(opt$default)) {
+    if (!is.null(opt$default))
       return(opt$default)
-    } else if (isTRUE(opt$allow_na)) {
+    if (isTRUE(opt$allow_na))
       return(NA)
-    } else {
-      cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} was left blank. Aborting.")
-    }
+    cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} was left blank. Aborting.")
   }
 
   return(input_val)
@@ -231,33 +227,24 @@ resolve_option_value <- function(
     user_input) {
   is_interactive <- interactive()
 
-  if (isTRUE(opt$fixed)) {
+  if (isTRUE(opt$fixed))
     return(resolve_fixed_option(opt, user_input))
-  }
 
-  if (opt$name %in% names(user_input)) {
-    # 1) If user explicitly provided a value, just return it
+  if (opt$name %in% names(user_input))
     return(user_input[[opt$name]])
-  }
 
   # 2) No user value, check default
   if (!is.null(opt$default)) {
-    # If interactive, prompt to allow override (optional)
-    if (is_interactive && isTRUE(opt$confirm_default)) {
+    if (is_interactive && isTRUE(opt$confirm_default))
       return(prompt_user_for_option_value(opt))
-    } else {
-      # Non-interactive => silently use default
-      return(opt$default)
-    }
+    return(opt$default)
   }
 
   # 3) No user value, no default
   if (is.null(opt$default)) {
-    if (!is_interactive) {
+    if (!is_interactive)
       cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} not provided, and no default is available.")
-    } else {
-      return(prompt_user_for_option_value(opt))
-    }
+    return(prompt_user_for_option_value(opt))
   }
 
   cli::cli_abort("Unreachable code reached.")
@@ -277,18 +264,15 @@ coerce_option_value <- function(val, opt) {
   )
 
   # If the value is NULL, there's nothing to coerce
-  if (is.null(val)) {
+  if (is.null(val))
     return(val)
-  }
 
-  if (is.na(val) && isTRUE(opt$allow_na)) {
+  if (is.na(val) && isTRUE(opt$allow_na))
     return(val)
-  }
 
   # Enumerations, e.g. "enum: red|blue|green", return as is
-  if (startsWith(opt$type, "enum:")) {
+  if (startsWith(opt$type, "enum:"))
     return(val)
-  }
 
   enforce_na_allowed <- function(val, opt) {
     if (is.na(val) && !isTRUE(opt$allow_na)) {

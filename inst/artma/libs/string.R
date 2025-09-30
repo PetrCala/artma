@@ -9,28 +9,23 @@ pluralize <- function(word, count = NULL) {
   validate(is.character(word))
 
   if (is.null(count)) {
-    if (grepl("[sxz]$", word) || grepl("[sc]h$", word)) {
+    if (grepl("[sxz]$", word) || grepl("[sc]h$", word))
       return(paste0(word, "es"))
-    } else if (grepl("[^aeiou]y$", word)) {
+    if (grepl("[^aeiou]y$", word))
       return(sub("y$", "ies", word))
-    } else {
-      return(paste0(word, "s"))
-    }
+    return(paste0(word, "s"))
   }
 
   validate(is.numeric(count))
 
-  if (count == 1) {
+  if (count == 1)
     return(word)
-  }
 
-  if (grepl("[sxz]$", word) || grepl("[sc]h$", word)) {
+  if (grepl("[sxz]$", word) || grepl("[sc]h$", word))
     return(paste0(word, "es"))
-  } else if (grepl("[^aeiou]y$", word)) {
+  if (grepl("[^aeiou]y$", word))
     return(sub("y$", "ies", word))
-  } else {
-    return(paste0(word, "s"))
-  }
+  return(paste0(word, "s"))
 }
 #' Find a string in a vector of strings using a substring
 #'

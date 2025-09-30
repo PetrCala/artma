@@ -61,8 +61,7 @@ validate_files <- function(files) {
 #' @return `NULL` The function writes the file and does not return anything
 #' @export
 write_txt_file <- function(msg_list, full_path) {
-  if (rlang::is_empty(msg_list)) {
+  if (rlang::is_empty(msg_list))
     return(NULL) # Nothing to write
-  }
   writeLines(unlist(msg_list), full_path)
 }

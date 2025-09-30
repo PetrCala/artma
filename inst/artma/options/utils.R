@@ -130,13 +130,11 @@ parse_options_file_name <- function(input_string) {
 #' A helper function to map the expected type from an option definition.
 get_expected_type <- function(opt_def) {
   # If an explicit type is given, use that.
-  if (!is.null(opt_def$type)) {
+  if (!is.null(opt_def$type))
     return(opt_def$type)
-  }
   # If action is store_true, assume logical.
-  if (!is.null(opt_def$action) && opt_def$action == "store_true") {
+  if (!is.null(opt_def$action) && opt_def$action == "store_true")
     return("logical")
-  }
   cli::cli_abort("Invalid template definition for the option '{opt_def}'. Could not determine the expected value type.")
 }
 
@@ -163,23 +161,20 @@ validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
   }
 
   if (is.null(val) || (length(val) == 1 && is.na(val))) {
-    if (!isTRUE(allow_na)) {
+    if (!isTRUE(allow_na))
       return(cli::format_inline("Option {CONST$STYLES$OPTIONS$NAME(opt_name)} cannot be NULL or NA."))
-    } else {
-      return(NULL) # NA/NULL is allowed
-    }
+    return(NULL) # NA/NULL is allowed
   }
 
   # Handle enumerations, e.g. "enum: red|blue|green"
   if (startsWith(opt_type, "enum:")) {
     valid_values <- parse_template_enum_value(opt_type)
-    if (!val %in% valid_values) {
+    if (!val %in% valid_values)
       return(
         cli::format_inline(
           "Option {CONST$STYLES$OPTIONS$NAME(opt_name)} must be one of {.emph {toString(valid_values)}}; got {CONST$STYLES$OPTIONS$VALUE(val)}."
         )
       )
-    }
     return(NULL)
   }
 

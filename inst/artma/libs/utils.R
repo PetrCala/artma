@@ -5,15 +5,15 @@
 #' `logical` TRUE if the object is a function call, FALSE otherwise
 #' @export
 is_function_call <- function(obj) {
-  if (is.call(obj)) {
-    func_name <- as.character(obj[[1]])
-    is_valid_function_call <- exists(func_name) && is.function(get(func_name))
-    if (!(is_valid_function_call)) {
-      return(FALSE)
-    }
-  } else {
+  if (!is.call(obj))
     return(FALSE)
-  }
+
+  func_name <- as.character(obj[[1]])
+  is_valid_function_call <- exists(func_name) && is.function(get(func_name))
+
+  if (!is_valid_function_call)
+    return(FALSE)
+
   return(TRUE)
 }
 
