@@ -72,6 +72,30 @@ last_cli_print <- function(calls = sys.calls(), add_pkg_prefix = FALSE) {
 }
 
 
+call_cli_default <- function(msg) {
+  fallback <- base::get0("cli_server_default", envir = asNamespace("cli"), inherits = FALSE)
+
+  if (is.function(fallback)) {
+    fallback(msg)
+    return(invisible(NULL))
+  }
+
+  message_text <- NULL
+
+  if (is.list(msg) && !is.null(msg$message)) {
+    message_text <- msg$message
+  } else {
+    message_text <- tryCatch(conditionMessage(msg), error = function(err) NULL)
+  }
+
+  if (!is.null(message_text) && length(message_text) > 0L) {
+    cat(message_text, sep = "\n")
+  }
+
+  invisible(NULL)
+}
+
+
 #' @title Evaluate an expression, trapping *every* cli call it makes
 #' @description Evaluate an expression, trapping *every* cli call it makes
 #' @param expr *\[expression\]* The expression to evaluate
@@ -176,7 +200,7 @@ capture_cli <- function(expr) {
     if (is.function(previous_handler)) {
       previous_handler(msg)
     } else {
-      cli::cli_server_default(msg)
+      call_cli_default(msg)
     }
   })
 
@@ -214,7 +238,7 @@ replay_log <- function(log, ..., .envir = parent.frame()) {
     if (identical(entry$kind, "condition")) {
       msg <- list(type = entry$cli_type, args = entry$args, message = entry$message)
       tryCatch(
-        cli::cli_server_default(msg),
+        call_cli_default(msg),
         error = function(err) {
           kind <- entry$cli_type
           if (is.null(kind) || length(kind) == 0L) kind <- "unknown"
