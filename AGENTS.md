@@ -13,7 +13,7 @@ Source exports live in `R/`, while modular implementation code is grouped under 
 - `./run.sh coverage` — compute package coverage via `covr::package_coverage()`.
 
 ## Coding Style & Naming Conventions
-Format R code with `styler::style_pkg()` or your IDE’s styler integration before submitting. The lintr profile enforces 2-space indentation, ≤120 character lines, and `snake_case` (or dotted.case) identifiers; long-lived objects should stay under 40 characters. Prefer `cli::cli_*` messaging over base `print()`, `message()`, or `warning()`, and import modules with `box::use()` paths relative to `inst`. Run `./run.sh lint` locally and address all reported findings.
+Format R code with `styler::style_pkg()` or your IDE’s styler integration before submitting. The lintr profile enforces 2-space indentation, ≤120 character lines, and `snake_case` (or dotted.case) identifiers; long-lived objects should stay under 40 characters. Prefer `cli::cli_*` messaging over base `print()`, `message()`, `cat()`, or `warning()`, and import modules with `box::use()` paths relative to `inst`. Avoid functions flagged by the project undesirable-function linter (see `linter.R`) so future code generation stays lint-clean. Run `./run.sh lint` locally and address all reported findings.
 
 ## Testing Guidelines
 Add unit tests beside the feature in `tests/testthat`, using `test-<feature>.R` filenames and helper fixtures. End-to-end flows belong in `tests/E2E` and should validate real installation behavior. Run `./run.sh test` for smoke checks, `./run.sh test --filter <pattern>` when iterating, and `./run.sh coverage` before merging significant work. Aim to keep coverage stable and clean up any temporary artifacts your tests create.
