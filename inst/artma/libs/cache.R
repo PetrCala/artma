@@ -76,12 +76,14 @@ last_cli_print <- function(calls = sys.calls(), add_pkg_prefix = FALSE) {
 #' @description Evaluate an expression, trapping *every* cli call it makes
 #' @param expr *\[expression\]* The expression to evaluate
 #' @return *\[list\]* A list with the following elements:
-#'   * **value** – the value of the expression
-#'   * **log** – a list of the cli calls
-#'   * **fun**     – the original helper (e.g. "cli_inform")
-#'   * **message** – fully rendered, ready-to-print text
+#'   * **value** – the value of the evaluated expression
+#'   * **log** – a list of replayable entries. Each entry contains a
+#'     `kind` describing how it should be replayed (currently either the
+#'     string "condition" for `cli_message` signals or "call" for direct
+#'     `cli::cat_*()` helpers) alongside the metadata required to replay it.
 #'
-#' The expression's own value is returned unchanged in `value`.
+#' The expression's own value is returned unchanged in `value`, while CLI
+#' output continues to be emitted to the console during the initial run.
 #'
 capture_cli <- function(expr) {
   box::use(artma / libs / modules[get_pkg_exports])
@@ -94,6 +96,9 @@ capture_cli <- function(expr) {
   ns_cli <- asNamespace("cli") # cli’s namespace environment
   originals <- list() # to keep the real helpers
 
+  inside_default_handler <- FALSE
+  cat_depth <- 0L
+
   ## ------------------------------------------------------------------
   ## 1. Monkey-patch every requested cat_*() helper
   ## ------------------------------------------------------------------
@@ -102,24 +107,25 @@ capture_cli <- function(expr) {
     force(fun_name)
 
     function(...) {
-      captured <- character()
-      tc <- textConnection("captured", "w", local = TRUE)
+      args <- rlang::list2(...)
 
-      on.exit(close(tc), add = TRUE) # always close the connection
+      if (inside_default_handler || cat_depth > 0L) {
+        return(rlang::exec(orig_fun, !!!args))
+      }
 
-      withr::with_output_sink(tc, {
-        withr::with_message_sink(tc, { # messages very rarely used, but safe
-          invisible(orig_fun(...))
-        })
-      })
+      cat_depth <<- cat_depth + 1L
+      on.exit(cat_depth <<- cat_depth - 1L, add = TRUE)
 
-      logs <<- append(
-        logs,
-        # TODO The captured output should be stored not as the following, but
-        # in a way that allows the exact same print to be replayed
-        list(list(fun = fun_name, message = cli::ansi_string(captured)))
-      )
-      invisible(NULL)
+      res <- rlang::exec(orig_fun, !!!args)
+
+      logs <<- append(logs, list(list(
+        kind = "call",
+        namespace = "cli",
+        fun = fun_name,
+        args = args
+      )))
+
+      res
     }
   }
 
@@ -145,34 +151,47 @@ capture_cli <- function(expr) {
   )
 
   ## -----------------------------------------------------------
-  ##  2. Condition handler: record + silence the message
+  ##  2. Custom default handler: record + emit the message
   ## -----------------------------------------------------------
-  handler <- function(cnd) {
-    str_msg <- cnd$args$text$str # For 'alert' based messages
-    logs <<- append(logs, list(list(
-      fun     = last_cli_print(), # e.g. "cli_inform"
-      message = if (is.null(str_msg)) conditionMessage(cnd) else str_msg
-    )))
-    # Muffle the message
-    if (!is.null(r <- findRestart("cli_message_handled"))) invokeRestart(r)
-    if (inherits(cnd, "message") && !is.null(r <- findRestart("muffleMessage"))) invokeRestart(r)
-    if (inherits(cnd, "warning") && !is.null(r <- findRestart("muffleWarning"))) invokeRestart(r)
-    cli::cli_abort("invalid muffle restart")
-  }
+  previous_handler <- getOption("cli.default_handler")
+  options(cli.default_handler = function(msg) {
+    old_flag <- inside_default_handler
+    inside_default_handler <<- TRUE
+    on.exit(inside_default_handler <<- old_flag, add = TRUE)
 
-  value <- withCallingHandlers(
-    eval(expr, parent.frame()),
-    cli_message = handler,
-    message = handler,
-    warning = handler
-  )
+    rendered <- tryCatch(
+      cli:::cli__fmt(list(msg), collapse = TRUE, strip_newline = TRUE),
+      error = function(err) NULL
+    )
+    fallback_message <- tryCatch(conditionMessage(msg), error = function(err) "")
+
+    logs <<- append(logs, list(list(
+      kind = "condition",
+      namespace = "cli",
+      cli_type = as.character(msg$type)[1],
+      args = rlang::duplicate(msg$args, shallow = FALSE),
+      message = if (is.null(rendered)) fallback_message else rendered
+    )))
+
+    if (is.function(previous_handler)) {
+      previous_handler(msg)
+    } else {
+      cli::cli_server_default(msg)
+    }
+  })
+
+  on.exit(options(cli.default_handler = previous_handler), add = TRUE)
+
+  value <- eval(expr, parent.frame())
 
   list(value = value, log = logs)
 }
 
 #' @title Replay log
 #' @description Replay log
-#' @param log *\[list\]* The log to replay
+#' @param log *\[list\]* The log produced by [capture_cli()].
+#' @param ... Additional arguments forwarded to replayed CLI helper calls
+#'   (i.e. entries created from `cli::cat_*()` helpers).
 #' @return `NULL`
 #' @examples
 #' \dontrun{
@@ -182,26 +201,73 @@ capture_cli <- function(expr) {
 #' art <- cache$get(keys[[1]]) # read the first one
 #'
 #' art$value # <- model, plot, etc.
-#' art$log # <- list of stored cli conditions
+#' art$log # <- list of stored cli messages and helper calls
 #'
 #' # To watch the console story again
 #' replay_log(art$log)
 #' }
 replay_log <- function(log, ..., .envir = parent.frame()) {
+  ns_cli <- asNamespace("cli")
+  extra_args <- rlang::list2(...)
+
   for (entry in log) {
-    fn <- get(entry$fun, envir = asNamespace("cli"))
-    fn(entry$message, ...)
+    if (identical(entry$kind, "condition")) {
+      msg <- list(type = entry$cli_type, args = entry$args, message = entry$message)
+      tryCatch(
+        cli::cli_server_default(msg),
+        error = function(err) {
+          kind <- entry$cli_type
+          if (is.null(kind) || length(kind) == 0L) kind <- "unknown"
+          warning(
+            sprintf(
+              "Failed to replay CLI condition of type '%s': %s",
+              kind,
+              conditionMessage(err)
+            ),
+            call. = FALSE
+          )
+          cat(entry$message, sep = "\n")
+        }
+      )
+      next
+    }
+
+    if (identical(entry$kind, "call")) {
+      if (!exists(entry$fun, envir = ns_cli, inherits = FALSE)) {
+        warning(
+          sprintf("Cannot replay CLI helper '%s' because it is not available.", entry$fun),
+          call. = FALSE
+        )
+        next
+      }
+
+      fn <- get(entry$fun, envir = ns_cli)
+      args <- c(entry$args, extra_args)
+      rlang::exec(fn, !!!args)
+      next
+    }
+
+    warning("Unrecognised cache log entry; skipping.", call. = FALSE)
   }
+
   invisible(NULL)
 }
 
 #' @title Cache cli
-#' @description Cache cli
-#' @param fun *\[function\]* The function to cache
-#' @param extra_keys *\[list\]* Additional keys
-#' @param cache *\[memoise::cache_filesystem\]* The cache to use
-#' @param invalidate_fun *\[function\]* Optional custom invalidator
-#' @return `NULL`
+#' @description Wrap a function so that its results – including the CLI story it
+#'   produces – are cached and replayed on subsequent calls.
+#' @param fun *\[function\]* The function to cache.
+#' @param extra_keys *\[list\]* Additional key material appended to the memoise
+#'   cache key.
+#' @param cache *\[memoise::cache_filesystem\]* The cache to use. Defaults to
+#'   the user cache directory.
+#' @param invalidate_fun *\[function\]* Optional predicate evaluated on each
+#'   call to decide whether the cached value should be bypassed and recomputed.
+#' @param max_age *\[numeric\]* Maximum age of cached artifacts in seconds.
+#'   Use `Inf` to disable time-based invalidation. When `NULL` (the default) the
+#'   value is sourced from the `artma.cache.max_age` option, falling back to
+#'   `Inf`.
+#' @return The wrapped function.
 #' @examples
 #' \dontrun{
 #' # real work here — bookended by cli alerts but not memoised itself
@@ -236,8 +302,21 @@ replay_log <- function(log, ..., .envir = parent.frame()) {
 cache_cli <- function(fun,
                       extra_keys = list(),
                       cache = NULL,
-                      invalidate_fun = NULL) {
+                      invalidate_fun = NULL,
+                      max_age = NULL) {
   base::force(fun) # lock the original function inside the closure
+
+  if (is.null(max_age)) {
+    max_age <- getOption("artma.cache.max_age", Inf)
+  }
+
+  if (!is.numeric(max_age) || length(max_age) != 1L || is.na(max_age)) {
+    max_age <- Inf
+  }
+
+  if (max_age < 0) {
+    max_age <- 0
+  }
 
   if (!getOption("artma.cache.use_cache", TRUE)) {
     return(fun)
@@ -251,13 +330,17 @@ cache_cli <- function(fun,
     cache <- memoise::cache_filesystem(cache_dir)
   }
 
+  worker_state <- new.env(parent = emptyenv())
+
   ## The worker that actually does the heavy lifting --------------------------
   worker <- function(...) {
+    worker_state$executed <- TRUE
     res <- capture_cli(fun(...))
     meta <- list(
       timestamp = Sys.time(),
       extra     = extra_keys,
-      session   = utils::sessionInfo()
+      session   = utils::sessionInfo(),
+      cache     = list(max_age = max_age)
     )
     new_artifact(res$value, res$log, meta)
   }
@@ -267,15 +350,65 @@ cache_cli <- function(fun,
 
   ## The *public* wrapper that callers will see ------------------------------
   function(...) {
-    # Allow user-supplied invalidator
-    if (!is.null(invalidate_fun) && isTRUE(invalidate_fun(...))) {
-      memoise::forget(worker_memoised)
+    dots <- rlang::list2(...)
+    worker_state$executed <- FALSE
+
+    if (!is.null(invalidate_fun)) {
+      should_invalidate <- FALSE
+      if (is.function(invalidate_fun)) {
+        should_invalidate <- tryCatch(
+          isTRUE(rlang::exec(invalidate_fun, !!!dots)),
+          error = function(err) {
+            warning(
+              sprintf(
+                "cache invalidator failed and was ignored: %s",
+                conditionMessage(err)
+              ),
+              call. = FALSE
+            )
+            FALSE
+          }
+        )
+      }
+
+      if (isTRUE(should_invalidate)) {
+        rlang::exec(memoise::forget, worker_memoised, !!!dots)
+      }
     }
 
-    art <- worker_memoised(...)
+    art <- rlang::exec(worker_memoised, !!!dots)
+    cache_hit <- !isTRUE(worker_state$executed)
 
-    # --- on cache hit you still want to replay! ---
-    replay_log(art$log)
+    if (is.finite(max_age)) {
+      art_ts <- art$meta$timestamp
+      age <- tryCatch(
+        as.numeric(difftime(Sys.time(), art_ts, units = "secs")),
+        error = function(err) NA_real_
+      )
+
+      if (!is.na(age) && age > max_age) {
+        rlang::exec(memoise::forget, worker_memoised, !!!dots)
+        worker_state$executed <- FALSE
+        art <- rlang::exec(worker_memoised, !!!dots)
+        cache_hit <- !isTRUE(worker_state$executed)
+      }
+    }
+
+    if (cache_hit) {
+      tryCatch(
+        replay_log(art$log),
+        error = function(err) {
+          warning(
+            sprintf(
+              "Failed to replay cached CLI output: %s",
+              conditionMessage(err)
+            ),
+            call. = FALSE
+          )
+        }
+      )
+    }
+
     art$value
   }
 }
