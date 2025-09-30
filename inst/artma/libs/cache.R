@@ -371,6 +371,7 @@ cache_cli <- function(fun,
 
   ## Memoise that worker ------------------------------------------------------
   worker_memoised <- memoise::memoise(worker, cache = cache)
+  drop_worker_cache <- memoise::drop_cache(worker_memoised)
 
   ## The *public* wrapper that callers will see ------------------------------
   function(...) {
@@ -396,7 +397,19 @@ cache_cli <- function(fun,
       }
 
       if (isTRUE(should_invalidate)) {
-        rlang::exec(memoise::forget, worker_memoised, !!!dots)
+        tryCatch(
+          rlang::exec(drop_worker_cache, !!!dots),
+          error = function(err) {
+            warning(
+              sprintf(
+                "cache invalidator failed to drop key: %s",
+                conditionMessage(err)
+              ),
+              call. = FALSE
+            )
+            FALSE
+          }
+        )
       }
     }
 
@@ -411,7 +424,19 @@ cache_cli <- function(fun,
       )
 
       if (!is.na(age) && age > max_age) {
-        rlang::exec(memoise::forget, worker_memoised, !!!dots)
+        tryCatch(
+          rlang::exec(drop_worker_cache, !!!dots),
+          error = function(err) {
+            warning(
+              sprintf(
+                "Failed to evict stale cache entry: %s",
+                conditionMessage(err)
+              ),
+              call. = FALSE
+            )
+            FALSE
+          }
+        )
         worker_state$executed <- FALSE
         art <- rlang::exec(worker_memoised, !!!dots)
         cache_hit <- !isTRUE(worker_state$executed)
