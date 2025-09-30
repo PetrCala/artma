@@ -397,17 +397,18 @@ cache_cli <- function(fun,
       }
 
       if (isTRUE(should_invalidate)) {
+        ## Ensure the predicate truly bypasses the cache by clearing all
+        ## memoised entries; callers can re-populate whatever keys they need.
         tryCatch(
-          rlang::exec(drop_worker_cache, !!!dots),
+          memoise::forget(worker_memoised),
           error = function(err) {
             warning(
               sprintf(
-                "cache invalidator failed to drop key: %s",
+                "cache invalidator failed to reset memoised state: %s",
                 conditionMessage(err)
               ),
               call. = FALSE
             )
-            FALSE
           }
         )
       }
@@ -416,7 +417,7 @@ cache_cli <- function(fun,
     art <- rlang::exec(worker_memoised, !!!dots)
     cache_hit <- !isTRUE(worker_state$executed)
 
-    if (is.finite(max_age)) {
+    if (cache_hit && is.finite(max_age)) {
       art_ts <- art$meta$timestamp
       age <- tryCatch(
         as.numeric(difftime(Sys.time(), art_ts, units = "secs")),
