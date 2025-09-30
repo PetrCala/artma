@@ -99,6 +99,9 @@ call_cli_default <- function(msg) {
 #' @title Evaluate an expression, trapping *every* cli call it makes
 #' @description Evaluate an expression, trapping *every* cli call it makes
 #' @param expr *\[expression\]* The expression to evaluate
+#' @param emit *\[logical\]* Should captured CLI output be emitted to the
+#'   console while recording? Defaults to `TRUE`. When `FALSE`, messages are
+#'   logged silently for later replay.
 #' @return *\[list\]* A list with the following elements:
 #'   * **value** – the value of the evaluated expression
 #'   * **log** – a list of replayable entries. Each entry contains a
@@ -109,10 +112,11 @@ call_cli_default <- function(msg) {
 #' The expression's own value is returned unchanged in `value`, while CLI
 #' output continues to be emitted to the console during the initial run.
 #'
-capture_cli <- function(expr) {
+capture_cli <- function(expr, emit = TRUE) {
   box::use(artma / libs / modules[get_pkg_exports])
 
   expr <- substitute(expr) # preserve NSE
+  emit <- isTRUE(emit)
   logs <- list()
 
   pkg_funs <- get_pkg_exports("cli")
@@ -140,7 +144,12 @@ capture_cli <- function(expr) {
       cat_depth <<- cat_depth + 1L
       on.exit(cat_depth <<- cat_depth - 1L, add = TRUE)
 
-      res <- rlang::exec(orig_fun, !!!args)
+      res <- if (emit) {
+        rlang::exec(orig_fun, !!!args)
+      } else {
+        utils::capture.output(res <- rlang::exec(orig_fun, !!!args))
+        res
+      }
 
       logs <<- append(logs, list(list(
         kind = "call",
@@ -197,10 +206,12 @@ capture_cli <- function(expr) {
       message = if (is.null(rendered)) fallback_message else rendered
     )))
 
-    if (is.function(previous_handler)) {
-      previous_handler(msg)
-    } else {
-      call_cli_default(msg)
+    if (emit) {
+      if (is.function(previous_handler)) {
+        previous_handler(msg)
+      } else {
+        call_cli_default(msg)
+      }
     }
   })
 
@@ -359,7 +370,10 @@ cache_cli <- function(fun,
   ## The worker that actually does the heavy lifting --------------------------
   worker <- function(...) {
     worker_state$executed <- TRUE
-    res <- capture_cli(fun(...))
+    on.exit(worker_state$quiet <- FALSE, add = TRUE)
+
+    emit_cli <- !isTRUE(worker_state$quiet)
+    res <- capture_cli(fun(...), emit = emit_cli)
     meta <- list(
       timestamp = Sys.time(),
       extra     = extra_keys,
@@ -414,8 +428,14 @@ cache_cli <- function(fun,
       }
     }
 
+    log_to_replay <- NULL
+
     art <- rlang::exec(worker_memoised, !!!dots)
     cache_hit <- !isTRUE(worker_state$executed)
+
+    if (cache_hit) {
+      log_to_replay <- art$log
+    }
 
     if (cache_hit && is.finite(max_age)) {
       art_ts <- art$meta$timestamp
@@ -425,6 +445,8 @@ cache_cli <- function(fun,
       )
 
       if (!is.na(age) && age > max_age) {
+        old_art <- art
+        log_to_replay <- old_art$log
         tryCatch(
           rlang::exec(drop_worker_cache, !!!dots),
           error = function(err) {
@@ -438,15 +460,35 @@ cache_cli <- function(fun,
             FALSE
           }
         )
-        worker_state$executed <- FALSE
-        art <- rlang::exec(worker_memoised, !!!dots)
-        cache_hit <- !isTRUE(worker_state$executed)
+
+        tryCatch(
+          {
+            worker_state$executed <- FALSE
+            worker_state$quiet <- TRUE
+            art <- rlang::exec(worker_memoised, !!!dots)
+          },
+          error = function(err) {
+            warning(
+              sprintf(
+                "Failed to refresh stale cache entry: %s",
+                conditionMessage(err)
+              ),
+              call. = FALSE
+            )
+            art <- old_art
+          },
+          finally = {
+            worker_state$quiet <- FALSE
+          }
+        )
+
+        cache_hit <- TRUE
       }
     }
 
-    if (cache_hit) {
+    if (cache_hit && length(log_to_replay) > 0L) {
       tryCatch(
-        replay_log(art$log),
+        replay_log(log_to_replay),
         error = function(err) {
           warning(
             sprintf(
