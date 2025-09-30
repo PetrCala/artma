@@ -28,9 +28,8 @@ turn_path_into_box_importable <- function(input_path) {
 
     i <- dirname(i)
   }
-  if (i == ".") {
+  if (i == ".")
     return(NULL) # This indicates the path could not be found
-  }
 
   # Ensure the resulting import statement starts with '<pkg_name> / ...'
   path_parts <- c(CONST$PACKAGE_NAME, path_parts)

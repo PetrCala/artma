@@ -25,9 +25,8 @@ generate_random_vector <- function(from, to, length.out, integer = FALSE) {
     cli::cli_abort("Invalid range: 'from' should be less than or equal to 'to'.")
   }
 
-  if (integer) {
+  if (integer)
     return(sample(from:to, size = length.out, replace = TRUE))
-  }
 
   stats::runif(n = length.out, min = from, max = to)
 }

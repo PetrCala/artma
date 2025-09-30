@@ -12,9 +12,8 @@ get_pkg_path <- function() {
   dev_path <- grep(file.path(package_name, "inst$"), box_path, value = TRUE)
 
   if (any(dir.exists(dev_path))) {
-    if (is.vector(dev_path)) {
+    if (is.vector(dev_path))
       return(dev_path[1])
-    }
     return(dev_path)
   }
 

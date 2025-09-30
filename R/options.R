@@ -243,9 +243,8 @@ options.list <- function(options_dir = NULL, should_return_verbose_names = FALSE
   )
   options_dir <- options_dir %||% PATHS$DIR_USR_CONFIG
 
-  if (!dir.exists(options_dir)) {
+  if (!dir.exists(options_dir))
     return(character(0))
-  }
 
   options_files <- list.files(
     path = options_dir,
@@ -409,9 +408,8 @@ options.load <- function(
     options(prefixed_options)
   }
 
-  if (should_return) {
+  if (should_return)
     return(prefixed_options)
-  }
 
   invisible(NULL)
 }
