@@ -290,7 +290,9 @@ calls, so complex nested output is reproduced faithfully.
 Several mechanisms keep cached artefacts fresh:
 
 - `invalidate_fun` (optional) receives the call arguments and should return
-  `TRUE` when the cache must be bypassed (e.g. negative inputs).
+  `TRUE` when the cache must be bypassed (e.g. negative inputs). When triggered
+  the memoised store is cleared before recomputing so subsequent calls rebuild
+  fresh artefacts.
 - `max_age` enforces a time-to-live in seconds. Set it explicitly when
   wrapping a function or globally via the `artma.cache.max_age` option.
 - Disable caching entirely with `options(artma.cache.use_cache = FALSE)` when
