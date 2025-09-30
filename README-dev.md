@@ -24,6 +24,10 @@
 - [Formatting code](#formatting-code)
 - [Understanding the folder structure](#understanding-the-folder-structure)
 - [Using the options template](#using-the-options-template)
+- [Caching heavy computations](#caching-heavy-computations)
+  - [Wrapping functions with cache_cli](#wrapping-functions-with-cache_cli)
+  - [Inspecting cached artifacts](#inspecting-cached-artifacts)
+  - [Invalidation and configuration](#invalidation-and-configuration)
 - [Using `lintr` for Code Quality](#using-lintr-for-code-quality)
   - [Installation](#installation)
   - [Usage](#usage)
@@ -228,6 +232,72 @@ User options are generated in the project from a template file (potentially `opt
   - **"file"**: The user will be asked to provide a file path through `tcltk` interactive window.
   - **"directory"**: The user will be asked to provide a directory path through `tcltk` interactive window.
 - **help** (str, optional): Option help.
+
+# Caching heavy computations
+
+Artma's heavy modelling helpers often emit rich CLI output (alerts, tables,
+and progress messages). The `artma::cache_cli()` wrapper memoises both the
+return value *and* the console story so repeated runs feel identical to the
+first execution while avoiding expensive recomputation.
+
+## Wrapping functions with cache_cli
+
+Wrap any expensive function with `cache_cli()` when exporting it from a
+module. The wrapper records CLI output as the function runs and stores the
+resulting `cached_artifact` object on disk using `memoise`.
+
+```r
+# inside a module
+run_models <- cache_cli(
+  .run_models_impl,
+  extra_keys = list(pkg_version = utils::packageVersion("artma"))
+)
+
+# at call site
+run_models(df, formula)
+```
+
+Key behaviours:
+
+- CLI output still prints on the first (cold) execution; cached runs replay
+  the recorded log so the console experience matches the original run.
+- Provide a custom `cache` (e.g. an in-memory cache) if the default user cache
+  directory is not suitable.
+- `extra_keys` lets you add memoisation key components such as package
+  versions or configuration hashes to avoid sharing stale results.
+
+## Inspecting cached artifacts
+
+`cache_cli()` stores a `cached_artifact` containing the computed value, the
+replay log, and metadata (timestamp, session info, and cache settings). Use
+`get_artifact()` to retrieve artefacts by key and `replay_log()` to reprint
+previous CLI output when debugging.
+
+```r
+cache <- memoise::cache_filesystem(PATHS$DIR_USR_CACHE)
+key <- cache$keys()[[1]]
+artifact <- get_artifact(cache, key)
+
+artifact$value          # original return value
+replay_log(artifact$log) # emit the stored CLI story
+```
+
+The log stores both `cli_message` events and direct `cli::cat_*()` helper
+calls, so complex nested output is reproduced faithfully.
+
+## Invalidation and configuration
+
+Several mechanisms keep cached artefacts fresh:
+
+- `invalidate_fun` (optional) receives the call arguments and should return
+  `TRUE` when the cache must be bypassed (e.g. negative inputs).
+- `max_age` enforces a time-to-live in seconds. Set it explicitly when
+  wrapping a function or globally via the `artma.cache.max_age` option.
+- Disable caching entirely with `options(artma.cache.use_cache = FALSE)` when
+  debugging or benchmarking; the original function is returned untouched.
+
+Combine `invalidate_fun`, `max_age`, and `extra_keys` to model domain-specific
+refresh rules without manually clearing the cache.
 
 # Using `lintr` for Code Quality
 
