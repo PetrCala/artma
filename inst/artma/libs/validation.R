@@ -21,16 +21,14 @@ parse_condition <- function(cond_expr, env = parent.frame()) {
   # Note: 'cond_expr' might already be a call if using e.g. substitute(...)
   if (is.character(cond_expr)) {
     cond_call <- tryCatch(rlang::parse_expr(cond_expr), error = function(e) NULL)
-    if (is.null(cond_call)) {
+    if (is.null(cond_call))
       return(glue::glue("Condition did not hold: {cond_expr}"))
-    }
   } else {
     cond_call <- cond_expr
   }
 
-  if (!rlang::is_call(cond_call)) {
+  if (!rlang::is_call(cond_call))
     return(glue::glue("Condition did not hold: {deparse(cond_expr)}"))
-  }
 
   # Extract the function name and argument
   fn_name <- as.character(cond_call[[1]]) # e.g. "is.character"
@@ -208,9 +206,8 @@ is_char_vector_or_empty <- function(x, throw_error = FALSE) {
 #' validate_opt_path(NULL) # passes
 #' @export
 validate_opt_path <- function(opt_path) {
-  if (is.null(opt_path)) {
+  if (is.null(opt_path))
     return(invisible(NULL))
-  }
   if (!is.character(opt_path)) {
     cli::cli_abort("The option path must be a character string.")
   }

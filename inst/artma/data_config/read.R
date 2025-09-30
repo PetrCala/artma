@@ -23,9 +23,8 @@ get_data_config <- function(
   config_exists <- is.list(config)
 
   if (isTRUE(config_exists)) {
-    if (data_config_is_valid(config)) {
+    if (data_config_is_valid(config))
       return(config)
-    }
 
     if (!fix_if_invalid) {
       cli::cli_abort("The data config is invalid. Please run {.code artma::config.fix()} to fix it.")
