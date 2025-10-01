@@ -1,5 +1,4 @@
 box::use(
-  cli[cli_inform],
   stats[lm, residuals, df.residual, qt, model.matrix],
   base[sqrt, sum, pmax]
 )
@@ -97,7 +96,7 @@ final_endokink_fit <- function(prepared_data, cutoff, verbose) {
   sebs_min <- min(prepared_data$sebs)
   sebs_max <- max(prepared_data$sebs)
   if (cutoff > sebs_min && cutoff < sebs_max) {
-    prepared_data$sebs_a1 <- ifelse(prepared_data$sebs > cutoff, prepared_data$sebs - cutoff, 0)
+    prepared_data$sebs_a1 <- if (prepared_data$sebs > cutoff) prepared_data$sebs - cutoff else 0
     prepared_data$pubbias <- prepared_data$sebs_a1 / prepared_data$sebs
     model <- lm(bs ~ 0 + constant + pubbias, data = prepared_data)
     result <- summary(model)$coefficients
@@ -140,10 +139,20 @@ run_endogenous_kink <- function(data, verbose = TRUE) {
   variance <- compute_variance_component(combined$residual_sum, prepared, peese$model)
   cutoff <- compute_cutoff(combined$estimate, variance$standard_deviation)
   renamed <- within(prepared, {
-    bs_original <- bs
+    # bs_original <- bs
     bs <- bs_sebs
     constant <- ones_sebs
     pub_bias <- ones
   })
   final_endokink_fit(renamed, cutoff, verbose)
 }
+
+box::export(
+  run_endogenous_kink,
+  prepare_endokink_columns,
+  fit_auxiliary_lm,
+  select_combined_regression,
+  compute_variance_component,
+  compute_cutoff,
+  final_endokink_fit
+)

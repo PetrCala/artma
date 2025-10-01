@@ -1,8 +1,7 @@
+# nolint start: object_name_linter.
+
 box::use(
-  graphics[plot.new, par, plot, lines, points, segments, abline, legend, layout],
-  grDevices[rgb],
-  stats[aggregate],
-  utils[head]
+  graphics[plot.new, plot, lines, points, segments, abline, legend, layout]
 )
 
 #' Compute the weighted mean for the first `i` studies
@@ -177,7 +176,7 @@ stem_funnel <- function(beta_input, se_input, stem_estimates, theme, legend_pos 
   )
   palette <- colors[[theme]]
   if (is.null(palette)) {
-    stop("Invalid theme type.")
+    cli::cli_abort("Invalid theme type.")
   }
   b_stem <- stem_estimates[1]
   se_b_stem <- stem_estimates[2]
@@ -189,22 +188,22 @@ stem_funnel <- function(beta_input, se_input, stem_estimates, theme, legend_pos 
   cumulative <- weighted_mean(beta_sorted, se_sorted, sigma0)
   se_axis <- se_rescale(se_sorted)
   plot.new()
-  par(mar = c(4.1, 4.1, 1, 1), bg = rgb(255, 255, 255, maxColorValue = 255))
+  graphics::par(mar = c(4.1, 4.1, 1, 1), bg = grDevices::rgb(255, 255, 255, maxColorValue = 255)) # nolint: undesirable_function_linter.
   plot(beta_sorted, se_axis,
     col = palette[1], pch = 1, lwd = 2.5,
     xlim = range(beta_input) + c(-1, 1) * diff(range(beta_input)) / 15,
     xlab = expression(paste("Coefficient ", beta)),
     ylab = expression(paste("Precision ", -log(SE)))
   )
-  lines(cumulative, se_axis, col = rgb(96, 96, 96, maxColorValue = 255), lwd = 2.5)
+  lines(cumulative, se_axis, col = grDevices::rgb(96, 96, 96, maxColorValue = 255), lwd = 2.5)
   points(b_stem, se_axis[n_stem], pch = 18, col = palette[3], cex = 2)
   segments(b_stem, se_axis[1], b_stem, min(se_axis), col = palette[3], lwd = 2.5)
   points(b_stem, se_axis[1], pch = 18, col = palette[2], cex = 2)
   segments(b_stem - 1.96 * se_b_stem, se_axis[1], b_stem + 1.96 * se_b_stem, se_axis[1], col = palette[2], lwd = 2.5)
-  abline(v = 0, col = rgb(192, 192, 192, maxColorValue = 255), lty = 2, lwd = 2.5)
+  abline(v = 0, col = grDevices::rgb(192, 192, 192, maxColorValue = 255), lty = 2, lwd = 2.5)
   legend(legend_pos,
     legend = c("stem-based estimate", "95 confidence interval", "cumulative estimate", "minimal precision", "study"),
-    col = c(palette[2], palette[2], rgb(96, 96, 96, maxColorValue = 255), palette[3], palette[1]),
+    col = c(palette[2], palette[2], grDevices::rgb(96, 96, 96, maxColorValue = 255), palette[3], palette[1]),
     bty = "n",
     lty = c(NA, 1, 1, NA, NA), lwd = c(NA, 2, 2, NA, 2.5),
     pch = c(18, NA, NA, 18, 1),
@@ -244,7 +243,24 @@ data_median <- function(data, id_var, main_var, additional_var) {
   colnames(column_additional)[1] <- "additional"
   merged_main <- merge(column_id, column_main, by = 0, all = TRUE)
   merged_additional <- merge(column_id, column_additional, by = 0, all = TRUE)
-  median_only <- aggregate(main ~ id, merged_main, median)
+  median_only <- stats::aggregate(main ~ id, merged_main, median)
   median_together <- merge(median_only, merged_main, by.x = "id", by.y = "id")
   merge(median_together, merged_additional, by.x = "Row.names", by.y = "Row.names")
 }
+
+
+box::export(
+  weighted_mean,
+  weighted_mean_squared,
+  compute_submatrix_sums,
+  variance_0,
+  variance_b,
+  stem_compute,
+  stem_converge,
+  stem,
+  stem_funnel,
+  stem_MSE,
+  data_median
+)
+
+# nolint end: object_name_linter.

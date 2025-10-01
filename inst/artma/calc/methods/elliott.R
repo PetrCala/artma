@@ -1,16 +1,14 @@
+# nolint start: object_name_linter.
+
 box::use(
   stats[ecdf, pbinom, pchisq, pnorm, qnorm, rnorm]
 )
 
 #' Format a numeric value with a fixed number of decimals
-format_decimal <- function(x, k) {
-  trimws(format(round(x, k), nsmall = k))
-}
+format_decimal <- function(x, k) trimws(format(round(x, k), nsmall = k))
 
 #' Linearly spaced sequence between two bounds
-linspace <- function(start, stop, n) {
-  seq(from = start, to = stop, length.out = n)
-}
+linspace <- function(start_, stop_, n) seq(from = start_, to = stop_, length.out = n)
 
 #' Simulate Brownian bridge suprema CDFs used by the LCM test
 #'
@@ -48,7 +46,7 @@ binomial_test <- function(P, p_min, p_max, type) {
   filtered <- switch(type,
     c = P[P <= p_max & P >= p_min],
     o = P[P < p_max & P > p_min],
-    stop("Unknown test type.")
+    cli::cli_abort("Unknown test type.")
   )
   nn <- length(filtered)
   kk <- sum(filtered > (p_max + p_min) / 2)
@@ -108,12 +106,15 @@ lambda2 <- function(x1, x2, h) {
 compute_bounds <- function(pmax, J, order) {
   h <- seq(0, 100, by = 0.001)
   grid <- linspace(0, pmax, J + 1)
-  width <- switch(order,
-    0 = J,
-    1 = J - 1,
-    2 = J - 2,
-    stop("Unsupported order")
-  )
+  if (identical(order, 0L)) {
+    width <- J
+  } else if (identical(order, 1L)) {
+    width <- J - 1
+  } else if (identical(order, 2L)) {
+    width <- J - 2
+  } else {
+    cli::cli_abort("Unsupported order")
+  }
   bounds <- numeric(width)
   for (j in seq_len(width)) {
     lambda_left <- lambda2(grid[j], grid[j + 1], h)
@@ -213,12 +214,89 @@ build_constraint_vector <- function(B0, B1, B2, Galpha, use_bounds, J, K) {
   c(b0, b1, b2)
 }
 
+fmincon <- function(x0, fn, gr = NULL, ..., method = "SQP",
+                    A = NULL, b = NULL, Aeq = NULL, beq = NULL,
+                    lb = NULL, ub = NULL, hin = NULL, heq = NULL,
+                    tol = 1e-06, maxfeval = 10000, maxiter = 5000) {
+  if (!is.numeric(x0) || length(x0) <= 1) {
+    cli::cli_abort("'x0' must be a numeric vector of length greater 1.")
+  }
+  if (!is.null(gr)) {
+    cli::cli_alert_warning("Gradient function is not used for SQP approach.")
+  }
+
+  if (!requireNamespace("NlcOptim", quietly = TRUE)) {
+    cli::cli_abort("Package 'NlcOptim' missing -- install from CRAN.")
+  }
+  if (!requireNamespace("quadprog", quietly = TRUE)) {
+    cli::cli_abort("Package 'quadprog' missing -- install from CRAN.")
+  }
+
+  fun <- match.fun(fn)
+  fn <- function(x) fun(x, ...)
+
+  if (!is.null(A)) {
+    if (!is.matrix(A) || ncol(A) != length(x0)) {
+      cli::cli_abort("Argument 'A' must be a matrix with length(x0) columns.")
+    }
+    if (is.null(b) || nrow(A) != length(b)) {
+      cli::cli_abort("Argument 'b' must be a vector of length(b) = nrow(A).")
+    }
+  }
+  if (!is.null(Aeq)) {
+    if (!is.matrix(Aeq) || ncol(Aeq) != length(x0)) {
+      cli::cli_abort("Argument 'Aeq' must be a matrix with length(x0) columns.")
+    }
+    if (is.null(beq) || nrow(Aeq) != length(beq)) {
+      cli::cli_abort("Argument 'beq' must be a vector of length(beq) = nrow(Aeq).")
+    }
+  }
+  if (!is.null(lb) && length(lb) != length(x0)) {
+    if (length(lb == 1)) {
+      lb <- rep(lb, length(x0))
+    } else {
+      cli::cli_abort("Length of argument 'lb' must be equal to length(x0).")
+    }
+  }
+  if (!is.null(ub) && length(ub) != length(x0)) {
+    if (length(ub == 1)) {
+      ub <- rep(ub, length(x0))
+    } else {
+      cli::cli_abort("Length of argument 'ub' must be equal to length(x0).")
+    }
+  }
+
+  if (is.null(hin) && is.null(heq)) {
+    confun <- NULL
+  } else if (is.null(heq)) {
+    confun <- function(x) list(ceq = NULL, c = hin(x))
+  } else if (is.null(hin)) {
+    confun <- function(x) list(ceq = heq(x), c = NULL)
+  } else {
+    confun <- function(x) list(ceq = heq(x), c = hin(x))
+  }
+
+  sol <- NlcOptim::solnl(
+    X = x0, objfun = fn, confun = confun,
+    A = A, B = b, Aeq = Aeq, Beq = beq,
+    lb = lb, ub = ub,
+    tolX = tol, tolFun = 0.1 * tol, tolCon = 0.1 * tol
+  )
+  list(
+    par = c(sol$par), value = sol$fn, convergence = 0,
+    info = list(
+      lambda = sol$lambda, grad = sol$grad,
+      hessian = sol$hessian
+    )
+  )
+}
+
 solve_coxshi_problem <- function(t0, fn, A, b) {
-  res <- tryCatch(NlcOptim::fmincon(t0, fn, A = A, b = b), error = function(e) NULL)
+  res <- tryCatch(fmincon(t0, fn, A = A, b = b), error = function(e) NULL)
   while (is.null(res) || !is.list(res)) {
     ru <- runif(length(t0))
     t0 <- matrix(ru / sum(ru), ncol = 1)
-    res <- tryCatch(NlcOptim::fmincon(t0, fn, A = A, b = b), error = function(e) NULL)
+    res <- tryCatch(fmincon(t0, fn, A = A, b = b), error = function(e) NULL)
   }
   res
 }
@@ -275,3 +353,29 @@ cox_shi_test <- function(Q, ind, p_min, p_max, J, K, use_bounds) {
     NA_real_
   }
 }
+
+box::export(
+  format_decimal,
+  linspace,
+  simulate_cdfs,
+  binomial_test,
+  lcm_test,
+  fisher_test,
+  run_discontinuity_test,
+  lambda2,
+  compute_bounds,
+  bound0,
+  bound1,
+  bound2,
+  filter_pvalues,
+  compute_phat,
+  compute_omega,
+  build_indicator_matrix,
+  build_difference_matrix,
+  extend_difference_matrix,
+  build_constraint_vector,
+  solve_coxshi_problem,
+  cox_shi_test
+)
+
+# nolint end: object_name_linter.

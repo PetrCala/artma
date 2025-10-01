@@ -1,6 +1,8 @@
-skip_on_cran()
-
 box::use(
+  testthat[test_that, expect_equal, test_path]
+)
+box::use(
+  artma / paths[PATHS],
   artma / calc / methods / stem[
     stem,
     stem_converge,
@@ -8,15 +10,14 @@ box::use(
     variance_b,
     variance_0,
     weighted_mean,
-    weighted_mean_squared,
-    compute_submatrix_sums
+    weighted_mean_squared
   ]
 )
 
 legacy_stem_env <- function() {
   env <- new.env()
   env$load_packages <- function(...) NULL
-  sys.source(test_path("..", "..", "utils", "src", "methods", "stem_method_master_thesis_cala.R"), envir = env)
+  sys.source(test_path(PATHS$PACKAGE_PATH, "utils", "src", "methods", "stem_method_master_thesis_cala.R"), envir = env)
   env
 }
 
