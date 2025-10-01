@@ -1,32 +1,72 @@
+locate_package_root <- function(package_name, start = getwd()) {
+  current <- tools::file_path_as_absolute(start)
+
+  repeat {
+    desc <- file.path(current, "DESCRIPTION")
+    if (file.exists(desc)) {
+      pkg_record <- tryCatch(
+        base::read.dcf(desc, fields = "Package"),
+        error = function(...) NULL
+      )
+      if (!is.null(pkg_record) && identical(pkg_record[1, 1], package_name)) {
+        return(current)
+      }
+    }
+
+    parent <- dirname(current)
+    if (identical(parent, current)) {
+      return(NULL)
+    }
+
+    current <- parent
+  }
+}
+
 #' @description A helper function that searches for a folder from which relative box imports work. It accepts the path to search.
 #' @param input_path *\[character\]* The path to turn into a box importable path.
-#' @keywords internal
 turn_path_into_box_importable <- function(input_path) {
   box::use(
     artma / const[CONST]
   )
 
-  if (!is.character(input_path) || rlang::is_empty(input_path)) {
-    cli::cli_abort(cli::format_inline("Invalid path: {.path {input_path}}"))
+  if (!rlang::is_scalar_character(input_path)) {
+    cli::cli_abort(cli::format_inline("Invalid path: {.val {input_path}}"))
   }
 
-  if (!file.exists(input_path)) {
-    cli::cli_abort(cli::format_inline("File does not exist under path: {.path {input_path}}"))
+  original_input <- input_path
+  resolved_path <- input_path
+
+  if (!file.exists(resolved_path)) {
+    pkg_root <- locate_package_root(CONST$PACKAGE_NAME)
+    if (!is.null(pkg_root)) {
+      candidate <- file.path(pkg_root, resolved_path)
+      if (file.exists(candidate)) {
+        resolved_path <- candidate
+      }
+    }
+  }
+
+  if (!file.exists(resolved_path)) {
+    cli::cli_abort(cli::format_inline("File does not exist under path: {.path {original_input}}"))
   }
 
   path_parts <- vector(mode = "character", length = 0)
 
-  i <- tools::file_path_as_absolute(input_path)
+  i <- tools::file_path_as_absolute(resolved_path)
   i <- tools::file_path_sans_ext(i) # Strip the .R extension
 
   while (i != ".") {
     if (grepl(glue::glue("{CONST$PACKAGE_NAME}$"), i)) {
       break
     }
-    removed_part <- Reduce(setdiff, strsplit(c(i, dirname(i)), split = "/", fixed = TRUE))
+    parent <- dirname(i)
+    if (identical(parent, i)) {
+      return(NULL) # Reached filesystem root without locating the package
+    }
+    removed_part <- Reduce(setdiff, strsplit(c(i, parent), split = "/", fixed = TRUE))
     path_parts <- c(removed_part, path_parts)
 
-    i <- dirname(i)
+    i <- parent
   }
   if (i == ".") {
     return(NULL)
@@ -45,7 +85,6 @@ turn_path_into_box_importable <- function(input_path) {
 #' @usage
 #' box_import_statement <- turn_path_into_box_import('./some/path')
 #' eval(box_import_statement) # Imports the path
-#' @export
 turn_path_into_box_import <- function(path) {
   if (!is.character(path) || rlang::is_empty(path)) {
     cli::cli_abort(glue::glue("Invalid path: {path}"))
@@ -61,3 +100,8 @@ turn_path_into_box_import <- function(path) {
   module_name <- base::basename(importable_box_path)
   parse(text = glue::glue("box::use({module_name}={importable_box_path})"))
 }
+
+box::export(
+  turn_path_into_box_import,
+  turn_path_into_box_importable
+)

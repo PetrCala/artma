@@ -29,7 +29,7 @@ crawl_and_import_modules <- function(dir_path, pattern = "\\.R$") {
     cli::cli_abort(glue::glue("Non-existent directory when importing modules: {dir_path}"))
   }
 
-  box::use(artma / modules / box_path[turn_path_into_box_import])
+  box::use(artma / modules / path[turn_path_into_box_import])
 
   modules <- list()
 
