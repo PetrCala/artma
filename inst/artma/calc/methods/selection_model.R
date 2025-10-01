@@ -1,23 +1,18 @@
-box::use(
-  stats[dt, nlminb, pt],
-  base[diag, diff, order, sort, cumsum, sqrt]
-)
-
 #' Compute a clustered covariance estimate for the score matrix
 #'
 #' @param score_matrix [matrix] Matrix of score contributions.
 #' @param cluster_index [integer] Cluster identifiers.
 #' @return Cluster robust covariance matrix.
 clustered_covariance_estimate <- function(score_matrix, cluster_index) {
-  order_index <- order(cluster_index)
-  ordered_clusters <- sort(cluster_index)
+  order_index <- base::order(cluster_index)
+  ordered_clusters <- base::sort(cluster_index)
   ordered_scores <- score_matrix[order_index, , drop = FALSE]
-  centered <- sweep(ordered_scores, 2, colMeans(ordered_scores))
-  cumulative <- apply(centered, 2, cumsum)
-  cluster_breaks <- c(diff(ordered_clusters) != 0, TRUE)
+  centered <- base::sweep(ordered_scores, 2, base::colMeans(ordered_scores))
+  cumulative <- base::apply(centered, 2, base::cumsum)
+  cluster_breaks <- c(base::diff(ordered_clusters) != 0, TRUE)
   aggregated <- cumulative[cluster_breaks, , drop = FALSE]
-  aggregated <- rbind(aggregated[1, ], diff(aggregated))
-  crossprod(aggregated) / (nrow(centered) - 1)
+  aggregated <- base::rbind(aggregated[1, ], base::diff(aggregated))
+  base::crossprod(aggregated) / (nrow(centered) - 1)
 }
 
 #' Finite difference approximation of the information matrix
@@ -135,14 +130,14 @@ variation_variance_loglikelihood <- function(lambdabar, tauhat, betap, cutoffs, 
   }
   betap <- matrix(betap, nrow = length(betap))
   phat <- tpowers %*% betap
-  sigmatilde <- sqrt(sigma^2 + tauhat^2)
-  density <- dt((X - lambdabar) / sigmatilde, df) / sigmatilde
+  sigmatilde <- base::sqrt(sigma^2 + tauhat^2)
+  density <- stats::dt((X - lambdabar) / sigmatilde, df) / sigmatilde
   normalized_cutoffs <- outer(sigma / sigmatilde, cutoffs, `*`) - lambdabar / sigmatilde
   if (symmetric) {
     negative_cutoffs <- outer(sigma / sigmatilde, -cutoffs, `*`) - lambdabar / sigmatilde
-    cdfs <- pt(normalized_cutoffs, df) - pt(negative_cutoffs, df)
+    cdfs <- stats::pt(normalized_cutoffs, df) - stats::pt(negative_cutoffs, df)
   } else {
-    cdfs <- pt(normalized_cutoffs, df)
+    cdfs <- stats::pt(normalized_cutoffs, df)
   }
   cdfs <- cbind(rep(0, n), cdfs, rep(1, n))
   cell_probabilities <- cdfs[, -1, drop = FALSE] - cdfs[, -(length(cutoffs) + 2), drop = FALSE]
@@ -180,10 +175,10 @@ metastudies_estimation <- function(X, sigma, cutoffs, symmetric, model = "normal
   objective <- function(Psi) llh(Psi)$LLH # nolint: object_name_linter.
   lower <- c(-Inf, rep(0, length(start) - 1))
   upper <- rep(Inf, length(start))
-  optimum <- nlminb(start = start, objective = objective, lower = lower, upper = upper, control = list(eval.max = max_eval, iter.max = max_iter, abs.tol = tol))
+  optimum <- stats::nlminb(start = start, objective = objective, lower = lower, upper = upper, control = list(eval.max = max_eval, iter.max = max_iter, abs.tol = tol))
   params <- optimum$par
   covariance <- robust_variance(stepsize, n, params, llh, seq_len(n))
-  standard_errors <- sqrt(diag(covariance))
+  standard_errors <- base::sqrt(base::diag(covariance))
   list(Psihat = params, SE = standard_errors)
 }
 
@@ -199,7 +194,7 @@ estimates_table <- function(Psihat, SE, cutoffs, symmetric, model) { # nolint: o
   params <- rbind(Psihat, SE)
   rownames(params) <- c("estimate", "standard error")
   colnames(params) <- rep(" ", ncol(params))
-  colnames(params)[1] <- intToUtf8(956)
+  colnames(params)[1] <- base::intToUtf8(956)
   colnames(params)[2] <- intToUtf8(964)
   shift <- if (model == "t") 1 else 0
   if (model == "t") {
@@ -214,7 +209,7 @@ estimates_table <- function(Psihat, SE, cutoffs, symmetric, model) { # nolint: o
       }
     }
   } else {
-    colnames(params)[start_index] <- paste("(-", intToUtf8(8734), ",", cutoffs[1], "]")
+    colnames(params)[start_index] <- paste("(-", base::intToUtf8(8734), ",", cutoffs[1], "]")
     if (length(cutoffs) > 1) {
       for (i in 2:length(cutoffs)) {
         colnames(params)[start_index + i - 1] <- paste("(", cutoffs[i - 1], ",", cutoffs[i], "]")

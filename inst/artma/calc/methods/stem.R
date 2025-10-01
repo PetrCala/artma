@@ -1,9 +1,3 @@
-# nolint start: object_name_linter.
-
-box::use(
-  graphics[plot.new, plot, lines, points, segments, abline, legend, layout]
-)
-
 #' Compute the weighted mean for the first `i` studies
 #'
 #' @param beta [numeric] Effect sizes ordered by precision.
@@ -184,26 +178,26 @@ stem_funnel <- function(beta_input, se_input, stem_estimates, theme, legend_pos 
   se_b_stem <- stem_estimates[2]
   sigma0 <- stem_estimates[3]
   n_stem <- stem_estimates[4]
-  data_sorted <- cbind(beta_input, se_input)[order(se_input), ]
+  data_sorted <- cbind(beta_input, se_input)[base::order(se_input), ]
   beta_sorted <- data_sorted[, 1]
   se_sorted <- data_sorted[, 2]
   cumulative <- weighted_mean(beta_sorted, se_sorted, sigma0)
   se_axis <- se_rescale(se_sorted)
-  plot.new()
+  graphics::plot.new()
   graphics::par(mar = c(4.1, 4.1, 1, 1), bg = grDevices::rgb(255, 255, 255, maxColorValue = 255)) # nolint: undesirable_function_linter.
-  plot(beta_sorted, se_axis,
+  graphics::plot(beta_sorted, se_axis,
     col = palette[1], pch = 1, lwd = 2.5,
     xlim = range(beta_input) + c(-1, 1) * diff(range(beta_input)) / 15,
     xlab = expression(paste("Coefficient ", beta)),
     ylab = expression(paste("Precision ", -log(SE)))
   )
-  lines(cumulative, se_axis, col = grDevices::rgb(96, 96, 96, maxColorValue = 255), lwd = 2.5)
-  points(b_stem, se_axis[n_stem], pch = 18, col = palette[3], cex = 2)
-  segments(b_stem, se_axis[1], b_stem, min(se_axis), col = palette[3], lwd = 2.5)
-  points(b_stem, se_axis[1], pch = 18, col = palette[2], cex = 2)
-  segments(b_stem - 1.96 * se_b_stem, se_axis[1], b_stem + 1.96 * se_b_stem, se_axis[1], col = palette[2], lwd = 2.5)
-  abline(v = 0, col = grDevices::rgb(192, 192, 192, maxColorValue = 255), lty = 2, lwd = 2.5)
-  legend(legend_pos,
+  graphics::lines(cumulative, se_axis, col = grDevices::rgb(96, 96, 96, maxColorValue = 255), lwd = 2.5)
+  graphics::points(b_stem, se_axis[n_stem], pch = 18, col = palette[3], cex = 2)
+  graphics::segments(b_stem, se_axis[1], b_stem, min(se_axis), col = palette[3], lwd = 2.5)
+  graphics::points(b_stem, se_axis[1], pch = 18, col = palette[2], cex = 2)
+  graphics::segments(b_stem - 1.96 * se_b_stem, se_axis[1], b_stem + 1.96 * se_b_stem, se_axis[1], col = palette[2], lwd = 2.5)
+  graphics::abline(v = 0, col = grDevices::rgb(192, 192, 192, maxColorValue = 255), lty = 2, lwd = 2.5)
+  graphics::legend(legend_pos,
     legend = c("stem-based estimate", "95 confidence interval", "cumulative estimate", "minimal precision", "study"),
     col = c(palette[2], palette[2], grDevices::rgb(96, 96, 96, maxColorValue = 255), palette[3], palette[1]),
     bty = "n",
@@ -215,17 +209,17 @@ stem_funnel <- function(beta_input, se_input, stem_estimates, theme, legend_pos 
 }
 
 #' Plot MSE diagnostics for the STEM method
-stem_MSE <- function(MSE_matrix) {
+stem_MSE <- function(MSE_matrix) { # nolint: object_name_linter.
   mse <- MSE_matrix[, 1]
   bias_sq <- MSE_matrix[, 3]
   variance <- MSE_matrix[, 2]
   n_study <- nrow(MSE_matrix)
   n_min <- 2
   num_study <- (n_min + 1):(n_study + 1)
-  layout(matrix(c(1, 2, 3, 3), 2, 2, byrow = TRUE))
-  plot(num_study, bias_sq[n_min:n_study], type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(Bias^2 - b[0]^2))
-  plot(num_study, variance[n_min:n_study], type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(Variance))
-  plot(num_study, mse[n_min:n_study], type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(MSE - b[0]^2))
+  graphics::layout(matrix(c(1, 2, 3, 3), 2, 2, byrow = TRUE))
+  graphics::plot(num_study, bias_sq[n_min:n_study], type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(Bias^2 - b[0]^2))
+  graphics::plot(num_study, variance[n_min:n_study], type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(Variance))
+  graphics::plot(num_study, mse[n_min:n_study], type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(MSE - b[0]^2))
 }
 
 #' Compute median data within clusters
@@ -264,5 +258,3 @@ box::export(
   stem_MSE,
   data_median
 )
-
-# nolint end: object_name_linter.

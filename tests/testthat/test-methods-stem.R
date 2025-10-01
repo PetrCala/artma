@@ -1,17 +1,7 @@
 box::use(
   testthat[test_that, expect_equal, test_path, skip_on_cran]
 )
-box::use(
-  artma / calc / methods / stem[
-    stem,
-    stem_converge,
-    stem_compute,
-    variance_b,
-    variance_0,
-    weighted_mean,
-    weighted_mean_squared
-  ]
-)
+box::use(artma / calc / methods / stem[stem, stem_converge, stem_compute, variance_b, variance_0, weighted_mean, weighted_mean_squared]) # nolint
 
 skip_on_cran()
 

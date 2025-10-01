@@ -389,8 +389,9 @@ options.load <- function(
     options(prefixed_options)
   }
 
-  if (should_return)
+  if (should_return) {
     return(prefixed_options)
+  }
 
   invisible(NULL)
 }
@@ -588,7 +589,10 @@ options.help <- function(
 #' @return `NULL` Prints the default directory to console.
 #' @export
 options.print_default_dir <- function(...) { # nolint: object_name_linter.
-  box::use(artma / paths[PATHS], artma / libs / utils[get_verbosity])
+  box::use(
+    artma / paths[PATHS], # nolint: box_unused_att_mod_obj_linter.
+    artma / libs / utils[get_verbosity]
+  )
 
   if (get_verbosity() >= 2) {
     cli::cli_h1("User option files default directory:")
@@ -806,7 +810,7 @@ options.create <- function(
       add_prefix   = FALSE
     )
   } else {
-    file_exists_msg <- cli::format_inline("An options file {.path {options_file_name}} already exists.")
+    file_exists_msg <- cli::format_inline("An options file {.path {options_file_name}} already exists.") # nolint: unused_declared_object_linter.
 
     if (isTRUE(should_overwrite)) {
       cli::cli_inform("{file_exists_msg} Overwriting this file...")

@@ -1,8 +1,3 @@
-box::use(
-  stats[lm, residuals, df.residual, qt, model.matrix],
-  base[sqrt, sum, pmax]
-)
-
 #' Prepare regression columns for the Endogenous Kink method
 #'
 #' @param data [data.frame] Two column data.frame with effect sizes and standard errors.
@@ -27,7 +22,7 @@ prepare_endokink_columns <- function(data) {
 #' @param coefficient [character] Name of the coefficient to extract.
 #' @return A list with elements `estimate`, `std_error`, and `model`.
 fit_auxiliary_lm <- function(formula, data, coefficient) {
-  model <- lm(formula, data = data)
+  model <- stats::lm(formula, data = data)
   summary_table <- summary(model)$coefficients
   list(
     estimate = unname(summary_table[coefficient, "Estimate"]),
@@ -45,13 +40,13 @@ fit_auxiliary_lm <- function(formula, data, coefficient) {
 #' @param pet_model [stats::lm] Fitted PET model.
 #' @return A list containing the combined estimate and the associated sum of squared residuals.
 select_combined_regression <- function(pet_estimate, pet_std_error, peese_estimate, peese_model, pet_model) {
-  m <- nrow(model.matrix(peese_model))
+  m <- nrow(stats::model.matrix(peese_model))
   t_stat <- pet_estimate / pet_std_error
-  critical_value <- qt(0.975, m - 2)
+  critical_value <- stats::qt(0.975, m - 2)
   if (abs(t_stat) > critical_value) {
-    list(estimate = peese_estimate, residual_sum = sum(residuals(peese_model)^2))
+    list(estimate = peese_estimate, residual_sum = base::sum(stats::residuals(peese_model)^2))
   } else {
-    list(estimate = pet_estimate, residual_sum = sum(residuals(pet_model)^2))
+    list(estimate = pet_estimate, residual_sum = base::sum(stats::residuals(pet_model)^2))
   }
 }
 
@@ -63,12 +58,12 @@ select_combined_regression <- function(pet_estimate, pet_std_error, peese_estima
 #' @return A list with elements `variance_component` and `standard_deviation`.
 compute_variance_component <- function(combined_residual_sum, data, peese_model) {
   m <- nrow(data)
-  wis_sum <- sum(data$wis)
-  df_model <- df.residual(peese_model)
-  sigma_sq <- pmax(0, m * ((combined_residual_sum / (m - df_model - 1)) - 1) / wis_sum)
+  wis_sum <- base::sum(data$wis)
+  df_model <- stats::df.residual(peese_model)
+  sigma_sq <- base::pmax(0, m * ((combined_residual_sum / (m - df_model - 1)) - 1) / wis_sum)
   list(
     variance_component = sigma_sq,
-    standard_deviation = sqrt(sigma_sq)
+    standard_deviation = base::sqrt(sigma_sq)
   )
 }
 
@@ -98,15 +93,15 @@ final_endokink_fit <- function(prepared_data, cutoff, verbose) {
   if (cutoff > sebs_min && cutoff < sebs_max) {
     prepared_data$sebs_a1 <- if (prepared_data$sebs > cutoff) prepared_data$sebs - cutoff else 0
     prepared_data$pubbias <- prepared_data$sebs_a1 / prepared_data$sebs
-    model <- lm(bs ~ 0 + constant + pubbias, data = prepared_data)
+    model <- stats::lm(bs ~ 0 + constant + pubbias, data = prepared_data)
     result <- summary(model)$coefficients
     output <- c(result["constant", c("Estimate", "Std. Error")], result["pubbias", c("Estimate", "Std. Error")])
   } else if (cutoff < sebs_min) {
-    model <- lm(bs ~ 0 + constant + pub_bias, data = prepared_data)
+    model <- stats::lm(bs ~ 0 + constant + pub_bias, data = prepared_data)
     result <- summary(model)$coefficients
     output <- c(result["constant", c("Estimate", "Std. Error")], result["pub_bias", c("Estimate", "Std. Error")])
   } else {
-    model <- lm(bs ~ 0 + constant, data = prepared_data)
+    model <- stats::lm(bs ~ 0 + constant, data = prepared_data)
     result <- summary(model)$coefficients
     output <- c(result["constant", c("Estimate", "Std. Error")], c(NA_real_, NA_real_))
   }
