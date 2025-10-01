@@ -239,5 +239,6 @@ box::export(
   Tpowers_fun,
   VariationVarianceLogLikelihood,
   estimatestable,
-  metastudies_estimation
+  metastudies_estimation,
+  compute_score_matrix
 )
