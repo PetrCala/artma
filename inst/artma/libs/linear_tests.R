@@ -2,6 +2,10 @@
 #' @description Helper functions used by the linear testing method.
 NULL
 
+box::use(
+  stats[model.frame]
+)
+
 # nocov start: glue/cli heavy formatting helpers ---------------------------
 
 #' Prepare the dataset for a linear model specification.
@@ -138,25 +142,69 @@ bootstrap_confidence <- function(spec, data, replications, conf_level) {
 #' @param p_value *[numeric]* P-value.
 #' @return Character string of asterisks.
 significance_mark <- function(p_value) {
-  if (!is.finite(p_value)) return("")
-  if (p_value <= 0.01) return("***")
-  if (p_value <= 0.05) return("**")
-  if (p_value <= 0.1) return("*")
+  if (!is.finite(p_value)) {
+    return("")
+  }
+  if (p_value <= 0.01) {
+    return("***")
+  }
+  if (p_value <= 0.05) {
+    return("**")
+  }
+  if (p_value <= 0.1) {
+    return("*")
+  }
   ""
 }
 
 format_number <- function(x, digits) {
-  if (!is.finite(x)) return(NA_character_)
-  formatC(round(x, digits), format = "f", digits = digits)
+  if (!length(x)) {
+    return(character(0))
+  }
+
+  finite <- is.finite(x)
+  finite[is.na(finite)] <- FALSE
+
+  formatted <- rep(NA_character_, length(x))
+  if (any(finite)) {
+    formatted[finite] <- formatC(round(x[finite], digits), format = "f", digits = digits)
+  }
+
+  if (!is.null(names(x))) {
+    names(formatted) <- names(x)
+  }
+
+  formatted
 }
 
 format_se <- function(se, digits) {
-  if (!is.finite(se)) return(NA_character_)
-  paste0("(", format_number(se, digits), ")")
+  if (!length(se)) {
+    return(character(0))
+  }
+
+  finite <- is.finite(se)
+  finite[is.na(finite)] <- FALSE
+
+  formatted <- rep(NA_character_, length(se))
+  if (any(finite)) {
+    formatted[finite] <- paste0("(", format_number(se[finite], digits), ")")
+  }
+
+  if (!is.null(names(se))) {
+    names(formatted) <- names(se)
+  }
+
+  formatted
 }
 
 format_ci <- function(lower, upper, digits) {
-  if (!is.finite(lower) || !is.finite(upper)) return(NA_character_)
+  lower_finite <- isTRUE(is.finite(lower))
+  upper_finite <- isTRUE(is.finite(upper))
+
+  if (!lower_finite || !upper_finite) {
+    return(NA_character_)
+  }
+
   as.character(glue::glue("[{format_number(lower, digits)}, {format_number(upper, digits)}]"))
 }
 
@@ -204,7 +252,12 @@ tidy_lm_model <- function(model, data, cluster_column) {
 tidy_plm_generic <- function(model, data) {
   vcov <- tryCatch(
     plm::vcovHC(model, type = "HC1", cluster = "group"),
-    error = function(e) plm::vcovHC(model, type = "HC0")
+    error = function(e) {
+      tryCatch(
+        plm::vcovHC(model, type = "HC0"),
+        error = function(e2) stats::vcov(model)
+      )
+    }
   )
   coef_matrix <- lmtest::coeftest(model, vcov = vcov)
 
@@ -404,7 +457,7 @@ run_linear_models <- function(df, options) { # nolint: function_length_linter.
   coefficients$std_error_rounded <- round(coefficients$std_error, options$round_to)
   coefficients$estimate_formatted <- paste0(format_number(coefficients$estimate, options$round_to), coefficients$significance)
   coefficients$std_error_formatted <- vapply(coefficients$std_error, format_se, character(1), digits = options$round_to)
-  coefficients$bootstrap_formatted <- mapply(
+  coefficients$bootstrap_formatted <- mapply( # nolint: undesirable_function_linter.
     format_ci,
     coefficients$bootstrap_lower,
     coefficients$bootstrap_upper,
@@ -454,6 +507,14 @@ build_summary_table <- function(coefficients, digits) {
     pb <- model_rows[model_rows$term == "publication_bias", , drop = FALSE]
     eff <- model_rows[model_rows$term == "effect", , drop = FALSE]
 
+    n_obs_value <- unique(model_rows$n_obs)
+    n_obs_value <- n_obs_value[!is.na(n_obs_value)]
+    if (!length(n_obs_value)) {
+      n_obs_value <- NA_real_
+    } else {
+      n_obs_value <- n_obs_value[1]
+    }
+
     col_values <- c(
       if (nrow(pb)) pb$estimate_formatted else NA_character_,
       if (nrow(pb)) pb$std_error_formatted else NA_character_,
@@ -461,14 +522,14 @@ build_summary_table <- function(coefficients, digits) {
       if (nrow(eff)) eff$estimate_formatted else NA_character_,
       if (nrow(eff)) eff$std_error_formatted else NA_character_,
       if (nrow(eff)) eff$bootstrap_formatted else NA_character_,
-      if (nrow(model_rows)) format_number(unique(model_rows$n_obs), 0) else NA_character_
+      if (nrow(model_rows)) format_number(n_obs_value, 0) else NA_character_
     )
 
     column_name <- model_rows$model_label[1]
     summary[[column_name]] <- col_values
   }
 
-  rownames(summary) <- row_labels
+  attr(summary, "row.names") <- row_labels
   summary
 }
 
