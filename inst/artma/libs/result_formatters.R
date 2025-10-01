@@ -3,19 +3,25 @@
 NULL
 
 significance_mark <- function(p_value) {
-  if (!is.finite(p_value)) {
-    return("")
+  if (!length(p_value)) {
+    return(character(0))
   }
-  if (p_value <= 0.01) {
-    return("***")
+
+  finite <- is.finite(p_value)
+  finite[is.na(finite)] <- FALSE
+
+  marks <- rep("", length(p_value))
+  if (any(finite)) {
+    marks[finite & p_value <= 0.1] <- "*"
+    marks[finite & p_value <= 0.05] <- "**"
+    marks[finite & p_value <= 0.01] <- "***"
   }
-  if (p_value <= 0.05) {
-    return("**")
+
+  if (!is.null(names(p_value))) {
+    names(marks) <- names(p_value)
   }
-  if (p_value <= 0.1) {
-    return("*")
-  }
-  ""
+
+  marks
 }
 
 format_number <- function(x, digits) {
