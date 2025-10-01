@@ -16,13 +16,13 @@ box::use(
 )
 
 make_demo_data <- function() {
-  n_studies <- 6L
-  per_study <- 5L
+  n_studies <- 8L
+  per_study <- 6L
   study_ids <- rep(paste0("S", seq_len(n_studies)), each = per_study)
-  base_se <- c(0.05, 0.06, 0.07, 0.08, 0.09)
-  se_vals <- rep(base_se, length.out = n_studies * per_study)
-  effect_base <- seq(0.18, 0.28, length.out = n_studies)
-  effect_offsets <- seq(-0.01, 0.01, length.out = per_study)
+  base_se <- seq(0.05, 0.12, length.out = per_study)
+  se_vals <- rep(base_se, times = n_studies)
+  effect_base <- seq(0.06, 0.3, length.out = n_studies)
+  effect_offsets <- seq(-0.07, 0.07, length.out = per_study)
   effect_vals <- rep(effect_base, each = per_study) + rep(effect_offsets, times = n_studies)
   data.frame(
     study_id = study_ids,
