@@ -169,13 +169,6 @@ methods:
       help: |
         Confidence level used for bootstrap intervals. Must lie between 0 and 1.
 
-    verbose:
-      type: "logical"
-      default: true
-      help: |
-        If `TRUE`, print a formatted summary of all linear models and warn about
-        models that could not be estimated.
-
 output:
   number_of_decimals:
     type: "integer"

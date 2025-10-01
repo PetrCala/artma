@@ -18,14 +18,12 @@ linear_tests <- function(df) {
 
   add_marks <- opt$add_significance_marks %||% TRUE
   bootstrap_replications <- opt$bootstrap_replications %||% 100L
-  verbose <- opt$verbose %||% TRUE
   conf_level <- opt$conf_level %||% 0.95
   round_to <- as.integer(getOption("artma.output.number_of_decimals", 3))
 
   validate(
     is.logical(add_marks),
     is.numeric(bootstrap_replications),
-    is.logical(verbose),
     is.numeric(conf_level),
     is.numeric(round_to)
   )
@@ -39,13 +37,14 @@ linear_tests <- function(df) {
     add_significance_marks = add_marks,
     bootstrap_replications = bootstrap_replications,
     conf_level = conf_level,
-    round_to = round_to,
-    verbose = verbose
+    round_to = round_to
   )
 
   results <- run_linear_models(df, resolved_options)
 
-  if (isTRUE(verbose)) {
+  verbosity <- get_verbosity()
+
+  if (verbosity >= 1) {
     cli::cli_h2("Linear model tests")
 
     if (nrow(results$summary) > 0) {
@@ -54,7 +53,7 @@ linear_tests <- function(df) {
       cli::cli_alert_warning("No linear models were successfully estimated.")
     }
 
-    if (length(results$skipped) > 0 && get_verbosity() >= 2) {
+    if (length(results$skipped) > 0 && verbosity >= 2) {
       for (item in results$skipped) {
         cli::cli_alert_warning("{item$label}: {item$reason}")
       }
@@ -64,6 +63,15 @@ linear_tests <- function(df) {
   results
 }
 
-.__runtime_method__ <- FALSE
+box::use(
+  artma / libs / cache[cache_cli_runner],
+  artma / data / cache_signatures[build_data_cache_signature]
+)
 
-box::export(linear_tests)
+run <- cache_cli_runner(
+  linear_tests,
+  stage = "linear_tests",
+  key_builder = function(...) build_data_cache_signature()
+)
+
+box::export(linear_tests, run)

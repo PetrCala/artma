@@ -184,17 +184,12 @@ tidy_from_coeftest <- function(coef_matrix) {
 }
 
 tidy_lm_model <- function(model, data, cluster_column) {
-  box::use(
-    lmtest[coeftest],
-    sandwich[vcovCL, vcovHC]
-  )
-
   vcov <- tryCatch(
-    vcovCL(model, cluster = data[[cluster_column]], type = "HC1"),
-    error = function(e) vcovHC(model, type = "HC1")
+    sandwich::vcovCL(model, cluster = data[[cluster_column]], type = "HC1"),
+    error = function(e) sandwich::vcovHC(model, type = "HC1")
   )
 
-  coef_matrix <- coeftest(model, vcov. = vcov)
+  coef_matrix <- lmtest::coeftest(model, vcov. = vcov)
   tidy <- tidy_from_coeftest(coef_matrix)
 
   tidy$term <- c(
@@ -207,16 +202,11 @@ tidy_lm_model <- function(model, data, cluster_column) {
 }
 
 tidy_plm_generic <- function(model, data) {
-  box::use(
-    lmtest[coeftest],
-    plm[vcovHC]
-  )
-
   vcov <- tryCatch(
-    vcovHC(model, type = "HC1", cluster = "group"),
-    error = function(e) vcovHC(model, type = "HC0")
+    plm::vcovHC(model, type = "HC1", cluster = "group"),
+    error = function(e) plm::vcovHC(model, type = "HC0")
   )
-  coef_matrix <- coeftest(model, vcov = vcov)
+  coef_matrix <- lmtest::coeftest(model, vcov = vcov)
 
   tidy <- tidy_from_coeftest(coef_matrix)
 
@@ -230,24 +220,19 @@ tidy_plm_generic <- function(model, data) {
 }
 
 tidy_plm_within <- function(model, data) {
-  box::use(
-    lmtest[coeftest],
-    plm[vcovHC, within_intercept]
-  )
-
   vcov <- tryCatch(
-    vcovHC(model, type = "HC1", cluster = "group"),
-    error = function(e) vcovHC(model, type = "HC0")
+    plm::vcovHC(model, type = "HC1", cluster = "group"),
+    error = function(e) plm::vcovHC(model, type = "HC0")
   )
 
-  coef_matrix <- coeftest(model, vcov = vcov)
+  coef_matrix <- lmtest::coeftest(model, vcov = vcov)
   tidy <- tidy_from_coeftest(coef_matrix)
   slope <- tidy[tidy$term_raw == "se", , drop = FALSE]
   slope$term_raw <- NULL
   slope$term <- "publication_bias"
 
   intercept <- tryCatch(
-    within_intercept(model, vcov = function(x) vcov),
+    plm::within_intercept(model, vcov = function(x) vcov),
     error = function(e) NA_real_
   )
 

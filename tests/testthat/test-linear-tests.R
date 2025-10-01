@@ -34,7 +34,6 @@ test_that("linear tests return tidy coefficients and summary", {
   local_options(
     "artma.methods.linear_tests.add_significance_marks" = TRUE,
     "artma.methods.linear_tests.bootstrap_replications" = 10L,
-    "artma.methods.linear_tests.verbose" = FALSE,
     "artma.methods.linear_tests.conf_level" = 0.9,
     "artma.output.number_of_decimals" = 2,
     "artma.verbose" = 1
@@ -87,7 +86,6 @@ test_that("linear tests gracefully skip models with missing columns", {
   local_options(
     "artma.methods.linear_tests.add_significance_marks" = FALSE,
     "artma.methods.linear_tests.bootstrap_replications" = 0L,
-    "artma.methods.linear_tests.verbose" = FALSE,
     "artma.methods.linear_tests.conf_level" = 0.95,
     "artma.output.number_of_decimals" = 3,
     "artma.verbose" = 1
