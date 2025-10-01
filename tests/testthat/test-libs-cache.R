@@ -201,3 +201,68 @@ test_that("cache_cli bypasses caching when disabled via option", {
   expect_equal(hits, 2L)
   expect_length(tmp_cache$keys(), 0L)
 })
+
+test_that("cache_cli_runner injects reusable cache signature metadata", {
+  box::use(artma / libs / cache[cache_cli_runner, get_artifact])
+
+  FIXTURES$local_cli_silence()
+
+  tmp_cache <- memoise::cache_memory()
+  hits <- 0L
+  last_signature <- NULL
+
+  counted <- function(cache_signature = NULL, data) {
+    hits <<- hits + 1L
+    last_signature <<- cache_signature
+    data
+  }
+
+  builder <- function(data) list(rows = nrow(data))
+
+  cached <- cache_cli_runner(
+    counted,
+    stage = "runner_test",
+    key_builder = builder,
+    cache = tmp_cache
+  )
+
+  sample_data <- head(iris)
+
+  cached(sample_data)
+  expect_equal(hits, 1L)
+  expect_identical(last_signature, list(rows = nrow(sample_data)))
+  expect_length(tmp_cache$keys(), 1L)
+
+  cached(sample_data)
+  expect_equal(hits, 1L)
+
+  key <- tmp_cache$keys()[[1]]
+  art <- get_artifact(tmp_cache, key)
+  expect_identical(art$meta$extra$stage, "runner_test")
+})
+
+test_that("cache_cli_runner works with implementations that ignore cache_signature", {
+  box::use(artma / libs / cache[cache_cli_runner])
+
+  FIXTURES$local_cli_silence()
+
+  tmp_cache <- memoise::cache_memory()
+  hits <- 0L
+
+  counted <- function(x) {
+    hits <<- hits + 1L
+    x * 2
+  }
+
+  cached <- cache_cli_runner(
+    counted,
+    stage = "no_sig",
+    key_builder = function(x) list(value = x),
+    cache = tmp_cache
+  )
+
+  cached(2)
+  expect_equal(hits, 1L)
+  cached(2)
+  expect_equal(hits, 1L)
+})

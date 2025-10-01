@@ -90,8 +90,15 @@ variable_summary_stats <- function(df) {
   df_out
 }
 
-box::use(artma / libs / cache[cache_cli])
+box::use(
+  artma / libs / cache[cache_cli_runner],
+  artma / data / cache_signatures[build_data_cache_signature]
+)
 
-run <- cache_cli(variable_summary_stats)
+run <- cache_cli_runner(
+  variable_summary_stats,
+  stage = "variable_summary_stats",
+  key_builder = function(...) build_data_cache_signature()
+)
 
 box::export(run)
