@@ -1,8 +1,42 @@
 
+<a name="v0.2.2"></a>
+## [v0.2.2](https://github.com/PetrCala/artma/compare/v0.2.1...v0.2.2)
+
+> 2025-10-01
+
+
 <a name="v0.2.1"></a>
 ## [v0.2.1](https://github.com/PetrCala/artma/compare/v0.2.0...v0.2.1)
 
 > 2025-04-25
+
+### Bug Fixes
+
+* add missing explicit package imports back to the DESCRIPTION file
+* fix more data preprocessing import errors
+* fix an import error
+* add a couple of objects to the globals list
+
+### Code Refactoring
+
+* standardize the column names of required and expected variable names
+* rewrite data processing into a pipeline
+
+### Features
+
+* add valiadtion and value enforcement methods for data preprocessing
+* rename reg_df -> reg_dof
+* improve option parsing validation and type coercion
+* add a utility function for calculating study sizes
+* add a calc placeholder module and calculation for t-values
+* add methods for computing study/obs ID optional columns
+* in data processing, enforce the correct column types and names better
+* deprecate the column standardization
+* add further column validation to data preprocessing
+* add preprocessing methods for column name standardization
+* add the purrr package, add utility functions for parsing data
+* add a function for fetching definitions from option templates
+* add the 'study' column to the data recognized column names
 
 
 <a name="v0.2.0"></a>
