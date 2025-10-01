@@ -47,7 +47,7 @@ test_that("nonlinear tests return tidy coefficients and summary", {
     "artma.verbose" = 0L
   )
 
-  res <- nonlinear_tests(df)
+  res <- suppressWarnings(nonlinear_tests(df))
 
   expect_named(
     res,
