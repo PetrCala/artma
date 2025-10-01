@@ -7,7 +7,7 @@ box::use(
 )
 
 box::use(
-  artma / libs / test_formatting[
+  artma / libs / result_formatters[
     significance_mark,
     format_number,
     format_se,
