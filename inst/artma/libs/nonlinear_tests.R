@@ -5,6 +5,7 @@ NULL
 
 box::use(
   stats[quantile],
+  utils[capture.output],
   artma / libs / validation[validate, validate_columns, assert],
   artma / libs / result_formatters[
     significance_mark,
@@ -218,12 +219,17 @@ run_hierarchical <- function(df, total_n, options) {
   iterations <- options$hierarchical_iterations %||% 6000L
   iterations <- as.integer(iterations)
   assert(iterations > 0, "Hierarchical iterations must be positive.")
-  fit <- suppressWarnings(
-    bayesm::rhierLinearModel(
-      Data = list(regdata = regdata),
-      Mcmc = list(R = iterations)
+  fit <- suppressWarnings({
+    result <- NULL
+    capture.output(
+      result <- bayesm::rhierLinearModel(
+        Data = list(regdata = regdata),
+        Mcmc = list(R = iterations, nprint = 0L)
+      ),
+      type = "output"
     )
-  )
+    result
+  })
   draws <- fit$Deltadraw
   if (is.null(draws) || ncol(draws) < 2) {
     cli::cli_abort("Unexpected posterior output from the hierarchical model.")
