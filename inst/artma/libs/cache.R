@@ -587,6 +587,19 @@ cache_cli_runner <- function(fun,
       )
     }
 
+    if (!is.null(stage)) {
+      stage_signature <- list(stage = stage)
+
+      if (is.null(cache_signature)) {
+        cache_signature <- stage_signature
+      } else {
+        if (!is.list(cache_signature)) {
+          cache_signature <- list(value = cache_signature)
+        }
+        cache_signature <- c(stage_signature, cache_signature)
+      }
+    }
+
     rlang::exec(cached_impl, cache_signature = cache_signature, !!!dots)
   }
 }
