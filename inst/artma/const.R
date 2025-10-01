@@ -89,5 +89,12 @@ CONST <- list(
       TYPE = cli::col_cyan,
       DEFAULT = cli::col_yellow
     )
+  ),
+  RUNTIME_METHODS = list(
+    EXECUTION_ORDER = c(
+      "variable_summary_stats",
+      "effect_summary_stats",
+      "linear_tests"
+    )
   )
 )

@@ -18,8 +18,27 @@ invoke_runtime_methods <- function(methods, df, ...) {
     artma / modules / runtime_methods[get_runtime_method_modules]
   )
 
+  arrange_methods <- function(method_names) {
+    execution_order <- CONST$RUNTIME_METHODS$EXECUTION_ORDER
+
+    if (is.null(execution_order)) {
+      execution_order <- character()
+    }
+
+    execution_order <- unique(as.character(execution_order[!is.na(execution_order)]))
+
+    if (!length(execution_order)) {
+      return(method_names)
+    }
+
+    ordered <- execution_order[execution_order %in% method_names]
+    remaining <- method_names[!method_names %in% ordered]
+
+    c(ordered, remaining)
+  }
+
   RUNTIME_METHOD_MODULES <- get_runtime_method_modules() # nolint: box_usage_linter.
-  supported_methods <- names(RUNTIME_METHOD_MODULES)
+  supported_methods <- arrange_methods(names(RUNTIME_METHOD_MODULES))
 
   if (is.null(methods)) {
     methods <- utils::select.list(
@@ -73,6 +92,8 @@ invoke_runtime_methods <- function(methods, df, ...) {
   }
 
   methods <- resolve_methods(methods)
+
+  methods <- supported_methods[supported_methods %in% methods]
 
   if (get_verbosity() >= 3) {
     cli::cli_h3("Running the main {.emph {CONST$PACKAGE_NAME}} function")
