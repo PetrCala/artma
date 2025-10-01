@@ -55,8 +55,8 @@ linear_tests <- function(df) {
         rownames(summary) <- NULL
       }
 
-      formatted <- cli::format_table(summary)
-      cli::cli_verbatim(paste(formatted, collapse = "\n"))
+      lines <- utils::capture.output(print(summary)) # nolint: undesirable_function_linter.
+      cli::cli_verbatim(lines) # print through cli for cache capture
     } else {
       cli::cli_alert_warning("No linear models were successfully estimated.")
     }
