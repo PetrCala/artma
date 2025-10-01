@@ -230,7 +230,10 @@ test_that("cache_cli_runner injects reusable cache signature metadata", {
 
   cached(sample_data)
   expect_equal(hits, 1L)
-  expect_identical(last_signature, list(rows = nrow(sample_data)))
+  expect_identical(
+    last_signature,
+    list(stage = "runner_test", rows = nrow(sample_data))
+  )
   expect_length(tmp_cache$keys(), 1L)
 
   cached(sample_data)
