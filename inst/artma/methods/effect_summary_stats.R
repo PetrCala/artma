@@ -1,220 +1,282 @@
-#' @title Effect Summary Stats
+#' @title Effect summary statistics
 #' @description
-#' The function getEffectSummaryStats() calculates the summary statistics for variables in a given data frame
-#'    using the percentage of correct classification (Effect) effect and sample size study_size columns,
-#'    and returns a data frame with the results. The function takes as input input_var_list,
-#'    a data frame that contains metadata about the variables in  and which variables to calculate
-#'    summary statistics for. The summary statistics calculated are the mean, median, weighted mean,
-#'    minimum, maximum, standard deviation, and number of observations. For the weighted mean,
-#'    the inverse squared sample size is used as weights. The confidence level for the weighted mean
-#'    confidence interval can be set using the conf.level parameter, which defaults to 0.95.
-#'    If any input data is missing or non-numeric, it is ignored, and the variable is not included in the output.
-#'
-#' @param df The data frame to summarize
-#' @return A list of the summary statistics
-#' @param  [data.frame] Main data frame.
-#' @param input_var_list [data.frame] Data frame with variable information.
-#' @param conf.level [numeric] Confidence level for the confidence intervals. Defaults to 0.95 (95%).
-#' @param formal_output [logical] If TRUE, return the table in a form that can be used in LaTeX. Defaults to FALSE.
-#'
-#' The function returns a list containing a data frame containing the following columns:
-#' -Var Name: The name of the variable.
-#' -Var Class: The data type of the variable.
-#' -Mean: The arithmetic mean of the effect for the variable.
-#' -Median: The median of the effect for the variable.
-#' -Weighted Mean: The weighted mean of the effect for the variable, using the inverse squared sample size as weights.
-#' -WM CI lower: The lower bound of the confidence interval for the weighted mean.
-#' -WM CI upper: The upper bound of the confidence interval for the weighted mean.
-#' -Min: The minimum effect value for the variable.
-#' -Max: The maximum effect value for the variable.
-#' -SD: The standard deviation of the effect for the variable.
-#' -Obs: The number of observations for the variable.
-#' If a variable has missing or non-numeric data, it will not be included in the output.
-#' If no variables are included in the output, the function returns an empty data frame.
+#' Compute summary statistics for the main effect grouped by variables that are
+#' flagged in the data configuration. The function supports equality based
+#' splits as well as threshold splits (numeric, mean or median based). It
+#' returns the arithmetic mean, weighted mean (weighted by the inverse squared
+#' study size), confidence intervals, and additional distribution statistics.
 effect_summary_stats <- function(df) {
   box::use(
     artma / const[CONST],
     artma / data_config / read[get_data_config],
     artma / libs / utils[get_verbosity],
-    artma / libs / validation[assert],
+    artma / libs / validation[assert, validate, validate_columns],
     artma / options / index[get_option_group]
   )
+
+  validate(is.data.frame(df))
+  validate_columns(df, c("effect", "study_size"))
 
   if (get_verbosity() >= 4) {
     cli::cli_alert_info("Summarizing the main effect")
   }
 
   config <- get_data_config()
-  opt <- get_option_group("artma.methods.variable_summary_stats")
+  opt <- get_option_group("artma.methods.effect_summary_stats")
+  conf_level <- opt$conf_level %||% 0.95
+  formal_output <- opt$formal_output %||% FALSE
   round_to <- getOption("artma.output.number_of_decimals", 3)
 
-  conf_level <- opt$conf_level
-  formal_output <- opt$formal_output
-
-  assert(
-    conf_level >= 0 && conf_level <= 1,
-    "Confidence level must be between 0 and 1. Got {.val {conf_level}}"
-  )
-  assert(
+  validate(
+    length(conf_level) == 1,
+    is.numeric(conf_level),
+    length(formal_output) == 1,
     is.logical(formal_output),
-    "Formal output must be a logical value. Got {.val {formal_output}}"
+    is.numeric(round_to)
   )
+
+  assert(conf_level >= 0 && conf_level <= 1, "Confidence level must be between 0 and 1.")
   assert(round_to >= 0, "Number of decimals must be greater than or equal to 0.")
 
-  z <- qnorm((1 - conf_level) / 2, lower.tail = FALSE) # Z value for conf. int. calculation
-  effect_data <- with(df, as.vector(effect))
-  study_size_data <- with(df, as.vector(study_size))
+  z_value <- stats::qnorm((1 - conf_level) / 2, lower.tail = FALSE)
 
-  effect_stat_names <- CONST$EFFECT_SUMMARY_STATS$NAMES
-  desired_vars <- names(config)[vapply(config, function(x) isTRUE(x$effect_summary_stats), logical(1))]
+  effect_values <- df$effect
+  study_sizes <- df$study_size
 
-  if (length(desired_vars) == 0) {
+  # Helper -----------------------------------------------------------------
+
+  format_numeric <- function(x) {
+    ifelse(is.finite(x), round(x, round_to), NA_real_)
+  }
+
+  compute_unweighted_stats <- function(values) {
+    values <- values[is.finite(values)]
+    if (!length(values)) {
+      return(list(
+        mean = NA_real_, sd = NA_real_, ci = c(NA_real_, NA_real_), median = NA_real_,
+        min = NA_real_, max = NA_real_, obs = 0L
+      ))
+    }
+
+    mean_val <- mean(values)
+    sd_val <- stats::sd(values)
+    se_val <- if (!is.na(sd_val) && length(values) > 1) sd_val / sqrt(length(values)) else NA_real_
+    ci <- if (!is.na(se_val)) c(mean_val - z_value * se_val, mean_val + z_value * se_val) else c(NA_real_, NA_real_)
+
+    list(
+      mean = mean_val,
+      sd = sd_val,
+      ci = ci,
+      median = stats::median(values),
+      min = min(values),
+      max = max(values),
+      obs = length(values)
+    )
+  }
+
+  compute_weighted_stats <- function(values, weights) {
+    mask <- is.finite(values) & is.finite(weights) & weights > 0
+    values <- values[mask]
+    weights <- weights[mask]
+
+    if (!length(values)) {
+      return(list(mean = NA_real_, ci = c(NA_real_, NA_real_)))
+    }
+
+    weights_sum <- sum(weights)
+    if (!is.finite(weights_sum) || weights_sum <= 0) {
+      return(list(mean = NA_real_, ci = c(NA_real_, NA_real_)))
+    }
+    norm_weights <- weights / weights_sum
+    mean_val <- stats::weighted.mean(values, w = weights)
+    # Weighted variance without Bessel correction keeps behaviour stable
+    variance <- stats::weighted.mean((values - mean_val)^2, w = norm_weights)
+    sd_val <- sqrt(variance)
+    se_val <- if (!is.na(sd_val) && length(values) > 1) sd_val / sqrt(length(values)) else NA_real_
+    ci <- if (!is.na(se_val)) c(mean_val - z_value * se_val, mean_val + z_value * se_val) else c(NA_real_, NA_real_)
+
+    list(mean = mean_val, ci = ci)
+  }
+
+  prepare_subset <- function(mask) {
+    mask <- mask & is.finite(effect_values) & is.finite(study_sizes)
+    list(
+      effect = effect_values[mask],
+      study_size = study_sizes[mask]
+    )
+  }
+
+  format_label <- function(base_label, suffix) {
+    if (nzchar(suffix)) {
+      paste0(base_label, suffix)
+    } else {
+      base_label
+    }
+  }
+
+  format_equal_suffix <- function(value) {
+    if (is.numeric(value) && isTRUE(all.equal(value, 1))) {
+      return("")
+    }
+    if (is.numeric(value)) {
+      return(paste0(" = ", round(value, round_to)))
+    }
+    if (is.character(value) && nzchar(value)) {
+      return(paste0(" = ", value))
+    }
+    ""
+  }
+
+  # Determine which variables to analyse ------------------------------------
+
+  is_effect_var <- function(var_cfg) {
+    if (!is.list(var_cfg)) {
+      return(FALSE)
+    }
+
+    flag <- var_cfg$effect_sum_stats
+    legacy_flag <- var_cfg$effect_summary_stats
+    equal <- var_cfg$equal
+    gltl <- var_cfg$gltl %||% var_cfg$gtlt
+
+    any(c(isTRUE(flag), isTRUE(legacy_flag), !is.na(equal), !is.na(gltl)))
+  }
+
+  effect_vars <- names(config)[vapply(config, is_effect_var, logical(1))]
+
+  if (!length(effect_vars)) {
     if (get_verbosity() >= 2) {
       cli::cli_alert_warning("No variables selected to compute summary statistics for.")
     }
-    return(data.frame())
+    empty <- data.frame(matrix(nrow = 0, ncol = length(CONST$EFFECT_SUMMARY_STATS$NAMES)), stringsAsFactors = FALSE)
+    colnames(empty) <- CONST$EFFECT_SUMMARY_STATS$NAMES
+    return(empty)
   }
 
+  add_row <- function(label, class_name, subset_data) {
+    if (!length(subset_data$effect)) {
+      return(FALSE)
+    }
 
-  df <- data.frame(
-    col1 = character(),
-    col2 = character(),
-    col3 = numeric(),
-    col4 = numeric(),
-    col5 = numeric(),
-    col6 = numeric(),
-    col7 = numeric(),
-    col8 = numeric(),
-    col9 = numeric(),
-    col10 = numeric(),
-    col11 = numeric(),
-    col12 = numeric(),
-    col13 = numeric(),
-    stringsAsFactors = FALSE
-  )
-  stopifnot(ncol(df) == length(effect_stat_names))
+    weights <- 1 / (subset_data$study_size^2)
+    unweighted <- compute_unweighted_stats(subset_data$effect)
+    weighted <- compute_weighted_stats(subset_data$effect, weights)
 
-  # Iterate over all desired variables and append summary statistics to the main DF
-  missing_data_vars <- c()
-  for (var_name in desired_vars) {
-    # Get data for this var
-    var_data <- as.vector(unlist(subset(, select = var_name))) # Roundabout way, because types
-    var_specs <- input_var_list[input_var_list$var_name == var_name, ] # Specifications for this variable
-    var_class <- var_specs$data_type
-    var_name_verbose <- var_specs$var_name_verbose
-    # row_idx <- match(var_name, desired_vars) # Append data to this row
+    rows[[length(rows) + 1]] <<- data.frame(
+      `Var Name` = label,
+      `Var Class` = class_name,
+      Mean = format_numeric(unweighted$mean),
+      `CI lower` = format_numeric(unweighted$ci[1]),
+      `CI upper` = format_numeric(unweighted$ci[2]),
+      `Weighted Mean` = format_numeric(weighted$mean),
+      `WM CI lower` = format_numeric(weighted$ci[1]),
+      `WM CI upper` = format_numeric(weighted$ci[2]),
+      Median = format_numeric(unweighted$median),
+      Min = format_numeric(unweighted$min),
+      Max = format_numeric(unweighted$max),
+      SD = format_numeric(unweighted$sd),
+      Obs = as.integer(unweighted$obs),
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
 
-    # Missing all data
-    if (any(
-      !any(is.numeric(var_data), na.rm = TRUE), # No numerics
-      all(is.na(var_data)), # All NAs
-      nrow(var_data) == 0, # Empty data
-      all(var_data %in% c(0, NA)) # Only 0s or NAs
-    )) {
-      if (get_verbosity() >= 4) {
-        cli::cli_alert_info("Missing data for {.val {var_name}}")
-      }
-      missing_data_vars <- append(missing_data_vars, var_name)
+    TRUE
+  }
+
+  rows <- list()
+  missing_vars <- character()
+
+  for (var_name in effect_vars) {
+    var_cfg <- config[[var_name]]
+    if (is.null(var_cfg) || !var_name %in% names(df)) {
+      missing_vars <- c(missing_vars, var_name)
       next
     }
 
-    # Get the specifications and subset the data accordingly
-    equal_val <- var_specs$equal
-    gtlt_val <- var_specs$gtlt
-    stopifnot(xor(is.na(equal_val), is.na(gtlt_val))) # Additional validity check - should never occur
-    # The specification is EQUAL
+    var_data <- df[[var_name]]
+    if (!is.numeric(var_data) && !is.integer(var_data)) {
+      missing_vars <- c(missing_vars, var_name)
+      next
+    }
+
+    var_label <- var_cfg$var_name_verbose %||% var_name
+    var_class <- var_cfg$data_type %||% class(var_data)[1]
+
+    equal_val <- var_cfg$equal
+    gltl_val <- var_cfg$gltl %||% var_cfg$gtlt
+
+    added_any <- FALSE
+
     if (!is.na(equal_val)) {
-      effect_data_equal <- effect_data[var_data == equal_val]
-      study_size_data_equal <- study_size_data[var_data == equal_val] # For W. mean - wonky, but straightforward
-      cutoff <- equal_val # For verbose output
-    } else { # The specification is gtlt
-      if (gtlt_val %in% c("mean", "median")) {
-        cutoff <- if (gtlt_val == "mean") base::mean(var_data, na.rm = TRUE) else stats::median(var_data, na.rm = TRUE)
-        effect_data_gt <- effect_data[var_data >= cutoff]
-        effect_data_lt <- effect_data[var_data < cutoff]
-        study_size_data_gt <- study_size_data[var_data >= cutoff]
-        study_size_data_lt <- study_size_data[var_data < cutoff]
-      } else if (!is.na(gtlt_val)) {
-        cutoff <- gtlt_val # For verbose output
-        effect_data_gt <- effect_data[var_data >= gtlt_val]
-        effect_data_lt <- effect_data[var_data < gtlt_val]
-        study_size_data_gt <- study_size_data[var_data >= gtlt_val]
-        study_size_data_lt <- study_size_data[var_data < gtlt_val]
+      subset <- prepare_subset(!is.na(var_data) & var_data == equal_val)
+      label <- format_label(var_label, format_equal_suffix(equal_val))
+      added_any <- add_row(label, var_class, subset) || added_any
+    }
+
+    if (!is.na(gltl_val)) {
+      if (is.character(gltl_val)) {
+        gltl_val <- switch(gltl_val,
+          mean = mean(var_data, na.rm = TRUE),
+          median = stats::median(var_data, na.rm = TRUE),
+          suppressWarnings(as.numeric(gltl_val))
+        )
+      }
+
+      if (is.na(gltl_val)) {
+        missing_vars <- c(missing_vars, var_name)
       } else {
-        cli::cli_abort("Value error")
+        subset_ge <- prepare_subset(!is.na(var_data) & var_data >= gltl_val)
+        subset_lt <- prepare_subset(!is.na(var_data) & var_data < gltl_val)
+
+        label_ge <- format_label(var_label, paste0(" >= ", round(gltl_val, round_to)))
+        label_lt <- format_label(var_label, paste0(" < ", round(gltl_val, round_to)))
+
+        added_any <- add_row(label_ge, var_class, subset_ge) || added_any
+        added_any <- add_row(label_lt, var_class, subset_lt) || added_any
       }
     }
 
-    # A function for statistics calculation
-    get_new_data_row <- function(input_var_name, input_class_name, input_effect_data, input_study_size_data) {
-      input_effect_data <- stats::na.omit(input_effect_data)
-      input_study_size_data <- stats::na.omit(input_study_size_data)
-      # Summary stats computation
-      var_mean <- round(base::mean(input_effect_data), round_to)
-      var_sd <- round(stats::sd(input_effect_data), round_to)
-      var_ci_lower <- round(var_mean - var_sd * z, round_to)
-      var_ci_upper <- round(var_mean + var_sd * z, round_to)
-      var_weighted_mean <- round(stats::weighted.mean(input_effect_data, w = 1 / input_study_size_data), round_to)
-      var_ci_lower_w <- round(var_weighted_mean - var_sd * z, round_to)
-      var_ci_upper_w <- round(var_weighted_mean + var_sd * z, round_to)
-      var_median <- round(stats::median(input_effect_data), round_to)
-      var_min <- round(base::min(input_effect_data), 3)
-      var_max <- round(base::max(input_effect_data), 3)
-      var_obs <- length(input_effect_data)
-
-      new_row <- data.frame(
-        col1 = input_var_name,
-        col2 = input_class_name,
-        col3 = var_mean,
-        col4 = var_ci_lower,
-        col5 = var_ci_upper,
-        col6 = var_weighted_mean,
-        col7 = var_ci_lower_w,
-        col8 = var_ci_upper_w,
-        col9 = var_median,
-        col10 = var_min,
-        col11 = var_max,
-        col12 = var_sd,
-        col13 = var_obs
-      )
-      return(new_row)
-    }
-    # EQUAL data
-    if (!is.na(equal_val)) {
-      equal_cutoff <- if (cutoff == 1) "" else paste0(" = ", round(cutoff, 3)) # None if equal to 1
-      new_varname_equal <- paste0(var_name_verbose, equal_cutoff)
-      new_row <- get_new_data_row(new_varname_equal, var_class, effect_data_equal, study_size_data_equal)
-      df <- rbind(df, new_row)
-    } else { # GTLT data
-      new_varname_gt <- paste0(var_name_verbose, " >= ", round(as.numeric(cutoff), 3))
-      new_varname_lt <- paste0(var_name_verbose, " < ", round(as.numeric(cutoff), 3))
-      new_row_gt <- get_new_data_row(new_varname_gt, var_class, effect_data_gt, study_size_data_gt)
-      new_row_lt <- get_new_data_row(new_varname_lt, var_class, effect_data_lt, study_size_data_lt)
-      df <- rbind(df, new_row_gt)
-      df <- rbind(df, new_row_lt)
+    if (!added_any) {
+      subset <- prepare_subset(!is.na(var_data))
+      if (!add_row(var_label, var_class, subset)) {
+        missing_vars <- c(missing_vars, var_name)
+      }
     }
   }
-  # Add a row on top of the data frame with all observations
-  first_row <- get_new_data_row("All Data", "any", effect_data, study_size_data)
-  df <- rbind(first_row, df)
-  # Put the final output together
-  colnames(df) <- effect_stat_names
-  # Format into a more presentable form
-  if (formal_output) {
-    cols_to_drop <- c("Var Class", "Median", "Min", "Max", "SD")
-    df <- df[, !names(df) %in% cols_to_drop]
+
+  total_subset <- prepare_subset(rep(TRUE, length(effect_values)))
+  add_row("All Data", "any", total_subset)
+
+  out <- do.call(rbind, rows)
+  if (!is.null(out) && nrow(out) > 0) {
+    all_idx <- which(out$`Var Name` == "All Data")
+    if (length(all_idx) && all_idx[1] != 1) {
+      out <- rbind(out[all_idx[1], , drop = FALSE], out[-all_idx[1], , drop = FALSE])
+    }
+  }
+  rownames(out) <- NULL
+  colnames(out) <- CONST$EFFECT_SUMMARY_STATS$NAMES
+
+  if (isTRUE(formal_output)) {
+    out <- subset(out, select = !names(out) %in% c("Var Class", "Median", "Min", "Max", "SD"))
+  }
+
+  if (length(missing_vars) && get_verbosity() >= 2) {
+    cli::cli_alert_warning(
+      "Missing or non-numeric data for {.val {unique(missing_vars)}}"
+    )
   }
 
   if (get_verbosity() >= 3) {
     cli::cli_h3("Summary statistics:")
-    cli::cat_print(df)
+    cli::cat_print(out)
   }
 
-  if (length(missing_data_vars) > 0 && get_verbosity() >= 2) {
-    cli::cli_alert_warning("Missing data for {.val {length(missing_data_vars)}} variables: {.val {missing_data_vars}}")
-  }
+  out
+}
 
-  return(df)
+`%||%` <- function(x, y) {
+  if (!is.null(x)) x else y
 }
 
 box::use(
@@ -228,4 +290,4 @@ run <- cache_cli_runner(
   key_builder = function(...) build_data_cache_signature()
 )
 
-box::export(run)
+box::export(effect_summary_stats, run)
