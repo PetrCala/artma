@@ -266,6 +266,33 @@ Key behaviours:
 - `extra_keys` lets you add memoisation key components such as package
   versions or configuration hashes to avoid sharing stale results.
 
+### Using `cache_cli_runner` for reusable wrappers
+
+For modules that share a cache signature or need to compute additional key
+components before invoking the underlying implementation, prefer the
+`cache_cli_runner()` helper. It introduces the `cache_signature` argument to the
+memoised layer and accepts a `key_builder` callback so repeated patterns stay
+DRY:
+
+```r
+box::use(
+  artma / libs / cache[cache_cli_runner],
+  artma / data / cache_signatures[build_data_cache_signature]
+)
+
+run_summary <- cache_cli_runner(
+  summary_impl,
+  stage = "my_stage",
+  key_builder = function(...) build_data_cache_signature()
+)
+
+run_summary(df)
+```
+
+`cache_cli_runner()` still exposes all tuning parameters from `cache_cli()` so
+callers can set a custom cache backend, provide invalidation predicates, or
+specify a `max_age` timeout while keeping the call sites concise.
+
 ## Inspecting cached artifacts
 
 `cache_cli()` stores a `cached_artifact` containing the computed value, the

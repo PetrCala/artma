@@ -498,6 +498,99 @@ cache_cli <- function(fun,
   }
 }
 
+#' @title Create a reusable cache_cli-backed runner
+#' @description
+#' Build a memoised wrapper around an implementation function while keeping
+#' the calling surface free from cache-related boilerplate. The helper
+#' introduces a `cache_signature` argument in the memoised layer so additional
+#' cache key components can be injected via `key_builder()` without requiring
+#' the underlying implementation to manage that parameter.
+#' @param fun *\[function\]* The function to wrap. It may optionally accept a
+#'   `cache_signature` argument.
+#' @param stage *\[character\]* Optional stage label appended to the cached
+#'   artifact metadata.
+#' @param key_builder *\[function\]* Optional function invoked on every call
+#'   with the same arguments passed to the runner. Its return value is provided
+#'   to `cache_cli()` as the `cache_signature` argument.
+#' @param extra_keys *\[list\]* Additional metadata entries merged with the
+#'   stage identifier.
+#' @inheritParams cache_cli
+#' @return *\[function\]* A callable wrapper that proxies to `fun()` and
+#'   memoises results through `cache_cli()`.
+#' @examples
+#' build_signature <- function(data) list(rows = nrow(data))
+#' slow_identity <- function(data) { Sys.sleep(0.1); data }
+#'
+#' cached <- cache_cli_runner(
+#'   slow_identity,
+#'   stage = "demo",
+#'   key_builder = build_signature,
+#'   cache = memoise::cache_memory()
+#' )
+#'
+#' cached(iris) # <- first call computes
+#' cached(iris) # <- subsequent call replays cached CLI output
+cache_cli_runner <- function(fun,
+                             stage = NULL,
+                             key_builder = NULL,
+                             extra_keys = list(),
+                             cache = NULL,
+                             invalidate_fun = NULL,
+                             max_age = NULL) {
+  if (!is.function(fun)) {
+    cli::cli_abort("`fun` must be a function.")
+  }
+
+  if (!is.null(key_builder) && !is.function(key_builder)) {
+    cli::cli_abort("`key_builder` must be a function when supplied.")
+  }
+
+  fun_formals <- tryCatch(formals(fun), error = function(err) NULL)
+  accepts_signature <- isTRUE("cache_signature" %in% names(fun_formals)) ||
+    isTRUE("..." %in% names(fun_formals))
+
+  extra_keys <- if (is.null(extra_keys)) list() else as.list(extra_keys)
+  if (!is.null(stage)) {
+    extra_keys <- c(list(stage = stage), extra_keys)
+  }
+
+  base_impl <- function(cache_signature = NULL, ...) {
+    inner_dots <- rlang::list2(...)
+
+    if (accepts_signature) {
+      return(rlang::exec(fun, cache_signature = cache_signature, !!!inner_dots))
+    }
+
+    rlang::exec(fun, !!!inner_dots)
+  }
+
+  cached_impl <- cache_cli(
+    base_impl,
+    extra_keys = extra_keys,
+    cache = cache,
+    invalidate_fun = invalidate_fun,
+    max_age = max_age
+  )
+
+  function(...) {
+    dots <- rlang::list2(...)
+    cache_signature <- NULL
+
+    if (!is.null(key_builder)) {
+      cache_signature <- tryCatch(
+        rlang::exec(key_builder, !!!dots),
+        error = function(err) {
+          cli::cli_abort(
+            sprintf("cache signature builder failed: %s", conditionMessage(err))
+          )
+        }
+      )
+    }
+
+    rlang::exec(cached_impl, cache_signature = cache_signature, !!!dots)
+  }
+}
+
 #' @title Get artifact
 #' @description Get artifact
 #' @param cache *\[memoise::cache_filesystem\]* The cache to use
@@ -518,6 +611,7 @@ get_artifact <- function(cache, key) {
 
 box::export(
   cache_cli,
+  cache_cli_runner,
   capture_cli,
   get_artifact,
   last_cli_print,

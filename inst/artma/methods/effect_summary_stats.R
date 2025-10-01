@@ -217,8 +217,15 @@ effect_summary_stats <- function(df) {
   return(df)
 }
 
-box::use(artma / libs / cache[cache_cli])
+box::use(
+  artma / libs / cache[cache_cli_runner],
+  artma / data / cache_signatures[build_data_cache_signature]
+)
 
-run <- cache_cli(effect_summary_stats)
+run <- cache_cli_runner(
+  effect_summary_stats,
+  stage = "effect_summary_stats",
+  key_builder = function(...) build_data_cache_signature()
+)
 
 box::export(run)
