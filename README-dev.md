@@ -121,43 +121,57 @@ Below is a list of required packages and reasoning for why they are needed.
 These packages are required for the package to function correctly when used by others.
 
 - `cli` – For styled and structured console output (messages, warnings, etc.)
-- `digest` - For caching.
-- `glue` – For efficient and readable string interpolation
-- `lifecycle` – To manage and signal function lifecycle stages (e.g., deprecated, experimental)
-- `lintr` – Runtime linting (if exposed in package functionality)
-- `memoise` - For caching.
-- `metafor` - For running meta-analysis related methods
-- `purrr` - Vector preprocessing.
-- `rlang` – Core tidyverse infrastructure: advanced error handling, quosures, tidy evaluation
-- `stringr` – Consistent string manipulation functions
-- `usethis` – Automate package setup and development tasks (e.g., create_test, use_package), open files during runtime
-- `withr` – Temporarily change global state (e.g., options, env vars) within a controlled context
-- `yaml` – Parsing and reading `.yaml` configuration files
+- `digest` – For stable cache key generation.
+- `glue` – For efficient and readable string interpolation.
+- `lintr` – Runtime linting hooks that surface style issues inside the package.
+- `memoise` – For caching heavy computations and replayable console logs.
+- `metafor` – Meta-analytic estimators and diagnostics.
+- `purrr` – Vector preprocessing utilities.
+- `rlang` – Modern condition handling and tidy evaluation helpers.
+- `stringr` – Consistent string manipulation functions.
+- `usethis` – Automates development-time file generation that is exposed to users.
+- `withr` – Temporarily change global state (e.g., options, env vars) within a controlled context.
+- `yaml` – Parsing and reading `.yaml` configuration files.
 
 ## Development Dependencies (`Suggests`)
 
 These packages are used for development only.
 
-- `box` – Package and module handling
-- `box.linters` – Box-specific linting support
-- `cli` – Console output and user-friendly messages
-- `covr` – Code coverage reporting
-- `devtools` – Package development tools (e.g., load_all, check, test)
-- `fs` – File system handling with a consistent API
-- `here` – Reliable file path construction within a project
-- `jsonlite` – JSON parsing, used for VSCode interactive terminals or custom config handling
-- `knitr` – Dynamic report generation, especially for vignettes or R Markdown
-- `languageserver` – Provides LSP support for IDE features like autocomplete and linting
-- `mathjaxr` – MathJax support for documentation previews (e.g., vignettes)
-- `optparse` – Command line argument parsing for scripts
-- `pkgbuild` – Tools for building R packages
-- `remotes` – Install packages from GitHub or other remote sources
-- `rex` – Human-readable regular expression construction (useful in testing/linting tools)
-- `rmarkdown` – Rendering and previewing Markdown-based reports
-- `roxygen2` – Inline documentation generation
-- `rstudioapi` – Interface with RStudio IDE features programmatically
-- `testthat` – Unit testing framework
-- `tidyverse` – Collection of packages useful for data manipulation and visualization (also helps in testing, debugging)
+- `box` – Package and module handling.
+- `box.linters` – Box-specific linting support.
+- `covr` – Code coverage reporting.
+- `devtools` – Package development tools (e.g., `load_all()`, `check()`, `test()`).
+- `fs` – File system handling with a consistent API.
+- `here` – Reliable file path construction within a project.
+- `knitr` – Dynamic report generation, especially for vignettes or R Markdown.
+- `languageserver` – Provides LSP support for IDE features like autocomplete and linting.
+- `mathjaxr` – MathJax support for documentation previews (e.g., vignettes).
+- `optparse` – Command line argument parsing for scripts.
+- `pkgbuild` – Tools for building R packages.
+- `remotes` – Install packages from GitHub or other remote sources.
+- `rex` – Human-readable regular expression construction (useful in testing/linting tools).
+- `rmarkdown` – Rendering and previewing Markdown-based reports.
+- `roxygen2` – Inline documentation generation.
+- `testthat` – Unit testing framework.
+
+### Dependency versioning policy
+
+The `DESCRIPTION` file lists the **minimum** versions that guarantee the
+features we rely on rather than pinning dependencies to an exact release.
+Locking to a single version is discouraged for R packages because:
+
+1. CRAN and most user installations resolve dependencies from the most recent
+   release. Requiring an exact version would force users to manually locate and
+   install archived tarballs whenever upstream publishes a patch release.
+2. Continuous integration environments (including CRAN checks) always install
+   the latest dependency versions. Exact pins would therefore cause installation
+   failures the moment a dependency increments, blocking releases and automated
+   QA.
+3. Upstream security and bug fixes would be missed until the package is
+   republished with refreshed pins, which is the opposite of reproducibility.
+
+Instead, we track the smallest version that exposes the APIs we call so that the
+package stays installable while still guaranteeing the required functionality.
 
 # Importing modules
 

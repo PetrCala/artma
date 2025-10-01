@@ -18,9 +18,6 @@
 .dummy_use_purrr <- function() purrr::map_chr(1:10, ~.x)
 
 #' @keywords internal
-.dummy_use_tidyverse <- function() tidyverse::tidyverse_packages()
-
-#' @keywords internal
 .dummy_use_memoise <- function() memoise::memoise(identity)
 
 #' @keywords internal
