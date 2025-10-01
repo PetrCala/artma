@@ -5,7 +5,10 @@ box::use(
     expect_named,
     test_that
   ],
-  withr[local_options],
+  withr[local_options]
+)
+
+box::use(
   artma / methods / effect_summary_stats[effect_summary_stats]
 )
 

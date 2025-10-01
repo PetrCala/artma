@@ -45,9 +45,7 @@ effect_summary_stats <- function(df) {
 
   # Helper -----------------------------------------------------------------
 
-  format_numeric <- function(x) {
-    ifelse(is.finite(x), round(x, round_to), NA_real_)
-  }
+  format_numeric <- function(x) if (is.finite(x)) round(x, round_to) else NA_real_
 
   compute_unweighted_stats <- function(values) {
     values <- values[is.finite(values)]
@@ -60,7 +58,8 @@ effect_summary_stats <- function(df) {
 
     mean_val <- mean(values)
     sd_val <- stats::sd(values)
-    se_val <- if (!is.na(sd_val) && length(values) > 1) sd_val / sqrt(length(values)) else NA_real_
+    sd_for_ci <- round(sd_val, round_to)
+    se_val <- if (!is.na(sd_for_ci) && length(values) > 1) sd_for_ci / sqrt(length(values)) else NA_real_
     ci <- if (!is.na(se_val)) c(mean_val - z_value * se_val, mean_val + z_value * se_val) else c(NA_real_, NA_real_)
 
     list(
@@ -115,9 +114,6 @@ effect_summary_stats <- function(df) {
   }
 
   format_equal_suffix <- function(value) {
-    if (is.numeric(value) && isTRUE(all.equal(value, 1))) {
-      return("")
-    }
     if (is.numeric(value)) {
       return(paste0(" = ", round(value, round_to)))
     }
@@ -204,6 +200,8 @@ effect_summary_stats <- function(df) {
 
     equal_val <- var_cfg$equal
     gltl_val <- var_cfg$gltl %||% var_cfg$gtlt
+    valid_mask <- !is.na(var_data) & is.finite(effect_values) & is.finite(study_sizes)
+    filtered_var_data <- var_data[valid_mask]
 
     added_any <- FALSE
 
@@ -216,8 +214,8 @@ effect_summary_stats <- function(df) {
     if (!is.na(gltl_val)) {
       if (is.character(gltl_val)) {
         gltl_val <- switch(gltl_val,
-          mean = mean(var_data, na.rm = TRUE),
-          median = stats::median(var_data, na.rm = TRUE),
+          mean = if (length(filtered_var_data)) mean(filtered_var_data, na.rm = TRUE) else NA_real_,
+          median = if (length(filtered_var_data)) stats::median(filtered_var_data, na.rm = TRUE) else NA_real_,
           suppressWarnings(as.numeric(gltl_val))
         )
       }
@@ -273,10 +271,6 @@ effect_summary_stats <- function(df) {
   }
 
   out
-}
-
-`%||%` <- function(x, y) {
-  if (!is.null(x)) x else y
 }
 
 box::use(
