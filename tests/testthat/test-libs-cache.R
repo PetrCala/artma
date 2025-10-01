@@ -1,3 +1,10 @@
+box::use(
+  testthat[test_that, expect_s3_class, expect_equal, expect_type, expect_length, expect_identical, expect_match, expect_true]
+)
+
+# The fixtures and other package modules must be loaded here separately to avoid linter issues
+box::use(artma / testing / fixtures / index[FIXTURES])
+
 test_that("new_artifact constructs the correct S3 object", {
   box::use(artma / libs / cache[new_artifact])
 
@@ -11,7 +18,7 @@ test_that("new_artifact constructs the correct S3 object", {
 test_that("capture_cli traps cli conditions and replay_log re-emits them", {
   box::use(artma / libs / cache[capture_cli, replay_log])
 
-  local_cli_silence()
+  FIXTURES$local_cli_silence()
 
   res <- capture_cli({
     cli::cli_alert_info("Hello")
@@ -38,7 +45,7 @@ test_that("capture_cli traps cli conditions and replay_log re-emits them", {
 test_that("capture_cli captures cat helpers and replays them faithfully", {
   box::use(artma / libs / cache[capture_cli, replay_log])
 
-  local_cli_silence()
+  FIXTURES$local_cli_silence()
 
   res <- capture_cli({
     cli::cat_rule("demo")
@@ -62,12 +69,12 @@ test_that("capture_cli captures cat helpers and replays them faithfully", {
 test_that("cache_cli memoises value + log and replays on hit", {
   box::use(artma / libs / cache[cache_cli, get_artifact])
 
-  local_cli_silence()
+  FIXTURES$local_cli_silence()
 
   # use an *ephemeral* cache so tests are self-contained
   tmp_cache <- memoise::cache_filesystem(withr::local_tempdir())
 
-  cached_modeller <- cache_cli(fake_modeller, cache = tmp_cache)
+  cached_modeller <- cache_cli(FIXTURES$fake_modeller, cache = tmp_cache)
 
   ## --- 1st call: cold ------------------------------------------------------
   first_console <- testthat::capture_messages(
@@ -103,7 +110,7 @@ test_that("cache_cli memoises value + log and replays on hit", {
 test_that("invalidate_fun forces recomputation for selected arguments", {
   box::use(artma / libs / cache[cache_cli])
 
-  local_cli_silence()
+  FIXTURES$local_cli_silence()
 
   tmp_cache <- memoise::cache_filesystem(withr::local_tempdir())
 
@@ -134,7 +141,7 @@ test_that("invalidate_fun forces recomputation for selected arguments", {
 })
 
 test_that("print.cached_artifact produces a human-readable summary", {
-  local_cli_silence()
+  FIXTURES$local_cli_silence()
 
   box::use(artma / libs / cache[new_artifact, print.cached_artifact])
 
@@ -149,7 +156,7 @@ test_that("print.cached_artifact produces a human-readable summary", {
 test_that("cache_cli honours max_age to refresh stale artifacts", {
   box::use(artma / libs / cache[cache_cli])
 
-  local_cli_silence()
+  FIXTURES$local_cli_silence()
 
   tmp_cache <- memoise::cache_filesystem(withr::local_tempdir())
 
@@ -174,7 +181,7 @@ test_that("cache_cli honours max_age to refresh stale artifacts", {
 test_that("cache_cli bypasses caching when disabled via option", {
   box::use(artma / libs / cache[cache_cli])
 
-  local_cli_silence()
+  FIXTURES$local_cli_silence()
 
   tmp_cache <- memoise::cache_filesystem(withr::local_tempdir())
 

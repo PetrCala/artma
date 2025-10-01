@@ -3,6 +3,8 @@ box::use(
   lintr[lint]
 )
 
+indentation_guard_clause_linter <- getFromNamespace("indentation_guard_clause_linter", "artma")
+
 test_that("indentation_guard_clause_linter allows guard clause without braces", {
   linter <- indentation_guard_clause_linter()
 

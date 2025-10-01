@@ -4,11 +4,11 @@
 artma_path <- dirname(dirname(getwd()))
 
 if (!dir.exists(artma_path)) {
-  stop(paste("The path to the artma package is not valid:", artma_path))
+  cli::cli_abort("The path to the artma package is not valid: {artma_path}")
 }
 
 remotes::install_local(artma_path, force = TRUE)
-library(artma)
+library(artma) # nolint: undesirable_function_linter.
 
 # Should pass without error
 artma::main()

@@ -10,3 +10,5 @@ fake_modeller <- function(x) {
   Sys.sleep(0.01) # mimic cost
   x * 2
 }
+
+box::export(local_cli_silence, fake_modeller)
