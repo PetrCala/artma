@@ -1,7 +1,7 @@
 general:
   artma_version:
     type: "character"
-    default: "0.2.1"
+    default: "0.2.2"
     fixed: true
     help: "Version of the artma package under which these options were generated"
 
