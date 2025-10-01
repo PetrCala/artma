@@ -19,8 +19,9 @@ indentation_guard_clause_linter <- function(indent = 2L, ...) {
     function(source_expression) {
       lints <- base_linter(source_expression)
 
-      if (length(lints) == 0L)
+      if (length(lints) == 0L) {
         return(list())
+      }
 
       file_lines <- source_expression$file_lines
 
@@ -29,32 +30,38 @@ indentation_guard_clause_linter <- function(indent = 2L, ...) {
         function(lint) {
           line_number <- lint$line_number
 
-          if (is.null(line_number) || is.na(line_number) || line_number <= 1L)
+          if (is.null(line_number) || is.na(line_number) || line_number <= 1L) {
             return(TRUE)
+          }
 
           prev_line <- file_lines[[as.character(line_number - 1L)]]
 
-          if (is.null(prev_line))
+          if (is.null(prev_line)) {
             return(TRUE)
+          }
 
           prev_trim <- trimws(prev_line)
 
-          if (!grepl("^(if|else if)\\b", prev_trim) || grepl("\\{\\s*$", prev_trim))
+          if (!grepl("^(if|else if)\\b", prev_trim) || grepl("\\{\\s*$", prev_trim)) {
             return(TRUE)
+          }
 
           current_line <- file_lines[[as.character(line_number)]]
 
-          if (is.null(current_line) || !grepl("^\\s", current_line) || !nzchar(trimws(current_line)))
+          if (is.null(current_line) || !grepl("^\\s", current_line) || !nzchar(trimws(current_line))) {
             return(TRUE)
+          }
 
           prev_indent <- attr(regexpr("^\\s*", prev_line), "match.length")
           current_indent <- attr(regexpr("^\\s*", current_line), "match.length")
 
-          if (is.na(prev_indent) || is.na(current_indent))
+          if (is.na(prev_indent) || is.na(current_indent)) {
             return(TRUE)
+          }
 
-          if (!isTRUE(current_indent == prev_indent + indent))
+          if (!isTRUE(current_indent == prev_indent + indent)) {
             return(TRUE)
+          }
 
           FALSE
         },
