@@ -23,7 +23,7 @@ test_that("capture_cli traps cli conditions and replay_log re-emits them", {
   res <- capture_cli({
     cli::cli_alert_info("Hello")
     42
-  })
+  }, emit = FALSE)
 
   # ----- value --------------------------------------------------------------
   expect_equal(res$value, 42)
@@ -50,7 +50,7 @@ test_that("capture_cli captures cat helpers and replays them faithfully", {
   res <- capture_cli({
     cli::cat_rule("demo")
     "done"
-  })
+  }, emit = FALSE)
 
   expect_equal(res$value, "done")
   expect_length(res$log, 1L)
