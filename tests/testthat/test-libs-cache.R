@@ -266,3 +266,50 @@ test_that("cache_cli_runner works with implementations that ignore cache_signatu
   cached(2)
   expect_equal(hits, 1L)
 })
+
+test_that("cache_cli_runner isolates caches across stages", {
+  box::use(artma / libs / cache[cache_cli_runner])
+
+  FIXTURES$local_cli_silence()
+
+  shared_cache <- memoise::cache_memory()
+  counts <- new.env(parent = emptyenv())
+  counts$first <- 0L
+  counts$second <- 0L
+
+  make_impl <- function(name) {
+    function(df) {
+      counts[[name]] <- counts[[name]] + 1L
+      sprintf("%s_result", name)
+    }
+  }
+
+  key_builder <- function(df) list(rows = nrow(df))
+
+  first_runner <- cache_cli_runner(
+    make_impl("first"),
+    stage = "stage_one",
+    key_builder = key_builder,
+    cache = shared_cache
+  )
+
+  second_runner <- cache_cli_runner(
+    make_impl("second"),
+    stage = "stage_two",
+    key_builder = key_builder,
+    cache = shared_cache
+  )
+
+  sample_df <- data.frame(x = 1)
+
+  expect_identical(first_runner(sample_df), "first_result")
+  expect_identical(second_runner(sample_df), "second_result")
+  expect_equal(counts$first, 1L)
+  expect_equal(counts$second, 1L)
+
+  # cache hits should not trigger additional executions
+  expect_identical(first_runner(sample_df), "first_result")
+  expect_identical(second_runner(sample_df), "second_result")
+  expect_equal(counts$first, 1L)
+  expect_equal(counts$second, 1L)
+})
