@@ -54,31 +54,6 @@ get_valid_boxpath <- function(libname, pkgname) {
   # Mandatory set
   options(box.path = get_valid_boxpath(libname, pkgname))
 
-  # Box package support
-  if (requireNamespace("box", quietly = TRUE)) {
-    box_ns <- getNamespace("box")
-    fn_name <- "mod_export_names.box$pkg_info"
-    if (exists(fn_name, envir = box_ns, inherits = FALSE)) {
-      patched <- function(info, mod_ns) {
-        lazydata <- tryCatch(getNamespaceInfo(mod_ns, "lazydata"), error = function(e) NULL)
-        lazy_names <- if (is.environment(lazydata)) {
-          suppressWarnings(base::ls(envir = lazydata))
-        } else {
-          character()
-        }
-        c(getNamespaceExports(mod_ns), lazy_names)
-      }
-      was_locked <- bindingIsLocked(fn_name, box_ns)
-      if (was_locked) {
-        unlockBinding(fn_name, box_ns)
-      }
-      assign(fn_name, patched, envir = box_ns)
-      if (was_locked) {
-        lockBinding(fn_name, box_ns)
-      }
-    }
-  }
-
   invisible()
 }
 
