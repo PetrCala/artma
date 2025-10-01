@@ -87,20 +87,77 @@ list_options_files <- function(options_dir, should_return_verbose_names = FALSE)
     artma / libs / utils[get_verbosity]
   )
 
-  if (!dir.exists(options_dir))
+  if (!dir.exists(options_dir)) {
     return(character(0))
+  }
 
-  files <- list.files(
+  file_paths <- list.files(
     path = options_dir,
     pattern = CONST$PATTERNS$YAML_FILES$REGEX,
-    full.names = should_return_verbose_names
+    full.names = TRUE
   )
 
-  if (!isTRUE(should_return_verbose_names))
-    return(files)
+  if (length(file_paths) == 0) {
+    return(character(0))
+  }
+
+  # Filter out template definitions so the caller only sees user-provided options.
+  is_template_file <- function(path) {
+    known_template_names <- CONST$OPTIONS$TEMPLATE_NAMES
+    if (tolower(basename(path)) %in% known_template_names) {
+      return(TRUE)
+    }
+
+    content <- tryCatch(
+      read_options_file(path),
+      error = function(...) NULL
+    )
+
+    if (!is.list(content) || length(content) == 0) {
+      return(FALSE)
+    }
+
+    pending <- list(content)
+
+    while (length(pending) > 0) {
+      current <- pending[[1]]
+      pending <- pending[-1]
+
+      if (!is.list(current)) {
+        next
+      }
+
+      current_names <- names(current)
+      if (!is.null(current_names) && "type" %in% current_names) {
+        if (any(CONST$OPTIONS$RECOGNIZED_KEYWORDS %in% current_names)) {
+          return(TRUE)
+        }
+      }
+
+      pending <- c(pending, current)
+    }
+
+    FALSE
+  }
+
+  keep_idx <- !vapply(
+    X = file_paths,
+    FUN = is_template_file,
+    FUN.VALUE = logical(1)
+  )
+
+  file_paths <- file_paths[keep_idx]
+
+  if (length(file_paths) == 0) {
+    return(character(0))
+  }
+
+  if (!isTRUE(should_return_verbose_names)) {
+    return(basename(file_paths))
+  }
 
   option_names <- vector(mode = "character")
-  for (file_name in files) {
+  for (file_name in file_paths) {
     option_name <- tryCatch(
       {
         if (get_verbosity() >= 4) {
