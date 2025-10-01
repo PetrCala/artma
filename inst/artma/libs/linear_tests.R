@@ -77,7 +77,9 @@ prepare_linear_data <- function(df, spec) { # nolint: cyclocomp_linter.
     skipped = FALSE,
     dropped = original_n - kept_n,
     n_obs = kept_n,
-    n_clusters = if (!is.null(cluster_col)) length(unique(data[[cluster_col]])) else NA_integer_
+    n_clusters = if (!is.null(cluster_col)) length(unique(data[[cluster_col]])) else NA_integer_,
+    resampling_cache = build_resampling_cache(data, cluster_col),
+    panel_data = build_panel_frame(data, spec)
   )
 }
 
@@ -87,16 +89,63 @@ prepare_linear_data <- function(df, spec) { # nolint: cyclocomp_linter.
 #' @param cluster_column *[character]* Column name holding the cluster ids.
 #' @return A resampled data frame with replacement at the cluster level.
 resample_by_cluster <- function(df, cluster_column) {
-  if (is.null(cluster_column) || !cluster_column %in% colnames(df)) {
-    rows <- sample.int(nrow(df), nrow(df), replace = TRUE)
-    return(df[rows, , drop = FALSE])
+  cache <- build_resampling_cache(df, cluster_column)
+  indices <- generate_resample_indices(cache, 1L)[[1]]
+  df[indices, , drop = FALSE]
+}
+
+build_panel_frame <- function(data, spec) {
+  if (!isTRUE(spec$uses_plm)) {
+    return(NULL)
   }
 
-  cluster_ids <- df[[cluster_column]]
-  cluster_splits <- split(seq_len(nrow(df)), cluster_ids)
-  sampled_clusters <- sample(names(cluster_splits), length(cluster_splits), replace = TRUE)
-  sampled_indices <- unlist(cluster_splits[sampled_clusters], use.names = FALSE)
-  df[sampled_indices, , drop = FALSE]
+  index <- spec$panel_index %||% spec$cluster_column
+
+  tryCatch(
+    plm::pdata.frame(data, index = index, drop.index = FALSE),
+    error = function(e) NULL
+  )
+}
+
+build_resampling_cache <- function(data, cluster_column) {
+  if (is.null(cluster_column) || !cluster_column %in% colnames(data)) {
+    return(list(
+      type = "row",
+      n_rows = nrow(data)
+    ))
+  }
+
+  cluster_ids <- data[[cluster_column]]
+  cluster_splits <- split(seq_len(nrow(data)), cluster_ids)
+
+  list(
+    type = "cluster",
+    rows_by_cluster = unname(cluster_splits),
+    n_clusters = length(cluster_splits)
+  )
+}
+
+generate_resample_indices <- function(cache, replications) {
+  if (replications <= 0) {
+    return(list())
+  }
+
+  if (cache$type == "row") {
+    return(lapply(
+      seq_len(replications),
+      function(i) sample.int(cache$n_rows, cache$n_rows, replace = TRUE)
+    ))
+  }
+
+  rows_by_cluster <- cache$rows_by_cluster
+  n_clusters <- cache$n_clusters
+  cluster_indices <- seq_len(n_clusters)
+  sampled <- matrix(sample(cluster_indices, n_clusters * replications, replace = TRUE), nrow = n_clusters)
+
+  lapply(
+    seq_len(replications),
+    function(i) unlist(rows_by_cluster[sampled[, i]], use.names = FALSE)
+  )
 }
 
 #' @title Compute bootstrap confidence intervals
@@ -105,7 +154,13 @@ resample_by_cluster <- function(df, cluster_column) {
 #' @param replications *[integer]* Number of bootstrap replications.
 #' @param conf_level *[numeric]* Confidence level for the interval.
 #' @return A matrix with rows equal to coefficient terms.
-bootstrap_confidence <- function(spec, data, replications, conf_level) {
+bootstrap_confidence <- function(
+    spec,
+    data,
+    replications,
+    conf_level,
+    resampling_cache = NULL,
+    model_data = data) {
   if (replications <= 0) {
     return(matrix(NA_real_, nrow = 0, ncol = 2))
   }
@@ -113,8 +168,12 @@ bootstrap_confidence <- function(spec, data, replications, conf_level) {
   samples <- matrix(NA_real_, nrow = replications, ncol = length(spec$terms))
   colnames(samples) <- spec$terms
 
+  cache <- resampling_cache %||% build_resampling_cache(data, spec$cluster_column)
+  resample_indices <- generate_resample_indices(cache, replications)
+
   for (i in seq_len(replications)) {
-    boot_data <- resample_by_cluster(data, spec$cluster_column)
+    indices <- resample_indices[[i]]
+    boot_data <- model_data[indices, , drop = FALSE]
     fit <- tryCatch(spec$fit(boot_data), error = function(e) NULL)
     if (is.null(fit)) next
     tidy <- tryCatch(spec$tidy(fit, boot_data), error = function(e) NULL)
@@ -317,7 +376,8 @@ linear_model_specs <- function() { # nolint: function_length_linter.
       terms = c("effect", "publication_bias"),
       fit = function(df) stats::lm(effect ~ se, data = df),
       tidy = function(model, data) tidy_lm_model(model, data, "study_id"),
-      supports_bootstrap = TRUE
+      supports_bootstrap = TRUE,
+      uses_plm = FALSE
     ),
     list(
       name = "fe",
@@ -328,7 +388,9 @@ linear_model_specs <- function() { # nolint: function_length_linter.
       terms = c("effect", "publication_bias"),
       fit = function(df) plm::plm(effect ~ se, data = df, model = "within", index = "study_id"),
       tidy = tidy_plm_within,
-      supports_bootstrap = TRUE
+      supports_bootstrap = TRUE,
+      uses_plm = TRUE,
+      panel_index = "study_id"
     ),
     list(
       name = "be",
@@ -339,7 +401,9 @@ linear_model_specs <- function() { # nolint: function_length_linter.
       terms = c("effect", "publication_bias"),
       fit = function(df) plm::plm(effect ~ se, data = df, model = "between", index = "study_id"),
       tidy = tidy_plm_generic,
-      supports_bootstrap = FALSE
+      supports_bootstrap = FALSE,
+      uses_plm = TRUE,
+      panel_index = "study_id"
     ),
     list(
       name = "re",
@@ -350,7 +414,9 @@ linear_model_specs <- function() { # nolint: function_length_linter.
       terms = c("effect", "publication_bias"),
       fit = function(df) plm::plm(effect ~ se, data = df, model = "random", index = "study_id"),
       tidy = tidy_plm_generic,
-      supports_bootstrap = TRUE
+      supports_bootstrap = TRUE,
+      uses_plm = TRUE,
+      panel_index = "study_id"
     ),
     list(
       name = "ols_study_weighted",
@@ -362,7 +428,8 @@ linear_model_specs <- function() { # nolint: function_length_linter.
       terms = c("effect", "publication_bias"),
       fit = function(df) stats::lm(effect ~ se, data = df, weights = (df$study_size^2)),
       tidy = function(model, data) tidy_lm_model(model, data, "study_id"),
-      supports_bootstrap = TRUE
+      supports_bootstrap = TRUE,
+      uses_plm = FALSE
     ),
     list(
       name = "ols_precision_weighted",
@@ -374,7 +441,8 @@ linear_model_specs <- function() { # nolint: function_length_linter.
       terms = c("effect", "publication_bias"),
       fit = function(df) stats::lm(effect ~ se, data = df, weights = (df$precision^2)),
       tidy = function(model, data) tidy_lm_model(model, data, "study_id"),
-      supports_bootstrap = TRUE
+      supports_bootstrap = TRUE,
+      uses_plm = FALSE
     )
   )
 }
@@ -395,14 +463,16 @@ run_linear_models <- function(df, options) { # nolint: function_length_linter.
       next
     }
 
-    model <- tryCatch(spec$fit(prepared$data), error = function(e) {
+    model_data <- prepared$panel_data %||% prepared$data
+
+    model <- tryCatch(spec$fit(model_data), error = function(e) {
       skipped[[spec$name]] <<- list(label = spec$label, reason = e$message)
       NULL
     })
 
     if (is.null(model)) next
 
-    tidy <- tryCatch(spec$tidy(model, prepared$data), error = function(e) {
+    tidy <- tryCatch(spec$tidy(model, model_data), error = function(e) {
       skipped[[spec$name]] <<- list(label = spec$label, reason = e$message)
       NULL
     })
@@ -424,7 +494,14 @@ run_linear_models <- function(df, options) { # nolint: function_length_linter.
     tidy$bootstrap_upper <- NA_real_
 
     if (isTRUE(spec$supports_bootstrap) && options$bootstrap_replications > 0) {
-      boot_ci <- bootstrap_confidence(spec, prepared$data, options$bootstrap_replications, options$conf_level)
+      boot_ci <- bootstrap_confidence(
+        spec,
+        model_data,
+        options$bootstrap_replications,
+        options$conf_level,
+        prepared$resampling_cache,
+        model_data
+      )
       tidy$bootstrap_lower <- boot_ci[tidy$term, "lower"]
       tidy$bootstrap_upper <- boot_ci[tidy$term, "upper"]
     }
