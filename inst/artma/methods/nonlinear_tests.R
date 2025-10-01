@@ -69,7 +69,7 @@ nonlinear_tests <- function(df) {
         rownames(summary) <- NULL
       }
       lines <- utils::capture.output(
-        print(summary, row.names = !duplicated_metric)
+        print(summary, row.names = !duplicated_metric) # nolint: undesirable_function_linter.
       )
       cli::cli_verbatim(lines)
     } else {
