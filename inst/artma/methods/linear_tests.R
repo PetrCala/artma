@@ -55,7 +55,10 @@ linear_tests <- function(df) {
         rownames(summary) <- NULL
       }
 
-      lines <- utils::capture.output(print(summary)) # nolint: undesirable_function_linter.
+      # Hide synthetic row indices when the metric names already capture the labels.
+      lines <- utils::capture.output(
+        print(summary, row.names = !duplicated_metric) # nolint: undesirable_function_linter.
+      )
       cli::cli_verbatim(lines) # print through cli for cache capture
     } else {
       cli::cli_alert_warning("No linear models were successfully estimated.")
