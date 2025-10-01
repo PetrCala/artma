@@ -47,6 +47,15 @@ indentation_guard_clause_linter <- function(indent = 2L, ...) {
           if (is.null(current_line) || !grepl("^\\s", current_line) || !nzchar(trimws(current_line)))
             return(TRUE)
 
+          prev_indent <- attr(regexpr("^\\s*", prev_line), "match.length")
+          current_indent <- attr(regexpr("^\\s*", current_line), "match.length")
+
+          if (is.na(prev_indent) || is.na(current_indent))
+            return(TRUE)
+
+          if (!isTRUE(current_indent == prev_indent + indent))
+            return(TRUE)
+
           FALSE
         },
         logical(1)
