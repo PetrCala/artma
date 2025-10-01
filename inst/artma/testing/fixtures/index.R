@@ -5,7 +5,7 @@ box::use(
 
 FIXTURES <- load_test_modules(
   dir_path = PATHS$DIR_FIXTURES,
-  pattern = "^fixture_.*\\.R$"
+  pattern = "^helper_.*\\.R$"
 )
 
 box::export(FIXTURES)

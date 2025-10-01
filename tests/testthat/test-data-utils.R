@@ -1,3 +1,12 @@
+box::use(
+  artma / testing / mocks / index[MOCKS],
+  artma / testing / fixtures / index[FIXTURES]
+)
+
+test_that <- getFromNamespace("test_that", "testthat")
+expect_true <- getFromNamespace("expect_true", "testthat")
+expect_error <- getFromNamespace("expect_error", "testthat")
+
 test_that("standardize_column_names handles missing required columns in options correctly", {
   box::use(
     artma / libs / validation[assert],

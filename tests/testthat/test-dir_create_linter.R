@@ -3,6 +3,8 @@ box::use(
   lintr[expect_lint]
 )
 
+dir_create_linter <- getFromNamespace("dir_create_linter", "artma")
+
 test_that("dir_create_linter skips allowed usages", {
   linter <- dir_create_linter()
 
