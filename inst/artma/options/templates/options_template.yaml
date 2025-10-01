@@ -149,6 +149,31 @@ methods:
       help: |
         If `TRUE`, return the table in a form that can be used in LaTeX. Defaults to `FALSE`.
 
+  linear_tests:
+    add_significance_marks:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, append significance level markers ("*", "**", "***") to coefficient estimates.
+
+    bootstrap_replications:
+      type: "integer"
+      default: 500
+      help: |
+        Number of bootstrap replications to compute confidence intervals for eligible models.
+
+    conf_level:
+      type: "numeric"
+      default: 0.95
+      help: |
+        Confidence level used when constructing bootstrap confidence intervals.
+
+    verbose:
+      type: "logical"
+      default: false
+      help: |
+        If `TRUE`, print per-model progress messages when running the linear tests.
+
 output:
   number_of_decimals:
     type: "integer"

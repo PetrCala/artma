@@ -34,6 +34,7 @@
 * implement a function to get a data config from the options file
 * prompts can now be defined through custom options
 * remove the unused data config methods - update through opt files now
+* add a runtime method for running linear publication bias tests with bootstrap support
 
 ### BREAKING CHANGE
 
