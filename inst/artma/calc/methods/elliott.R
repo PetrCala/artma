@@ -1,9 +1,3 @@
-# nolint start: object_name_linter.
-
-box::use(
-  stats[ecdf, pbinom, pchisq, pnorm, qnorm, rnorm]
-)
-
 #' Format a numeric value with a fixed number of decimals
 format_decimal <- function(x, k) trimws(format(round(x, k), nsmall = k))
 
@@ -19,7 +13,7 @@ simulate_cdfs <- function(iterations = 10000, grid_points = 10000) {
   c_grid <- seq_len(grid_points) / grid_points
   bb_sup <- numeric(iterations)
   for (m in seq_len(iterations)) {
-    eps <- rnorm(grid_points, mean = 0, sd = 1) / sqrt(grid_points)
+    eps <- stats::rnorm(grid_points, mean = 0, sd = 1) / sqrt(grid_points)
     w <- cumsum(eps)
     b <- w - c_grid * w[grid_points]
     c_values <- c(0, c_grid)
@@ -50,14 +44,14 @@ binomial_test <- function(P, p_min, p_max, type) {
   )
   nn <- length(filtered)
   kk <- sum(filtered > (p_max + p_min) / 2)
-  1 - pbinom(kk - 1, nn, 0.5)
+  1 - stats::pbinom(kk - 1, nn, 0.5)
 }
 
 #' LCM-based test for shape restrictions
 lcm_test <- function(P, p_min, p_max, norm, cdfs) {
   filtered <- P[P <= p_max & P >= p_min]
   nn <- length(filtered)
-  f <- ecdf(filtered)
+  f <- stats::ecdf(filtered)
   x <- seq(0, 1, length.out = 1000)
   y <- f(x * (p_max - p_min) + p_min)
   hull <- fdrtool::gcmlcm(x, y, type = "lcm")
@@ -72,7 +66,7 @@ lcm_test <- function(P, p_min, p_max, norm, cdfs) {
     z[x > lower & x <= upper] <- a + b * segment
   }
   bm_sup <- sqrt(nn) * max(abs(y - z))
-  1 - ecdf(cdfs)(bm_sup)
+  1 - stats::ecdf(cdfs)(bm_sup)
 }
 
 #' Fisher combination test adapted for truncated p-values
@@ -80,7 +74,7 @@ fisher_test <- function(P, p_min, p_max) {
   filtered <- P[P < p_max & P >= p_min]
   nn <- length(filtered)
   stat <- -2 * sum(log(1 - (filtered - p_min) / (p_max - p_min)))
-  1 - pchisq(stat, df = 2 * nn)
+  1 - stats::pchisq(stat, df = 2 * nn)
 }
 
 #' Discontinuity test based on rddensity
@@ -98,8 +92,8 @@ run_discontinuity_test <- function(P, c, h) {
 
 #' Lambda function used in the Cox-Shi bounds
 lambda2 <- function(x1, x2, h) {
-  pnorm(qnorm(1 - x1 / 2) - h) - pnorm(qnorm(1 - x2 / 2) - h) +
-    pnorm(qnorm(1 - x1 / 2) + h) - pnorm(qnorm(1 - x2 / 2) + h)
+  stats::pnorm(stats::qnorm(1 - x1 / 2) - h) - stats::pnorm(stats::qnorm(1 - x2 / 2) - h) +
+    stats::pnorm(stats::qnorm(1 - x1 / 2) + h) - stats::pnorm(stats::qnorm(1 - x2 / 2) + h)
 }
 
 #' Compute bounds for the p-curve and its derivatives
@@ -197,7 +191,7 @@ extend_difference_matrix <- function(D, J, K) {
   dk
 }
 
-build_constraint_vector <- function(B0, B1, B2, Galpha, use_bounds, J, K) {
+build_constraint_vector <- function(B0, B1, B2, Galpha, use_bounds, J, K) { # nolint: object_name_linter.
   if (identical(use_bounds, 0)) {
     return(c(-B0))
   }
@@ -211,7 +205,7 @@ build_constraint_vector <- function(B0, B1, B2, Galpha, use_bounds, J, K) {
 }
 
 fmincon <- function(x0, fn, gr = NULL, ..., method = "SQP",
-                    A = NULL, b = NULL, Aeq = NULL, beq = NULL,
+                    A = NULL, b = NULL, Aeq = NULL, beq = NULL, # nolint: object_name_linter.
                     lb = NULL, ub = NULL, hin = NULL, heq = NULL,
                     tol = 1e-06, maxfeval = 10000, maxiter = 5000) {
   if (!is.numeric(x0) || length(x0) <= 1) {
@@ -302,7 +296,7 @@ cox_shi_test <- function(Q, ind, p_min, p_max, J, K, use_bounds) {
   P <- filtered$P
   ind_filtered <- filtered$ind
   N <- length(P)
-  Galpha <- N / length(Q)
+  Galpha <- N / length(Q) # nolint: object_name_linter.
   phat_data <- compute_phat(P, J, p_min, p_max)
   phat <- phat_data$phat
   bins <- phat_data$bins
@@ -320,8 +314,8 @@ cox_shi_test <- function(Q, ind, p_min, p_max, J, K, use_bounds) {
   } else {
     dk <- rbind(-diag(J), -dk, diag(J), dk)
   }
-  eJ <- rep(0, J)
-  eJ[J] <- 1
+  ej <- rep(0, J)
+  ej[J] <- 1
   F1 <- rbind(-diag(J - 1), rep(1, J - 1))
   constraint_vector <- if (identical(use_bounds, 0)) {
     rep(0, nrow(dk))
@@ -329,7 +323,7 @@ cox_shi_test <- function(Q, ind, p_min, p_max, J, K, use_bounds) {
     build_constraint_vector(B0, B1, B2, Galpha, use_bounds, J, K)
   }
   A <- dk %*% F1
-  b_vec <- dk %*% eJ - constraint_vector
+  b_vec <- dk %*% ej - constraint_vector
   fn <- function(t) {
     diff_vec <- phat - t
     N * t(diff_vec) %*% solve(omega) %*% diff_vec
@@ -341,10 +335,10 @@ cox_shi_test <- function(Q, ind, p_min, p_max, J, K, use_bounds) {
   }
   t_opt <- result$par
   stat <- fn(t_opt)
-  Ba <- A[result$info$lambda$ineqlin > 0, , drop = FALSE]
-  JX <- qr(Ba)$rank
+  ba <- A[result$info$lambda$ineqlin > 0, , drop = FALSE]
+  JX <- qr(ba)$rank
   if (result$convergence == 0 && JX > 0) {
-    1 - pchisq(stat, df = JX)
+    1 - stats::pchisq(stat, df = JX)
   } else {
     NA_real_
   }
@@ -373,5 +367,3 @@ box::export(
   solve_coxshi_problem,
   cox_shi_test
 )
-
-# nolint end: object_name_linter.

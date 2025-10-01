@@ -61,7 +61,11 @@ get_valid_boxpath <- function(libname, pkgname) {
     if (exists(fn_name, envir = box_ns, inherits = FALSE)) {
       patched <- function(info, mod_ns) {
         lazydata <- tryCatch(getNamespaceInfo(mod_ns, "lazydata"), error = function(e) NULL)
-        lazy_names <- if (is.environment(lazydata)) ls(lazydata) else character()
+        lazy_names <- if (is.environment(lazydata)) {
+          suppressWarnings(base::ls(envir = lazydata))
+        } else {
+          character()
+        }
         c(getNamespaceExports(mod_ns), lazy_names)
       }
       was_locked <- bindingIsLocked(fn_name, box_ns)

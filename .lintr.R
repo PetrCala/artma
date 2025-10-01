@@ -9,7 +9,7 @@ linters <- c(
         # https://lintr.r-lib.org/reference/index.html#individual-linters
         #
         # All default box linters
-        defaults = box.linters::box_default_linters,
+        defaults = default_linters,
         # Set indentation to 8 spaces
         indentation_linter = custom_linters_env$indentation_guard_clause_linter(indent = 2),
         # Check that all commas are followed by spaces, but do not have spaces before them.
@@ -25,8 +25,6 @@ linters <- c(
         line_length_linter = lintr::line_length_linter(NULL), # 120, 160,...
         # Disable commented code linter
         commented_code_linter = NULL,
-        # Disable cyclocompexity linter
-        cyclocomp_linter = NULL,
         # Turn off linting for several functions otherwise flagged as undesirable
         undesirable_function_linter = lintr::undesirable_function_linter(
             fun = lintr::modify_defaults(
