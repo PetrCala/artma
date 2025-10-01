@@ -21,6 +21,7 @@ local/*
 **/*.log
 R/config.yaml
 man/*
+!man/*.Rd
 **/temp/*
 
 # R files
