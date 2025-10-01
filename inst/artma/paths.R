@@ -3,21 +3,73 @@ box::use(
   artma / libs / validation[assert]
 )
 
+.find_package_root <- function(package_name, start = getwd()) {
+  current <- tools::file_path_as_absolute(start)
+
+  repeat {
+    desc <- file.path(current, "DESCRIPTION")
+    if (file.exists(desc)) {
+      pkg_record <- tryCatch(
+        base::read.dcf(desc, fields = "Package"),
+        error = function(...) NULL
+      )
+      if (!is.null(pkg_record) && identical(pkg_record[1, 1], package_name)) {
+        return(current)
+      }
+    }
+
+    parent <- dirname(current)
+    if (identical(parent, current)) {
+      return(NULL)
+    }
+
+    current <- parent
+  }
+}
+
+.normalize_box_paths <- function(paths) {
+  if (rlang::is_empty(paths)) {
+    return(character())
+  }
+  normalizePath(paths, winslash = "/", mustWork = FALSE)
+}
 
 #' @return *\[character\]* The path to the folder where the main 'artma' folder is located. In case the package is installed, the path to the package folder is returned. In case the package is in development mode, the path to the 'inst' folder is returned instead.
 #' @export
 get_pkg_path <- function() {
   package_name <- CONST$PACKAGE_NAME
-  box_path <- getOption("box.path")
-  dev_path <- grep(file.path(package_name, "inst$"), box_path, value = TRUE)
 
-  if (any(dir.exists(dev_path))) {
-    if (is.vector(dev_path))
-      return(dev_path[1])
-    return(dev_path)
+  box_paths <- .normalize_box_paths(getOption("box.path"))
+  dev_candidates <- box_paths[dir.exists(box_paths) & grepl(file.path(package_name, "inst$"), box_paths)]
+  if (!rlang::is_empty(dev_candidates)) {
+    return(dev_candidates[[1]])
   }
 
-  return(grep(glue::glue("{package_name}$"), box_path, value = TRUE))
+  prod_candidates <- box_paths[dir.exists(box_paths) & grepl(glue::glue("{package_name}$"), box_paths)]
+  if (!rlang::is_empty(prod_candidates)) {
+    return(prod_candidates[[1]])
+  }
+
+  pkg_root <- .find_package_root(package_name)
+  if (!is.null(pkg_root)) {
+    inst_dir <- file.path(pkg_root, "inst")
+    if (dir.exists(file.path(inst_dir, package_name))) {
+      return(inst_dir)
+    }
+    return(pkg_root)
+  }
+
+  installed_path <- tryCatch(
+    suppressWarnings(find.package(package_name, quiet = TRUE)),
+    error = function(...) character()
+  )
+  if (!rlang::is_empty(installed_path) && dir.exists(installed_path[[1]])) {
+    return(installed_path[[1]])
+  }
+
+  cli::cli_abort(cli::format_inline(
+    "Failed to determine package path for {.pkg {package_name}}"
+  ))
 }
 
 PACKAGE_PATH <- get_pkg_path()
@@ -42,6 +94,7 @@ DIR_USR_CACHE <- tools::R_user_dir(CONST$PACKAGE_NAME, which = "cache")
 #'
 #' @export
 PATHS <- list(
+  PACKAGE_PATH = PACKAGE_PATH,
   # Directories
   PROJECT_ROOT = PROJECT_ROOT,
   DIR_CONFIG = DIR_CONFIG,

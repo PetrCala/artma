@@ -1,25 +1,66 @@
-locate_package_root <- function(package_name, start = getwd()) {
-  current <- tools::file_path_as_absolute(start)
+.is_absolute_path <- function(path) {
+  grepl("^(?:[A-Za-z]:\\\\|/)", path)
+}
 
-  repeat {
-    desc <- file.path(current, "DESCRIPTION")
-    if (file.exists(desc)) {
-      pkg_record <- tryCatch(
-        base::read.dcf(desc, fields = "Package"),
-        error = function(...) NULL
-      )
-      if (!is.null(pkg_record) && identical(pkg_record[1, 1], package_name)) {
-        return(current)
+.generate_candidate_paths <- function(path, package_name) {
+  normalized <- gsub("\\\\", "/", path, fixed = TRUE)
+  normalized <- sub("^\\./", "", normalized)
+
+  variants <- unique(c(
+    normalized,
+    sub("^inst/", "", normalized),
+    sub(glue::glue("^{package_name}/"), "", normalized),
+    sub(glue::glue("^inst/{package_name}/"), "", normalized)
+  ))
+
+  variants <- variants[nzchar(variants)]
+  variants <- unique(c(normalized, variants, basename(variants)))
+
+  needs_ext <- !grepl("\\.[^/]+$", basename(variants))
+  with_ext <- unique(c(variants, paste0(variants[needs_ext], ".R")))
+  with_ext[with_ext != ""]
+}
+
+.get_path_context <- function(package_name) {
+  box::use(artma / paths[PATHS, get_pkg_path])
+
+  base_candidate <- PATHS$PACKAGE_PATH
+  if (!dir.exists(base_candidate)) {
+    base_candidate <- get_pkg_path()
+  }
+
+  base_path <- normalizePath(base_candidate, winslash = "/", mustWork = FALSE)
+  pkg_root <- if (basename(base_path) == "inst") dirname(base_path) else base_path
+  inst_dir <- file.path(pkg_root, "inst")
+  module_root <- file.path(base_path, package_name)
+
+  base_dirs <- unique(Filter(dir.exists, c(base_path, pkg_root, inst_dir, module_root, file.path(module_root, "modules"))))
+  list(base_dirs = base_dirs, package_root = pkg_root)
+}
+
+.resolve_module_path <- function(input_path, package_name) {
+  context <- .get_path_context(package_name)
+  candidates <- .generate_candidate_paths(input_path, package_name)
+
+  for (candidate in candidates) {
+    candidate_norm <- gsub("\\\\", "/", candidate, fixed = TRUE)
+    if (file.exists(candidate_norm)) {
+      return(normalizePath(candidate_norm, winslash = "/", mustWork = TRUE))
+    }
+
+    if (.is_absolute_path(candidate_norm)) {
+      next
+    }
+
+    for (base_dir in context$base_dirs) {
+      resolved <- file.path(base_dir, candidate_norm)
+      if (file.exists(resolved)) {
+        return(normalizePath(resolved, winslash = "/", mustWork = TRUE))
       }
     }
-
-    parent <- dirname(current)
-    if (identical(parent, current)) {
-      return(NULL)
-    }
-
-    current <- parent
   }
+
+  NULL
 }
 
 #' @description A helper function that searches for a folder from which relative box imports work. It accepts the path to search.
@@ -34,26 +75,15 @@ turn_path_into_box_importable <- function(input_path) {
   }
 
   original_input <- input_path
-  resolved_path <- input_path
+  resolved_path <- .resolve_module_path(input_path, CONST$PACKAGE_NAME)
 
-  if (!file.exists(resolved_path)) {
-    pkg_root <- locate_package_root(CONST$PACKAGE_NAME)
-    if (!is.null(pkg_root)) {
-      candidate <- file.path(pkg_root, resolved_path)
-      if (file.exists(candidate)) {
-        resolved_path <- candidate
-      }
-    }
-  }
-
-  if (!file.exists(resolved_path)) {
+  if (is.null(resolved_path)) {
     cli::cli_abort(cli::format_inline("File does not exist under path: {.path {original_input}}"))
   }
 
-  path_parts <- vector(mode = "character", length = 0)
+  path_parts <- character()
 
-  i <- tools::file_path_as_absolute(resolved_path)
-  i <- tools::file_path_sans_ext(i) # Strip the .R extension
+  i <- tools::file_path_sans_ext(resolved_path)
 
   while (i != ".") {
     if (grepl(glue::glue("{CONST$PACKAGE_NAME}$"), i)) {
@@ -86,8 +116,8 @@ turn_path_into_box_importable <- function(input_path) {
 #' box_import_statement <- turn_path_into_box_import('./some/path')
 #' eval(box_import_statement) # Imports the path
 turn_path_into_box_import <- function(path) {
-  if (!is.character(path) || rlang::is_empty(path)) {
-    cli::cli_abort(glue::glue("Invalid path: {path}"))
+  if (!rlang::is_scalar_character(path)) {
+    cli::cli_abort(cli::format_inline("Invalid path: {.val {path}}"))
   }
 
   # The box path can be a character, or a vector thereof
