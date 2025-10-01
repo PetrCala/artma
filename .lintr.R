@@ -56,7 +56,8 @@ linters <- c(
 
 exclusions <- list(
     "local/",
-    "scripts"
+    "scripts/",
+    "utils/"
 )
 
 # Clean up imported linters

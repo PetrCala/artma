@@ -2,7 +2,6 @@ box::use(
   testthat[test_that, expect_equal, test_path]
 )
 box::use(
-  artma / paths[PATHS],
   artma / calc / methods / stem[
     stem,
     stem_converge,
@@ -17,7 +16,7 @@ box::use(
 legacy_stem_env <- function() {
   env <- new.env()
   env$load_packages <- function(...) NULL
-  sys.source(test_path(PATHS$PACKAGE_PATH, "utils", "src", "methods", "stem_method_master_thesis_cala.R"), envir = env)
+  sys.source(test_path("..", "..", "utils", "src", "methods", "stem_method_master_thesis_cala.R"), envir = env)
   env
 }
 

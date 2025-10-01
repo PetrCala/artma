@@ -1,6 +1,5 @@
 box::use(testthat[test_that, expect_equal, test_path, expect_true])
 box::use(
-  artma / paths[PATHS],
   artma / calc / methods / endo_kink[
     run_endogenous_kink,
     prepare_endokink_columns,
@@ -18,7 +17,7 @@ legacy_run_endokink <- function(data) {
   } else {
     env$coeftest <- function(model) summary(model)$coefficients
   }
-  sys.source(test_path(PATHS$PACKAGE_PATH, "utils", "src", "methods", "endo_kink_master_thesis_cala.R"), envir = env)
+  sys.source(test_path("..", "..", "utils", "src", "methods", "endo_kink_master_thesis_cala.R"), envir = env)
   env$runEndoKink(data, verbose = FALSE)
 }
 

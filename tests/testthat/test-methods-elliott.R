@@ -1,6 +1,5 @@
 box::use(testthat[test_that, expect_equal, test_path])
 box::use(
-  artma / paths[PATHS],
   artma / calc / methods / elliott[
     binomial_test,
     fisher_test,
@@ -13,8 +12,8 @@ box::use(
 
 legacy_elliott_env <- function() {
   env <- new.env()
-  env$linspace <- function(start, stop, n) seq(from = start, to = stop, length.out = n)
-  sys.source(test_path(PATHS$PACKAGE_PATH, "utils", "src", "methods", "elliott_master_thesis_cala.R"), envir = env)
+  env$linspace <- function(start_, stop_, n) seq(from = start_, to = stop_, length.out = n)
+  sys.source(test_path("..", "..", "utils", "src", "methods", "elliott_master_thesis_cala.R"), envir = env)
   env
 }
 

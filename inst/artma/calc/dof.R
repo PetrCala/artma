@@ -14,5 +14,5 @@ calculate_dof <- function(t_value, pcc) {
 
   lhs <- t_value^2
   rhs <- (1 / (pcc^2)) - 1
-  return(lhs * rhs)
+  lhs * rhs
 }
