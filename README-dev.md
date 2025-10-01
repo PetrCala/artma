@@ -25,7 +25,7 @@
 - [Understanding the folder structure](#understanding-the-folder-structure)
 - [Using the options template](#using-the-options-template)
 - [Caching heavy computations](#caching-heavy-computations)
-  - [Wrapping functions with cache_cli](#wrapping-functions-with-cache_cli)
+  - [Wrapping functions with cache\_cli](#wrapping-functions-with-cache_cli)
   - [Inspecting cached artifacts](#inspecting-cached-artifacts)
   - [Invalidation and configuration](#invalidation-and-configuration)
 - [Using `lintr` for Code Quality](#using-lintr-for-code-quality)
@@ -237,7 +237,7 @@ User options are generated in the project from a template file (potentially `opt
 
 Artma's heavy modelling helpers often emit rich CLI output (alerts, tables,
 and progress messages). The `artma::cache_cli()` wrapper memoises both the
-return value *and* the console story so repeated runs feel identical to the
+return value _and_ the console story so repeated runs feel identical to the
 first execution while avoiding expensive recomputation.
 
 ## Wrapping functions with cache_cli
@@ -436,4 +436,4 @@ For more information about writing and organizing tests, refer to the [testthat 
 # Code of Conduct
 
 Please note that the artma project is released with a [Contributor Code of Conduct](https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html). By contributing to this project, you agree to abide by its terms.
-istor Code of Conduct](https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html). By contributing to this project, yFor more information about writing and organizing tests, refer to
+istor Code of Conduct](<https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html>). By contributing to this project, yFor more information about writing and organizing tests, refer to
