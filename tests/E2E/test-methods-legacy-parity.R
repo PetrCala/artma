@@ -37,20 +37,20 @@ box::use(
 )
 
 legacy_script_path <- function(filename) {
-  normalizePath(file.path("..", "utils", "src", "methods", filename), mustWork = TRUE)
+  normalizePath(file.path("..", "..", "utils", "src", "methods", filename), mustWork = TRUE)
 }
 
 assert_equal <- function(actual, expected, info) {
   comparison <- all.equal(actual, expected)
   if (!isTRUE(comparison)) {
     details <- paste(comparison, collapse = "\n")
-    stop(sprintf("%s:\n%s", info, details))
+    cli::cli_abort(sprintf("%s:\n%s", info, details))
   }
 }
 
 assert_true <- function(condition, info) {
   if (!isTRUE(condition)) {
-    stop(info)
+    cli::cli_abort(info)
   }
 }
 
@@ -144,7 +144,7 @@ assert_equal(variation$logL, legacy_variation$logL, "Selection model logL mismat
 
 stepsize <- 1e-6
 llh <- function(theta) {
-  variation_variance_loglikelihood(
+  variation_variance_loglikelihood( # nolint: object_name_linter.
     theta[1],
     theta[2],
     c(theta[-c(1, 2)], 1),
