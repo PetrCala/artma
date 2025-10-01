@@ -1,5 +1,5 @@
 box::use(
-  artma / libs / modules[crawl_and_import_modules, validate_runtime_method_modules],
+  artma / modules / utils[crawl_and_import_modules, validate_runtime_method_modules],
   artma / libs / utils[get_verbosity],
   artma / paths[PATHS]
 )

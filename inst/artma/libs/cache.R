@@ -48,7 +48,7 @@ NULL
 #' @param add_pkg_prefix *\[logical\]* Whether to add the package prefix
 #' @return *\[character\]* A character scalar like "cli::inform", or NA_character_ if no such call is on the stack.
 last_cli_print <- function(calls = sys.calls(), add_pkg_prefix = FALSE) {
-  box::use(artma / libs / modules[get_pkg_exports])
+  box::use(artma / modules / utils[get_pkg_exports])
 
   funs <- get_pkg_exports("cli")
 
@@ -113,7 +113,7 @@ call_cli_default <- function(msg) {
 #' output continues to be emitted to the console during the initial run.
 #'
 capture_cli <- function(expr, emit = TRUE) {
-  box::use(artma / libs / modules[get_pkg_exports])
+  box::use(artma / modules / utils[get_pkg_exports])
 
   expr <- substitute(expr) # preserve NSE
   emit <- isTRUE(emit)
