@@ -24,8 +24,9 @@ fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL,
     fillable_rows <- fillable_rows & is.na(dof) # Only missing values
   }
 
-  if (sum(fillable_rows) == 0)
+  if (sum(fillable_rows) == 0) {
     return(df)
+  }
   df[fillable_rows, "dof"] <- dof_calc$calculate_dof(
     t_value = t_values[fillable_rows],
     pcc = pcc[fillable_rows]
@@ -44,7 +45,7 @@ fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL,
       }
       return(df[!condition, ])
     }
-    return(df)
+    df
   }
 
   if (drop_missing) {

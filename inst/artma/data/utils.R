@@ -1,7 +1,7 @@
 #' Assign NA to a column in a data frame
 assign_na_col <- function(df, colname) {
   df[[colname]] <- rep(NA, nrow(df))
-  return(df)
+  df
 }
 
 #' @title Get standard column names
@@ -33,7 +33,7 @@ get_number_of_studies <- function(df) {
   if (!"study" %in% colnames(df)) {
     cli::cli_abort("The data frame does not have a 'study' column.", class = "missing_study_column")
   }
-  return(length(table(df$study)))
+  length(table(df$study))
 }
 
 #' @title Standardize column names

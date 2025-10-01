@@ -1,16 +1,8 @@
 box::use(
-  testthat[test_that, expect_equal, test_path]
+  testthat[test_that, expect_equal, test_path, skip_on_cran]
 )
-box::use(
-  artma / calc / methods / selection_model[
-    compute_score_matrix,
-    robust_variance,
-    compute_tpowers,
-    variation_variance_loglikelihood,
-    metastudies_estimation,
-    estimates_table
-  ]
-)
+
+skip_on_cran()
 
 legacy_selection_env <- function() {
   env <- new.env()
@@ -26,6 +18,7 @@ create_selection_fixture <- function() {
 }
 
 test_that("indicator matrix matches legacy implementation", {
+  box::use(artma / calc / methods / selection_model[compute_tpowers]) # nolint
   env <- legacy_selection_env()
   fixture <- create_selection_fixture()
   modern <- compute_tpowers(fixture$X / fixture$sigma, fixture$cutoffs, fixture$symmetric)
@@ -34,6 +27,7 @@ test_that("indicator matrix matches legacy implementation", {
 })
 
 test_that("log-likelihood aligns with legacy implementation", {
+  box::use(artma / calc / methods / selection_model[variation_variance_loglikelihood, compute_tpowers]) # nolint
   env <- legacy_selection_env()
   fixture <- create_selection_fixture()
   tpowers <- compute_tpowers(fixture$X / fixture$sigma, fixture$cutoffs, fixture$symmetric)
@@ -44,6 +38,7 @@ test_that("log-likelihood aligns with legacy implementation", {
 })
 
 test_that("robust variance equals legacy implementation", {
+  box::use(artma / calc / methods / selection_model[robust_variance, compute_tpowers, variation_variance_loglikelihood]) # nolint
   env <- legacy_selection_env()
   fixture <- create_selection_fixture()
   stepsize <- 1e-6
@@ -55,6 +50,7 @@ test_that("robust variance equals legacy implementation", {
 })
 
 test_that("estimation output matches legacy implementation", {
+  box::use(artma / calc / methods / selection_model[metastudies_estimation, estimates_table]) # nolint
   env <- legacy_selection_env()
   fixture <- create_selection_fixture()
   modern <- metastudies_estimation(fixture$X, fixture$sigma, fixture$cutoffs, fixture$symmetric, model = "normal")

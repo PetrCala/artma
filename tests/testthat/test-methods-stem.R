@@ -1,5 +1,5 @@
 box::use(
-  testthat[test_that, expect_equal, test_path]
+  testthat[test_that, expect_equal, test_path, skip_on_cran]
 )
 box::use(
   artma / calc / methods / stem[
@@ -12,6 +12,8 @@ box::use(
     weighted_mean_squared
   ]
 )
+
+skip_on_cran()
 
 legacy_stem_env <- function() {
   env <- new.env()

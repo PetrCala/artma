@@ -19,16 +19,18 @@ get_valid_boxpath <- function(libname, pkgname) {
   dev_path <- file.path(pkg_path, "inst")
 
   boxpath_defined <- function(path) {
-    if (length(current_box_path) == 0)
+    if (length(current_box_path) == 0) {
       return(FALSE)
+    }
     grepl(path, current_box_path)
   }
 
   if (all(c(
     boxpath_defined(pkg_path),
     boxpath_defined(dev_path)
-  )))
-    return(current_box_path) # Already valid
+  ))) {
+    return(current_box_path)
+  } # Already valid
 
   unique(c(current_box_path, pkg_path, dev_path))
 }
@@ -51,6 +53,27 @@ get_valid_boxpath <- function(libname, pkgname) {
 
   # Mandatory set
   options(box.path = get_valid_boxpath(libname, pkgname))
+
+  # Box package support
+  if (requireNamespace("box", quietly = TRUE)) {
+    box_ns <- getNamespace("box")
+    fn_name <- "mod_export_names.box$pkg_info"
+    if (exists(fn_name, envir = box_ns, inherits = FALSE)) {
+      patched <- function(info, mod_ns) {
+        lazydata <- tryCatch(getNamespaceInfo(mod_ns, "lazydata"), error = function(e) NULL)
+        lazy_names <- if (is.environment(lazydata)) ls(lazydata) else character()
+        c(getNamespaceExports(mod_ns), lazy_names)
+      }
+      was_locked <- bindingIsLocked(fn_name, box_ns)
+      if (was_locked) {
+        unlockBinding(fn_name, box_ns)
+      }
+      assign(fn_name, patched, envir = box_ns)
+      if (was_locked) {
+        lockBinding(fn_name, box_ns)
+      }
+    }
+  }
 
   invisible()
 }
