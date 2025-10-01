@@ -1,3 +1,5 @@
+box::use(testthat[test_that, expect_equal, expect_true, expect_false, expect_setequal, expect_length])
+
 test_that("options lifecycle helpers operate on user files", {
   box::use(artma[options.create, options.copy, options.delete, options.fix, options.list, options.load, options.validate])
 
