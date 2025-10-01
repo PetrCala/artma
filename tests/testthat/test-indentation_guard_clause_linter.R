@@ -32,3 +32,13 @@ test_that("indentation_guard_clause_linter requires indentation on guard body", 
 
   expect_gt(length(lints), 0L)
 })
+
+test_that("indentation_guard_clause_linter flags over-indented guard body", {
+  linter <- indentation_guard_clause_linter()
+
+  source_text <- "if (ready)\n    return(TRUE)\n"
+
+  lints <- lint(text = source_text, linters = linter)
+
+  expect_gt(length(lints), 0L)
+})
