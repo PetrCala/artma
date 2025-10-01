@@ -46,7 +46,7 @@ test <- function() {
 
   artma::run(
     # methods = c("all"),
-    methods = c("variable_summary_stats"),
+    methods = c("variable_summary_stats", "effect_summary_stats"),
     options_file_name = options_file_name
   )
 

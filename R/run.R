@@ -31,15 +31,47 @@ invoke_runtime_methods <- function(methods, df, ...) {
     }
   }
 
-  if (methods == "all") {
-    methods <- supported_methods
-  } else if (!(is.character(methods) && all(methods %in% supported_methods))) {
-    selected_methods <- glue::glue_collapse(as.character(methods), sep = ", ") # nolint: unused_declared_object_linter.
-    cli::cli_abort(c(
-      "x" = "Invalid runtime methods selected: {.val {selected_methods}}",
-      "i" = "To see a list of available methods, run {.code artma::methods.list()}"
-    ))
+  resolve_methods <- function(methods_input) {
+    if (rlang::is_string(methods_input) && methods_input == "all") {
+      return(supported_methods)
+    }
+
+    if (is.factor(methods_input)) {
+      methods_input <- as.character(methods_input)
+    }
+
+    if (!is.character(methods_input)) {
+      cli::cli_abort(c(
+        "x" = "Runtime methods must be supplied as a character vector.",
+        "i" = "To see a list of available methods, run {.code artma::methods.list()}"
+      ))
+    }
+
+    if (any(is.na(methods_input))) {
+      cli::cli_abort("Runtime methods must not contain missing values.")
+    }
+
+    methods_input <- trimws(methods_input)
+
+    if (length(methods_input) == 0L) {
+      cli::cli_abort("At least one runtime method must be specified.")
+    }
+
+    deduped_methods <- unique(methods_input)
+    invalid_methods <- setdiff(deduped_methods, supported_methods)
+
+    if (length(invalid_methods) > 0L) {
+      selected_methods <- glue::glue_collapse(as.character(invalid_methods), sep = ", ") # nolint: unused_declared_object_linter.
+      cli::cli_abort(c(
+        "x" = "Invalid runtime methods selected: {.val {selected_methods}}",
+        "i" = "To see a list of available methods, run {.code artma::methods.list()}"
+      ))
+    }
+
+    deduped_methods
   }
+
+  methods <- resolve_methods(methods)
 
   if (get_verbosity() >= 3) {
     cli::cli_h3("Running the main {.emph {CONST$PACKAGE_NAME}} function")
@@ -49,14 +81,11 @@ invoke_runtime_methods <- function(methods, df, ...) {
   }
 
   results <- list()
-  for (i in seq_along(supported_methods)) {
-    method_name <- methods[i]
-    if (method_name %in% methods) {
-      if (get_verbosity() >= 3) {
-        cli::cli_inform("{cli::symbol$bullet} Running the {.code {method_name}} method...")
-      }
-      results[[method_name]] <- RUNTIME_METHOD_MODULES[[method_name]]$run(df = df, ...)
+  for (method_name in methods) {
+    if (get_verbosity() >= 3) {
+      cli::cli_inform("{cli::symbol$bullet} Running the {.code {method_name}} method...")
     }
+    results[[method_name]] <- RUNTIME_METHOD_MODULES[[method_name]]$run(df = df, ...)
   }
   results
 }
