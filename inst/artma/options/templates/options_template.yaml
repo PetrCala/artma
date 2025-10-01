@@ -169,6 +169,54 @@ methods:
       help: |
         Confidence level used for bootstrap intervals. Must lie between 0 and 1.
 
+  nonlinear_tests:
+    add_significance_marks:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, append significance asterisks to coefficient estimates.
+
+    round_to:
+      type: "integer"
+      allow_na: true
+      default: .na
+      help: |
+        Override the default number of decimals shown in the non-linear summary.
+        Leave unset to use the global output option.
+
+    stem_representative_sample:
+      type: "enum: medians|first|all"
+      default: "medians"
+      help: |
+        Choose the representative observation per study when running the STEM
+        estimator. Use {.strong medians} to rely on study medians, {.strong first}
+        to pick the first observation, or {.strong all} to use every estimate.
+
+    selection_cutoffs:
+      type: "numeric"
+      default: [1.96]
+      help: |
+        Cut-off values supplied to the selection model. Provide one or more
+        positive values corresponding to the publication probability thresholds.
+
+    selection_symmetric:
+      type: "logical"
+      default: false
+      help: |
+        If `TRUE`, impose symmetry when estimating the selection model.
+
+    selection_model:
+      type: "enum: normal|t"
+      default: "normal"
+      help: |
+        Distributional assumption used by the selection model.
+
+    hierarchical_iterations:
+      type: "integer"
+      default: 6000
+      help: |
+        Number of posterior draws to request from the hierarchical model.
+
 output:
   number_of_decimals:
     type: "integer"

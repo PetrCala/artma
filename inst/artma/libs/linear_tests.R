@@ -6,6 +6,15 @@ box::use(
   stats[model.frame]
 )
 
+box::use(
+  artma / libs / test_formatting[
+    significance_mark,
+    format_number,
+    format_se,
+    format_ci
+  ]
+)
+
 # nocov start: glue/cli heavy formatting helpers ---------------------------
 
 #' Prepare the dataset for a linear model specification.
@@ -135,77 +144,6 @@ bootstrap_confidence <- function(spec, data, replications, conf_level) {
   }
 
   ci
-}
-
-#' @title Significance marks
-#' @description Derive significance marks from p-values.
-#' @param p_value *[numeric]* P-value.
-#' @return Character string of asterisks.
-significance_mark <- function(p_value) {
-  if (!is.finite(p_value)) {
-    return("")
-  }
-  if (p_value <= 0.01) {
-    return("***")
-  }
-  if (p_value <= 0.05) {
-    return("**")
-  }
-  if (p_value <= 0.1) {
-    return("*")
-  }
-  ""
-}
-
-format_number <- function(x, digits) {
-  if (!length(x)) {
-    return(character(0))
-  }
-
-  finite <- is.finite(x)
-  finite[is.na(finite)] <- FALSE
-
-  formatted <- rep(NA_character_, length(x))
-  if (any(finite)) {
-    formatted[finite] <- formatC(round(x[finite], digits), format = "f", digits = digits)
-  }
-
-  if (!is.null(names(x))) {
-    names(formatted) <- names(x)
-  }
-
-  formatted
-}
-
-format_se <- function(se, digits) {
-  if (!length(se)) {
-    return(character(0))
-  }
-
-  finite <- is.finite(se)
-  finite[is.na(finite)] <- FALSE
-
-  formatted <- rep(NA_character_, length(se))
-  if (any(finite)) {
-    formatted[finite] <- paste0("(", format_number(se[finite], digits), ")")
-  }
-
-  if (!is.null(names(se))) {
-    names(formatted) <- names(se)
-  }
-
-  formatted
-}
-
-format_ci <- function(lower, upper, digits) {
-  lower_finite <- isTRUE(is.finite(lower))
-  upper_finite <- isTRUE(is.finite(upper))
-
-  if (!lower_finite || !upper_finite) {
-    return(NA_character_)
-  }
-
-  as.character(glue::glue("[{format_number(lower, digits)}, {format_number(upper, digits)}]"))
 }
 
 tidy_from_coeftest <- function(coef_matrix) {
