@@ -1,5 +1,5 @@
 box::use(
-  artma / libs / modules[crawl_and_import_modules]
+  artma / modules / utils[crawl_and_import_modules]
 )
 
 #' Load test modules from a directory matching a pattern.
