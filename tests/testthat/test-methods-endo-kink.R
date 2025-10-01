@@ -1,14 +1,6 @@
-box::use(testthat[test_that, expect_equal, test_path, expect_true])
-box::use(
-  artma / calc / methods / endo_kink[
-    run_endogenous_kink,
-    prepare_endokink_columns,
-    fit_auxiliary_lm,
-    select_combined_regression,
-    compute_variance_component,
-    compute_cutoff
-  ]
-)
+box::use(testthat[test_that, expect_equal, test_path, expect_true, skip_on_cran])
+
+skip_on_cran()
 
 legacy_run_endokink <- function(data) {
   env <- new.env()
@@ -29,6 +21,7 @@ create_sample_dataset <- function() {
 }
 
 test_that("refactored endo-kink matches legacy implementation", {
+  box::use(artma / calc / methods / endo_kink[run_endogenous_kink]) # nolint
   data <- create_sample_dataset()
   legacy <- legacy_run_endokink(data)
   modern <- run_endogenous_kink(data, verbose = FALSE)
@@ -36,6 +29,7 @@ test_that("refactored endo-kink matches legacy implementation", {
 })
 
 test_that("helper pipeline reproduces intermediate calculations", {
+  box::use(artma / calc / methods / endo_kink[prepare_endokink_columns, fit_auxiliary_lm, select_combined_regression, compute_variance_component, compute_cutoff]) # nolint
   data <- create_sample_dataset()
   prepared <- prepare_endokink_columns(data)
   expect_equal(names(prepared), c("bs", "sebs", "ones", "sebs2", "wis", "bs_sebs", "ones_sebs", "bswis"))

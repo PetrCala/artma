@@ -128,6 +128,11 @@ compute_tpowers <- function(TT, cutoffs, symmetric) {
 #' @return List with `LLH` and per observation `logL`.
 variation_variance_loglikelihood <- function(lambdabar, tauhat, betap, cutoffs, symmetric, X, sigma, tpowers, df = Inf) {
   n <- length(X)
+  betap <- as.numeric(betap)
+  total_cells <- ncol(tpowers)
+  if (length(betap) < total_cells) {
+    betap <- c(betap, rep(1, total_cells - length(betap)))
+  }
   betap <- matrix(betap, nrow = length(betap))
   phat <- tpowers %*% betap
   sigmatilde <- sqrt(sigma^2 + tauhat^2)
@@ -202,17 +207,17 @@ estimates_table <- function(Psihat, SE, cutoffs, symmetric, model) { # nolint: o
   }
   start_index <- 3 + shift
   if (symmetric) {
-    colnames(params)[start_index] <- sprintf("[0, %s]", cutoffs[1])
+    colnames(params)[start_index] <- paste("[0,", cutoffs[1], "]")
     if (length(cutoffs) > 1) {
       for (i in 2:length(cutoffs)) {
-        colnames(params)[start_index + i - 1] <- sprintf("(%s, %s]", cutoffs[i - 1], cutoffs[i])
+        colnames(params)[start_index + i - 1] <- paste("(", cutoffs[i - 1], ",", cutoffs[i], "]")
       }
     }
   } else {
-    colnames(params)[start_index] <- sprintf("(-%s, %s]", intToUtf8(8734), cutoffs[1])
+    colnames(params)[start_index] <- paste("(-", intToUtf8(8734), ",", cutoffs[1], "]")
     if (length(cutoffs) > 1) {
       for (i in 2:length(cutoffs)) {
-        colnames(params)[start_index + i - 1] <- sprintf("(%s, %s]", cutoffs[i - 1], cutoffs[i])
+        colnames(params)[start_index + i - 1] <- paste("(", cutoffs[i - 1], ",", cutoffs[i], "]")
       }
     }
   }

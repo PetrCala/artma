@@ -9,15 +9,15 @@ box::use(
 #' @return A data.frame with derived columns required by the method.
 prepare_endokink_columns <- function(data) {
   colnames(data) <- c("bs", "sebs")
-  transform(
-    data,
-    ones = 1,
-    sebs2 = sebs^2,
-    wis = 1 / sebs2,
-    bs_sebs = bs / sebs,
-    ones_sebs = 1 / sebs,
-    bswis = bs * wis
-  )
+  enriched <- within(data, {
+    ones <- rep(1, length(sebs))
+    sebs2 <- sebs^2
+    wis <- 1 / sebs2
+    bs_sebs <- bs / sebs
+    ones_sebs <- 1 / sebs
+    bswis <- bs * wis
+  })
+  enriched[, c("bs", "sebs", "ones", "sebs2", "wis", "bs_sebs", "ones_sebs", "bswis")]
 }
 
 #' Fit a linear model without an intercept and return the estimate and standard error
@@ -110,12 +110,12 @@ final_endokink_fit <- function(prepared_data, cutoff, verbose) {
     result <- summary(model)$coefficients
     output <- c(result["constant", c("Estimate", "Std. Error")], c(NA_real_, NA_real_))
   }
-  names(output) <- c("b0_ek", "sd0_ek", "b1_ek", "sd1_ek")
+  names(output) <- c("constant", "", "pub_bias", "")
   if (isTRUE(verbose)) {
-    cli::cli_inform("EK's mean effect estimate (alpha1): {output['b0_ek']}")
-    cli::cli_inform("EK's mean effect standard error: {output['sd0_ek']}")
-    cli::cli_inform("EK's publication bias estimate (delta): {output['b1_ek']}")
-    cli::cli_inform("EK's publication bias standard error: {output['sd1_ek']}")
+    cli::cli_inform("EK's mean effect estimate (alpha1): {output[[1]]}")
+    cli::cli_inform("EK's mean effect standard error: {output[[2]]}")
+    cli::cli_inform("EK's publication bias estimate (delta): {output[[3]]}")
+    cli::cli_inform("EK's publication bias standard error: {output[[4]]}")
   }
   output
 }

@@ -106,21 +106,17 @@ lambda2 <- function(x1, x2, h) {
 compute_bounds <- function(pmax, J, order) {
   h <- seq(0, 100, by = 0.001)
   grid <- linspace(0, pmax, J + 1)
-  if (identical(order, 0L)) {
-    width <- J
-  } else if (identical(order, 1L)) {
-    width <- J - 1
-  } else if (identical(order, 2L)) {
-    width <- J - 2
-  } else {
+  order <- as.integer(order)
+  if (!order %in% 0:2) {
     cli::cli_abort("Unsupported order")
   }
+  width <- c(J, J - 1, J - 2)[order + 1]
   bounds <- numeric(width)
   for (j in seq_len(width)) {
     lambda_left <- lambda2(grid[j], grid[j + 1], h)
-    if (order == 0) {
+    if (order == 0L) {
       bounds[j] <- max(lambda_left)
-    } else if (order == 1) {
+    } else if (order == 1L) {
       lambda_right <- lambda2(grid[j + 1], grid[j + 2], h)
       bounds[j] <- max(abs(lambda_right - lambda_left))
     } else {
@@ -129,7 +125,7 @@ compute_bounds <- function(pmax, J, order) {
     }
   }
   bounds[1] <- 1
-  bounds
+  matrix(bounds, ncol = 1)
 }
 
 bound0 <- function(pmax, J) compute_bounds(pmax, J, 0)

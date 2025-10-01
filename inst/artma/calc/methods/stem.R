@@ -96,8 +96,10 @@ stem_compute <- function(beta, se, sigma0) {
   se_stem <- sqrt(var_all[n_stem])
   var_stem <- variance_0(n, beta, se, beta_stem)
   sigma_stem <- sqrt(var_stem)
-  estimates <- c(beta_stem, se_stem, sigma_stem, n_stem)
+  estimates <- cbind(beta_stem, se_stem, sigma_stem, n_stem)
+  colnames(estimates) <- c("beta_stem", "se_stem", "sigma_stem", "n_stem")
   mse_table <- rbind(mse, var_all[n_stem_min:n], bias[(n_stem_min - 1):(n - 1)])
+  rownames(mse_table) <- c("MSE", "", "")
   list(estimates = estimates, MSE = mse_table)
 }
 

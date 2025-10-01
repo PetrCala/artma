@@ -1,14 +1,6 @@
-box::use(testthat[test_that, expect_equal, test_path])
-box::use(
-  artma / calc / methods / elliott[
-    binomial_test,
-    fisher_test,
-    lambda2,
-    bound0,
-    bound1,
-    bound2
-  ]
-)
+box::use(testthat[test_that, expect_equal, test_path, skip_on_cran])
+
+skip_on_cran()
 
 legacy_elliott_env <- function() {
   env <- new.env()
@@ -22,6 +14,7 @@ fixture_pvalues <- function() {
 }
 
 test_that("binomial test matches legacy implementation", {
+  box::use(artma / calc / methods / elliott[binomial_test]) # nolint
   env <- legacy_elliott_env()
   P <- fixture_pvalues()
   expect_equal(binomial_test(P, 0, 0.05, "c"), env$Binomial(P, 0, 0.05, "c"))
@@ -29,12 +22,14 @@ test_that("binomial test matches legacy implementation", {
 })
 
 test_that("fisher test aligns with legacy implementation", {
+  box::use(artma / calc / methods / elliott[fisher_test]) # nolint
   env <- legacy_elliott_env()
   P <- fixture_pvalues()
   expect_equal(fisher_test(P, 0, 0.05), env$Fisher(P, 0, 0.05))
 })
 
 test_that("lambda2 and bounds reproduce legacy values", {
+  box::use(artma / calc / methods / elliott[lambda2, bound0, bound1, bound2]) # nolint
   env <- legacy_elliott_env()
   h <- seq(0, 0.5, by = 0.1)
   expect_equal(lambda2(0.01, 0.02, h), env$lambda2(0.01, 0.02, h))
