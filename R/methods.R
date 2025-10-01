@@ -1,16 +1,3 @@
-#' @keywords internal
-get_runtime_method_modules <- function() {
-  box::use(
-    artma / paths[PATHS],
-    artma / libs / modules[crawl_and_import_modules, validate_runtime_method_modules]
-  )
-
-  modules <- crawl_and_import_modules(PATHS$DIR_METHODS)
-  validate_runtime_method_modules(modules = modules)
-
-  modules
-}
-
 #' @title List methods
 #' @description Print all runtime methods supported by artma into the console.
 #' @return `NULL` Prints the available methods into the console.
@@ -18,7 +5,8 @@ get_runtime_method_modules <- function() {
 methods.list <- function() {
   box::use(
     artma / const[CONST],
-    artma / libs / utils[get_verbosity]
+    artma / libs / utils[get_verbosity],
+    artma / modules / runtime_methods[get_runtime_method_modules]
   )
 
   RUNTIME_METHOD_MODULES <- get_runtime_method_modules()
