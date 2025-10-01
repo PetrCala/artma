@@ -1,5 +1,4 @@
 box::use(testthat[test_that, expect_equal, expect_error, expect_setequal])
-box::use(withr[defer, local_options])
 
 mock_methods <- function() {
   list(
@@ -27,10 +26,10 @@ mock_runtime_method_registry <- function(fake_methods) {
     writeLines(module_code, file_path)
   }
 
-  defer(unlink(temp_root, recursive = TRUE, force = TRUE), envir = parent.frame())
+  withr::defer(unlink(temp_root, recursive = TRUE, force = TRUE), envir = parent.frame())
 
   original_box_path <- getOption("box.path")
-  local_options(list(box.path = c(temp_root, original_box_path)), .local_envir = parent.frame())
+  withr::local_options(list(box.path = c(temp_root, original_box_path)), .local_envir = parent.frame())
 
   imports_env <- parent.env(environment(runtime_methods$get_runtime_method_modules))
   original_methods_dir <- imports_env$PATHS$DIR_METHODS
@@ -38,7 +37,7 @@ mock_runtime_method_registry <- function(fake_methods) {
   imports_env$PATHS$DIR_METHODS <- methods_dir
   lockBinding("PATHS", imports_env)
 
-  defer(
+  withr::defer(
     {
       unlockBinding("PATHS", imports_env)
       imports_env$PATHS$DIR_METHODS <- original_methods_dir
@@ -47,7 +46,7 @@ mock_runtime_method_registry <- function(fake_methods) {
     envir = parent.frame()
   )
 
-  defer(
+  withr::defer(
     {
       for (name in names(fake_methods)) {
         try(box::unload(sprintf("artma/methods/%s", name)), silent = TRUE)
@@ -59,7 +58,7 @@ mock_runtime_method_registry <- function(fake_methods) {
 
 test_that("invoke_runtime_methods handles explicit character vectors", {
   fake_methods <- mock_methods()
-  local_options(list(artma.verbose = 0))
+  withr::local_options(list(artma.verbose = 0))
   mock_runtime_method_registry(fake_methods)
 
   df <- data.frame(x = 1:3)
@@ -71,7 +70,7 @@ test_that("invoke_runtime_methods handles explicit character vectors", {
 
 test_that("invoke_runtime_methods expands the all keyword", {
   fake_methods <- mock_methods()
-  local_options(list(artma.verbose = 0))
+  withr::local_options(list(artma.verbose = 0))
   mock_runtime_method_registry(fake_methods)
 
   df <- data.frame()
@@ -82,7 +81,7 @@ test_that("invoke_runtime_methods expands the all keyword", {
 
 test_that("invoke_runtime_methods surfaces invalid inputs early", {
   fake_methods <- mock_methods()
-  local_options(list(artma.verbose = 0))
+  withr::local_options(list(artma.verbose = 0))
   mock_runtime_method_registry(fake_methods)
 
   df <- data.frame()
