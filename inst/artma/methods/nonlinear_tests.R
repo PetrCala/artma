@@ -5,7 +5,8 @@ nonlinear_tests <- function(df) {
     artma / libs / validation[validate, validate_columns, assert],
     artma / libs / utils[get_verbosity],
     artma / libs / nonlinear_tests[run_nonlinear_methods],
-    artma / options / index[get_option_group]
+    artma / options / index[get_option_group],
+    artma / options / significance_marks[resolve_add_significance_marks]
   )
 
   validate(is.data.frame(df))
@@ -13,7 +14,7 @@ nonlinear_tests <- function(df) {
 
   opt <- get_option_group("artma.methods.nonlinear_tests")
 
-  add_marks <- opt$add_significance_marks %||% TRUE
+  add_marks <- resolve_add_significance_marks("artma.methods.nonlinear_tests")
   round_to_opt <- opt$round_to
   if (length(round_to_opt) == 1 && is.na(round_to_opt)) {
     round_to_opt <- NULL

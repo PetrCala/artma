@@ -8,7 +8,8 @@ linear_tests <- function(df) {
     artma / libs / validation[assert, validate, validate_columns],
     artma / libs / utils[get_verbosity],
     artma / libs / linear_tests[run_linear_models],
-    artma / options / index[get_option_group]
+    artma / options / index[get_option_group],
+    artma / options / significance_marks[resolve_add_significance_marks]
   )
 
   validate(is.data.frame(df))
@@ -16,7 +17,7 @@ linear_tests <- function(df) {
 
   opt <- get_option_group("artma.methods.linear_tests")
 
-  add_marks <- opt$add_significance_marks %||% TRUE
+  add_marks <- resolve_add_significance_marks("artma.methods.linear_tests")
   bootstrap_replications <- opt$bootstrap_replications %||% 100L
   conf_level <- opt$conf_level %||% 0.95
   round_to <- as.integer(getOption("artma.output.number_of_decimals", 3))
