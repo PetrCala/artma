@@ -32,7 +32,7 @@ test_that("linear tests return tidy coefficients and summary", {
   df <- make_demo_data()
 
   local_options(
-    "artma.methods.linear_tests.add_significance_marks" = TRUE,
+    "artma.methods.add_significance_marks" = TRUE,
     "artma.methods.linear_tests.bootstrap_replications" = 10L,
     "artma.methods.linear_tests.conf_level" = 0.9,
     "artma.output.number_of_decimals" = 2,
@@ -84,7 +84,7 @@ test_that("linear tests gracefully skip models with missing columns", {
   df$precision <- NULL
 
   local_options(
-    "artma.methods.linear_tests.add_significance_marks" = FALSE,
+    "artma.methods.add_significance_marks" = FALSE,
     "artma.methods.linear_tests.bootstrap_replications" = 0L,
     "artma.methods.linear_tests.conf_level" = 0.95,
     "artma.output.number_of_decimals" = 3,
