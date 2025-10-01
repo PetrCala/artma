@@ -497,9 +497,9 @@ build_summary_table <- function(coefficients, digits) {
   )
 
   summary <- data.frame(
-    Metric = row_labels,
     stringsAsFactors = FALSE,
-    check.names = FALSE
+    check.names = FALSE,
+    row.names = row_labels
   )
 
   for (model in models) {
@@ -529,7 +529,6 @@ build_summary_table <- function(coefficients, digits) {
     summary[[column_name]] <- col_values
   }
 
-  attr(summary, "row.names") <- row_labels
   summary
 }
 

@@ -48,14 +48,20 @@ linear_tests <- function(df) {
     cli::cli_h2("Linear model tests")
 
     if (nrow(results$summary) > 0) {
-      formatted <- format(results$summary, justify = "right")
-      header <- paste(c("", colnames(formatted)), collapse = "  ")
-      body <- vapply(
-        seq_len(nrow(formatted)),
-        function(idx) paste(c(rownames(formatted)[idx], formatted[idx, ]), collapse = "  "),
-        character(1)
+      summary_table <- data.frame(
+        Metric = rownames(results$summary),
+        results$summary,
+        check.names = FALSE,
+        stringsAsFactors = FALSE
       )
-      cli::cli_verbatim(paste(c(header, body), collapse = "\n"))
+
+      summary_table[] <- lapply(summary_table, function(column) {
+        column[is.na(column) | column == ""] <- "—"
+        column
+      })
+
+      table_text <- cli::format_table(summary_table, width = cli::console_width())
+      cli::cli_verbatim(table_text)
     } else {
       cli::cli_alert_warning("No linear models were successfully estimated.")
     }
