@@ -64,8 +64,10 @@ test_that("invoke_runtime_methods handles explicit character vectors", {
   df <- data.frame(x = 1:3)
   results <- artma:::invoke_runtime_methods(methods = c("method_b", "method_a", "method_b"), df = df)
 
-  expect_equal(names(results), c("method_b", "method_a"))
-  expect_equal(unname(unlist(results)), c("method_b", "method_a"))
+  expected_order <- names(fake_methods)[names(fake_methods) %in% c("method_b", "method_a")]
+
+  expect_equal(names(results), expected_order)
+  expect_equal(unname(unlist(results)), expected_order)
 })
 
 test_that("invoke_runtime_methods expands the all keyword", {
