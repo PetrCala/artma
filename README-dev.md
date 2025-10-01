@@ -13,6 +13,7 @@
 - [Required packages](#required-packages)
   - [Runtime Dependencies (`Imports`)](#runtime-dependencies-imports)
   - [Development Dependencies (`Suggests`)](#development-dependencies-suggests)
+    - [Dependency versioning policy](#dependency-versioning-policy)
 - [Importing modules](#importing-modules)
 - [Validating Conditions](#validating-conditions)
   - [Using the `validate` Function](#using-the-validate-function)
@@ -26,6 +27,7 @@
 - [Using the options template](#using-the-options-template)
 - [Caching heavy computations](#caching-heavy-computations)
   - [Wrapping functions with cache\_cli](#wrapping-functions-with-cache_cli)
+    - [Using `cache_cli_runner` for reusable wrappers](#using-cache_cli_runner-for-reusable-wrappers)
   - [Inspecting cached artifacts](#inspecting-cached-artifacts)
   - [Invalidation and configuration](#invalidation-and-configuration)
 - [Using `lintr` for Code Quality](#using-lintr-for-code-quality)
@@ -126,6 +128,7 @@ These packages are required for the package to function correctly when used by o
 - `lintr` – Runtime linting hooks that surface style issues inside the package.
 - `memoise` – For caching heavy computations and replayable console logs.
 - `metafor` – Meta-analytic estimators and diagnostics.
+- `NlcOptim` - Non-linear objective optimization.
 - `purrr` – Vector preprocessing utilities.
 - `rlang` – Modern condition handling and tidy evaluation helpers.
 - `stringr` – Consistent string manipulation functions.

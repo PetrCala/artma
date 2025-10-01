@@ -1,6 +1,6 @@
 box::use(
   stats[dt, nlminb, pt],
-  base[diag, diff, order, sort, cumsum, sqrt, as.matrix]
+  base[diag, diff, order, sort, cumsum, sqrt]
 )
 
 #' Compute a clustered covariance estimate for the score matrix
@@ -85,7 +85,7 @@ compute_score_matrix <- function(thetahat, stepsize, llh) {
 #' @param llh [function] Likelihood function returning `LLH` and `logL`.
 #' @param cluster_ID [integer] Cluster identifiers.
 #' @return Robust covariance matrix of the parameters.
-robust_variance <- function(stepsize, n, thetahat, llh, cluster_ID) {
+robust_variance <- function(stepsize, n, thetahat, llh, cluster_ID) { # nolint: object_name_linter.
   info <- compute_information_matrix(thetahat, stepsize, llh)
   score_mat <- compute_score_matrix(thetahat, stepsize, llh)
   covariance <- clustered_covariance_estimate(score_mat, cluster_ID)
@@ -164,15 +164,15 @@ metastudies_estimation <- function(X, sigma, cutoffs, symmetric, model = "normal
   TT <- X / sigma
   tpowers <- compute_tpowers(TT, cutoffs, symmetric)
   if (model == "normal") {
-    llh <- function(Psi) variation_variance_loglikelihood(Psi[1], Psi[2], c(Psi[-c(1, 2)], 1), cutoffs, symmetric, X, sigma, tpowers)
+    llh <- function(Psi) variation_variance_loglikelihood(Psi[1], Psi[2], c(Psi[-c(1, 2)], 1), cutoffs, symmetric, X, sigma, tpowers) # nolint: object_name_linter.
     start <- c(0, 1, rep(1, length(cutoffs)))
   } else if (model == "t") {
-    llh <- function(Psi) variation_variance_loglikelihood(Psi[1], Psi[2], c(Psi[-c(1, 2, 3)], 1), cutoffs, symmetric, X, sigma, tpowers, df = Psi[3])
+    llh <- function(Psi) variation_variance_loglikelihood(Psi[1], Psi[2], c(Psi[-c(1, 2, 3)], 1), cutoffs, symmetric, X, sigma, tpowers, df = Psi[3]) # nolint: object_name_linter.
     start <- c(0, 1, 10, rep(1, length(cutoffs)))
   } else {
-    stop("Unsupported model specification", call. = FALSE)
+    cli::cli_abort("Unsupported model specification")
   }
-  objective <- function(Psi) llh(Psi)$LLH
+  objective <- function(Psi) llh(Psi)$LLH # nolint: object_name_linter.
   lower <- c(-Inf, rep(0, length(start) - 1))
   upper <- rep(Inf, length(start))
   optimum <- nlminb(start = start, objective = objective, lower = lower, upper = upper, control = list(eval.max = max_eval, iter.max = max_iter, abs.tol = tol))
@@ -190,7 +190,7 @@ metastudies_estimation <- function(X, sigma, cutoffs, symmetric, model = "normal
 #' @param symmetric [logical] Should symmetry be enforced?
 #' @param model [character] Either "normal" or "t".
 #' @return Matrix with estimates and standard errors, matching the legacy layout.
-estimates_table <- function(Psihat, SE, cutoffs, symmetric, model) {
+estimates_table <- function(Psihat, SE, cutoffs, symmetric, model) { # nolint: object_name_linter.
   params <- rbind(Psihat, SE)
   rownames(params) <- c("estimate", "standard error")
   colnames(params) <- rep(" ", ncol(params))
@@ -219,9 +219,25 @@ estimates_table <- function(Psihat, SE, cutoffs, symmetric, model) {
   params
 }
 
+# nolint start: object_name_linter.
 # Backwards compatible aliases
 RobustVariance <- robust_variance
 Clustered_covariance_estimate <- clustered_covariance_estimate
 Tpowers_fun <- compute_tpowers
 VariationVarianceLogLikelihood <- variation_variance_loglikelihood
 estimatestable <- estimates_table
+# nolint end: object_name_linter.
+
+box::export(
+  robust_variance,
+  clustered_covariance_estimate,
+  compute_tpowers,
+  variation_variance_loglikelihood,
+  estimates_table,
+  RobustVariance,
+  Clustered_covariance_estimate,
+  Tpowers_fun,
+  VariationVarianceLogLikelihood,
+  estimatestable,
+  metastudies_estimation
+)

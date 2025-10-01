@@ -1,9 +1,9 @@
-skip_on_cran()
-
 box::use(
+  testthat[test_that, expect_equal, test_path]
+)
+box::use(
+  artma / paths[PATHS],
   artma / calc / methods / selection_model[
-    clustered_covariance_estimate,
-    compute_information_matrix,
     compute_score_matrix,
     robust_variance,
     compute_tpowers,
@@ -15,7 +15,7 @@ box::use(
 
 legacy_selection_env <- function() {
   env <- new.env()
-  sys.source(test_path("..", "..", "utils", "src", "methods", "selection_model_master_thesis_cala.R"), envir = env)
+  sys.source(test_path(PATHS$PACKAGE_PATH, "utils", "src", "methods", "selection_model_master_thesis_cala.R"), envir = env)
   env
 }
 

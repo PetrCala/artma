@@ -18,6 +18,7 @@ Imports:
     lintr (>= 3.2.0),
     memoise (>= 2.0.1),
     metafor (>= 4.8-0),
+    NlcOptim (>= 0.6),
     purrr (>= 1.1.0),
     rlang (>= 1.1.6),
     stringr (>= 1.5.2),
