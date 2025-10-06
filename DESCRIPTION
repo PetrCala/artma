@@ -20,6 +20,7 @@ Depends:
     R (>= 4.0.0)
 Imports:
     cli (>= 3.6.5),
+    climenu (>= 0.1.0),
     digest (>= 0.6.37),
     glue (>= 1.8.0),
     lintr (>= 3.2.0),
@@ -35,6 +36,8 @@ Imports:
     usethis (>= 3.2.1),
     withr (>= 3.0.2),
     yaml (>= 2.3.10)
+Remotes:
+    PetrCala/climenu
 Suggests:
     box (>= 1.2.0),
     box.linters (>= 0.10.6),
