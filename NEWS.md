@@ -1,8 +1,28 @@
 
+<a name="v0.3.1"></a>
+## [v0.3.1](https://github.com/PetrCala/artma/compare/v0.3.0...v0.3.1)
+
+> 2025-10-06
+
+
 <a name="v0.3.0"></a>
 ## [v0.3.0](https://github.com/PetrCala/artma/compare/v0.2.2...v0.3.0)
 
 > 2025-10-06
+
+### Bug Fixes
+
+* add Makefile and related files to .Rbuildignore
+* improve keyboard input handling in climenu
+
+### Code Refactoring
+
+* replace utils::select.list with climenu::menu
+
+### Features
+
+* replace run.sh with Makefile for build tasks
+* add climenu sub-package for interactive CLI menus
 
 
 <a name="v0.2.2"></a>
