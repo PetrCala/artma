@@ -1,9 +1,5 @@
 - [Installing R](#installing-r)
 - [VSCode](#vscode)
-	- [Invoking the run script](#invoking-the-run-script)
-		- [Interactively](#interactively)
-		- [Non-interactively](#non-interactively)
-	- [Closing an open interactive script](#closing-an-open-interactive-script)
 	- [Useful settings](#useful-settings)
 - [Aliases](#aliases)
 - [Rprofile](#rprofile)
@@ -26,111 +22,6 @@
   It is quite vital that the _cask_ flag is used, as this will allow R to later install packages through binaries, instead of from source with compilation.
 
 ## VSCode
-
-There are many utilities in VScode that allow a quick execution of the files in the project. Here are but several of them.
-
-### Invoking the run script
-
-To invoke `run.R` quickly from anywhere, you can choose from two options - interactive, and non-interactive. The former should be used for debugging, while the latter is useful when you are certain your code will run smoothly.
-
-#### Interactively
-
-To run the script interactively, you need the **multi-commands** extension. In the _VS Code Extensions_, search for _multi-command_, and install the extension.
-
-In `settings.json`, add the following:
-
-```json
-"multiCommand.commands": [
-  {
-    "command": "multiCommand.runRSource",
-    "sequence": [
-      "r.createRTerm", // Create an interactive terminal
-      {
-        "command": "workbench.action.terminal.sendSequence",
-        "args": {
-          "text": "source('<path-to-the-project>/artma/R/run.R')\u000D"
-        }
-      }
-    ]
-  }
-]
-```
-
-Make sure to modify the `<path-to-the-project>` with the actual file to the `meta-facilitator` folder.
-
-Now, go to `keybindings.json`, and add the following:
-
-```json
-{
-	"key": "cmd+shift+r", // Or any shortcut of your choice.
-	"command": "extension.multiCommand.execute",
-	"args": { "command": "multiCommand.runRSource" }
-}
-```
-
-Pressing the shortcut will now invoke the `run.R` script in an interactive R terminal, enabling functionality such as `browser()`.
-
-#### Non-interactively
-
-In the `.vscode` folder, create a file called `tasks.json` with the following contents:
-
-```json
-{
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "Run Default R Script Interactively",
-			"type": "shell",
-			"command": "R",
-			"args": ["-e", "\"source('${workspaceFolder}/R/run.R')\""],
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		}
-	]
-}
-```
-
-Then, in `keybindings.json`, add the following keybinding.
-
-```json
-{
-	"key": "ctrl+shift+r", // or the key binding of your choice
-	"command": "workbench.action.tasks.runTask",
-	"args": "Run Default R Script Interactively"
-}
-```
-
-Now, pressing the keybinding (here, `ctrl+shift+r`) will run the R script in a non-interactive window.
-
-### Closing an open interactive script
-
-To close an interactive R terminal, such as when browsing during debugging, you can automate the process of sending commands to the terminal by utilizing a custom keybinding. For example,
-
-```json
-// keybindings.json
-{
-	"key": "cmd+shift+e",
-	"command": "workbench.action.terminal.sendSequence",
-	"args": {
-		"text": "Q\nq()\n"
-	},
-	"description": "Quit R Debugger and Console",
-	"note": "Run only when the active open terminal is an R terminal"
-}
-```
-
-Pressing `cmd+shift+e` will now send a sequence to the R interactive terminal that will cause it to close. This is useful, for example, when you want to quickly restart the current session when making changes to the code.
-
-_Note: You may even chain the closing/opening of the terminal to create a fully automated reset functionality._
 
 ### Useful settings
 
@@ -158,10 +49,9 @@ Here is a list of settings I use in VSCode for better R handling:
 
 ## Aliases
 
-Here are a bunch of useful aliases for faster script/R invocations:
+Here is a useful alias for faster R invocations:
 
 ```bash
-alias artma="./run.sh"
 alias R="$(/usr/bin/which R) --no-save --no-init-file"
 ```
 

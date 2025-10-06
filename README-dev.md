@@ -8,8 +8,6 @@
 </div>
 
 - [How to run](#how-to-run)
-  - [Using the `run.sh` sript](#using-the-runsh-sript)
-  - [Creating an alias](#creating-an-alias)
 - [Required packages](#required-packages)
   - [Runtime Dependencies (`Imports`)](#runtime-dependencies-imports)
   - [Development Dependencies (`Suggests`)](#development-dependencies-suggests)
@@ -62,57 +60,14 @@ Welcome to the developer documentation for artma (Automatic Replication Tools fo
 1. Set up the local environment by executing
 
    ```bash
-   ./run.sh setup
+   make setup
    ```
 
 1. See the list of available commands by running
 
    ```bash
-   ./run.sh help
+   make help
    ```
-
-## Using the `run.sh` sript
-
-All major actions are ran using the `run.sh` script at the project root. To execute an actions, simply run
-
-```bash
-./run.sh <action-name>
-```
-
-in your terminal.
-
-For example, `./run.sh test` will run all tests in the project.
-
-If you encounter an error saying that the file is not executable, run
-
-```bash
-chmod +x run.sh
-```
-
-to make it so.
-
-## Creating an alias
-
-You can streamline the invocation of actions even further by creating a terminal alias. For this, open your `.bashrc` file on linux-based systems, or your `.zshrc` file on macOS-based systems, or the `.bash-profile` on Windows based systems. There, add the following line
-
-```bash
-# In your terminal profile file
-alias artma='./run.sh' # Or specify the full path to make this even more reliable
-```
-
-Then run
-
-```bash
-source .bashrc # or .zshrc or .bash-profile
-```
-
-to make these changes take effect. Now, you can run the action commands using
-
-```bash
-artma test
-artma lint
-# etc.
-```
 
 # Required packages
 
@@ -357,7 +312,7 @@ First, install the `lintr` package:
 install.packages("lintr")
 ```
 
-This package is also automatically installed through `./run.sh setup`.
+This package is also automatically installed through `make setup`.
 
 ## Usage
 
@@ -376,7 +331,7 @@ lintr::lint("path/to/your/file.R")
 To lint the whole package, run the following **in a shell terminal**:
 
 ```bash
-./run.sh lint
+make lint
 ```
 
 ## Set up box paths
@@ -441,7 +396,7 @@ Tests can be run in several ways depending on your needs:
 1. **Run all tests**:
 
    ```bash
-   ./run.sh test
+   make test
    ```
 
    This will execute all test files in the project.
@@ -449,7 +404,7 @@ Tests can be run in several ways depending on your needs:
 1. **Run a specific test file**:
 
    ```bash
-   ./run.sh test --file path/to/test_file.R
+   make test-file FILE=path/to/test_file.R
    ```
 
    Replace `path/to/test_file.R` with the relative path to your test file from the `tests` directory.
@@ -457,7 +412,7 @@ Tests can be run in several ways depending on your needs:
 1. **Run tests with a filter**:
 
    ```bash
-   ./run.sh test --filter "test_name"
+   make test-filter FILTER="test_name"
    ```
 
    This will run only the tests that match the specified filter pattern.
