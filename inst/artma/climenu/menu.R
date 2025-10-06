@@ -19,7 +19,7 @@ menu <- function(choices,
   type <- match.arg(type)
 
   if (type == "checkbox") {
-    box::use(./checkbox[checkbox])
+    box::use(. / checkbox[checkbox])
     return(checkbox(
       choices = choices,
       prompt = prompt,
@@ -27,7 +27,7 @@ menu <- function(choices,
       return_index = return_index
     ))
   } else {
-    box::use(./select[select])
+    box::use(. / select[select])
     return(select(
       choices = choices,
       prompt = prompt,

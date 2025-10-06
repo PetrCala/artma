@@ -60,11 +60,11 @@ render_menu <- function(choices, cursor_pos, selected_indices, type = c("select"
     is_selected <- i %in% selected_indices
 
     if (type == "checkbox") {
-      checkbox_mark <- if (is_selected) "\u2611" else "\u2610"  # ☑ or ☐
-      cursor_mark <- if (is_cursor) "\u276f" else " "  # ❯
+      checkbox_mark <- if (is_selected) "\u2611" else "\u2610" # ☑ or ☐
+      cursor_mark <- if (is_cursor) "\u276f" else " " # ❯
       lines[i] <- sprintf("%s %s %s", cursor_mark, checkbox_mark, choices[i])
     } else {
-      cursor_mark <- if (is_cursor) "\u276f" else " "  # ❯
+      cursor_mark <- if (is_cursor) "\u276f" else " " # ❯
       lines[i] <- sprintf("%s %s", cursor_mark, choices[i])
     }
 
@@ -92,17 +92,25 @@ get_keypress <- function() {
         char <- rawToChar(as.raw(getPass::getPass(msg = "", noblank = TRUE, forcemask = FALSE)))
 
         # Handle arrow keys and special keys
-        if (char == "\033") {  # ESC sequence
+        if (char == "\033") { # ESC sequence
           # Read next two characters for arrow keys
           next_chars <- rawToChar(as.raw(c(
             getPass::getPass(msg = "", noblank = TRUE, forcemask = FALSE),
             getPass::getPass(msg = "", noblank = TRUE, forcemask = FALSE)
           )))
 
-          if (next_chars == "[A") return("up")
-          if (next_chars == "[B") return("down")
-          if (next_chars == "[C") return("right")
-          if (next_chars == "[D") return("left")
+          if (next_chars == "[A") {
+            return("up")
+          }
+          if (next_chars == "[B") {
+            return("down")
+          }
+          if (next_chars == "[C") {
+            return("right")
+          }
+          if (next_chars == "[D") {
+            return("left")
+          }
           return("esc")
         }
 
@@ -116,11 +124,21 @@ get_keypress <- function() {
   }
 
   # Map keys
-  if (key == "") return("enter")
-  if (key == " ") return("space")
-  if (key == "k") return("up")
-  if (key == "j") return("down")
-  if (tolower(key) == "q") return("esc")
+  if (key == "") {
+    return("enter")
+  }
+  if (key == " ") {
+    return("space")
+  }
+  if (key == "k") {
+    return("up")
+  }
+  if (key == "j") {
+    return("down")
+  }
+  if (tolower(key) == "q") {
+    return("esc")
+  }
 
   return(key)
 }
@@ -139,7 +157,7 @@ clear_lines <- function(n) {
   if (n > 0) {
     for (i in seq_len(n)) {
       move_cursor_up(1)
-      cat("\033[2K")  # Clear entire line
+      cat("\033[2K") # Clear entire line
     }
   }
 }
