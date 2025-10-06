@@ -1,4 +1,4 @@
-# nolint start: unused_declared_object_linter, box_usage_linter.
+# nolint start: box_usage_linter.
 
 #' @title Runtime Setup
 #' @description
@@ -31,4 +31,4 @@ runtime_setup <- function(
   FUN()
 }
 
-# nolint end: unused_declared_object_linter, box_usage_linter.
+# nolint end: box_usage_linter.

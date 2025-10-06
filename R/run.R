@@ -12,8 +12,8 @@
 #' @keywords internal
 invoke_runtime_methods <- function(methods, df, ...) {
   box::use(
-    artma / const[CONST], # nolint: box_unused_att_mod_obj_linter.
-    artma / libs / string[pluralize], # nolint: box_unused_att_mod_obj_linter.
+    artma / const[CONST],
+    artma / libs / string[pluralize],
     artma / libs / utils[get_verbosity],
     artma / modules / runtime_methods[get_runtime_method_modules]
   )
@@ -81,7 +81,7 @@ invoke_runtime_methods <- function(methods, df, ...) {
     invalid_methods <- setdiff(deduped_methods, supported_methods)
 
     if (length(invalid_methods) > 0L) {
-      selected_methods <- glue::glue_collapse(as.character(invalid_methods), sep = ", ") # nolint: unused_declared_object_linter.
+      selected_methods <- glue::glue_collapse(as.character(invalid_methods), sep = ", ")
       cli::cli_abort(c(
         "x" = "Invalid runtime methods selected: {.val {selected_methods}}",
         "i" = "To see a list of available methods, run {.code artma::methods.list()}"

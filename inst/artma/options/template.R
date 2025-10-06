@@ -182,7 +182,6 @@ prompt_user_for_option_value <- function(opt) {
     return(prompt_function(opt = opt))
   }
 
-  # nolint start: unused_declared_object_linter.
   base_msg <- cli::format_inline("Enter a value for {.strong {opt$name}}")
   choose_msg <- switch(prompt_type,
     "file" = cli::format_inline(" (or type in {.emph {'choose'}} to select a file interactively)"),
@@ -192,7 +191,6 @@ prompt_user_for_option_value <- function(opt) {
   )
   default_msg <- if (!is.null(opt$default)) cli::format_inline(" (or press {.code <Enter>} to accept default: {.strong {opt$default}})") else ""
   input_val <- readline(prompt = cli::format_inline("{base_msg}{choose_msg}{default_msg}: "))
-  # nolint end: unused_declared_object_linter.
 
   if (input_val == "choose") {
     input_val <- switch(prompt_type,

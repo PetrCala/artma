@@ -205,7 +205,7 @@ options.delete <- function(
   )
 
   options_dir <- resolve_options_dir(options_dir)
-  options_file_names <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the user options files you wish to delete: ", multiple = TRUE) # nolint: unused_declared_object_linter.
+  options_file_names <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the user options files you wish to delete: ", multiple = TRUE)
 
   if (!skip_confirmation) {
     deletion_confirmed <- climenu::menu(
@@ -556,7 +556,6 @@ options.help <- function(
   for (opt_name in options) {
     opt_def <- template_map[[opt_name]]
 
-    # nolint start: unused_declared_object_linter.
     nm <- opt_def$name
     tp <- opt_def$type
     hlp <- opt_def$help %||% "(No help text provided.)"
@@ -567,9 +566,8 @@ options.help <- function(
     } else {
       def <- "This option is required"
     }
-    # nolint end: unused_declared_object_linter.
 
-    opt_styles <- CONST$STYLES$OPTIONS # nolint: unused_declared_object_linter.
+    opt_styles <- CONST$STYLES$OPTIONS
     if (get_verbosity() >= 2) {
       cli::cli_text("{.strong Option name:} {opt_styles$NAME(nm)}")
       cli::cli_text("{.strong Type:} {opt_styles$TYPE(tp)}")
@@ -590,7 +588,7 @@ options.help <- function(
 #' @export
 options.print_default_dir <- function(...) { # nolint: object_name_linter.
   box::use(
-    artma / paths[PATHS], # nolint: box_unused_att_mod_obj_linter.
+    artma / paths[PATHS],
     artma / libs / utils[get_verbosity]
   )
 
@@ -670,7 +668,7 @@ options.fix <- function(
   for (err in errors) {
     opt_def <- err$opt_def
     opt_name <- opt_def$name
-    opt_value <- if (is.null(err$value)) "null" else err$value # nolint: unused_declared_object_linter.
+    opt_value <- if (is.null(err$value)) "null" else err$value
     if (is.null(opt_def$default)) {
       if (!has_printed_missing_message) {
         cli::cli_h3("Missing Required Options:")
@@ -810,7 +808,7 @@ options.create <- function(
       add_prefix   = FALSE
     )
   } else {
-    file_exists_msg <- cli::format_inline("An options file {.path {options_file_name}} already exists.") # nolint: unused_declared_object_linter.
+    file_exists_msg <- cli::format_inline("An options file {.path {options_file_name}} already exists.")
 
     if (isTRUE(should_overwrite)) {
       cli::cli_inform("{file_exists_msg} Overwriting this file...")

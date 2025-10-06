@@ -218,7 +218,7 @@ submit_cran <- function(pkg = ".", built_path = NULL, args = NULL) {
 
   built_path <- if (is.null(built_path)) build_pkg(pkg = pkg, args = args) else built_path
 
-  size <- format(as_object_size(fs::file_info(built_path)$size), units = "auto") # nolint: unused_declared_object_linter.
+  size <- format(as_object_size(fs::file_info(built_path)$size), units = "auto")
   cli::cat_rule("Submitting", col = "cyan")
   cli::cli_inform(c(
     "i" = "Path {.file {built_path}}",
