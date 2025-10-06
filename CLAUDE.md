@@ -25,6 +25,7 @@ All major operations use the `./run.sh` script:
 ```
 
 For development in R:
+
 ```r
 devtools::load_all()        # Load package for interactive development
 devtools::test()            # Run tests from R console
@@ -46,6 +47,7 @@ The package uses the `box` package for Python-style module imports. Implementati
 - `inst/artma/testing/` — Test fixtures and mocks
 
 Import modules using:
+
 ```r
 box::use(
   artma / libs / validation[validate, assert],
@@ -60,6 +62,7 @@ Always reference external package functions explicitly: `pkg::function()` (never
 Runtime methods are the main analytical functions users invoke via `artma::run(methods = c("method_name"))`.
 
 Each method is defined in `inst/artma/methods/<method_name>.R` and **must** export a `run` function with this signature:
+
 ```r
 run <- function(df, ...) {
   # Implementation
@@ -95,6 +98,7 @@ conf_level <- opt$conf_level
 ```
 
 Template structure for each option node:
+
 - `name` — Option name
 - `type` — R type (character, logical, numeric, etc.)
 - `default` — Default value
@@ -124,6 +128,7 @@ run_summary <- cache_cli_runner(
 ```
 
 Control caching behavior:
+
 - `invalidate_fun` — Function that returns TRUE to bypass cache
 - `max_age` — Time-to-live in seconds
 - `options(artma.cache.use_cache = FALSE)` — Disable caching globally
@@ -165,6 +170,7 @@ Control output verbosity via `options(artma.verbose = <level>)`:
 | 4 | Debug/trace — everything including internals |
 
 Check verbosity in code:
+
 ```r
 if (get_verbosity() >= 3) {
   cli::cli_inform("Processing data...")
@@ -189,6 +195,7 @@ if (get_verbosity() >= 3) {
 - Parallel testing enabled: `Config/testthat/parallel: TRUE`
 
 Run tests:
+
 ```bash
 ./run.sh test                    # All tests
 ./run.sh test --file test-foo.R  # Specific file
@@ -199,6 +206,7 @@ Run tests:
 ## Commit Conventions
 
 Follow Conventional Commits (`@commitlint/config-conventional`):
+
 - `feat:` — New features
 - `fix:` — Bug fixes
 - `docs:` — Documentation changes
@@ -214,6 +222,7 @@ The commit lint workflow will reject non-conforming commits. This enables automa
 Global constants are defined in `inst/artma/const.R` and exported as `CONST`. Paths are in `inst/artma/paths.R` as `PATHS`. Both are available globally via `utils::globalVariables()`.
 
 Access like:
+
 ```r
 box::use(artma / const[CONST])
 CONST$PACKAGE_NAME
@@ -223,6 +232,7 @@ CONST$DATA$TYPES
 ## Box Paths Configuration
 
 For linting to work correctly with `box.linters`, set in your `.Rprofile`:
+
 ```r
 options(box.path = "<path-to-artma>/inst")
 ```
