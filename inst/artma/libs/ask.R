@@ -17,9 +17,9 @@ ask_for_overwrite_permission <- function(file_path, action_name = "the operation
       cli::cli_abort("Cannot prompt for overwrite permission in non-interactive mode.")
     }
 
-    overwrite_permitted <- utils::select.list(
-      title = cli::format_inline("A file already exists under the path {.path {file_path}}. Do you wish to overwrite the contents of this file?"),
-      choices = c("Yes", "No")
+    overwrite_permitted <- climenu::menu(
+      choices = c("Yes", "No"),
+      title = cli::format_inline("A file already exists under the path {.path {file_path}}. Do you wish to overwrite the contents of this file?")
     )
     if (overwrite_permitted != "Yes") {
       cli::cli_abort(glue::glue("Aborting {action_name}."))

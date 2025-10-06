@@ -41,9 +41,9 @@ invoke_runtime_methods <- function(methods, df, ...) {
   supported_methods <- arrange_methods(names(RUNTIME_METHOD_MODULES))
 
   if (is.null(methods)) {
-    methods <- utils::select.list(
-      title = "No runtime methods were provided. Please select the methods you would like to run: ",
+    methods <- climenu::menu(
       choices = supported_methods,
+      title = "No runtime methods were provided. Please select the methods you would like to run: ",
       multiple = TRUE
     )
     if (rlang::is_empty(methods)) {
