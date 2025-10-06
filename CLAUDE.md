@@ -158,6 +158,27 @@ assert(x > 0, "x must be positive")
 # Custom assertion with explicit error message
 ```
 
+### Interactive Menus
+
+For interactive CLI menus, use the `climenu` package (available as a sub-package in this repository):
+
+```r
+box::use(climenu[menu])
+
+choice <- menu(
+  choices = c("Option 1", "Option 2", "Option 3"),
+  title = "Select an option"
+)
+```
+
+Key features:
+- Keyboard navigation with arrow keys and vim bindings (j/k)
+- Search/filter functionality with `/`
+- Multi-select support
+- Customizable styling and prompts
+
+Do NOT use other menu packages like `utils::menu()` or external packages for interactive selections.
+
 ### Verbosity Levels
 
 Control output verbosity via `options(artma.verbose = <level>)`:
