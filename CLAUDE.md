@@ -222,10 +222,10 @@ if (get_verbosity() >= 3) {
 Run tests:
 
 ```bash
-./run.sh test                    # All tests
-./run.sh test --file test-foo.R  # Specific file
-./run.sh test --filter "pattern" # Filtered tests
-./run.sh coverage                # Coverage report
+make test                        # All tests
+make test-file FILE=test-foo.R   # Specific file
+make test-filter FILTER="pattern" # Filtered tests
+make coverage                    # Coverage report
 ```
 
 ## Commit Conventions
