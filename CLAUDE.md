@@ -8,20 +8,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build and Development Commands
 
-All major operations use the `./run.sh` script:
+All major operations use `make`:
 
 ```bash
-./run.sh setup              # Install dependencies and set up environment
-./run.sh test               # Run all tests
-./run.sh test --file <path> # Run a specific test file
-./run.sh test --filter <pattern> # Run tests matching pattern
-./run.sh test-e2e           # Run end-to-end tests
-./run.sh lint               # Lint the entire package
-./run.sh check              # Run R CMD check via devtools
-./run.sh document           # Generate documentation with roxygen2
-./run.sh coverage           # Run code coverage report
-./run.sh build              # Build the package
-./run.sh vignettes          # Build vignettes
+make setup                      # Install dependencies and set up environment
+make test                       # Run all tests
+make test-file FILE=<path>      # Run a specific test file
+make test-filter FILTER=<pattern> # Run tests matching pattern
+make test-e2e                   # Run end-to-end tests
+make lint                       # Lint the entire package
+make check                      # Run R CMD check via devtools
+make document                   # Generate documentation with roxygen2
+make coverage                   # Run code coverage report
+make build                      # Build the package
+make vignettes                  # Build vignettes
+make all                        # Run document, test, lint, and check
+make quick                      # Quick dev cycle (document + test)
 ```
 
 For development in R:
@@ -30,6 +32,8 @@ For development in R:
 devtools::load_all()        # Load package for interactive development
 devtools::test()            # Run tests from R console
 ```
+
+See `.make-help.md` for a quick reference guide.
 
 ## Architecture
 
