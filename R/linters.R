@@ -1,5 +1,3 @@
-# nolint start: unused_declared_object_linter.
-
 #' Allow Guard Clause `if` Statements Without Braces
 #'
 #' Wraps [lintr::indentation_linter()] to avoid emitting indentation warnings for guard-clause
@@ -88,6 +86,3 @@ dir_create_linter <- lintr::make_linter_from_xpath(
   lint_message = "Usage of dir.create() is not allowed. Use fs::dir_create() instead.",
   type = "error"
 )
-
-
-# nolint end: unused_declared_object_linter.

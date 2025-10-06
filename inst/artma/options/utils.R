@@ -199,7 +199,7 @@ validate_user_input <- function(user_input) {
   # None of the names should start with the package name
   has_pkg_prefix <- vapply(names(user_input), function(x) startsWith(x, pkg_name), logical(1))
   if (any(has_pkg_prefix)) {
-    invalid_names <- names(user_input)[has_pkg_prefix] # nolint: unused_declared_object_linter.
+    invalid_names <- names(user_input)[has_pkg_prefix]
     cli::cli_abort("Please provide the names of the options without the '{pkg_name}' prefix. Got: {.code {invalid_names}}.")
   }
 

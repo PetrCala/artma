@@ -360,7 +360,7 @@ build_summary_table <- function(coefficients, digits) {
   summary
 }
 
-run_nonlinear_methods <- function(df, options) { # nolint: function_length_linter.
+run_nonlinear_methods <- function(df, options) {
   validate(is.data.frame(df))
   total_n <- nrow(df)
   specs <- nonlinear_method_specs(options)

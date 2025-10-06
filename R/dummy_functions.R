@@ -1,6 +1,6 @@
 # This script serves as a placeholder for the functions that are used inside the internal 'inst/artma' folder logic, so that the R compiler can treat them as 'used' and not throw warnings about unused functions.
 
-# nolint start: box_usage_linter, unused_declared_object_linter.
+# nolint start: box_usage_linter.
 
 #' @keywords internal
 .dummy_use_here <- function() here::here("R", "dummy_functions.R")
@@ -24,4 +24,4 @@
 .dummy_use_digest <- function() digest::digest("")
 
 
-# nolint end: box_usage_linter, unused_declared_object_linter.
+# nolint end: box_usage_linter.

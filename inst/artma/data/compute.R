@@ -71,11 +71,9 @@ add_t_stat_column <- function(df) {
 
   if ("t_stat" %in% colnames(df)) {
     if (any(is.na(df$t_stat))) {
-      # nolint start: unused_declared_object_linter.
       n_missing <- sum(is.na(df$t_stat))
       opt_name <- CONST$STYLES$OPTIONS$NAME(opt_path)
       opt_val <- CONST$STYLES$OPTIONS$VALUE("NA")
-      # nolint end: unused_declared_object_linter.
       cli::cli_abort(c(
         "!" = "Found {n_missing} missing t-statistics in the column {.val t_stat}.",
         "i" = "Please add these to your data frame or set the option {opt_name} to {opt_val} to compute them automatically.",

@@ -23,7 +23,7 @@ box::use(
 #' @param spec *[list]* Linear model specification.
 #' @return A list containing the filtered data frame, the number of
 #'   observations kept and dropped, and the number of clusters.
-prepare_linear_data <- function(df, spec) { # nolint: cyclocomp_linter.
+prepare_linear_data <- function(df, spec) {
   box::use(
     artma / libs / validation[validate]
   )
@@ -244,7 +244,7 @@ tidy_plm_within <- function(model, data) {
   rbind(intercept_row, slope[c("term", "estimate", "std_error", "statistic", "p_value")])
 }
 
-linear_model_specs <- function() { # nolint: function_length_linter.
+linear_model_specs <- function() {
   list(
     list(
       name = "ols",
@@ -321,7 +321,7 @@ linear_model_specs <- function() { # nolint: function_length_linter.
 #' @param df *[data.frame]* Input dataset.
 #' @param options *[list]* Options controlling formatting and bootstrap.
 #' @return A list containing the coefficients, formatted summary, and skipped models.
-run_linear_models <- function(df, options) { # nolint: function_length_linter.
+run_linear_models <- function(df, options) {
   specs <- linear_model_specs()
   results <- list()
   skipped <- list()

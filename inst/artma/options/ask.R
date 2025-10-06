@@ -42,7 +42,7 @@ ask_for_existing_options_file_name <- function(
     artma / libs / string[pluralize]
   )
 
-  file_str <- if (isTRUE(multiple)) pluralize("name") else "name" # nolint: unused_declared_object_linter.
+  file_str <- if (isTRUE(multiple)) pluralize("name") else "name"
 
   prompt <- prompt %||% glue::glue("Please select the user options file {file_str} you would like to use.")
 
@@ -172,7 +172,7 @@ ask_for_options_to_modify <- function() {
     if (is.null(option_value)) next
 
     options_list[[option_name]] <- option_value
-    opt_str <- glue::glue("{CONST$STYLES$OPTIONS$NAME(option_name)}: {CONST$STYLES$OPTIONS$VALUE(option_value)}") # nolint: unused_declared_object_linter.
+    opt_str <- glue::glue("{CONST$STYLES$OPTIONS$NAME(option_name)}: {CONST$STYLES$OPTIONS$VALUE(option_value)}")
     cli::cli_alert_success("Option added: {.emph {opt_str}}")
     cli::cat_line()
   }

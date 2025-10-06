@@ -2,7 +2,7 @@
 #'
 #' @return TRUE if loaded via devtools, FALSE otherwise
 #' @keywords internal
-is_devtools_load <- function() { # nolint: unused_declared_object_linter.
+is_devtools_load <- function() {
   identical(Sys.getenv("DEVTOOLS_LOAD"), "true")
 }
 
@@ -63,7 +63,7 @@ register_runtime_dependencies <- function() {
 #' @param pkgname The name of the package.
 #' @return `NULL` Sets up the package on load
 #' @keywords internal
-.onLoad <- function(libname, pkgname) { # nolint: unused_declared_object_linter.
+.onLoad <- function(libname, pkgname) {
   op <- options()
   op.artma <- list(
     # artma.abc = xyz
@@ -86,7 +86,7 @@ register_runtime_dependencies <- function() {
 #' @note The box imports no longer work after the package is detached.
 #' @return `NULL` Cleans up the package on unload
 #' @keywords internal
-.onUnload <- function(libpath) { # nolint: unused_declared_object_linter.
+.onUnload <- function(libpath) {
   # Remove options with the "artma" prefix
   opts_to_remove <- names(options())[startsWith(names(options()), "artma")]
   options(stats::setNames(rep(list(NULL), length(opts_to_remove)), opts_to_remove))
