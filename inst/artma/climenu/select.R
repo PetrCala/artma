@@ -15,7 +15,7 @@ select <- function(choices,
                    selected = NULL,
                    return_index = FALSE) {
   box::use(
-    ./utils[
+    . / utils[
       validate_choices,
       normalize_selected,
       render_menu,

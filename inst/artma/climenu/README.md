@@ -1,6 +1,7 @@
 # climenu - Interactive CLI Menus for R
 
 A lightweight, standalone module for creating interactive command-line menus in R, inspired by:
+
 - [inquirer.js](https://github.com/SBoudrias/Inquirer.js) (JavaScript)
 - [pick](https://github.com/wong2/pick) (Python)
 - [survey](https://github.com/AlecAivazis/survey) (Go)
@@ -91,6 +92,7 @@ choices <- checkbox(c("Item 1", "Item 2", "Item 3"))
 Main entry point for creating menus.
 
 **Parameters:**
+
 - `choices` - Character vector of options
 - `prompt` - Message to display (default: "Select an item:")
 - `type` - "select" for single, "checkbox" for multiple (default: "select")
@@ -131,6 +133,7 @@ Potential additions when extracted as standalone package:
 ## Non-Interactive Behavior
 
 When not running in an interactive R session, the menu functions:
+
 - Issue a warning
 - Return the first choice (select) or pre-selected items (checkbox)
 - Do not block execution
