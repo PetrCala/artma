@@ -19,8 +19,8 @@ linters <- c(
             styles = c("snake_case", "SNAKE_CASE", "dotted.case")
         ),
         object_length_linter = lintr::object_length_linter(length = 40),
-        # Disable the default lintr object usage - replace with box imports
-        # object_usage_linter = NULL,
+        # Disable the default lintr object usage - incompatible with box module system
+        object_usage_linter = NULL,
         # All lines should be less than 120 characters
         line_length_linter = lintr::line_length_linter(NULL), # 120, 160,...
         # Disable commented code linter

@@ -35,7 +35,7 @@ update_data_config <- function(changes) {
   # This option is reverted upon exiting from the namespace modified by runtime_setup()
   options("artma.data.config" = new_config)
 
-  return(invisible(new_config))
+  invisible(new_config)
 }
 
 #' @title Fix Data Config

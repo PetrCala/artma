@@ -178,7 +178,7 @@ assert_options_template_exists <- function(path) {
   if (!grepl(".yaml$|.yml$", path)) {
     cli::cli_abort(glue::glue("The path to the template file is invalid. Reason: Missing the .yaml suffix. Got: {path}."))
   }
-  return(invisible(NULL))
+  invisible(NULL)
 }
 
 #' Check if x is a vector and either empty or all characters
@@ -217,5 +217,5 @@ validate_opt_path <- function(opt_path) {
   if (!grepl("^[[:alnum:]_]+(\\.[[:alnum:]_]+)*$", opt_path)) {
     cli::cli_abort("The option path must be a single word or dot-separated path (e.g. 'data' or 'data.colnames')")
   }
-  return(invisible(NULL))
+  invisible(NULL)
 }

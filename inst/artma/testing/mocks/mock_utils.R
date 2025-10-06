@@ -29,14 +29,14 @@ create_mock_study_names <- function(n_studies, total_occurrences) {
   random_occurrences <- function(total, n) {
     points <- sort(sample(1:(total - 1), n - 1))
     occurrences <- diff(c(0, points, total))
-    return(occurrences)
+    occurrences
   }
 
   occurrences <- random_occurrences(total_occurrences, n_studies)
 
   result <- unname(unlist(base::Map(rep, study_names, occurrences)))
 
-  return(result)
+  result
 }
 
 box::export(

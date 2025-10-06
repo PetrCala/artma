@@ -58,7 +58,7 @@ re <- function(df, effect = NULL, se = NULL, method = "DL") {
       if (get_verbosity() >= 2) {
         cli::cli_alert_warning("Could not fit the RE model for meta-analysis {.emph {meta}}: {e}")
       }
-      return(list(est = NA, t_value = NA))
+      list(est = NA, t_value = NA)
     }
   )
 
@@ -98,7 +98,7 @@ uwls <- function(df, effect = NULL, se = NULL) {
       if (get_verbosity() >= 2) {
         cli::cli_alert_warning("Could not fit the UWLS model for meta-analysis {.emph {meta}}: {e}")
       }
-      return(list(est = NA, t_value = NA))
+      list(est = NA, t_value = NA)
     }
   )
 
@@ -127,7 +127,7 @@ uwls3 <- function(df) {
   pcc3 <- t_ / sqrt(t_^2 + dof_ + 3)
 
   uwls_ <- uwls(df, effect = pcc3, se = se_)
-  return(uwls_)
+  uwls_
 }
 
 #' Calculate the Hunter-Schmidt estimate
@@ -164,7 +164,7 @@ hsma <- function(df) {
   assert(sd_sq >= 0, "Negative SD_r^2")
   se_r <- sqrt(sd_sq) / sqrt(nrow(df)) # SE_r
   t_value <- r_avg / se_r
-  return(list(est = r_avg, t_value = t_value))
+  list(est = r_avg, t_value = t_value)
 }
 
 #' Calculate Fisher's z
@@ -222,7 +222,7 @@ pcc_sum_stats <- function(df) {
 
   # ss_lt ~ sample sizes less than
   get_ss_lt <- function(lt) {
-    return(sum(ss_ < lt, na.rm = FALSE) / obs_)
+    sum(ss_ < lt, na.rm = FALSE) / obs_
   }
 
   res <- list(
@@ -249,5 +249,5 @@ pcc_sum_stats <- function(df) {
     cli::cli_inform(paste("25th percentile of sample size:", res$quantile_1_ss))
     cli::cli_inform(paste("75th percentile of sample size:", res$quantile_3_ss))
   }
-  return(res)
+  res
 }

@@ -42,7 +42,7 @@ find_string_using_substring <- function(vector_of_strings, substring) {
   if (sum(match_bool) > 1) {
     cli::cli_abort("Found multiple matches for the substring", substring, "in the vector of strings.")
   }
-  return(vector_of_strings[match_bool])
+  vector_of_strings[match_bool]
 }
 
 #' @title Trim quotes
@@ -70,7 +70,7 @@ clean_string <- function(input_string) {
   # Remove quotes
   str_out <- trim_quotes(str_out)
 
-  return(str_out)
+  str_out
 }
 
 #' Make a verbose name
