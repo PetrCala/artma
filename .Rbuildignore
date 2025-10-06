@@ -27,3 +27,6 @@
 ^release-notes\.md$
 ^AGENTS\.md$
 ^CLAUDE\.md$
+^Makefile$
+^\.make-help\.md$
+^\.claude$
