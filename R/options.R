@@ -208,9 +208,9 @@ options.delete <- function(
   options_file_names <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the user options files you wish to delete: ", multiple = TRUE)
 
   if (!skip_confirmation) {
-    deletion_confirmed <- climenu::menu(
+    deletion_confirmed <- climenu::select(
       choices = c("Yes, I am sure", "No, I did not mean to"),
-      title = cli::format_inline("Are you sure you wish to delete {.file {options_file_names}}?")
+      prompt = cli::format_inline("Are you sure you wish to delete {.file {options_file_names}}?")
     )
     if (deletion_confirmed != "Yes, I am sure") {
       cli::cli_abort("Aborting user option file deletion.")
@@ -311,9 +311,9 @@ options.load <- function(
       if (!create_options_if_null) {
         cli::cli_abort("No user options file to load was provided. Exiting...")
       }
-      can_proceed <- climenu::menu(
+      can_proceed <- climenu::select(
         choices = c("Yes", "No"),
-        title = "We have not found any option files to load for you. Would you like to create one now?"
+        prompt = "We have not found any option files to load for you. Would you like to create one now?"
       )
       if (can_proceed != "Yes") {
         cli::cli_abort("To load user options, you must create an options file first.")
@@ -327,9 +327,9 @@ options.load <- function(
         cli::cli_abort("No user options file to load was provided. Exiting...")
       }
 
-      action <- climenu::menu(
+      action <- climenu::select(
         choices = c("Create a new options file", "Choose from existing options files"),
-        title = "You have not specified the options file name to load. Please choose one of the following:"
+        prompt = "You have not specified the options file name to load. Please choose one of the following:"
       )
 
       if (action == "Create a new options file") {
@@ -338,9 +338,9 @@ options.load <- function(
           options_dir = options_dir
         )
       } else if (action == "Choose from existing options files") {
-        options_file_name <- climenu::menu(
+        options_file_name <- climenu::select(
           choices = existing_options_files,
-          title = "Please choose an options file to load:"
+          prompt = "Please choose an options file to load:"
         )
         if (rlang::is_empty(options_file_name)) {
           cli::cli_abort("No user options file was selected. Aborting...")
@@ -709,9 +709,9 @@ options.fix <- function(
   cli::cat_line()
 
   if (interactive()) {
-    should_proceed <- climenu::menu(
+    should_proceed <- climenu::select(
       choices = c("Yes", "No"),
-      title = "Do you wish to apply the proposed changes to the user options file?"
+      prompt = "Do you wish to apply the proposed changes to the user options file?"
     )
     if (should_proceed != "Yes") {
       cli::cli_abort("Aborting the fixing of a user options file.")
@@ -816,9 +816,9 @@ options.create <- function(
       if (!interactive()) {
         cli::cli_abort("{file_exists_msg} Either allow overwriting or provide a different name.")
       }
-      overwrite_permitted <- climenu::menu(
+      overwrite_permitted <- climenu::select(
         choices = c("Yes", "No"),
-        title = paste(file_exists_msg, "Do you wish to overwrite the contents of this file?")
+        prompt = paste(file_exists_msg, "Do you wish to overwrite the contents of this file?")
       )
       if (overwrite_permitted != "Yes") {
         cli::cli_abort("Aborting the overwriting of a user options file.")

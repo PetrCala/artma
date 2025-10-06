@@ -51,10 +51,9 @@ ask_for_existing_options_file_name <- function(
     cli::cli_abort("No existing user options files were found. Aborting…")
   }
 
-  selected_file_name <- climenu::menu(
+  selected_file_name <- climenu::select(
     choices = user_options_file_names,
-    title = prompt,
-    multiple = multiple
+    prompt = prompt
   )
   if (rlang::is_empty(selected_file_name)) {
     cli::cli_abort("No user options file was selected. Aborting…")
