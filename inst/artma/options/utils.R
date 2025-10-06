@@ -20,7 +20,7 @@ get_option_group <- function(prefix) {
   options <- options()
   group_keys <- grep(paste0("^", prefix, "\\."), names(options), value = TRUE)
   group <- stats::setNames(lapply(group_keys, getOption), gsub(paste0("^", prefix, "\\."), "", group_keys))
-  return(group)
+  group
 }
 
 #' @title Remove Options by Prefix
@@ -203,7 +203,7 @@ validate_user_input <- function(user_input) {
     cli::cli_abort("Please provide the names of the options without the '{pkg_name}' prefix. Got: {.code {invalid_names}}.")
   }
 
-  return(invisible(NULL))
+  invisible(NULL)
 }
 
 #' @title Print options help text

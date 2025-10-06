@@ -14,7 +14,7 @@ is_function_call <- function(obj) {
   if (!is_valid_function_call)
     return(FALSE)
 
-  return(TRUE)
+  TRUE
 }
 
 

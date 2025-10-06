@@ -137,7 +137,7 @@ resolve_fixed_option <- function(opt, user_input) {
   if (is.null(opt$default)) {
     cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} is fixed, but no default is provided.")
   } else {
-    return(NULL) # Not required, no default
+    NULL # Not required, no default
   }
 }
 
@@ -213,7 +213,7 @@ prompt_user_for_option_value <- function(opt) {
     cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} was left blank. Aborting.")
   }
 
-  return(input_val)
+  input_val
 }
 
 #' @title Resolve an option value
