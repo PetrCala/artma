@@ -85,59 +85,47 @@ render_menu <- function(choices, cursor_pos, selected_indices, type = c("select"
 #' Get single keypress from user
 #' @export
 get_keypress <- function() {
-  # Try to use getPass package if available for better key detection
-  if (requireNamespace("getPass", quietly = TRUE)) {
-    key <- tryCatch(
-      {
-        char <- rawToChar(as.raw(getPass::getPass(msg = "", noblank = TRUE, forcemask = FALSE)))
+  # Check for keypress package (best option for single-key capture)
+  if (requireNamespace("keypress", quietly = TRUE)) {
+    key <- keypress::keypress()
 
-        # Handle arrow keys and special keys
-        if (char == "\033") { # ESC sequence
-          # Read next two characters for arrow keys
-          next_chars <- rawToChar(as.raw(c(
-            getPass::getPass(msg = "", noblank = TRUE, forcemask = FALSE),
-            getPass::getPass(msg = "", noblank = TRUE, forcemask = FALSE)
-          )))
+    # Map special keys
+    if (key == "up") return("up")
+    if (key == "down") return("down")
+    if (key == "left") return("left")
+    if (key == "right") return("right")
+    if (key == "\r" || key == "\n") return("enter")
+    if (key == " ") return("space")
+    if (key == "\033" || key == "\x1b") return("esc")
+    if (key == "k") return("up")
+    if (key == "j") return("down")
+    if (tolower(key) == "q") return("esc")
 
-          if (next_chars == "[A") {
-            return("up")
-          }
-          if (next_chars == "[B") {
-            return("down")
-          }
-          if (next_chars == "[C") {
-            return("right")
-          }
-          if (next_chars == "[D") {
-            return("left")
-          }
-          return("esc")
-        }
-
-        char
-      },
-      error = function(e) readline(prompt = "")
-    )
-  } else {
-    # Fallback to readline
-    key <- readline(prompt = "")
+    return(key)
   }
 
-  # Map keys
-  if (key == "") {
-    return("enter")
+  # Fallback: Use readline (requires Enter key)
+  # Show hint only once per session
+  if (!exists(".climenu_keypress_hint_shown", envir = .GlobalEnv)) {
+    cli::cli_alert_info("For better keyboard support, install: {.code install.packages('keypress')}")
+    assign(".climenu_keypress_hint_shown", TRUE, envir = .GlobalEnv)
   }
-  if (key == " ") {
-    return("space")
-  }
-  if (key == "k") {
-    return("up")
-  }
-  if (key == "j") {
-    return("down")
-  }
-  if (tolower(key) == "q") {
-    return("esc")
+
+  key <- readline(prompt = "Choice (↑/↓/j/k/number/Enter): ")
+
+  # Map text input to commands
+  key <- tolower(trimws(key))
+
+  if (key == "" || key == "enter") return("enter")
+  if (key == " " || key == "space") return("space")
+  if (key == "up" || key == "u" || key == "k") return("up")
+  if (key == "down" || key == "d" || key == "j") return("down")
+  if (key == "esc" || key == "q" || key == "quit") return("esc")
+
+  # Try to parse as number (for quick selection by index)
+  num <- suppressWarnings(as.integer(key))
+  if (!is.na(num)) {
+    return(list(type = "number", value = num))
   }
 
   return(key)
