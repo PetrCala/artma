@@ -252,6 +252,93 @@ methods:
         Estimation method for p-uniform*.
         Use {.strong ML} for maximum likelihood or {.strong P} for method of moments.
 
+  bma:
+    burn:
+      type: "integer"
+      default: 10000
+      help: |
+        Number of burn-in iterations for the Bayesian Model Averaging MCMC sampler.
+        Higher values ensure better convergence but increase computation time.
+
+    iter:
+      type: "integer"
+      default: 50000
+      help: |
+        Number of MCMC iterations after burn-in for BMA estimation.
+        More iterations provide more stable posterior estimates.
+
+    g:
+      type: "character"
+      default: "UIP"
+      help: |
+        Prior specification for the g-parameter in BMA.
+        Common options: "UIP" (Unit Information Prior), "BRIC", "EBL".
+
+    mprior:
+      type: "character"
+      default: "uniform"
+      help: |
+        Model prior specification for BMA.
+        Options: "uniform" (all models equally likely), "random", "fixed".
+
+    nmodel:
+      type: "integer"
+      default: 1000
+      help: |
+        Number of top models to retain during BMA estimation.
+        Higher values capture more of the model space but increase memory usage.
+
+    mcmc:
+      type: "character"
+      default: "bd"
+      help: |
+        MCMC sampler type for BMA.
+        Options: "bd" (birth-death), "rev.jump" (reversible jump).
+
+    use_vif_optimization:
+      type: "logical"
+      default: false
+      help: |
+        If `TRUE`, use Variance Inflation Factor (VIF) optimization to identify
+        and remove multicollinear variables before running BMA.
+
+    max_groups_to_remove:
+      type: "integer"
+      default: 30
+      help: |
+        Maximum number of variable groups to remove during VIF optimization.
+        Only relevant if use_vif_optimization is `TRUE`.
+
+    print_results:
+      type: "enum: none|fast|verbose|all|table"
+      default: "fast"
+      help: |
+        Level of result output:
+          {cli::symbol$bullet} {.strong none}: No output
+          {cli::symbol$bullet} {.strong fast}: Basic coefficients only
+          {cli::symbol$bullet} {.strong verbose}: Detailed model information
+          {cli::symbol$bullet} {.strong all}: All results including plots
+
+    export_graphics:
+      type: "logical"
+      default: false
+      help: |
+        If `TRUE`, export BMA diagnostic plots to files.
+
+    export_path:
+      type: "character"
+      default: "./results/graphic"
+      help: |
+        Directory path for exporting BMA graphics.
+        Only used if export_graphics is `TRUE`.
+
+    graph_scale:
+      type: "numeric"
+      default: 1
+      help: |
+        Scaling factor for exported graphics.
+        Values > 1 increase resolution; values < 1 decrease it.
+
   p_hacking_tests:
     include_caliper:
       type: "logical"

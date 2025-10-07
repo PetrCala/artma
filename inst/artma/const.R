@@ -97,7 +97,8 @@ CONST <- list(
       "linear_tests",
       "nonlinear_tests",
       "exogeneity_tests",
-      "p_hacking_tests"
+      "p_hacking_tests",
+      "bma"
     )
   )
 )
