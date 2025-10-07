@@ -32,6 +32,31 @@ prepare_data <- cache_cli_runner(
   key_builder = function(...) build_data_cache_signature()
 )
 
+
+# Re-export useful functions for external use
+box::use(
+  artma / data / read[read_data],
+  artma / data / column_recognition[
+    recognize_columns,
+    get_required_column_names
+  ],
+  artma / data / interactive_mapping[
+    column_mapping_workflow,
+    interactive_column_mapping
+  ],
+  artma / data / smart_detection[
+    detect_delimiter,
+    smart_read_csv
+  ]
+)
+
 box::export(
-  prepare_data
+  prepare_data,
+  read_data,
+  recognize_columns,
+  get_required_column_names,
+  column_mapping_workflow,
+  interactive_column_mapping,
+  detect_delimiter,
+  smart_read_csv
 )
