@@ -237,6 +237,33 @@ methods:
         Use {.strong ML} for maximum likelihood or {.strong P} for method of moments.
 
   p_hacking_tests:
+    include_caliper:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, include Caliper tests (Gerber & Malhotra, 2008) for selective
+        reporting around significance thresholds.
+
+    caliper_thresholds:
+      type: "numeric"
+      default: [0, 1.96, 2.58]
+      help: |
+        T-statistic thresholds to test with the Caliper method.
+        Default tests at 0, 1.96 (5% significance), and 2.58 (1% significance).
+
+    caliper_widths:
+      type: "numeric"
+      default: [0.05, 0.1, 0.2]
+      help: |
+        Caliper interval widths to test around each threshold.
+        Narrower widths focus on immediate vicinity of the threshold.
+
+    include_elliott:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, include Elliott et al. (2022) p-hacking detection tests.
+
     lcm_iterations:
       type: "integer"
       default: 10000
@@ -292,6 +319,49 @@ methods:
       help: |
         Whether to use theoretical bounds in Cox-Shi tests (1 = yes, 0 = no).
         Bounds account for the two-sided nature of t-tests.
+
+    include_maive:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, include MAIVE estimator (Irsova et al., 2023) for publication
+        bias correction using instrumental variables.
+
+    maive_method:
+      type: "integer"
+      default: 3
+      help: |
+        MAIVE method selection:
+          1 = FAT-PET
+          2 = PEESE
+          3 = PET-PEESE (default)
+          4 = Endogenous Kink (EK)
+
+    maive_weight:
+      type: "integer"
+      default: 0
+      help: |
+        MAIVE weighting scheme:
+          0 = No weights (default)
+          1 = Standard weights
+          2 = Adjusted weights
+
+    maive_instrument:
+      type: "integer"
+      default: 1
+      help: |
+        MAIVE instrumenting:
+          0 = No instrumenting
+          1 = Use instrumental variables (default)
+
+    maive_studylevel:
+      type: "integer"
+      default: 2
+      help: |
+        MAIVE study-level correlation structure:
+          0 = None
+          1 = Fixed effects
+          2 = Cluster-robust (default)
 
 output:
   number_of_decimals:
