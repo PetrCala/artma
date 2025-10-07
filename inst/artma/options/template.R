@@ -265,7 +265,7 @@ coerce_option_value <- function(val, opt) {
   if (is.null(val))
     return(val)
 
-  if (is.na(val) && isTRUE(opt$allow_na))
+  if (length(val) == 1 && is.na(val) && isTRUE(opt$allow_na))
     return(val)
 
   # Enumerations, e.g. "enum: red|blue|green", return as is
@@ -273,7 +273,7 @@ coerce_option_value <- function(val, opt) {
     return(val)
 
   enforce_na_allowed <- function(val, opt) {
-    if (is.na(val) && !isTRUE(opt$allow_na)) {
+    if (any(is.na(val)) && !isTRUE(opt$allow_na)) {
       cli::cli_abort("Option {CONST$STYLES$OPTIONS$NAME(opt$name)} does not allow NA values.")
     }
   }
