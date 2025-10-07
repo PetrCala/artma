@@ -1,12 +1,16 @@
 #' @title P-hacking test helpers
-#' @description Helper functions for Elliott et al. (2022) p-hacking tests.
+#' @description
+#' Helper functions for comprehensive p-hacking detection tests.
+#' Includes Caliper tests (Gerber & Malhotra, 2008), Elliott tests (2022),
+#' and MAIVE estimator (Irsova et al., 2023).
 NULL
 
 box::use(
-  stats[pchisq, ecdf],
+  stats[pchisq, ecdf, lm, coef],
   artma / libs / validation[validate, assert],
   artma / libs / result_formatters[
-    format_number
+    format_number,
+    significance_mark
   ],
   artma / calc / methods / elliott[
     simulate_cdfs,
@@ -15,8 +19,134 @@ box::use(
     fisher_test,
     run_discontinuity_test,
     cox_shi_test
-  ]
+  ],
+  artma / calc / methods / maive[maive]
 )
+
+# Caliper tests (Gerber & Malhotra, 2008) ---------------------------------
+
+#' @title Run single Caliper test
+#' @description
+#' Performs a Caliper test to detect selective reporting around significance thresholds.
+#' @param t_stats *[numeric]* T-statistics.
+#' @param study_id *[vector]* Study identifiers for clustering.
+#' @param threshold *[numeric]* T-statistic threshold (default 1.96).
+#' @param width *[numeric]* Caliper interval width (default 0.05).
+#' @param add_significance_marks *[logical]* Whether to add significance asterisks.
+#' @return *[list]* Contains estimate, SE, n_above, n_below.
+run_single_caliper <- function(t_stats, study_id, threshold = 1.96, width = 0.05, add_significance_marks = TRUE) {
+  validate(
+    is.numeric(t_stats),
+    is.numeric(threshold),
+    is.numeric(width)
+  )
+
+  # Identify significant observations
+  significant_obs <- if (threshold >= 0) {
+    t_stats > threshold
+  } else {
+    t_stats < threshold
+  }
+
+  # Subset to caliper interval
+  lower_bound <- t_stats > (threshold - width)
+  upper_bound <- t_stats < (threshold + width)
+  in_interval <- lower_bound & upper_bound
+
+  if (sum(in_interval) == 0) {
+    return(list(
+      estimate = NA_real_,
+      std_error = NA_real_,
+      n_above = 0,
+      n_below = 0
+    ))
+  }
+
+  # Prepare data for regression
+  df_subset <- data.frame(
+    significant = as.numeric(significant_obs[in_interval]),
+    t_stat = t_stats[in_interval],
+    study = study_id[in_interval]
+  )
+
+  # Run regression
+  model <- stats::lm(significant ~ t_stat - 1, data = df_subset)
+  model_coefs <- tryCatch({
+    lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const", cluster = df_subset$study))
+  }, error = function(e) {
+    lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const"))
+  })
+
+  estimate <- model_coefs["t_stat", "Estimate"]
+  std_error <- model_coefs["t_stat", "Std. Error"]
+  n_above <- sum(t_stats[in_interval] > threshold)
+  n_below <- sum(t_stats[in_interval] < threshold)
+
+  list(
+    estimate = estimate,
+    std_error = std_error,
+    n_above = n_above,
+    n_below = n_below
+  )
+}
+
+#' @title Run Caliper tests across multiple thresholds and widths
+#' @param t_stats *[numeric]* T-statistics.
+#' @param study_id *[vector]* Study identifiers.
+#' @param thresholds *[numeric]* Vector of thresholds to test.
+#' @param widths *[numeric]* Vector of caliper widths to test.
+#' @param add_significance_marks *[logical]* Whether to add significance marks.
+#' @param round_to *[integer]* Number of decimal places.
+#' @return *[data.frame]* Caliper test results.
+run_caliper_tests <- function(t_stats, study_id, thresholds = c(0, 1.96, 2.58),
+                              widths = c(0.05, 0.1, 0.2),
+                              add_significance_marks = TRUE, round_to = 3L) {
+  validate(
+    is.numeric(t_stats),
+    is.numeric(thresholds),
+    is.numeric(widths)
+  )
+
+  results <- list()
+
+  for (thresh in thresholds) {
+    for (w in widths) {
+      res <- run_single_caliper(t_stats, study_id, thresh, w, add_significance_marks)
+
+      est_formatted <- if (is.finite(res$estimate)) {
+        est_str <- format_number(res$estimate, round_to)
+        if (add_significance_marks && is.finite(res$std_error)) {
+          p_val <- 2 * stats::pnorm(-abs(res$estimate / res$std_error))
+          mark <- significance_mark(p_val)
+          paste0(est_str, mark)
+        } else {
+          est_str
+        }
+      } else {
+        NA_character_
+      }
+
+      se_formatted <- if (is.finite(res$std_error)) {
+        paste0("(", format_number(res$std_error, round_to), ")")
+      } else {
+        NA_character_
+      }
+
+      results[[length(results) + 1]] <- list(
+        threshold = thresh,
+        width = w,
+        estimate = est_formatted,
+        std_error = se_formatted,
+        n_above = res$n_above,
+        n_below = res$n_below
+      )
+    }
+  }
+
+  results
+}
+
+# P-value utilities --------------------------------------------------------
 
 #' @title Compute p-values from effect and se
 #' @description
