@@ -140,7 +140,6 @@ p_hacking_tests <- function(df) {
     # Elliott tests (2022)
     if (!is.null(results$elliott) && nrow(results$elliott) > 0) {
       cli::cli_h3("Elliott et al. (2022) tests")
-      cli::cli_text("Comprehensive p-hacking detection tests including Binomial, LCM, Fisher, Discontinuity, and Cox-Shi.")
 
       elliott_lines <- utils::capture.output(
         print(results$elliott, row.names = TRUE) # nolint: undesirable_function_linter.
@@ -152,7 +151,6 @@ p_hacking_tests <- function(df) {
     # MAIVE estimator (Irsova et al., 2023)
     if (!is.null(results$maive) && nrow(results$maive) > 0) {
       cli::cli_h3("MAIVE estimator (Irsova et al., 2023)")
-      cli::cli_text("Meta-Analysis Instrumental Variable Estimator for publication bias correction.")
 
       maive_lines <- utils::capture.output(
         print(results$maive, row.names = FALSE) # nolint: undesirable_function_linter.
