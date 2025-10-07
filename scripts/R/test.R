@@ -42,7 +42,7 @@ test <- function() {
 
   artma::run(
     # methods = c("all"),
-    methods = c("nonlinear_tests"),
+    # methods = c("nonlinear_tests"),
     options_file_name = options_file_name
   )
 
