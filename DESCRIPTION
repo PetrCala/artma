@@ -19,10 +19,8 @@ BugReports: https://github.com/PetrCala/artma/issues
 Depends:
     R (>= 4.0.0)
 Imports:
-    AER (>= 1.2-10),
     cli (>= 3.6.5),
     climenu (>= 0.1.0),
-    ivmodel (>= 1.9.0),
     lintr (>= 3.2.0),
     lmtest (>= 0.9-40),
     memoise (>= 2.0.1),
@@ -36,6 +34,7 @@ Imports:
 Remotes:
     PetrCala/climenu
 Suggests:
+    AER (>= 1.2-10),
     box (>= 1.2.0),
     box.linters (>= 0.10.6),
     covr (>= 3.6.4),
@@ -43,6 +42,7 @@ Suggests:
     fdrtool (>= 1.2.17),
     fs (>= 1.6.6),
     here (>= 1.0.2),
+    ivmodel (>= 1.9.0),
     knitr (>= 1.50),
     languageserver (>= 0.3.16),
     mathjaxr (>= 1.8-0),

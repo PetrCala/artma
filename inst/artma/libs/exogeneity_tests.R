@@ -404,6 +404,14 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
 run_exogeneity_tests <- function(df, options) {
   validate(is.data.frame(df), is.list(options))
 
+  # Check for required packages
+  if (!requireNamespace("AER", quietly = TRUE)) {
+    cli::cli_abort("Package {.pkg AER} is required for exogeneity tests. Install with: install.packages('AER')")
+  }
+  if (!requireNamespace("ivmodel", quietly = TRUE)) {
+    cli::cli_abort("Package {.pkg ivmodel} is required for exogeneity tests. Install with: install.packages('ivmodel')")
+  }
+
   required_cols <- c("effect", "se", "study_id", "n_obs", "study_size")
   missing_cols <- setdiff(required_cols, colnames(df))
 
