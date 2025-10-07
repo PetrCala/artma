@@ -221,6 +221,220 @@ match_column_name <- function(col_name, patterns) {
 }
 
 
+#' @title Analyze column values to determine semantic type
+#' @description Analyzes actual data values to help discriminate between ambiguous column matches
+#' @param values *\[vector\]* Column values to analyze
+#' @return *\[list\]* Analysis results with various heuristics
+analyze_column_values <- function(values) {
+  # Remove NA values for analysis
+  values_clean <- values[!is.na(values)]
+
+  if (length(values_clean) == 0) {
+    return(list(
+      is_sequential = FALSE,
+      is_unique = FALSE,
+      is_numeric = FALSE,
+      uniqueness_ratio = 0,
+      mean = NA,
+      variance = NA,
+      min = NA,
+      max = NA
+    ))
+  }
+
+  # Check if numeric (coercible to numeric)
+  is_numeric <- is.numeric(values_clean) || !any(is.na(suppressWarnings(as.numeric(values_clean))))
+  numeric_values <- if (is_numeric) {
+    if (is.numeric(values_clean)) values_clean else as.numeric(values_clean)
+  } else {
+    numeric(0)
+  }
+
+  # Sequential pattern detection (like 1, 2, 3, 4, 5...)
+  is_sequential <- FALSE
+  if (is_numeric && length(numeric_values) >= 3) {
+    diffs <- diff(numeric_values)
+    # Check if differences are constant (allowing for some tolerance)
+    is_sequential <- all(abs(diffs - diffs[1]) < 1e-10) && abs(diffs[1] - 1) < 1e-10
+  }
+
+  # Uniqueness analysis
+  is_unique <- length(unique(values_clean)) == length(values_clean)
+  uniqueness_ratio <- length(unique(values_clean)) / length(values_clean)
+
+  # Statistical properties
+  stats <- if (is_numeric && length(numeric_values) > 0) {
+    list(
+      mean = mean(numeric_values, na.rm = TRUE),
+      variance = stats::var(numeric_values, na.rm = TRUE),
+      min = min(numeric_values, na.rm = TRUE),
+      max = max(numeric_values, na.rm = TRUE)
+    )
+  } else {
+    list(mean = NA, variance = NA, min = NA, max = NA)
+  }
+
+  list(
+    is_sequential = is_sequential,
+    is_unique = is_unique,
+    is_numeric = is_numeric,
+    uniqueness_ratio = uniqueness_ratio,
+    mean = stats$mean,
+    variance = stats$variance,
+    min = stats$min,
+    max = stats$max
+  )
+}
+
+
+#' @title Score candidate column for a specific standard column type
+#' @description Uses value analysis to score how well a candidate matches expected properties
+#' @param df *\[data.frame\]* The data frame
+#' @param candidate_col *\[character\]* Name of candidate column
+#' @param std_col *\[character\]* Standard column type (e.g., "n_obs", "obs_id")
+#' @param name_score *\[numeric\]* Score from name matching
+#' @return *\[numeric\]* Adjusted score based on value analysis
+score_candidate_values <- function(df, candidate_col, std_col, name_score) {
+  analysis <- analyze_column_values(df[[candidate_col]])
+
+  # Apply heuristics based on standard column type
+  value_penalty <- 0
+
+  if (std_col == "n_obs") {
+    # Sample size columns should:
+    # - Not be sequential IDs
+    # - Have reasonable variance (not all same value)
+    # - Not be perfectly unique (some studies may have same sample size)
+    # - Be positive integers typically > 10
+
+    if (analysis$is_sequential) {
+      # Strong penalty for sequential patterns
+      value_penalty <- value_penalty + 0.3
+    }
+
+    if (analysis$is_unique && analysis$uniqueness_ratio > 0.95) {
+      # Moderate penalty for high uniqueness (IDs are unique, sample sizes may repeat)
+      value_penalty <- value_penalty + 0.15
+    }
+
+    if (analysis$is_numeric) {
+      # Check if values are in reasonable range for sample sizes
+      if (!is.na(analysis$min) && analysis$min < 1) {
+        value_penalty <- value_penalty + 0.1
+      }
+      if (!is.na(analysis$max) && analysis$max > 1e6) {
+        # Extremely large values unlikely to be sample sizes
+        value_penalty <- value_penalty + 0.1
+      }
+    }
+  } else if (std_col == "obs_id") {
+    # Observation ID columns should:
+    # - Be sequential or unique
+    # - Have high uniqueness ratio
+
+    if (analysis$is_sequential) {
+      # Bonus for sequential patterns
+      value_penalty <- value_penalty - 0.2
+    }
+
+    if (!analysis$is_unique) {
+      # Penalty for non-unique values
+      value_penalty <- value_penalty + 0.2
+    }
+
+    if (analysis$uniqueness_ratio < 0.95) {
+      # Penalty for low uniqueness
+      value_penalty <- value_penalty + 0.15
+    }
+  } else if (std_col == "study_id") {
+    # Study ID columns should:
+    # - Have high uniqueness (but not necessarily perfect if multiple obs per study)
+    # - Not be sequential in most cases
+
+    if (analysis$uniqueness_ratio < 0.5) {
+      # Multiple observations per study is fine, but too many repetitions is suspicious
+      value_penalty <- value_penalty + 0.1
+    }
+  } else if (std_col %in% c("effect", "se", "t_stat")) {
+    # Effect sizes, standard errors, t-stats should:
+    # - Not be sequential
+    # - Have reasonable variance
+    # - Not be all unique (some repetition expected)
+
+    if (analysis$is_sequential) {
+      value_penalty <- value_penalty + 0.3
+    }
+
+    if (analysis$is_unique && analysis$uniqueness_ratio > 0.98) {
+      value_penalty <- value_penalty + 0.1
+    }
+
+    if (analysis$is_numeric && !is.na(analysis$variance) && analysis$variance < 1e-10) {
+      # No variance suggests not a real data column
+      value_penalty <- value_penalty + 0.2
+    }
+  }
+
+  # Apply penalty and ensure score stays in valid range
+  adjusted_score <- max(0, min(1, name_score - value_penalty))
+  adjusted_score
+}
+
+
+#' @title Resolve multiple candidate matches using value analysis
+#' @description When multiple columns match a standard column, use value analysis to pick best
+#' @param df *\[data.frame\]* The data frame
+#' @param candidates *\[character\]* Vector of candidate column names
+#' @param std_col *\[character\]* Standard column type
+#' @param matches *\[list\]* Match results from match_column_name
+#' @return *\[character\]* Best candidate column name
+resolve_multiple_matches <- function(df, candidates, std_col, matches) {
+  box::use(artma / libs / utils[get_verbosity])
+
+  if (length(candidates) == 1) {
+    return(candidates[1])
+  }
+
+  # Score each candidate using value analysis
+  candidate_scores <- vapply(candidates, function(cand) {
+    name_score <- matches[[cand]]$score
+    value_score <- score_candidate_values(df, cand, std_col, name_score)
+
+    # Bonus for exact or near-exact name matches
+    cand_clean <- tolower(gsub("[^a-z0-9]", "", cand))
+    std_clean <- tolower(gsub("[^a-z0-9]", "", std_col))
+
+    if (cand_clean == std_clean) {
+      # Exact match (ignoring separators) - significant bonus
+      value_score <- value_score + 0.15
+    } else if (grepl(std_clean, cand_clean, fixed = TRUE) || grepl(cand_clean, std_clean, fixed = TRUE)) {
+      # Substring match - moderate bonus
+      value_score <- value_score + 0.08
+    }
+
+    # Ensure score stays in valid range
+    min(1.0, value_score)
+  }, numeric(1))
+
+  best_candidate <- candidates[which.max(candidate_scores)]
+
+  if (get_verbosity() >= 4) {
+    cli::cli_inform("Resolved multiple matches for {.field {std_col}}:")
+    for (cand in candidates) {
+      name_score <- matches[[cand]]$score
+      value_score <- candidate_scores[cand]
+      analysis <- analyze_column_values(df[[cand]])
+      marker <- if (cand == best_candidate) "\u2713" else " "
+      cli::cli_inform(
+        "  {marker} {.field {cand}}: name={round(name_score, 2)}, adjusted={round(value_score, 2)} (seq={analysis$is_sequential}, uniq={round(analysis$uniqueness_ratio, 2)})"
+      )
+    }
+  }
+
+  best_candidate
+}
+
+
 #' @title Recognize columns in data frame
 #' @description Automatically recognize which columns correspond to standard columns
 #' @param df *\[data.frame\]* The data frame
@@ -251,9 +465,12 @@ recognize_columns <- function(df, min_confidence = 0.7) {
   pattern_priority <- vapply(patterns, function(p) as.integer(p$priority), integer(1))
   sorted_std_cols <- names(patterns)[order(pattern_priority)]
 
+  # Get required column names
+  required_cols <- get_required_column_names()
+
   for (std_col in sorted_std_cols) {
     # Higher confidence threshold for optional columns to reduce false positives
-    is_required <- patterns[[std_col]]$priority == 1
+    is_required <- std_col %in% required_cols
     confidence_threshold <- if (is_required) min_confidence else 0.95
 
     # Find all columns that matched this standard column
@@ -265,9 +482,12 @@ recognize_columns <- function(df, min_confidence = 0.7) {
     candidates <- setdiff(candidates, used_cols)
 
     if (length(candidates) > 0) {
-      # Pick the best match
-      candidate_scores <- vapply(candidates, function(c) matches[[c]]$score, numeric(1))
-      best_candidate <- candidates[which.max(candidate_scores)]
+      # If multiple candidates, use value analysis to resolve
+      best_candidate <- if (length(candidates) > 1) {
+        resolve_multiple_matches(df, candidates, std_col, matches)
+      } else {
+        candidates[1]
+      }
 
       mapping[[std_col]] <- best_candidate
       used_cols <- c(used_cols, best_candidate)
@@ -276,7 +496,11 @@ recognize_columns <- function(df, min_confidence = 0.7) {
         score <- matches[[best_candidate]]$score
         method <- matches[[best_candidate]]$method
         req_label <- if (is_required) "required" else "optional"
-        cli::cli_inform("Recognized {.field {best_candidate}} as {.field {std_col}} ({req_label}, score: {round(score, 2)}, method: {method})")
+        n_candidates <- length(candidates) + length(intersect(names(matches)[vapply(matches, function(m) {
+          !is.na(m$match) && m$match == std_col && m$score >= confidence_threshold
+        }, logical(1))], used_cols))
+        multi_label <- if (n_candidates > 1) paste0(" [", n_candidates, " candidates]") else ""
+        cli::cli_inform("Recognized {.field {best_candidate}} as {.field {std_col}} ({req_label}, score: {round(score, 2)}, method: {method}){multi_label}")
       }
     }
   }
@@ -322,5 +546,8 @@ box::export(
   recognize_columns,
   get_required_column_names,
   check_mapping_completeness,
-  string_similarity
+  string_similarity,
+  analyze_column_values,
+  score_candidate_values,
+  resolve_multiple_matches
 )
