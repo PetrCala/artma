@@ -76,7 +76,7 @@ map_chr <- function(.x, .f, ...) {
   } else if (is.function(.f)) {
     vapply(.x, .f, character(1), ..., USE.NAMES = FALSE)
   } else {
-    stop("`.f` must be a function or string")
+    stop("`.f` must be a function or string") # nolint
   }
 }
 
@@ -101,7 +101,7 @@ map_lgl <- function(.x, .f, ...) {
   if (is.function(.f)) {
     vapply(.x, .f, logical(1), ..., USE.NAMES = FALSE)
   } else {
-    stop("`.f` must be a function or formula")
+    stop("`.f` must be a function or formula") # nolint
   }
 }
 
@@ -236,7 +236,7 @@ digest <- function(object, algo = "xxhash64", ...) {
 #' @export
 edit_file <- function(path) {
   if (!file.exists(path)) {
-    stop(sprintf("File does not exist: %s", path))
+    stop(sprintf("File does not exist: %s", path)) # nolint
   }
   utils::file.edit(path)
   invisible(NULL)
