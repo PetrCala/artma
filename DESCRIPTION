@@ -46,7 +46,7 @@ Suggests:
     ivmodel (>= 1.9.0),
     knitr (>= 1.50),
     languageserver (>= 0.3.16),
-    maive (== 0.0.2.11),
+    MAIVE (== 0.0.2.11),
     mathjaxr (>= 1.8-0),
     optparse (>= 1.7.5),
     pkgbuild (>= 1.4.8),

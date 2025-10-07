@@ -45,7 +45,7 @@ maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2
 
   # Call the maive package function
   result <- tryCatch(
-    maive::maive( # nolint: namespace_linter.
+    MAIVE::maive(
       dat = dat,
       method = as.integer(method),
       weight = as.integer(weight),
