@@ -100,10 +100,12 @@ run_single_caliper <- function(t_stats, study_id, threshold = 1.96, width = 0.05
 #' @param widths *[numeric]* Vector of caliper widths to test.
 #' @param add_significance_marks *[logical]* Whether to add significance marks.
 #' @param round_to *[integer]* Number of decimal places.
+#' @param show_progress *[logical]* Whether to show progress indicator.
 #' @return *[data.frame]* Caliper test results.
 run_caliper_tests <- function(t_stats, study_id, thresholds = c(0, 1.96, 2.58),
                               widths = c(0.05, 0.1, 0.2),
-                              add_significance_marks = TRUE, round_to = 3L) {
+                              add_significance_marks = TRUE, round_to = 3L,
+                              show_progress = TRUE) {
   validate(
     is.numeric(t_stats),
     is.numeric(thresholds),
@@ -111,10 +113,27 @@ run_caliper_tests <- function(t_stats, study_id, thresholds = c(0, 1.96, 2.58),
   )
 
   results <- list()
+  total_tests <- length(thresholds) * length(widths)
+
+  # Show progress bar if requested and verbosity allows
+  verbosity <- getOption("artma.verbose", 3)
+  show_pb <- show_progress && verbosity >= 3 && total_tests >= 3
+
+  if (show_pb) {
+    cli::cli_progress_bar(
+      "Running Caliper tests",
+      total = total_tests,
+      format = "{cli::pb_spin} {cli::pb_current}/{cli::pb_total} tests [{cli::pb_elapsed}]"
+    )
+  }
 
   for (thresh in thresholds) {
     for (w in widths) {
       res <- run_single_caliper(t_stats, study_id, thresh, w, add_significance_marks)
+
+      if (show_pb) {
+        cli::cli_progress_update()
+      }
 
       est_formatted <- if (is.finite(res$estimate)) {
         est_str <- format_number(res$estimate, round_to)
@@ -144,6 +163,10 @@ run_caliper_tests <- function(t_stats, study_id, thresholds = c(0, 1.96, 2.58),
         n_below = res$n_below
       )
     }
+  }
+
+  if (show_pb) {
+    cli::cli_progress_done()
   }
 
   results
