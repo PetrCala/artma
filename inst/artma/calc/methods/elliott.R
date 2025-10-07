@@ -19,8 +19,10 @@ simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress
   show_pb <- show_progress && verbosity >= 3 && iterations >= 1000
 
   if (show_pb) {
+    cli::cli_inform("Pre-computing critical values for LCM test via Brownian bridge simulations")
+    Sys.sleep(0.1) # Brief pause so message is visible
     cli::cli_progress_bar(
-      "Simulating {iterations} Brownian bridge CDFs for LCM test",
+      "Simulating {iterations} iterations",
       total = iterations,
       format = "{cli::pb_spin} {cli::pb_current}/{cli::pb_total} | ETA: {cli::pb_eta}"
     )
