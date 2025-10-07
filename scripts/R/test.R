@@ -55,5 +55,5 @@ test <- function() {
   # )
 }
 
-test_column_recognition()
+test()
 # nolint end
