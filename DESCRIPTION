@@ -22,8 +22,6 @@ Imports:
     AER (>= 1.2-10),
     cli (>= 3.6.5),
     climenu (>= 0.1.0),
-    digest (>= 0.6.37),
-    glue (>= 1.8.0),
     ivmodel (>= 1.9.0),
     lintr (>= 3.2.0),
     lmtest (>= 0.9-40),
@@ -31,11 +29,8 @@ Imports:
     metafor (>= 4.8-0),
     NlcOptim (>= 0.6),
     plm (>= 2.6-3),
-    purrr (>= 1.1.0),
     rlang (>= 1.1.6),
     sandwich (>= 3.1-0),
-    stringr (>= 1.5.2),
-    usethis (>= 3.2.1),
     withr (>= 3.0.2),
     yaml (>= 2.3.10)
 Remotes:

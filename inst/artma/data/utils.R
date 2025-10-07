@@ -9,12 +9,15 @@ assign_na_col <- function(df, colname) {
 #' @param filter_fn *\[function\]* A function to filter the option definitions.
 #' @return *\[character\]* A vector of column names.
 get_standardized_colnames <- function(filter_fn = function(x) TRUE) {
-  box::use(artma / options / template[get_option_defs])
+  box::use(
+    artma / options / template[get_option_defs],
+    artma / libs / polyfills[keep, map_chr, str_remove]
+  )
   opt_path <- "data.colnames"
   defs <- get_option_defs(opt_path = opt_path)
-  defs <- purrr::keep(defs, filter_fn)
-  names <- purrr::map_chr(defs, "name")
-  stringr::str_remove(names, paste0("^", opt_path, "\\."))
+  defs <- keep(defs, filter_fn)
+  names <- map_chr(defs, "name")
+  str_remove(names, paste0("^", opt_path, "\\."))
 }
 
 #' @title Get required columns
@@ -148,13 +151,10 @@ standardize_column_names <- function(df, auto_detect = TRUE) {
 raise_invalid_data_type_error <- function(data_type) {
   box::use(artma / const[CONST])
 
-  cli::cli_abort(
-    glue::glue(
-      cli::format_inline("{CONST$PACKAGE_NAME} does not currently support the following data type {.val {data_type}}."),
-      cli::format_inline("Supported data types are {.val {CONST$DATA$TYPES}}."),
-      .sep = "\n"
-    )
-  )
+  cli::cli_abort(c(
+    cli::format_inline("{CONST$PACKAGE_NAME} does not currently support the following data type {.val {data_type}}."),
+    cli::format_inline("Supported data types are {.val {CONST$DATA$TYPES}}.")
+  ))
 }
 
 

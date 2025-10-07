@@ -22,13 +22,13 @@ parse_condition <- function(cond_expr, env = parent.frame()) {
   if (is.character(cond_expr)) {
     cond_call <- tryCatch(rlang::parse_expr(cond_expr), error = function(e) NULL)
     if (is.null(cond_call))
-      return(glue::glue("Condition did not hold: {cond_expr}"))
+      return(paste0("Condition did not hold: ", cond_expr))
   } else {
     cond_call <- cond_expr
   }
 
   if (!rlang::is_call(cond_call))
-    return(glue::glue("Condition did not hold: {deparse(cond_expr)}"))
+    return(paste0("Condition did not hold: ", deparse(cond_expr)))
 
   # Extract the function name and argument
   fn_name <- as.character(cond_call[[1]]) # e.g. "is.character"
@@ -52,9 +52,7 @@ parse_condition <- function(cond_expr, env = parent.frame()) {
     expected_type <- fn_name
   }
 
-  glue::glue(
-    "'{arg_label}' should be {expected_type}. Got: {arg_value}."
-  )
+  sprintf("'%s' should be %s. Got: %s.", arg_label, expected_type, arg_value)
 }
 
 #' Validate Conditions
@@ -90,8 +88,8 @@ validate <- function(...) {
 
         if (!is.logical(cond) || length(cond) != 1) {
           cli::cli_abort(
-            message = glue::glue(
-              "Condition must be a single logical value (TRUE or FALSE): {deparse(cond_expr)}"
+            message = sprintf(
+              "Condition must be a single logical value (TRUE or FALSE): %s", deparse(cond_expr)
             ),
             .subclass = "validation_error"
           )
@@ -127,7 +125,12 @@ validate_columns <- function(df, columns) {
   }
 
   if (!all(columns %in% colnames(df))) {
-    cli::cli_abort(glue::glue_collapse("Invalid column names:", glue::glue_collapse(colnames(df), sep = ", ")), "Expected to contain:", paste(columns, sep = ", "))
+    cli::cli_abort(c(
+      "Invalid column names:",
+      paste(colnames(df), collapse = ", "),
+      "Expected to contain:",
+      paste(columns, collapse = ", ")
+    ))
   }
 }
 
@@ -173,10 +176,10 @@ assert <- function(condition_to_validate, msg = NULL) {
 #' @export
 assert_options_template_exists <- function(path) {
   if (!file.exists(path)) {
-    cli::cli_abort(glue::glue("The options template file does not exist under the following path: '{path}'."))
+    cli::cli_abort(sprintf("The options template file does not exist under the following path: '%s'.", path))
   }
   if (!grepl(".yaml$|.yml$", path)) {
-    cli::cli_abort(glue::glue("The path to the template file is invalid. Reason: Missing the .yaml suffix. Got: {path}."))
+    cli::cli_abort(sprintf("The path to the template file is invalid. Reason: Missing the .yaml suffix. Got: %s.", path))
   }
   invisible(NULL)
 }

@@ -45,7 +45,7 @@ get_pkg_path <- function() {
     return(dev_candidates[[1]])
   }
 
-  prod_candidates <- box_paths[dir.exists(box_paths) & grepl(glue::glue("{package_name}$"), box_paths)]
+  prod_candidates <- box_paths[dir.exists(box_paths) & grepl(paste0(package_name, "$"), box_paths)]
   if (!rlang::is_empty(prod_candidates)) {
     return(prod_candidates[[1]])
   }

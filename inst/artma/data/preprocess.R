@@ -88,14 +88,17 @@ verify_variable_order <- function(df) {
 #' @return *\[data.frame\]* The data frame with the empty rows removed
 #' @keywords internal
 remove_empty_rows <- function(df) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(
+    artma / libs / utils[get_verbosity],
+    artma / libs / polyfills[map_lgl]
+  )
 
   if (get_verbosity() >= 4) {
     cli::cli_inform("Removing empty rows…")
   }
 
   required_colnames <- get_required_colnames()
-  na_rows <- which(purrr::map_lgl(seq_len(nrow(df)), ~ all(is.na(df[., required_colnames, drop = FALSE]))))
+  na_rows <- which(map_lgl(seq_len(nrow(df)), ~ all(is.na(df[., required_colnames, drop = FALSE]))))
   if (length(na_rows)) {
     df <- df[-na_rows, ]
     cli::cli_alert_success("Removed {.val {length(na_rows)}} empty rows.")

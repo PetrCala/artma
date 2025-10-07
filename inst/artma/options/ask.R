@@ -44,7 +44,7 @@ ask_for_existing_options_file_name <- function(
 
   file_str <- if (isTRUE(multiple)) pluralize("name") else "name"
 
-  prompt <- prompt %||% glue::glue("Please select the user options file {file_str} you would like to use.")
+  prompt <- prompt %||% sprintf("Please select the user options file %s you would like to use.", file_str)
 
   user_options_file_names <- options.list(options_dir = options_dir) # nolint: box_usage_linter.
   if (length(user_options_file_names) == 0) {
@@ -99,7 +99,7 @@ ask_for_option_value <- function(
   }
 
   if (is.character(option_value)) {
-    option_value <- stringr::str_trim(option_value, side = "both")
+    option_value <- trimws(option_value, which = "both")
     option_value <- trim_quotes(option_value)
   }
 
@@ -144,7 +144,7 @@ ask_for_options_to_modify <- function() {
       cli::cli_h3("Applying the following options:")
       cli::cli_ul()
       for (opt_name in names(options_list)) {
-        opt_str <- glue::glue("{CONST$STYLES$OPTIONS$NAME(opt_name)}: {CONST$STYLES$OPTIONS$VALUE(options_list[[opt_name]])}")
+        opt_str <- paste0(CONST$STYLES$OPTIONS$NAME(opt_name), ": ", CONST$STYLES$OPTIONS$VALUE(options_list[[opt_name]]))
         cli::cli_li(opt_str)
       }
     } else {
@@ -171,7 +171,7 @@ ask_for_options_to_modify <- function() {
     if (is.null(option_value)) next
 
     options_list[[option_name]] <- option_value
-    opt_str <- glue::glue("{CONST$STYLES$OPTIONS$NAME(option_name)}: {CONST$STYLES$OPTIONS$VALUE(option_value)}")
+    opt_str <- paste0(CONST$STYLES$OPTIONS$NAME(option_name), ": ", CONST$STYLES$OPTIONS$VALUE(option_value))
     cli::cli_alert_success("Option added: {.emph {opt_str}}")
     cli::cat_line()
   }

@@ -169,7 +169,7 @@ prompt_user_for_option_value <- function(opt) {
     if (is.null(opt$prompt_function)) {
       cli::cli_abort(cli::format_inline("Prompt function not provided for option {.strong {opt$name}}."))
     }
-    box_import_str <- glue::glue("box::use(prompts = artma / options / prompts[{opt$prompt_function}])")
+    box_import_str <- sprintf("box::use(prompts = artma / options / prompts[%s])", opt$prompt_function)
     tryCatch(
       {
         eval(parse(text = box_import_str))

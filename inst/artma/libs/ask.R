@@ -8,7 +8,7 @@ ask_for_overwrite_permission <- function(file_path, action_name = "the operation
   if (file.exists(file_path)) {
     if (!is.null(should_overwrite)) {
       if (!should_overwrite) {
-        cli::cli_abort(glue::glue("Aborting {action_name}."))
+        cli::cli_abort(sprintf("Aborting %s.", action_name))
       }
       return(TRUE)
     }
@@ -22,7 +22,7 @@ ask_for_overwrite_permission <- function(file_path, action_name = "the operation
       prompt = cli::format_inline("A file already exists under the path {.path {file_path}}. Do you wish to overwrite the contents of this file?")
     )
     if (overwrite_permitted != "Yes") {
-      cli::cli_abort(glue::glue("Aborting {action_name}."))
+      cli::cli_abort(sprintf("Aborting %s.", action_name))
     }
   }
   return(TRUE)

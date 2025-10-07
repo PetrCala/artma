@@ -80,7 +80,7 @@ invoke_runtime_methods <- function(methods, df, ...) {
     invalid_methods <- setdiff(deduped_methods, supported_methods)
 
     if (length(invalid_methods) > 0L) {
-      selected_methods <- glue::glue_collapse(as.character(invalid_methods), sep = ", ")
+      selected_methods <- paste(as.character(invalid_methods), collapse = ", ")
       cli::cli_abort(c(
         "x" = "Invalid runtime methods selected: {.val {selected_methods}}",
         "i" = "To see a list of available methods, run {.code artma::methods.list()}"
