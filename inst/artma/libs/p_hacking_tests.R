@@ -537,7 +537,10 @@ run_p_hacking_tests <- function(df, options) {
           method = options$maive_method,
           weight = options$maive_weight,
           instrument = options$maive_instrument,
-          studylevel = options$maive_studylevel
+          studylevel = options$maive_studylevel,
+          SE = options$maive_se,
+          AR = options$maive_ar,
+          first_stage = options$maive_first_stage
         )
       }, error = function(e) {
         cli::cli_warn("MAIVE estimation failed: {e$message}")
