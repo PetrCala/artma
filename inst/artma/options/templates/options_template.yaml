@@ -212,6 +212,30 @@ methods:
       help: |
         Number of posterior draws to request from the hierarchical model.
 
+  exogeneity_tests:
+    iv_instrument:
+      type: "enum: automatic|1/sqrt(n_obs)|1/n_obs|1/n_obs^2|log(n_obs)"
+      default: "automatic"
+      help: |
+        Instrument to use for the instrumental variable (IV) regression.
+        Use {.strong automatic} to automatically select the best instrument
+        based on diagnostics (R-squared, weak instruments, Wu-Hausman, Sargan).
+        Alternatively, specify a specific instrument formula involving n_obs.
+
+    puniform_alpha:
+      type: "numeric"
+      default: 0.05
+      help: |
+        Significance level for the p-uniform* selection model.
+        Defaults to 0.05 (5%).
+
+    puniform_method:
+      type: "enum: ML|P"
+      default: "ML"
+      help: |
+        Estimation method for p-uniform*.
+        Use {.strong ML} for maximum likelihood or {.strong P} for method of moments.
+
 output:
   number_of_decimals:
     type: "integer"
