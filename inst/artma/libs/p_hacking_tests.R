@@ -155,26 +155,51 @@ build_caliper_summary <- function(caliper_results, options) {
     return(data.frame())
   }
 
-  rows <- list()
-  for (res in caliper_results) {
-    row_label <- paste0("Width ", res$width, ", Threshold ", res$threshold)
-    rows[[length(rows) + 1]] <- list(
-      Test = paste0(row_label, " - Estimate"),
-      Value = res$estimate
-    )
-    rows[[length(rows) + 1]] <- list(
-      Test = paste0(row_label, " - SE"),
-      Value = res$std_error
-    )
-    rows[[length(rows) + 1]] <- list(
-      Test = paste0(row_label, " - N (above/below)"),
-      Value = paste0(res$n_above, "/", res$n_below)
-    )
+  # Extract unique thresholds and widths
+  thresholds <- unique(vapply(caliper_results, function(x) x$threshold, numeric(1)))
+  widths <- unique(vapply(caliper_results, function(x) x$width, numeric(1)))
+
+  # Sort them
+  thresholds <- sort(thresholds)
+  widths <- sort(widths)
+
+  # Initialize result matrix
+  n_rows <- length(widths) * 3  # 3 rows per width: Estimate, SE, n total
+  result <- matrix("", nrow = n_rows, ncol = length(thresholds) + 1)
+
+  # Column names
+  col_names <- c("", paste("Threshold", thresholds))
+
+  # Build matrix
+  row_idx <- 1
+  for (w in widths) {
+    # Row 1: Estimates
+    result[row_idx, 1] <- paste0("Caliper width ", w, " - Estimate")
+    # Row 2: SEs
+    result[row_idx + 1, 1] <- paste0("Caliper width ", w, " - SE")
+    # Row 3: n total
+    result[row_idx + 2, 1] <- paste0("Caliper width ", w, " - n total")
+
+    for (col_idx in seq_along(thresholds)) {
+      thresh <- thresholds[col_idx]
+      # Find matching result
+      res <- caliper_results[[which(
+        vapply(caliper_results, function(x) x$width == w && x$threshold == thresh, logical(1))
+      )]]
+
+      result[row_idx, col_idx + 1] <- res$estimate
+      result[row_idx + 1, col_idx + 1] <- res$std_error
+      result[row_idx + 2, col_idx + 1] <- as.character(res$n_above + res$n_below)
+    }
+
+    row_idx <- row_idx + 3
   }
 
-  summary <- do.call(rbind, lapply(rows, as.data.frame, stringsAsFactors = FALSE))
-  rownames(summary) <- NULL
-  summary
+  # Convert to data frame
+  df <- as.data.frame(result, stringsAsFactors = FALSE)
+  colnames(df) <- col_names
+
+  df
 }
 
 # MAIVE utilities ----------------------------------------------------------
@@ -598,6 +623,21 @@ build_elliott_summary <- function(elliott_tests, pvalues, options) {
     check.names = FALSE
   )
 
+  # Add observation count rows
+  n_total <- length(pvalues)
+  n_010 <- sum(pvalues <= 0.1, na.rm = TRUE)
+  n_005 <- sum(pvalues <= 0.05, na.rm = TRUE)
+  n_01_range <- sum(pvalues >= 0 & pvalues <= 0.1, na.rm = TRUE)
+  n_005_range <- sum(pvalues >= 0 & pvalues <= 0.05, na.rm = TRUE)
+
+  obs_rows <- data.frame(
+    Test = c("Observations in [0, 0.1]", "Observations in [0, 0.05]", "Observations <= 0.1"),
+    `P-value` = c(as.character(n_01_range), as.character(n_005_range), as.character(n_010)),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+
+  summary <- rbind(summary, obs_rows)
   rownames(summary) <- NULL
   summary
 }

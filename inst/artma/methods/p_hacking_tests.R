@@ -21,8 +21,8 @@ p_hacking_tests <- function(df) {
 
   # Caliper options
   include_caliper <- opt$include_caliper %||% TRUE
-  caliper_thresholds <- opt$caliper_thresholds %||% c(0, 1.96, 2.58)
-  caliper_widths <- opt$caliper_widths %||% c(0.05, 0.1, 0.2)
+  caliper_thresholds <- opt$caliper_thresholds %||% c(1.645, 1.96, 2.58)
+  caliper_widths <- opt$caliper_widths %||% c(0.05, 0.1, 0.15)
 
   # Elliott options
   include_elliott <- opt$include_elliott %||% TRUE
@@ -128,7 +128,7 @@ p_hacking_tests <- function(df) {
       cli::cli_text("Tests for discontinuities in t-statistic distributions around significance thresholds.")
 
       caliper_lines <- utils::capture.output(
-        print(results$caliper, row.names = TRUE) # nolint: undesirable_function_linter.
+        print(results$caliper, row.names = FALSE) # nolint: undesirable_function_linter.
       )
       cli::cli_verbatim(caliper_lines)
       cli::cli_text("")

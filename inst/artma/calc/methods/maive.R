@@ -28,10 +28,10 @@ maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2
     is.numeric(studylevel)
   )
 
-  # Check if maive package is available
-  if (!requireNamespace("maive", quietly = TRUE)) {
+  # Check if MAIVE package is available
+  if (!requireNamespace("MAIVE", quietly = TRUE)) {
     cli::cli_abort(c(
-      "Package {.pkg maive} is required for MAIVE estimation.",
+      "Package {.pkg MAIVE} is required for MAIVE estimation.",
       "i" = "Install with: devtools::install_github('PetrCala/maive@0.0.2.11')"
     ))
   }
@@ -43,7 +43,7 @@ maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2
     cli::cli_abort("Missing required columns for MAIVE: {.field {missing_cols}}")
   }
 
-  # Call the maive package function
+  # Call the MAIVE package function
   result <- tryCatch(
     MAIVE::maive(
       dat = dat,
