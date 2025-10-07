@@ -30,7 +30,7 @@ test <- function() {
     options_file_name = options_file_name,
     user_input = list(
       "verbose" = get_verbosity(),
-      "cache.use_cache" = TRUE,
+      "cache.use_cache" = FALSE,  # Disable cache to see progress bars
       "data.source_path" = mock_df_path,
       "data.na_handling" = "stop",
       "data.config_setup" = "auto" # "auto" will recognize columns automatically, "manual" for interactive

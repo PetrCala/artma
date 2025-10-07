@@ -71,7 +71,7 @@ run_single_caliper <- function(t_stats, study_id, threshold = 1.96, width = 0.05
 
   # Run regression (suppress clubSandwich override messages)
   model <- stats::lm(significant ~ t_stat - 1, data = df_subset)
-  model_coefs <- suppressMessages({
+  model_coefs <- suppressPackageStartupMessages(suppressMessages({
     tryCatch(
       {
         lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const", cluster = df_subset$study))
@@ -80,7 +80,7 @@ run_single_caliper <- function(t_stats, study_id, threshold = 1.96, width = 0.05
         lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const"))
       }
     )
-  })
+  }))
 
   estimate <- model_coefs["t_stat", "Estimate"]
   std_error <- model_coefs["t_stat", "Std. Error"]
@@ -114,6 +114,19 @@ run_caliper_tests <- function(t_stats, study_id, thresholds = c(0, 1.96, 2.58),
     is.numeric(widths)
   )
 
+  # Preload packages to suppress clubSandwich S3 override messages
+  # clubSandwich is loaded when sandwich is loaded and overrides methods
+  invisible(suppressPackageStartupMessages({
+    suppressMessages({
+      requireNamespace("sandwich", quietly = TRUE)
+      requireNamespace("lmtest", quietly = TRUE)
+      # Force clubSandwich to load if available (so override happens quietly)
+      if (requireNamespace("clubSandwich", quietly = TRUE)) {
+        loadNamespace("clubSandwich")
+      }
+    })
+  }))
+
   results <- list()
   total_tests <- length(thresholds) * length(widths)
 
@@ -122,10 +135,12 @@ run_caliper_tests <- function(t_stats, study_id, thresholds = c(0, 1.96, 2.58),
   show_pb <- show_progress && verbosity >= 3 && total_tests >= 3
 
   if (show_pb) {
+    cli::cli_inform("Running Caliper tests to detect discontinuities around significance thresholds")
+    Sys.sleep(0.1)  # Brief pause so message is visible
     cli::cli_progress_bar(
-      "Running {total_tests} Caliper test{?s} across thresholds and widths",
+      "Computing {total_tests} test{?s}",
       total = total_tests,
-      format = "{cli::pb_spin} {cli::pb_current}/{cli::pb_total} tests [{cli::pb_elapsed}]"
+      format = "{cli::pb_spin} {cli::pb_current}/{cli::pb_total} [{cli::pb_elapsed}]"
     )
   }
 
