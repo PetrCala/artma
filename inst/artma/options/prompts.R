@@ -25,7 +25,7 @@ prompt_winsorization_level <- function(opt, ...) {
   selected <- climenu::select(
     choices = names(choices),
     prompt = "Select winsorization level for effect and standard error variables",
-    selected = 2  # "1% (default)"
+    selected = 2 # "1% (default)"
   )
 
   if (rlang::is_empty(selected)) {
@@ -37,7 +37,7 @@ prompt_winsorization_level <- function(opt, ...) {
   cli::cli_alert_success("Selected winsorization level: {CONST$STYLES$OPTIONS$VALUE(selected_value)}")
   cli::cat_line()
 
-  return(selected_value)
+  selected_value
 }
 
 box::export(
