@@ -155,7 +155,7 @@ test_that("smart_read_csv handles NA values correctly", {
     "name,age,city",
     "Alice,30,NYC",
     "Bob,NA,LA",
-    "Charlie,,"  # Empty city
+    "Charlie,," # Empty city
   )
   tmp_file <- create_temp_csv(csv_content)
   on.exit(unlink(tmp_file))
@@ -169,7 +169,7 @@ test_that("smart_read_csv handles NA values correctly", {
 
 test_that("smart_read_csv handles quoted fields", {
   csv_content <- c(
-    'name,description',
+    "name,description", # nolint
     '"Alice","Works in tech, enjoys coding"',
     '"Bob","Likes music, plays guitar"'
   )
@@ -278,7 +278,7 @@ test_that("smart_read_csv with auto-detection works end-to-end", {
     '"study";"effect";"se";"n_obs"',
     '"Study A";10.5;2.3;100',
     '"Study B";8.2;1.8;150',
-    '"Study C";;0.9;200'  # Missing effect
+    '"Study C";;0.9;200' # Missing effect
   )
   tmp_file <- create_temp_csv(csv_content)
   on.exit(unlink(tmp_file))

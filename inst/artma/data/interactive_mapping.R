@@ -54,7 +54,7 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
   # Ask for each missing required column
   for (std_col in missing_required) {
     pattern_def <- patterns[[std_col]]
-    help_text <- pattern_def$help %||% std_col
+    help_text <- if (is.null(pattern_def$help)) std_col else pattern_def$help
 
     cli::cli_h2("Map column: {.field {std_col}}")
     cli::cli_inform("Examples: {.val {pattern_def$keywords[1:min(3, length(pattern_def$keywords))]}}")
@@ -283,10 +283,6 @@ column_mapping_workflow <- function(
 
   mapping
 }
-
-
-# Helper for NULL coalescing
-`%||%` <- function(x, y) if (is.null(x)) y else x
 
 
 box::export(
