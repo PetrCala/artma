@@ -1,441 +1,384 @@
-######################### NON-LINEAR TESTS #########################
+######################### RELAXING THE EXOGENEITY ASSUMPTION #########################
 
-
-#' Extract the four coefficients from linear test in the order
-#' - Intercept, Intercept SE
-#' Assume a very simplitic form of the non-linear objects, where the coefficients
-#' are the the first two positions of the object.
+#' Extract the four coefficients from an exo test in the order
+#' - Pub bias, Pub bias SE, Effect, Effect SE
+#' Input a 2 by 2 matrix, where in the first row, you have the effect coefficients,
+#'  and in the second row, the pub bias coefficients.
 #'
-#' @param nonlinear_object Non-linear object from the linear test
+#' @param exo_object [matrix] Object from the exo tests, should be matrix (M(2,2))
 #' @param nobs_total [numeric] Number of observations used to estimate the model. Usually the number
 #'  of rows in the main data frame.
-#' @param nobs_model [numeric] Number of observations that are associated with the particular model.
-#'  Optional, defaults to "".
-#' @param nonlinear_object Non-linear object from the linear test
 #' @param add_significance_marks [logical] If TRUE, calculate significance levels and mark these in the tables.
 #'  Defaults to T.
+#' @param effect_present [bool] If T, the method returns effect coefs. Defaults to T
 #' @param pub_bias_present [bool] If T, the method returns publication bias coefs too.
-#'  Deafults to F.
+#'  Deafults to T.
 #' @param verbose_coefs [bool] If F, return coefs as numeric. If F, return
 #'  standard errors as strings wrapped in parentheses. Defaults to T.
-#' @return [vector] - Vector of len 6, with the pub bias coefs, effect coefs, and two nobs information coefs.
-extractNonlinearCoefs <- function(nonlinear_object, nobs_total, nobs_model = "",
-                                  add_significance_marks = T, pub_bias_present = F, verbose_coefs = T, ...) {
-  # Input validation
+#' @return [vector] The four desired coefficients, which are, in order:
+#'    - Pub bias estimate
+#'    - Pub bias standard error
+#'    - Mean effect estimate
+#'    - Mean effect standard error
+extractExoCoefs <- function(exo_object, total_obs, add_significance_marks = T,
+                            effect_present = T, pub_bias_present = T, verbose_coefs = T) {
+  # Validate input
   stopifnot(
+    is.numeric(total_obs),
     is.logical(add_significance_marks),
+    is.logical(effect_present),
     is.logical(pub_bias_present),
-    is.logical(verbose_coefs)
+    is.logical(verbose_coefs),
+    effect_present || pub_bias_present # At least one
   )
   # Extract coefficients
-  effect_coef <- round(as.numeric(nonlinear_object[1, 1]), 3)
-  effect_se <- round(as.numeric(nonlinear_object[1, 2]), 3)
+  effect_coef <- ifelse(effect_present,
+    round(as.numeric(exo_object[1, 1]), 3),
+    ""
+  )
+  effect_se <- ifelse(effect_present,
+    round(as.numeric(exo_object[1, 2]), 3),
+    ""
+  )
+  pub_coef <- ifelse(pub_bias_present,
+    round(as.numeric(exo_object[2, 1]), 3),
+    ""
+  )
+  pub_se <- ifelse(pub_bias_present,
+    round(as.numeric(exo_object[2, 2]), 3),
+    ""
+  )
+  # Add significance marks
   if (add_significance_marks) {
-    effect_coef <- add_asterisks(effect_coef, effect_se)
-  }
-  if (pub_bias_present) {
-    pub_coef <- round(as.numeric(nonlinear_object[2, 1]), 3)
-    pub_se <- round(as.numeric(nonlinear_object[2, 2]), 3)
-    if (add_significance_marks) {
+    if (effect_present) {
+      effect_coef <- add_asterisks(effect_coef, effect_se)
+    }
+    if (pub_bias_present) {
       pub_coef <- add_asterisks(pub_coef, pub_se)
     }
   }
   # Wrap the standard errors in parenthesis for cleaner presentation
   if (verbose_coefs) {
-    effect_se <- paste0("(", effect_se, ")")
+    if (effect_present) {
+      effect_se <- paste0("(", effect_se, ")")
+    }
     if (pub_bias_present) {
       pub_se <- paste0("(", pub_se, ")")
     }
   }
   # Group and return quietly
-  if (pub_bias_present) {
-    nonlin_coefs <- c(pub_coef, pub_se, effect_coef, effect_se, nobs_total, nobs_model) # First two for pub bias
-  } else {
-    nonlin_coefs <- c("", "", effect_coef, effect_se, nobs_total, nobs_model)
-  }
-  invisible(nonlin_coefs)
-}
-
-###### PUBLICATION BIAS - WAAP (Ioannidis et al., 2017) ######
-
-getWaapResults <- function(data, ...) {
-  WLS_FE_avg <- sum(data$effect / data$se) / sum(1 / data$se)
-  WAAP_bound <- abs(WLS_FE_avg) / 2.8
-  WAAP_data <- data[data$se < WAAP_bound, ] # Only adequatedly powered
-  WAAP_reg <- lm(formula = effect ~ -precision, data = WAAP_data)
-  WAAP_reg_cluster <- coeftest(WAAP_reg, vcov = vcovHC(WAAP_reg, type = "HC0", cluster = c(data$study_id)))
-  nobs_total <- nrow(data)
-  nobs_model <- nrow(WAAP_data)
-  WAAP_coefs <- extractNonlinearCoefs(WAAP_reg_cluster, nobs_total, nobs_model, ...)
-  invisible(WAAP_coefs)
-}
-
-###### PUBLICATION BIAS - TOP10 method (Stanley et al., 2010) ######
-
-
-getTop10Results <- function(data, ...) {
-  T10_bound <- quantile(data$precision, probs = 0.9) # Setting the 90th quantile bound
-  T10_data <- data[data$precision > T10_bound, ] # Only Top10 percent of obs
-  T10_reg <- lm(formula = effect ~ -precision, data = T10_data) # Regression using the filtered data
-  T10_reg_cluster <- coeftest(T10_reg, vcov = vcovHC(T10_reg, type = "HC0", cluster = c(data$study_id)))
-  nobs_total <- nrow(data)
-  nobs_model <- nrow(T10_data)
-  T10_coefs <- extractNonlinearCoefs(T10_reg_cluster, nobs_total, nobs_model, ...)
-  invisible(T10_coefs)
+  exo_coefs <- c(pub_coef, pub_se, effect_coef, effect_se, total_obs)
+  invisible(exo_coefs)
 }
 
 
-###### PUBLICATION BIAS - Stem-based method in R (Furukawa, 2019) #####
-
-#' Compute STEM-based method coefficients from input data
+#' Identify the best instrument(s) from a set of instruments based on IV regression diagnostics.
 #'
-#' This function computes coefficients using the STEM-based method from the \code{stem}
-#' package (available at \url{https://github.com/Chishio318/stem-based_method}). The input data
-#' should include the necessary columns for the STEM method, and the output will be a numeric
-#' vector containing the estimated coefficients.
+#' This function takes in a data frame, a list of potential instruments, and a vector of verbose names for each instrument.
+#' The function then runs IV regressions using each of the potential instruments, and returns the instrument(s)
+#' with the best performance based on four different diagnostics: R-squared, weak instruments test, Wu-Hausman test,
+#' and Sargan test. If multiple instruments are tied for the best performance, all of them will be returned.
+#' The function also prints the identified best instrument(s).
 #'
-#' @param data [data.frame] A data frame containing the necessary columns for the STEM-based method
-#' @param script_path [character] Full path to the source script.
-#' @param representative_sample [character] Representative data sample to choose. One of
-#'  "medians", "first", NULL. If set to NULL, use the whole data set. Defaults to "medians".
-#' @param print_plot [bool] If TRUE, print out the STEM plot.
-#' @param theme [character] Theme for the graphics. Defaults to "blue".
-#' @param export_graphics [bool] If TRUE, export the STEM plot.
-#' @param export_path [character] Path to the export folder. Deafults to ./results/graphic.
-#' @param graph_scale [numeric] Numeric, scale the graph by this number. Defaults to 5.
-#' @param legend_pos [character] String specifying where the legend should be placed in the graph.
-#'  Defaults to 'topleft'.
-#' @param ... Additional arguments to be passed to the \code{extractNonlinearCoefs} function
-#' for formatting the output.
-#'
-#' @return A numeric vector containing the estimated coefficients for the STEM-based method
-#' in the usual format.
-#'
-#' @import stem_method_master_thesis_cala.R
-getStemResults <- function(
-    data,
-    script_path,
-    representative_sample = "medians",
-    print_plot = T,
-    theme = "blue",
-    export_graphics = T,
-    export_path = "./results/graphic",
-    graph_scale = 5,
-    legend_pos = "topleft",
-    ...) {
-  # Ensure that 'representative_sample' is a valid value
-  valid_values <- c("medians", "first", NA)
-  if (!representative_sample %in% valid_values) {
-    valid_values_str <- paste(valid_values, collapse = ", ")
-    stop(glue("'representative_sample' must be one of {valid_values_str}."))
-  }
-
-  # Subset the data to the representative sample only
-  stem_data <- switch(as.character(representative_sample),
-    "medians" = list(
-      effect = getMedians(data, "effect"),
-      se = getMedians(data, "se")
-    ),
-    "first" = list(
-      effect = getFirst(data, "effect"),
-      se = getFirst(data, "se")
-    ),
-    "NA" = list(
-      effect = data$effect,
-      se = data$se
-    ),
-    NULL
-  )
-  if (!is(stem_data, "list")) {
-    stop("The STEM method data selection switch failed to assign a value")
-  }
-
-  source(script_path) # github.com/Chishio318/stem-based_method
-
-  stem_param <- c(
-    10^(-4), # Tolerance - set level of sufficiently small stem to determine convergence
-    10^3 # max_N_count - set maximum number of iteration before termination
-  )
-
-  # Estimation
-  est_stem <- stem(stem_data$effect, stem_data$se, stem_param)$estimates # Actual esimation
-  # Stem plot
-  funnel_stem_call <- bquote(
-    stem_funnel(stem_data$effect, stem_data$se, est_stem, theme = .(theme), legend_pos = .(legend_pos))
-  )
-  # Print and export the plot
-  if (print_plot) {
-    eval(funnel_stem_call)
-  }
-  if (export_graphics) {
-    stopifnot(is.character(export_path), length(export_path) > 0)
-    validateFolderExistence(export_path)
-    stem_path <- paste0(export_path, "/stem.png")
-    hardRemoveFile(stem_path)
-    png(stem_path, width = 403 * graph_scale, height = 371 * graph_scale, res = 250)
-    eval(funnel_stem_call)
-    dev.off()
-  }
-  # Save results
-  nobs_total <- length(stem_data$effect)
-  stem_coefs <- extractNonlinearCoefs(est_stem, nobs_total, ...)
-  return(stem_coefs)
-}
-
-
-###### PUBLICATION BIAS - FAT-PET hierarchical in R ######
-
-#' Compute hierarchical linear model coefficients from input data
-#'
-#' This function computes hierarchical linear model coefficients from input data using
-#' the \code{rhierLinearModel} function from the \code{bayesm} package. It first organizes
-#' the data by study and creates a list of regression data for each study. It then runs the
-#' hierarchical linear model using default settings and extracts the estimated coefficients.
-#'
-#' @param data A data frame containing the necessary columns for the hierarchical linear model
-#' @param ... Additional arguments to be passed to the \code{extractNonlinearCoefs} function
-#' for formatting the output.
-#'
-#' @return A numeric vector containing the estimated coefficients for the hierarchical linear
-#' model in the usual format.
-#'
-#' @import bayesm
-getHierResults <- function(data, ...) {
-  study_levels_h <- levels(as.factor(data$study_name))
-  nreg_h <- length(study_levels_h)
-  regdata_h <- NULL
-  for (i in 1:nreg_h) {
-    filter <- data$study_name == study_levels_h[i] # T/F vector identifying if the observation is from the i-th study
-    y <- data$effect[filter] # Effects from the i-th study
-    X <- cbind(
-      1,
-      data$se[filter]
-    )
-    regdata_h[[i]] <- list(y = y, X = X)
-  }
-  Data_h <- list(regdata = regdata_h)
-  Mcmc_h <- list(R = 6000)
-
-  # Run the model silently
-  quiet(
-    out_h <- bayesm::rhierLinearModel(
-      Data = Data_h,
-      Mcmc = Mcmc_h
-    ),
-  )
-
-  # Save results
-  quiet(
-    hier_raw_coefs <- summary(out_h$Deltadraw)
-  )
-  nobs_total <- nrow(data)
-  hier_coefs <- extractNonlinearCoefs(hier_raw_coefs, nobs_total, ...)
-  invisible(hier_coefs)
-}
-
-###### PUBLICATION BIAS - Selection model (Andrews & Kasy, 2019) ######
-
-#' Estimate the Selection Model and extract the coefficients for Effect and its SE
-#'  - Source: https://maxkasy.github.io/home/metastudy/
-#'
-#' This function computes selection model coefficients from input data using
-#' the \code{metastudies_estimation} function from the \code{selection_model_master_thesis_cala.R}
-#' package. It extracts the estimated effect and publication bias, as well as their
-#' standard errors, and returns them as a vector..
-#'
-#' @param input_data A data frame containing the necessary columns for the selection model
-#' @param script_path Full path to the source script.
-#' @param cutoffs A numeric vector of cutoff values for computing the selection model
-#' coefficients. The default is \code{c(1.960)}, corresponding to a 95% confidence interval.
-#' @param symmetric A logical value indicating whether to use the symmetric or asymmetric
-#' selection model. The default is \code{FALSE}, indicating the asymmetric model.
-#' @param modelmu A character string indicating the type of model to use for the mean
-#' effect estimate. The default is \code{"normal"}, corresponding to a normal distribution.
-#' Another option is \code{"t"}, corresponding to a t-distribution.
-#' @param ... Additional arguments to be passed to the \code{extractNonlinearCoefs} function
-#' for formatting the output.
-#'
-#' @return A numeric vector containing the estimated effect and publication bias, as well
-#' as their standard errors, in the usual format.
-#'
-#' @import selection_model_master_thesis_cala.R
-getSelectionResults <- function(data, script_path, cutoffs = c(1.960),
-                                symmetric = F, modelmu = "normal", ...) {
-  # Read the source script
-  source(script_path)
-  # Validate input
-  stopifnot(all(cutoffs %in% c(1.645, 1.960, 2.576))) # Cutoffs
-  stopifnot(modelmu %in% c("normal", "t")) # Model
-  # Validate that the necessary columns are present
-  required_cols <- getDefaultColumns()
-  stopifnot(all(required_cols %in% names(data)))
-  # Extract winsorized estimates, standard errors
-  sel_X <- data$effect # Effect - Winsorized
-  sel_sigma <- data$se # SE - Winsorized
-  # Handle argument
-  all_params <- list(
-    X = sel_X,
-    sigma = sel_sigma,
-    cutoffs = cutoffs,
-    symmetric = symmetric,
-    model = modelmu
-  )
-  estimates <- do.call(
-    metastudies_estimation,
-    all_params
-  )
-  # Extract coefficients
-  estimates_psi <- estimates$Psihat
-  estimates_se <- estimates$SE
-  estimates_vec <- c(
-    estimates_psi[1], # Effect
-    estimates_se[1], # Effect SE
-    estimates_psi[2], # Pub Bias
-    estimates_se[2] # Pub Bias SE
-  )
-  estimates_mat <- matrix(estimates_vec, nrow = 2, ncol = 2, byrow = TRUE)
-  # Extract the coefficients and return as a vector
-  nobs_total <- nrow(data)
-  sel_coefs <- extractNonlinearCoefs(estimates_mat, nobs_total, ...)
-  return(sel_coefs)
-}
-
-###### PUBLICATION BIAS - Endogenous kink (Bom & Rachinger, 2020) ######
-
-#' Estimate the Endogenous Kink model and extract the effect/pub_bias coefficients
-#'  - Source: https://osf.io/f6nzb/
-
-#'  @param data [data.frame] The main data frame on which to run the estimation on.
-#'    Must contain the columns - "effect", and "se"
-#'  @param script_path [character] Path to the source script
-#'  @inheritDotParams Parameters for the extractNonlinearCoefs function.
-#'
-#'  @return endo_kink_coefs [vector] The four desired coefficients, which are:
-#'    - Pub bias estimate
-#'    - Pub bias standard error
-#'    - Mean effect estimate
-#'    - Mean effect standard error
-#'
-#' @import endo_kink_master_thesis_cala.R
-#'
-#'  Note - The runEndoKink method returns the coefficients in order mean_effect-pub_bias,
-#'    this way is just for easier printing into the console, so be mindful of that.
-getEndoKinkResults <- function(data, script_path, ...) {
-  # Read the source file
-  source(script_path)
-  # Validate that the necessary columns are present
-  required_cols <- getDefaultColumns()
-  stopifnot(all(required_cols %in% names(data)))
-  # Extract winsorized estimates, standard errors
-  data <- data[, c("effect", "se")]
-  # Run the model estimation and get the four coefficients
-  estimates_vec <- runEndoKink(data, verbose = F)
-  # Handle output and return verbose coefs
-  estimates_mat <- matrix(estimates_vec, nrow = 2, ncol = 2, byrow = TRUE)
-  nobs_total <- nrow(data)
-  endo_kink_coefs <- extractNonlinearCoefs(estimates_mat, nobs_total, ...)
-  return(endo_kink_coefs)
-}
-
-###### NON-LINEAR MODELS RESULTS ######
-
-#' Get Non-Linear Tests
-#'
-#' This function takes in a data frame and returns the results of several non-linear regression methods
-#' clustered by study. It first validates that the necessary columns are present in the input data frame.
-#' Then, it calls the functions getWaapResults(), getTop10Results(), getStemResults(), getHierResults(),
-#' getSelectionResults(), and getEndoKinkResults() to get the coefficients for each method. Finally,
-#' it combines the results into a data frame, prints the results to the console, and returns the data
-#' frame silently. You may also choose to add significance level asterisks into the final output.
-#'
-#' @param data The main data frame, onto which all the non-linear methods are then called.
-#' @param script_paths List of paths to all source scripts.
-#' @param add_significance_marks If TRUE, calculate significance levels and mark these in the tables.
-#'  Defaults to T.
-#' @param theme Theme for the graphics. Defaults to "blue".
-#' @param export_graphics If TRUE, export various graphs into the graphics folder.
-#' @param export_path Path to the export folder. Defaults to ./results/graphic.
-#' @param graph_scale Numeric, scale the graph by this number. Defaults to 5.
-#' @param representative_sample [character] Representative data sample to choose. One of
-#'  "medians", "first", NULL. If set to NULL, use all data. Defaults to NULL.
-#' @param stem_legend_pos [character] String specifying where the legend should be placed in the graph.
-#'  Defaults to 'topleft'.
-#' @return A data frame containing the results of the non-linear tests, clustered by study.
-getNonlinearTests <- function(input_data, script_paths, selection_params = NULL,
-                              add_significance_marks = T, theme = "blue",
-                              export_graphics = T, export_path = "./results/graphic",
-                              graph_scale = 5, stem_representative_sample = "medians",
-                              stem_legend_pos = "topleft") {
-  # Validate the input
-
+#' @param input_data [data.frame] A data frame containing the effect (effect), its standard error (se), study ids, and source
+#' data for the instrument(s) (specified as separate columns). It must have the columns "effect", "se", "study_id", and "n_obs".
+#' @param instruments [list] A list of potential instruments. Each element of the list should be a vector of numeric values.
+#'  Ideally specify as 1/data$n_obs, etc.
+#' @param instruments_verbose [vector] A vector of verbose names (strings) for each instrument. It must have the same length
+#'  as the number of potential instruments.
+#' @return a character vector containing the best instrument(s) identified by the function.
+#' @examples
+#' data("instrument_data")
+#' instruments <- list(instrument_data$instrument1, instrument_data$instrument2)
+#' instruments_verbose <- c("Instrument 1", "Instrument 2")
+#' findBestInstrument(instrument_data, instruments, instruments_verbose)
+findBestInstrument <- function(input_data, instruments, instruments_verbose) {
+  # Validity checks
   required_cols <- getDefaultColumns()
   stopifnot(
     is.data.frame(input_data),
-    all(required_cols %in% names(input_data)),
-    is(script_paths, "list"),
-    all(c("stem", "selection", "endo") %in% names(script_paths))
+    is.list(instruments),
+    is.vector(instruments_verbose),
+    all(required_cols %in% colnames(input_data))
   )
-  # Get script_paths
-  stem_script_path <- script_paths$stem
-  selection_script_path <- script_paths$selection
-  endo_script_path <- script_paths$endo
-  # Get parameters
-  all_selection_params <- c(
-    list(
-      data = input_data,
-      script_path = selection_script_path
-    ),
-    selection_params,
-    list(
-      add_significance_marks = add_significance_marks,
-      pub_bias_present = T,
-      verbose_coefs = T
-    )
-  )
-  all_stem_params <- c(
-    list(
-      input_data,
-      stem_script_path,
-      representative_sample = stem_representative_sample,
-      print_plot = T,
-      theme = theme,
-      export_graphics = export_graphics,
-      export_path = export_path,
-      graph_scale = graph_scale,
-      legend_pos = stem_legend_pos,
-      add_significance_marks = add_significance_marks,
-      pub_bias_present = F,
-      verbose_coefs = T
-    )
-  )
-  # Get coefficients
-  waap_res <- getWaapResults(input_data, add_significance_marks = add_significance_marks, pub_bias_present = F, verbose_coefs = T)
-  top10_res <- getTop10Results(input_data, add_significance_marks = add_significance_marks, pub_bias_present = F, verbose_coefs = T)
-  stem_res <- do.call(getStemResults, all_stem_params)
-  hier_res <- getHierResults(input_data, add_significance_marks = add_significance_marks, pub_bias_present = T, verbose_coefs = T)
-  sel_res <- do.call(getSelectionResults, all_selection_params)
-  endo_kink_res <- getEndoKinkResults(input_data, endo_script_path, add_significance_marks = add_significance_marks, pub_bias_present = T, verbose_coefs = T)
-
-  # Combine the results into a data frame
+  # Initialize an empty data frame - each row will be one instrument
   results <- data.frame(
-    waap_df = waap_res,
-    top10_df = top10_res,
-    stem_df = stem_res,
-    hier_df = hier_res,
-    sel_df = sel_res,
-    endo_kink_df = endo_kink_res
+    r_squared = numeric(length(instruments)),
+    weak_instruments = numeric(length(instruments)),
+    wu_hausman = numeric(length(instruments)),
+    sargan = numeric(length(instruments))
   )
-
-  rownames(results) <- c("Publication Bias", "(PB SE)", "Effect Beyond Bias", "(EBB SE)", "Total observations", "Model observations")
-  colnames(results) <- c("WAAP", "Top10", "Stem", "Hierarch", "Selection", "Endogenous Kink")
-  # Print the results into the console and return
-  getNonlinearTestsVerbose(results)
-  return(results)
+  # Run the IV regressions and get diagnostics from each of them
+  for (i in seq_along(instruments)) {
+    instrument <- instruments[i][[1]] # Unlist
+    stopifnot(is.numeric(instrument)) # Amend previous line if this keeps failing - should be only numeric
+    instrument_verbose <- instruments_verbose[i]
+    input_data$instr_temp <- instrument # Add a column with the instrument values
+    iv_formula <- as.formula("effect ~ se | instr_temp")
+    model <- ivreg(formula = iv_formula, data = input_data)
+    model_summary <- summary(model, vcov = vcovHC(model, cluster = c(input_data$study_id)), diagnostics = T)
+    # Extract relevant statistics
+    results[i, "r_squared"] <- model_summary$r.squared
+    results[i, "weak_instruments"] <- model_summary$diagnostics["Weak instruments", "p-value"]
+    results[i, "wu_hausman"] <- model_summary$diagnostics["Wu-Hausman", "p-value"]
+    results[i, "sargan"] <- model_summary$diagnostics["Sargan", "p-value"]
+  }
+  rownames(results) <- instruments_verbose
+  # Find the row index with the best performing instrument
+  # R-sq
+  best_r_squared_idx <- ifelse(any(is.na(results$r_squared)),
+    NA,
+    which.max(results$r_squared)
+  )
+  # Weak instr
+  best_weak_instruments_idx <- ifelse(any(is.na(results$weak_instruments)),
+    NA,
+    which.min(results$weak_instruments)
+  )
+  # Wu Hausman
+  best_wu_hausman_idx <- ifelse(any(is.na(results$wu_hausman)),
+    NA,
+    which.min(results$wu_hausman)
+  )
+  # Sargan
+  best_sargan_idx <- ifelse(any(is.na(results$sargan)),
+    NA,
+    which.min(results$sargan)
+  )
+  # Get indexes into a table
+  best_instruments_idx <- c(best_r_squared_idx, best_weak_instruments_idx, best_wu_hausman_idx, best_sargan_idx)
+  freqs <- table(best_instruments_idx[!is.na(best_instruments_idx)]) # Remove NAs
+  stopifnot(length(freqs) > 0) # All NAs
+  # Get the most frequent index
+  max_freq <- max(freqs)
+  max_values <- sapply(names(freqs[freqs == max_freq]), as.numeric) # Numeric index of best performing instrument (or instruments)
+  # Get the best instrument(s)
+  best_instruments <- rownames(results[max_values, ])
+  # Return results - verbose
+  if (length(best_instruments > 1)) {
+    print(paste0("Identified multiple best instruments:"))
+    print(best_instruments)
+  } else {
+    print(paste0("Identified ", best_instruments, " as the best instrument."))
+  }
+  return(best_instruments)
 }
 
-#' Verbose output for the getNonlinearTests function
-getNonlinearTestsVerbose <- function(res, ...) {
-  print("Results of the non-linear tests, clustered by study:")
-  print(res)
+#' getIVResults function
+#'
+#' This function takes in data and finds the best instrument for the IV regression of effect against se.
+#' It then runs the IV regression and extracts the coefficients. The strength of the function is found
+#' in being able to identify the best instrument automatically. The list of instruments is unmodifiable as of now.
+#'
+#' The four instruments from which the function chooses are:
+#' - 1/sqrt(data$n_obs)
+#' - 1/data$n_obs
+#' - 1/data$n_obs^2
+#' - log(data$n_obs)
+#'
+#' @param data a data frame containing the data for the IV regression
+#' @param iv_instrument [character] Instrument to choose in the IV regression. If set to "automatic", determine the best
+#' instrument automatically.
+#' @inheritDotParams ... additional arguments to be passed to extractExoCoefs
+#'
+#' @return A list with a numeric vector containing the extracted coefficients from the IV regression,
+#' the name of the instrument used, and the Anderson-Rubin F-statistic.
+#'
+#' @details The function defines a list of instruments to use, and finds the best instrument
+#' by running a function called findBestInstrument. If multiple best instruments are identified,
+#' the function arbitrarily chooses the first one. The function then runs the IV regression and
+#' extracts the coefficients using extractExoCoefs.
+#'
+#' @examples
+#' data <- data.frame(effect = rnorm(10), se = rnorm(10), n_obs = rep(10, 10), study_id = rep(1:10, each = 1))
+#' getIVResults(data)
+getIVResults <- function(data, iv_instrument = "automatic", ...) {
+  # Determine the best instrument automatically
+  if (iv_instrument == "automatic") {
+    instruments <- list(1 / sqrt(data$n_obs), 1 / data$n_obs, 1 / data$n_obs^2, log(data$n_obs))
+    instruments_verbose <- c("1/sqrt(n_obs)", "1/n_obs", "1/n_obs^2", "log(n_obs)")
+    # Find out the best instrument
+    best_instrument <- findBestInstrument(data, instruments, instruments_verbose)
+    # If more best instruments are identified
+    if (length(best_instrument) > 1) {
+      best_instrument <- best_instrument[1] # Choose the first one arbitrarily
+      print(paste("Choosing", best_instrument, "arbitrarily as an instrument for the regression."))
+    }
+    stopifnot(
+      best_instrument %in% instruments_verbose,
+      length(best_instrument) == 1 # Should be redundant
+    )
+    # Get instrument values instead of name
+    best_instrument_values <- instruments[match(best_instrument, instruments_verbose)][[1]]
+  } else {
+    if (!grepl("n_obs", iv_instrument)) {
+      stop("The chosen IV instrument must contain the column n_obs.")
+    }
+    best_instrument <- iv_instrument # Character
+    best_instrument_values <- eval(parse(text = gsub("n_obs", "data$n_obs", best_instrument))) # Actual values
+  }
+  # Run the regression
+  data$instr_temp <- best_instrument_values
+  iv_formula <- as.formula("effect ~ se | instr_temp")
+  model <- ivreg(formula = iv_formula, data = data)
+  model_summary <- summary(model, vcov = vcovHC(model, cluster = c(data$study_id)), diagnostics = T)
+  # Run the ivmodel regression for fetching of the AR (Anderson-Rubin) test statistic
+  model_ar <- ivmodel(Y = data$effect, D = data$se, Z = data$instr_temp)
+  fstat <- model_ar$AR$Fstat
+  # Get the coefficients
+  all_coefs <- model_summary$coefficients
+  IV_coefs_vec <- c(
+    all_coefs["(Intercept)", "Estimate"], # Effect
+    all_coefs["(Intercept)", "Std. Error"], # Effect SE
+    all_coefs["se", "Estimate"], # Pub Bias
+    all_coefs["se", "Std. Error"] # Pub Bias SE
+  )
+  iv_coefs_mat <- matrix(IV_coefs_vec, nrow = 2, ncol = 2, byrow = TRUE)
+  # Extract the coefficients and return as a vector
+  total_obs <- nrow(data)
+  iv_coefs_out <- extractExoCoefs(iv_coefs_mat, total_obs, ...)
+  # Out list
+  iv_out <- list(
+    res = iv_coefs_out,
+    best_instrument = best_instrument,
+    fstat = fstat
+  )
+  return(iv_out)
+}
+
+###### PUBLICATION BIAS - p-uniform* (van Aert & van Assen, 2019) ######
+
+
+#' getPUniResults - Calculates publication bias test results using the p-uniform method
+#'
+#' This function calculates publication bias test results using the p-uniform method.
+#' It takes in a data frame of the effects with their corresponding standard errors and either uses
+#' the Maximum Likelihood (ML) or Moments (P) method to estimate the publication bias.
+#'
+#' @param data [data.frame] A data frame containing the effects with their corresponding standard errors.
+#' @param add_significance_marks [logical] If TRUE, calculate significance levels and mark these in the tables.
+#'  Defaults to T.
+#' @inheritDotParams Parameters to pass to the main 'puni_star' call
+#'
+#' @return A vector containing the following four elements:
+#' \describe{
+#' \item{Test Statistic for the P-uniform publication bias test}{A character string indicatingthe L test
+#'  statistic for the P-uniform publication bias test.}
+#' \item{P-value for the L test statistic}{A character string indicating the P-value for the L test statistic.}
+#' \item{Effect Beyond Bias}{A numeric value indicating the effect beyond bias estimate.}
+#' \item{Effect Standard Error}{A character string indicating the standard error of the effect beyond bias estimate.}
+#' }
+getPUniResults <- function(data, add_significance_marks = T, ...) {
+  # Validation
+  stopifnot(
+    is.data.frame(data)
+  )
+  # Calculate medians for all studies
+  med_yi <- getMedians(data, "effect")
+  med_ni <- getMedians(data, "study_size")
+  med_ses <- getMedians(data, "se")
+  med_sample_sizes <- getMedians(data, "n_obs")
+  med_sdi <- med_ses * sqrt(med_sample_sizes) # SD = SE * sqrt(sample_size)
+  # Get parameters
+  all_params <- c(
+    list(
+      yi = med_yi,
+      vi = med_sdi^2, # Squared sd
+      ni = med_ni
+    ),
+    list(...)
+  )
+  # Estimation
+  quiet(
+    est_main <- do.call(
+      puni_star,
+      all_params
+    )
+  )
+  # Extract and save coefficients - using a custom format for this method
+  est_se <- (est_main$ci.ub - est_main$est) / 1.96 # Standard error of the estmiate
+  est_effect_verbose <- round(est_main$est, 3) # Effect Beyond Bias
+  est_se_verbose <- paste0("(", round(est_se, 3), ")") # Effect Standard Error
+  est_pub_test_verbose <- paste0("L = ", round(est_main$L.0, 3)) # Test statistic of p-uni publication bias test
+  est_pub_p_val_verbose <- paste0("(p = ", round(est_main$pval.0, 3), ")") # P-value for the L test statistic
+  # Add significance marks
+  if (add_significance_marks && !is.na(est_effect_verbose)) {
+    est_effect_verbose <- add_asterisks(est_effect_verbose, est_se)
+  }
+  # Return as a vector
+  total_obs <- nrow(data)
+  p_uni_coefs_out <- c(
+    est_pub_test_verbose,
+    est_pub_p_val_verbose,
+    est_effect_verbose,
+    est_se_verbose,
+    total_obs
+  )
+  return(p_uni_coefs_out)
+}
+
+#' getExoTests
+#'
+#' Performs two tests for publication bias and exogeneity in instrumental variable (IV) analyses using clustered data.
+#'
+#' @param input_data [data.frame] A data frame containing the necessary columns: "effect", "se", "study_id", "study_size", and "precision".
+#' @param puni_params [list] Aruments to be used in p-uniform.
+#' @param iv_instrument [character] Instrument to choose in the IV regression. If set to "automatic", determine the best
+#' instrument automatically.
+#' @param add_significance_marks [logical] If TRUE, calculate significance levels and mark these in the tables.
+#'  Defaults to T.
+#'
+#' @details This function first validates that the necessary columns are present in the input data frame.
+#' If the validation is successful, it performs three tests for publication bias and exogeneity in instrumental variable (IV)
+#' analyses using clustered data: the IV test, and the p-Uniform test. The results of the two tests are combined
+#' into a data frame, with row names corresponding to the tests and column names corresponding to the test type.
+#' The results are then printed into the console and returned invisibly.
+getExoTests <- function(input_data, puni_params, iv_instrument = "automatic", add_significance_marks = T) {
+  # Validate that the necessary columns are present
+  required_cols <- getDefaultColumns()
+  stopifnot(
+    is.data.frame(input_data),
+    is.character(iv_instrument),
+    all(required_cols %in% names(input_data))
+  )
+  # Get arguments
+  all_puni_params <- c(
+    list(
+      data = input_data,
+      add_significance_marks = add_significance_marks
+    ),
+    puni_params
+  )
+  # Get coefficients
+  iv_list <- getIVResults(input_data,
+    iv_instrument = iv_instrument, add_significance_marks = add_significance_marks,
+    effect_present = T, pub_bias_present = T, verbose_coefs = T
+  )
+  p_uni_res <- do.call(getPUniResults, all_puni_params)
+  # Get results - append F-stat row (extra)
+  iv_df <- append(iv_list$res, round(iv_list$fstat, 3))
+  p_uni_df <- append(p_uni_res, "")
+  # Combine the results into a data frame
+  results <- data.frame(
+    iv_df = iv_df,
+    p_uni_df = p_uni_df
+  )
+  # Label names
+  rownames(results) <- c("Publication Bias", "(PB SE)", "Effect Beyond Bias", "(EBB SE)", "Total observations", "F-test")
+  colnames(results) <- c("IV", "p-Uniform")
+  # Print the results into the console and return
+  out_list <- list(
+    res = results,
+    best_instrument = iv_list$best_instrument
+  )
+  getExoTestsVerbose(out_list)
+  return(out_list)
+}
+
+#' Verbose output for the getExoTests function
+getExoTestsVerbose <- function(result_list, ...) {
+  print(paste("Instrument used in the IV regression:", result_list$best_instrument))
+  print("Results of the tests relaxing exogeneity, clustered by study:")
+  print(result_list$res)
   cat("\n\n")
 }
