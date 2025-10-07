@@ -363,6 +363,31 @@ methods:
           1 = Fixed effects
           2 = Cluster-robust (default)
 
+    maive_se:
+      type: "integer"
+      default: 3
+      help: |
+        MAIVE standard error estimation method:
+          1 = Asymptotic
+          2 = Pairs cluster bootstrap
+          3 = Wild bootstrap (default)
+          4 = Wild cluster bootstrap
+          5 = Pairs bootstrap
+
+    maive_ar:
+      type: "integer"
+      default: 1
+      help: |
+        MAIVE Anderson-Rubin confidence interval:
+          0 = Do not compute
+          1 = Compute (default)
+
+    maive_first_stage:
+      type: "integer"
+      default: 0
+      help: |
+        MAIVE first stage option (default: 0).
+
 output:
   number_of_decimals:
     type: "integer"

@@ -41,6 +41,9 @@ p_hacking_tests <- function(df) {
   maive_weight <- opt$maive_weight %||% 0L
   maive_instrument <- opt$maive_instrument %||% 1L
   maive_studylevel <- opt$maive_studylevel %||% 2L
+  maive_se <- opt$maive_se %||% 3L
+  maive_ar <- opt$maive_ar %||% 1L
+  maive_first_stage <- opt$maive_first_stage %||% 0L
 
   # General options
   add_significance_marks <- resolve_add_significance_marks()
@@ -64,6 +67,9 @@ p_hacking_tests <- function(df) {
     is.numeric(maive_weight),
     is.numeric(maive_instrument),
     is.numeric(maive_studylevel),
+    is.numeric(maive_se),
+    is.numeric(maive_ar),
+    is.numeric(maive_first_stage),
     is.logical(add_significance_marks),
     is.numeric(round_to)
   )
@@ -80,6 +86,8 @@ p_hacking_tests <- function(df) {
   assert(maive_weight %in% c(0, 1, 2), "maive_weight must be 0, 1, or 2")
   assert(maive_instrument %in% c(0, 1), "maive_instrument must be 0 or 1")
   assert(maive_studylevel %in% c(0, 1, 2), "maive_studylevel must be 0, 1, or 2")
+  assert(maive_se %in% c(1, 2, 3, 4, 5), "maive_se must be 1, 2, 3, 4, or 5")
+  assert(maive_ar %in% c(0, 1), "maive_ar must be 0 or 1")
   assert(round_to >= 0, "Number of decimals must be non-negative")
 
   resolved_options <- list(
@@ -100,6 +108,9 @@ p_hacking_tests <- function(df) {
     maive_weight = as.integer(maive_weight),
     maive_instrument = as.integer(maive_instrument),
     maive_studylevel = as.integer(maive_studylevel),
+    maive_se = as.integer(maive_se),
+    maive_ar = as.integer(maive_ar),
+    maive_first_stage = as.integer(maive_first_stage),
     add_significance_marks = add_significance_marks,
     round_to = round_to
   )
