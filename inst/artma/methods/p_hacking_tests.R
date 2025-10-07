@@ -142,7 +142,7 @@ p_hacking_tests <- function(df) {
       cli::cli_h3("Elliott et al. (2022) tests")
 
       elliott_lines <- utils::capture.output(
-        print(results$elliott, row.names = TRUE) # nolint: undesirable_function_linter.
+        print(results$elliott, row.names = FALSE) # nolint: undesirable_function_linter.
       )
       cli::cli_verbatim(elliott_lines)
       cli::cli_text("")
