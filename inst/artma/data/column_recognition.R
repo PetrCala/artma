@@ -128,7 +128,9 @@ string_similarity <- function(str1, str2) {
   str1 <- tolower(trimws(str1))
   str2 <- tolower(trimws(str2))
 
-  if (str1 == str2) return(1.0)
+  if (str1 == str2) {
+    return(1.0)
+  }
 
   # Exact substring match
   if (grepl(str2, str1, fixed = TRUE) || grepl(str1, str2, fixed = TRUE)) {
@@ -137,7 +139,9 @@ string_similarity <- function(str1, str2) {
 
   # Calculate Levenshtein distance-based similarity
   max_len <- max(nchar(str1), nchar(str2))
-  if (max_len == 0) return(0)
+  if (max_len == 0) {
+    return(0)
+  }
 
   dist <- utils::adist(str1, str2)[1, 1]
   similarity <- 1 - (dist / max_len)
@@ -176,7 +180,7 @@ match_column_name <- function(col_name, patterns) {
 
     # Check keyword matching
     keywords <- pattern_def$keywords
-    exclude_keywords <- pattern_def$exclude_keywords %||% character(0)
+    exclude_keywords <- if (is.null(pattern_def$exclude_keywords)) character(0) else pattern_def$exclude_keywords
 
     # Check if any exclude keywords are present
     has_exclude <- any(vapply(exclude_keywords, function(kw) {
@@ -309,7 +313,7 @@ check_mapping_completeness <- function(mapping) {
 
 
 # Helper for NULL coalescing
-`%||%` <- function(x, y) if (is.null(x)) y else x
+`%||%` <- function(x, y) if (is.null(x)) y else x # nolint
 
 
 box::export(

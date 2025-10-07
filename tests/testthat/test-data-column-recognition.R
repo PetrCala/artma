@@ -100,7 +100,8 @@ test_that("match_column_name recognizes n_obs variants", {
   for (test_case in test_cases) {
     result <- match_column_name(test_case$name, patterns)
     expect_equal(result$match, test_case$expected,
-      info = paste("Testing", test_case$name))
+      info = paste("Testing", test_case$name)
+    )
   }
 })
 
@@ -117,7 +118,8 @@ test_that("match_column_name recognizes t_stat variants", {
   for (test_case in test_cases) {
     result <- match_column_name(test_case$name, patterns)
     expect_equal(result$match, test_case$expected,
-      info = paste("Testing", test_case$name))
+      info = paste("Testing", test_case$name)
+    )
   }
 })
 
@@ -127,7 +129,7 @@ test_that("match_column_name handles exclude keywords correctly", {
 
   # "study_id" should not match "study" because "id" is in exclude_keywords
   result <- match_column_name("study_id", patterns)
-  expect_equal(result$match, "study_id")  # Should match study_id, not study
+  expect_equal(result$match, "study_id") # Should match study_id, not study
 })
 
 
@@ -153,7 +155,8 @@ test_that("match_column_name avoids false positives with region names", {
   for (col_name in test_cases) {
     result <- match_column_name(col_name, patterns)
     expect_false(result$match == "obs_id" && result$score >= 0.7,
-      info = paste("Testing", col_name, "should not match obs_id"))
+      info = paste("Testing", col_name, "should not match obs_id")
+    )
   }
 })
 
