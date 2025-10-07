@@ -55,41 +55,5 @@ test <- function() {
   # )
 }
 
-
-#' @keywords internal
-test_column_recognition <- function() {
-  # Test the new column recognition system independently
-  box::use(
-    artma / data / smart_detection[smart_read_csv, detect_delimiter],
-    artma / data / column_recognition[recognize_columns],
-    artma / libs / utils[get_verbosity]
-  )
-
-  withr::local_options(list("artma.verbose" = 4))
-
-  data_path <- "~/code/meta/artma/local/data/data_set_master_thesis_cala.csv"
-
-  # Test delimiter detection
-  cli::cli_h1("Testing delimiter detection")
-  delim <- detect_delimiter(data_path)
-  cli::cli_alert_info("Detected delimiter: {.val {delim}}")
-
-  # Test smart CSV reading
-  cli::cli_h1("Testing smart CSV reading")
-  df <- smart_read_csv(data_path)
-  cli::cli_alert_success("Read {nrow(df)} rows and {ncol(df)} columns")
-
-  # Test column recognition
-  cli::cli_h1("Testing column recognition")
-  mapping <- recognize_columns(df, min_confidence = 0.7)
-
-  cli::cli_h2("Recognized columns")
-  for (std_col in names(mapping)) {
-    cli::cli_inform("{.field {std_col}} -> {.val {mapping[[std_col]]}}")
-  }
-
-  invisible(list(df = df, mapping = mapping))
-}
-
-test()
+test_column_recognition()
 # nolint end
