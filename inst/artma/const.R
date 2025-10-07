@@ -95,7 +95,8 @@ CONST <- list(
       "variable_summary_stats",
       "effect_summary_stats",
       "linear_tests",
-      "nonlinear_tests"
+      "nonlinear_tests",
+      "exogeneity_tests"
     )
   )
 )
