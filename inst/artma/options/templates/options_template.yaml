@@ -106,6 +106,22 @@ data:
       Each variable in the dataset requires a list of configuration options.
       For more details, read the 'data_config' vignette.
 
+  winsorization_level:
+    type: "numeric"
+    default: 0.01
+    confirm_default: true
+    prompt: "function"
+    prompt_function: "prompt_winsorization_level"
+    help: |
+      Winsorization level for effect and standard error variables.
+      Values will be capped at the specified quantile from both tails.
+      Options:
+        {cli::symbol$bullet} {.strong 0}: No winsorization (keep all original values)
+        {cli::symbol$bullet} {.strong 0.01}: Winsorize at 1% level (default)
+        {cli::symbol$bullet} {.strong 0.05}: Winsorize at 5% level
+        {cli::symbol$bullet} {.strong 0.10}: Winsorize at 10% level
+      Higher values provide stronger outlier protection but may distort the data more.
+
 calc:
   precision_type:
     type: "enum: '1/SE'|'DoF'"

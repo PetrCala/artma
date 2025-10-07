@@ -191,6 +191,61 @@ enforce_correct_values <- function(df) {
   df
 }
 
+#' @title Winsorize data
+#' @description Winsorize effect and standard error columns at specified quantiles.
+#' @param df *\[data.frame\]* The data frame to winsorize
+#' @return *\[data.frame\]* The data frame with winsorized values
+#' @keywords internal
+winsorize_data <- function(df) {
+  box::use(artma / libs / utils[get_verbosity])
+
+  winsorization_level <- getOption("artma.data.winsorization_level", default = 0)
+
+  # Skip if winsorization is disabled
+  if (is.null(winsorization_level) || is.na(winsorization_level) || winsorization_level == 0) {
+    if (get_verbosity() >= 4) {
+      cli::cli_inform("Winsorization disabled (level = 0)")
+    }
+    return(df)
+  }
+
+  if (get_verbosity() >= 3) {
+    cli::cli_inform("Winsorizing data at {.val {winsorization_level}} level…")
+  }
+
+  # Winsorize effect column
+  if ("effect" %in% colnames(df)) {
+    lower_q <- stats::quantile(df$effect, probs = winsorization_level, na.rm = TRUE)
+    upper_q <- stats::quantile(df$effect, probs = 1 - winsorization_level, na.rm = TRUE)
+
+    n_lower <- sum(df$effect < lower_q, na.rm = TRUE)
+    n_upper <- sum(df$effect > upper_q, na.rm = TRUE)
+
+    df$effect <- pmax(pmin(df$effect, upper_q), lower_q)
+
+    if (get_verbosity() >= 3 && (n_lower + n_upper) > 0) {
+      cli::cli_alert_info("Winsorized {.val {n_lower + n_upper}} effect values ({n_lower} lower, {n_upper} upper)")
+    }
+  }
+
+  # Winsorize standard error column
+  if ("se" %in% colnames(df)) {
+    lower_q <- stats::quantile(df$se, probs = winsorization_level, na.rm = TRUE)
+    upper_q <- stats::quantile(df$se, probs = 1 - winsorization_level, na.rm = TRUE)
+
+    n_lower <- sum(df$se < lower_q, na.rm = TRUE)
+    n_upper <- sum(df$se > upper_q, na.rm = TRUE)
+
+    df$se <- pmax(pmin(df$se, upper_q), lower_q)
+
+    if (get_verbosity() >= 3 && (n_lower + n_upper) > 0) {
+      cli::cli_alert_info("Winsorized {.val {n_lower + n_upper}} SE values ({n_lower} lower, {n_upper} upper)")
+    }
+  }
+
+  df
+}
+
 
 
 #' @title Preprocess data
@@ -207,6 +262,7 @@ preprocess_data <- function(df) {
     remove_empty_rows() %>%
     check_required_non_empty() %>%
     enforce_data_types() %>%
+    winsorize_data() %>%
     enforce_correct_values()
 }
 
