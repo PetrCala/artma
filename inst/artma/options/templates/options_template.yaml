@@ -246,14 +246,14 @@ methods:
 
     caliper_thresholds:
       type: "numeric"
-      default: [0, 1.96, 2.58]
+      default: [1.645, 1.96, 2.58]
       help: |
         T-statistic thresholds to test with the Caliper method.
-        Default tests at 0, 1.96 (5% significance), and 2.58 (1% significance).
+        Default tests at 1.645 (10% significance), 1.96 (5% significance), and 2.58 (1% significance).
 
     caliper_widths:
       type: "numeric"
-      default: [0.05, 0.1, 0.2]
+      default: [0.05, 0.1, 0.15]
       help: |
         Caliper interval widths to test around each threshold.
         Narrower widths focus on immediate vicinity of the threshold.
