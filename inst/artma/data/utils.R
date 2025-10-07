@@ -39,32 +39,94 @@ get_number_of_studies <- function(df) {
 #' @title Standardize column names
 #' @description Standardize the column names of a data frame to a single source of truth set of column names.
 #' @param df *\[data.frame\]* The data frame to standardize
+#' @param auto_detect *\[logical\]* If TRUE and mapping not found, attempt auto-detection
 #' @return *\[data.frame\]* The standardized data frame
-standardize_column_names <- function(df) {
+standardize_column_names <- function(df, auto_detect = TRUE) {
   box::use(
     artma / libs / validation[validate],
-    artma / options / utils[get_option_group]
+    artma / options / utils[get_option_group],
+    artma / libs / utils[get_verbosity]
   )
 
   validate(is.data.frame(df))
 
   names(df) <- make.names(names(df))
 
-  map <- get_option_group("artma.data.colnames")
+  # Try to get existing column mapping from options
+  map <- tryCatch(
+    {
+      opt_map <- get_option_group("artma.data.colnames")
+      # Filter out NA values
+      opt_map[!is.na(opt_map)]
+    },
+    error = function(e) list()
+  )
+
   map <- lapply(map, make.names) # Handle non-standard column names
   required_colnames <- get_required_colnames()
 
-  # Check that every required column is mapped in the user options file
+  # Check if we have all required columns mapped
+  missing_required <- base::setdiff(required_colnames, names(map))
+
+  # If mapping is incomplete and auto_detect is enabled, try to recognize columns
+  if (length(missing_required) > 0 && auto_detect) {
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_info("Column mapping incomplete, attempting automatic recognition...")
+    }
+
+    box::use(
+      artma / data / column_recognition[recognize_columns],
+      artma / data / interactive_mapping[column_mapping_workflow]
+    )
+
+    # Get automatic recognition
+    auto_mapping <- recognize_columns(df, min_confidence = 0.7)
+
+    # Run interactive workflow if needed
+    config_setup <- getOption("artma.data.config_setup", "auto")
+
+    if (config_setup == "auto" && length(setdiff(required_colnames, names(auto_mapping))) == 0) {
+      # All required columns recognized automatically
+      final_mapping <- auto_mapping
+      if (get_verbosity() >= 3) {
+        cli::cli_alert_success("All required columns automatically recognized")
+      }
+    } else {
+      # Need user input
+      if (get_verbosity() >= 3) {
+        cli::cli_alert_info("Starting interactive column mapping...")
+      }
+      final_mapping <- column_mapping_workflow(
+        df = df,
+        auto_mapping = auto_mapping,
+        options_file_name = getOption("artma.options_file_name"),
+        force_interactive = (config_setup == "manual")
+      )
+    }
+
+    # Update the map with the final mapping
+    for (std_col in names(final_mapping)) {
+      map[[std_col]] <- make.names(final_mapping[[std_col]])
+    }
+  }
+
+  # Check that every required column is mapped
   missing_required <- base::setdiff(required_colnames, names(map))
   if (length(missing_required)) {
-    cli::cli_abort("Missing mapping for required columns: {.val {missing_required}}")
+    cli::cli_abort(c(
+      "x" = "Missing mapping for required columns: {.val {missing_required}}",
+      "i" = "Please specify column mappings in your options file or enable automatic detection"
+    ))
   }
 
   # Check that every required column exists in the data frame
   mapped_cols <- unlist(unname(map[names(map) %in% required_colnames]))
   absent_required <- mapped_cols[!mapped_cols %in% names(df)]
   if (length(absent_required)) {
-    cli::cli_abort("These required columns are absent in the data frame: {.val {absent_required}}")
+    cli::cli_abort(c(
+      "x" = "These required columns are absent in the data frame: {.val {absent_required}}",
+      "i" = "Available columns: {.val {paste(names(df), collapse = ', ')}}"
+    ))
   }
 
   # Rename columns to standardized names - only when present in the data frame
