@@ -1,8 +1,20 @@
 
+<a name="v0.3.2"></a>
+## [v0.3.2](https://github.com/PetrCala/artma/compare/v0.3.1...v0.3.2)
+
+> 2025-10-07
+
+
 <a name="v0.3.1"></a>
 ## [v0.3.1](https://github.com/PetrCala/artma/compare/v0.3.0...v0.3.1)
 
 > 2025-10-06
+
+### Bug Fixes
+
+* rewrite the menu select usage to reference the climenu package correctly
+* udpate the fix_options.R script
+* resolve linter warnings and style issues
 
 
 <a name="v0.3.0"></a>
