@@ -236,6 +236,63 @@ methods:
         Estimation method for p-uniform*.
         Use {.strong ML} for maximum likelihood or {.strong P} for method of moments.
 
+  p_hacking_tests:
+    lcm_iterations:
+      type: "integer"
+      default: 10000
+      help: |
+        Number of simulations for LCM test critical values.
+        Higher values increase precision but take longer to compute.
+
+    lcm_grid_points:
+      type: "integer"
+      default: 10000
+      help: |
+        Number of grid points per LCM simulation.
+        Higher values increase accuracy of the Brownian bridge approximation.
+
+    include_discontinuity:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, include the discontinuity test at p = 0.05.
+        Requires the {.pkg rddensity} package.
+
+    discontinuity_bandwidth:
+      type: "numeric"
+      default: 0.05
+      help: |
+        Initial bandwidth for the discontinuity test.
+        The algorithm will adaptively adjust if needed.
+
+    include_cox_shi:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, include Cox-Shi tests for monotonicity restrictions.
+        These tests can detect violations of expected p-value distributions.
+
+    cox_shi_bins:
+      type: "integer"
+      default: 20
+      help: |
+        Number of bins for discretization in Cox-Shi tests.
+        More bins provide finer resolution but require more observations.
+
+    cox_shi_order:
+      type: "integer"
+      default: 2
+      help: |
+        Order of monotonicity (K) for Cox-Shi tests.
+        Higher orders impose stricter shape restrictions.
+
+    cox_shi_bounds:
+      type: "integer"
+      default: 1
+      help: |
+        Whether to use theoretical bounds in Cox-Shi tests (1 = yes, 0 = no).
+        Bounds account for the two-sided nature of t-tests.
+
 output:
   number_of_decimals:
     type: "integer"
