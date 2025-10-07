@@ -146,6 +146,105 @@ run_caliper_tests <- function(t_stats, study_id, thresholds = c(0, 1.96, 2.58),
   results
 }
 
+#' @title Build caliper summary table
+#' @param caliper_results *[list]* List of caliper test results.
+#' @param options *[list]* Options.
+#' @return *[data.frame]* Formatted caliper summary.
+build_caliper_summary <- function(caliper_results, options) {
+  if (length(caliper_results) == 0) {
+    return(data.frame())
+  }
+
+  rows <- list()
+  for (res in caliper_results) {
+    row_label <- paste0("Width ", res$width, ", Threshold ", res$threshold)
+    rows[[length(rows) + 1]] <- list(
+      Test = paste0(row_label, " - Estimate"),
+      Value = res$estimate
+    )
+    rows[[length(rows) + 1]] <- list(
+      Test = paste0(row_label, " - SE"),
+      Value = res$std_error
+    )
+    rows[[length(rows) + 1]] <- list(
+      Test = paste0(row_label, " - N (above/below)"),
+      Value = paste0(res$n_above, "/", res$n_below)
+    )
+  }
+
+  summary <- do.call(rbind, lapply(rows, as.data.frame, stringsAsFactors = FALSE))
+  rownames(summary) <- NULL
+  summary
+}
+
+# MAIVE utilities ----------------------------------------------------------
+
+#' @title Prepare data for MAIVE
+#' @param df *[data.frame]* Input data with effect, se, n_obs, study_id.
+#' @return *[data.frame]* Data formatted for MAIVE (bs, sebs, Ns, studyid).
+prepare_maive_data <- function(df) {
+  validate(is.data.frame(df))
+
+  required_cols <- c("effect", "se", "n_obs")
+  validate(all(required_cols %in% colnames(df)))
+
+  maive_data <- data.frame(
+    bs = df$effect,
+    sebs = df$se,
+    Ns = df$n_obs,
+    stringsAsFactors = FALSE
+  )
+
+  if ("study_id" %in% colnames(df)) {
+    maive_data$studyid <- df$study_id
+  }
+
+  maive_data
+}
+
+#' @title Format MAIVE results
+#' @param maive_output *[list]* Output from maive() function.
+#' @param options *[list]* Options.
+#' @return *[data.frame]* Formatted MAIVE summary.
+format_maive_results <- function(maive_output, options) {
+  if (is.null(maive_output)) {
+    return(data.frame(
+      Statistic = "Error",
+      Value = "MAIVE estimation failed",
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  beta_formatted <- format_number(maive_output$beta, options$round_to)
+  se_formatted <- format_number(maive_output$SE, options$round_to)
+  ftest_formatted <- if (!is.null(maive_output$`F-test`) && maive_output$`F-test` != "NA") {
+    format_number(as.numeric(maive_output$`F-test`), options$round_to)
+  } else {
+    "NA"
+  }
+  hausman_formatted <- format_number(maive_output$Hausman, options$round_to)
+  chi2_formatted <- format_number(maive_output$Chi2, options$round_to)
+
+  data.frame(
+    Statistic = c(
+      "MAIVE Coefficient",
+      "MAIVE SE",
+      "F-test (1st stage IV)",
+      "Hausman Test",
+      "Chi-squared Critical (α=0.05)"
+    ),
+    Value = c(
+      beta_formatted,
+      se_formatted,
+      ftest_formatted,
+      hausman_formatted,
+      chi2_formatted
+    ),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
 # P-value utilities --------------------------------------------------------
 
 #' @title Compute p-values from effect and se
@@ -301,11 +400,11 @@ run_cox_shi <- function(pvalues, study_id = NULL, p_min, p_max, n_bins = 20L,
 
 #' @title Run suite of p-hacking tests
 #' @description
-#' Executes multiple p-hacking detection tests on a dataset of effect estimates.
-#' Based on Elliott, Kudrin & Wüthrich (2022).
-#' @param df *[data.frame]* Input data with effect, se, study_id columns.
+#' Executes comprehensive p-hacking detection tests: Caliper (Gerber & Malhotra, 2008),
+#' Elliott et al. (2022), and MAIVE (Irsova et al., 2023).
+#' @param df *[data.frame]* Input data with effect, se, study_id, n_obs columns.
 #' @param options *[list]* Options containing test parameters.
-#' @return *[list]* Contains test results and formatted summary.
+#' @return *[list]* Contains test results and formatted summaries.
 run_p_hacking_tests <- function(df, options) {
   validate(is.data.frame(df), is.list(options))
 
@@ -315,129 +414,172 @@ run_p_hacking_tests <- function(df, options) {
   if (length(missing_cols) > 0) {
     cli::cli_alert_warning("Missing required columns: {.field {missing_cols}}")
     return(list(
-      results = data.frame(),
-      summary = data.frame(),
+      caliper = NULL,
+      elliott = NULL,
+      maive = NULL,
       skipped = list(reason = paste("Missing columns:", paste(missing_cols, collapse = ", ")))
     ))
   }
 
-  # Compute p-values
-  pvalues <- compute_pvalues(df$effect, df$se)
   study_id <- if ("study_id" %in% colnames(df)) df$study_id else seq_len(nrow(df))
+  t_stats <- df$effect / df$se
+  pvalues <- compute_pvalues(df$effect, df$se)
 
-  # Pre-simulate CDFs for LCM test
-  cdfs <- tryCatch(
-    simulate_cdfs(iterations = options$lcm_iterations, grid_points = options$lcm_grid_points),
-    error = function(e) {
-      cli::cli_warn("Failed to simulate CDFs for LCM test: {e$message}")
-      numeric(0)
+  output <- list()
+
+  # 1. Caliper Tests
+  if (options$include_caliper) {
+    caliper_results <- tryCatch({
+      run_caliper_tests(
+        t_stats = t_stats,
+        study_id = study_id,
+        thresholds = options$caliper_thresholds,
+        widths = options$caliper_widths,
+        add_significance_marks = options$add_significance_marks,
+        round_to = options$round_to
+      )
+    }, error = function(e) {
+      cli::cli_warn("Caliper tests failed: {e$message}")
+      list()
+    })
+    output$caliper <- build_caliper_summary(caliper_results, options)
+  }
+
+  # 2. Elliott Tests
+  if (options$include_elliott) {
+    elliott_tests <- list()
+
+    # Pre-simulate CDFs for LCM test
+    cdfs <- tryCatch(
+      simulate_cdfs(iterations = options$lcm_iterations, grid_points = options$lcm_grid_points),
+      error = function(e) {
+        cli::cli_warn("Failed to simulate CDFs for LCM test: {e$message}")
+        numeric(0)
+      }
+    )
+
+    # Binomial tests
+    elliott_tests$binomial_005 <- list(
+      test = "Binomial [0, 0.05]",
+      p_value = run_binomial(pvalues, 0, 0.05, type = "c")
+    )
+
+    elliott_tests$binomial_01 <- list(
+      test = "Binomial [0, 0.10]",
+      p_value = run_binomial(pvalues, 0, 0.1, type = "c")
+    )
+
+    # LCM tests
+    if (length(cdfs) > 0) {
+      elliott_tests$lcm_005 <- list(
+        test = "LCM [0, 0.05]",
+        p_value = run_lcm(pvalues, 0, 0.05, cdfs)
+      )
+
+      elliott_tests$lcm_01 <- list(
+        test = "LCM [0, 0.10]",
+        p_value = run_lcm(pvalues, 0, 0.1, cdfs)
+      )
     }
-  )
 
-  # Run tests
-  results <- list()
-
-  # Binomial test (0, 0.05]
-  results$binomial_005 <- list(
-    test = "Binomial [0, 0.05]",
-    p_value = run_binomial(pvalues, 0, 0.05, type = "c")
-  )
-
-  # Binomial test (0, 0.1]
-  results$binomial_01 <- list(
-    test = "Binomial [0, 0.10]",
-    p_value = run_binomial(pvalues, 0, 0.1, type = "c")
-  )
-
-  # LCM test
-  if (length(cdfs) > 0) {
-    results$lcm_005 <- list(
-      test = "LCM [0, 0.05]",
-      p_value = run_lcm(pvalues, 0, 0.05, cdfs)
+    # Fisher tests
+    elliott_tests$fisher_005 <- list(
+      test = "Fisher [0, 0.05]",
+      p_value = run_fisher(pvalues, 0, 0.05)
     )
 
-    results$lcm_01 <- list(
-      test = "LCM [0, 0.10]",
-      p_value = run_lcm(pvalues, 0, 0.1, cdfs)
+    elliott_tests$fisher_01 <- list(
+      test = "Fisher [0, 0.10]",
+      p_value = run_fisher(pvalues, 0, 0.1)
     )
-  }
 
-  # Fisher test
-  results$fisher_005 <- list(
-    test = "Fisher [0, 0.05]",
-    p_value = run_fisher(pvalues, 0, 0.05)
-  )
-
-  results$fisher_01 <- list(
-    test = "Fisher [0, 0.10]",
-    p_value = run_fisher(pvalues, 0, 0.1)
-  )
-
-  # Discontinuity test (if rddensity available)
-  if (options$include_discontinuity) {
-    results$discontinuity <- list(
-      test = "Discontinuity at 0.05",
-      p_value = run_discontinuity(pvalues, cutoff = 0.05, bandwidth = options$discontinuity_bandwidth)
-    )
-  }
-
-  # Cox-Shi tests
-  if (options$include_cox_shi) {
-    results$cox_shi_005 <- list(
-      test = "Cox-Shi [0, 0.05]",
-      p_value = run_cox_shi(
-        pvalues, study_id, 0, 0.05,
-        n_bins = options$cox_shi_bins,
-        monotonicity_order = options$cox_shi_order,
-        use_bounds = options$cox_shi_bounds
+    # Discontinuity test
+    if (options$include_discontinuity) {
+      elliott_tests$discontinuity <- list(
+        test = "Discontinuity at 0.05",
+        p_value = run_discontinuity(pvalues, cutoff = 0.05, bandwidth = options$discontinuity_bandwidth)
       )
-    )
+    }
 
-    results$cox_shi_01 <- list(
-      test = "Cox-Shi [0, 0.10]",
-      p_value = run_cox_shi(
-        pvalues, study_id, 0, 0.1,
-        n_bins = options$cox_shi_bins,
-        monotonicity_order = options$cox_shi_order,
-        use_bounds = options$cox_shi_bounds
+    # Cox-Shi tests
+    if (options$include_cox_shi) {
+      elliott_tests$cox_shi_005 <- list(
+        test = "Cox-Shi [0, 0.05]",
+        p_value = run_cox_shi(
+          pvalues, study_id, 0, 0.05,
+          n_bins = options$cox_shi_bins,
+          monotonicity_order = options$cox_shi_order,
+          use_bounds = options$cox_shi_bounds
+        )
       )
-    )
+
+      elliott_tests$cox_shi_01 <- list(
+        test = "Cox-Shi [0, 0.10]",
+        p_value = run_cox_shi(
+          pvalues, study_id, 0, 0.1,
+          n_bins = options$cox_shi_bins,
+          monotonicity_order = options$cox_shi_order,
+          use_bounds = options$cox_shi_bounds
+        )
+      )
+    }
+
+    output$elliott <- build_elliott_summary(elliott_tests, pvalues, options)
   }
 
-  # Build summary table
-  summary <- build_p_hacking_summary(results, options)
+  # 3. MAIVE Estimator
+  if (options$include_maive) {
+    if ("n_obs" %in% colnames(df)) {
+      maive_data <- prepare_maive_data(df)
+      maive_results <- tryCatch({
+        maive(
+          dat = maive_data,
+          method = options$maive_method,
+          weight = options$maive_weight,
+          instrument = options$maive_instrument,
+          studylevel = options$maive_studylevel
+        )
+      }, error = function(e) {
+        cli::cli_warn("MAIVE estimation failed: {e$message}")
+        NULL
+      })
+      output$maive <- format_maive_results(maive_results, options)
+    } else {
+      cli::cli_warn("MAIVE requires 'n_obs' column - skipping MAIVE test")
+      output$maive <- NULL
+    }
+  }
 
-  list(
-    results = results,
-    summary = summary,
-    n_pvalues = length(pvalues),
-    n_significant_005 = sum(pvalues <= 0.05, na.rm = TRUE),
-    n_significant_010 = sum(pvalues <= 0.10, na.rm = TRUE),
-    options = options
-  )
+  output$n_pvalues <- length(pvalues)
+  output$n_significant_005 <- sum(pvalues <= 0.05, na.rm = TRUE)
+  output$n_significant_010 <- sum(pvalues <= 0.10, na.rm = TRUE)
+  output$options <- options
+
+  output
 }
 
-#' @title Build p-hacking tests summary table
-#' @param results *[list]* Test results.
+#' @title Build Elliott tests summary table
+#' @param elliott_tests *[list]* Elliott test results.
+#' @param pvalues *[numeric]* P-values for counts.
 #' @param options *[list]* Options.
-#' @return *[data.frame]* Formatted summary table.
-build_p_hacking_summary <- function(results, options) {
-  test_names <- vapply(results, function(x) x$test, character(1))
-  p_values <- vapply(results, function(x) x$p_value, numeric(1))
+#' @return *[data.frame]* Formatted Elliott summary table.
+build_elliott_summary <- function(elliott_tests, pvalues, options) {
+  test_names <- vapply(elliott_tests, function(x) x$test, character(1))
+  p_vals <- vapply(elliott_tests, function(x) x$p_value, numeric(1))
 
   # Format p-values
-  p_values_formatted <- format_number(p_values, options$round_to)
+  p_values_formatted <- format_number(p_vals, options$round_to)
 
   # Add significance markers
-  significance <- character(length(p_values))
-  for (i in seq_along(p_values)) {
-    if (is.na(p_values[i])) {
+  significance <- character(length(p_vals))
+  for (i in seq_along(p_vals)) {
+    if (is.na(p_vals[i])) {
       significance[i] <- ""
-    } else if (p_values[i] <= 0.01) {
+    } else if (p_vals[i] <= 0.01) {
       significance[i] <- "***"
-    } else if (p_values[i] <= 0.05) {
+    } else if (p_vals[i] <= 0.05) {
       significance[i] <- "**"
-    } else if (p_values[i] <= 0.10) {
+    } else if (p_vals[i] <= 0.10) {
       significance[i] <- "*"
     } else {
       significance[i] <- ""
@@ -458,11 +600,6 @@ build_p_hacking_summary <- function(results, options) {
 }
 
 box::export(
-  compute_pvalues,
-  run_binomial,
-  run_lcm,
-  run_fisher,
-  run_discontinuity,
-  run_cox_shi,
+  run_caliper_tests,
   run_p_hacking_tests
 )
