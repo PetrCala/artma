@@ -71,11 +71,14 @@ run_single_caliper <- function(t_stats, study_id, threshold = 1.96, width = 0.05
 
   # Run regression
   model <- stats::lm(significant ~ t_stat - 1, data = df_subset)
-  model_coefs <- tryCatch({
-    lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const", cluster = df_subset$study))
-  }, error = function(e) {
-    lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const"))
-  })
+  model_coefs <- tryCatch(
+    {
+      lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const", cluster = df_subset$study))
+    },
+    error = function(e) {
+      lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const"))
+    }
+  )
 
   estimate <- model_coefs["t_stat", "Estimate"]
   std_error <- model_coefs["t_stat", "Std. Error"]
@@ -148,7 +151,7 @@ run_caliper_tests <- function(t_stats, study_id, thresholds = c(0, 1.96, 2.58),
 
 #' @title Build caliper summary table
 #' @param caliper_results *[list]* List of caliper test results.
-#' @param options *[list]* Options.
+#' @param options *[list]* Options containing display_ratios flag.
 #' @return *[data.frame]* Formatted caliper summary.
 build_caliper_summary <- function(caliper_results, options) {
   if (length(caliper_results) == 0) {
@@ -163,8 +166,11 @@ build_caliper_summary <- function(caliper_results, options) {
   thresholds <- sort(thresholds)
   widths <- sort(widths)
 
+  # Get display option
+  display_ratios <- options$display_ratios %||% TRUE
+
   # Initialize result matrix
-  n_rows <- length(widths) * 3  # 3 rows per width: Estimate, SE, n total
+  n_rows <- length(widths) * 3 # 3 rows per width: Estimate, SE, n count
   result <- matrix("", nrow = n_rows, ncol = length(thresholds) + 1)
 
   # Column names
@@ -177,8 +183,8 @@ build_caliper_summary <- function(caliper_results, options) {
     result[row_idx, 1] <- paste0("Caliper width ", w, " - Estimate")
     # Row 2: SEs
     result[row_idx + 1, 1] <- paste0("Caliper width ", w, " - SE")
-    # Row 3: n total
-    result[row_idx + 2, 1] <- paste0("Caliper width ", w, " - n total")
+    # Row 3: n count (ratio or total)
+    result[row_idx + 2, 1] <- paste0("Caliper width ", w, if (display_ratios) " - n above/below" else " - n total")
 
     for (col_idx in seq_along(thresholds)) {
       thresh <- thresholds[col_idx]
@@ -189,7 +195,12 @@ build_caliper_summary <- function(caliper_results, options) {
 
       result[row_idx, col_idx + 1] <- res$estimate
       result[row_idx + 1, col_idx + 1] <- res$std_error
-      result[row_idx + 2, col_idx + 1] <- as.character(res$n_above + res$n_below)
+      # Display ratio or total based on option
+      result[row_idx + 2, col_idx + 1] <- if (display_ratios) {
+        paste0(res$n_above, "/", res$n_below)
+      } else {
+        as.character(res$n_above + res$n_below)
+      }
     }
 
     row_idx <- row_idx + 3
@@ -454,20 +465,23 @@ run_p_hacking_tests <- function(df, options) {
 
   # 1. Caliper Tests
   if (options$include_caliper) {
-    caliper_results <- tryCatch({
-      run_caliper_tests(
-        t_stats = t_stats,
-        study_id = study_id,
-        thresholds = options$caliper_thresholds,
-        widths = options$caliper_widths,
-        add_significance_marks = options$add_significance_marks,
-        round_to = options$round_to
-      )
-    }, error = function(e) {
-      cli::cli_warn("Caliper tests failed: {e$message}")
-      list()
-    })
-    output$caliper <- build_caliper_summary(caliper_results, options)
+    caliper_results <- tryCatch(
+      {
+        run_caliper_tests(
+          t_stats = t_stats,
+          study_id = study_id,
+          thresholds = options$caliper_thresholds,
+          widths = options$caliper_widths,
+          add_significance_marks = options$add_significance_marks,
+          round_to = options$round_to
+        )
+      },
+      error = function(e) {
+        cli::cli_warn("Caliper tests failed: {e$message}")
+        list()
+      }
+    )
+    output$caliper <- build_caliper_summary(caliper_results, list(display_ratios = options$caliper_display_ratios))
   }
 
   # 2. Elliott Tests
@@ -556,21 +570,24 @@ run_p_hacking_tests <- function(df, options) {
   if (options$include_maive) {
     if ("n_obs" %in% colnames(df)) {
       maive_data <- prepare_maive_data(df)
-      maive_results <- tryCatch({
-        maive(
-          dat = maive_data,
-          method = options$maive_method,
-          weight = options$maive_weight,
-          instrument = options$maive_instrument,
-          studylevel = options$maive_studylevel,
-          SE = options$maive_se,
-          AR = options$maive_ar,
-          first_stage = options$maive_first_stage
-        )
-      }, error = function(e) {
-        cli::cli_warn("MAIVE estimation failed: {e$message}")
-        NULL
-      })
+      maive_results <- tryCatch(
+        {
+          maive(
+            dat = maive_data,
+            method = options$maive_method,
+            weight = options$maive_weight,
+            instrument = options$maive_instrument,
+            studylevel = options$maive_studylevel,
+            SE = options$maive_se,
+            AR = options$maive_ar,
+            first_stage = options$maive_first_stage
+          )
+        },
+        error = function(e) {
+          cli::cli_warn("MAIVE estimation failed: {e$message}")
+          NULL
+        }
+      )
       output$maive <- format_maive_results(maive_results, options)
     } else {
       cli::cli_warn("MAIVE requires 'n_obs' column - skipping MAIVE test")

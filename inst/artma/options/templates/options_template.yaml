@@ -258,6 +258,13 @@ methods:
         Caliper interval widths to test around each threshold.
         Narrower widths focus on immediate vicinity of the threshold.
 
+    caliper_display_ratios:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, display ratios (n_above/n_below) for Caliper tests.
+        If `FALSE`, display total count (n_above + n_below).
+
     include_elliott:
       type: "logical"
       default: true
