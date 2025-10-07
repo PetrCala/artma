@@ -26,7 +26,7 @@ crawl_and_import_modules <- function(dir_path, pattern = "\\.R$") {
 
   dir_path <- normalizePath(dir_path, mustWork = FALSE)
   if (!dir.exists(dir_path)) {
-    cli::cli_abort(glue::glue("Non-existent directory when importing modules: {dir_path}"))
+    cli::cli_abort(sprintf("Non-existent directory when importing modules: %s", dir_path))
   }
 
   box::use(artma / modules / path[turn_path_into_box_import])
@@ -49,7 +49,7 @@ crawl_and_import_modules <- function(dir_path, pattern = "\\.R$") {
     # Calling the module name should now return the module itself
     imported_module <- eval(parse(text = module_name))
     if (!inherits(imported_module, "box$mod")) {
-      cli::cli_abort(glue::glue("Failed to import {module_name} as a box module. Aborting…"))
+      cli::cli_abort(sprintf("Failed to import %s as a box module. Aborting...", module_name))
     }
     modules[[module_name]] <- imported_module
   }
@@ -67,7 +67,7 @@ validate_runtime_method_modules <- function(modules) { # nolint: object_length_l
 
   if (!is.list(modules)) {
     obj_class <- class(modules)
-    cli::cli_abort(glue::glue("Invalid runtime method modules object: {modules}. Class: '{obj_class}'. Expected: 'list'."))
+    cli::cli_abort(sprintf("Invalid runtime method modules object: %s. Class: '%s'. Expected: 'list'.", modules, obj_class))
   }
 
   if (length(modules) == 0) {
@@ -83,11 +83,11 @@ validate_runtime_method_modules <- function(modules) { # nolint: object_length_l
         main_method <- modules[[module_name]]$run # Can throw an error
 
         if (!inherits(main_method, "function")) {
-          cli::cli_abort(glue::glue("Missing or invalid 'run' function in module '{module_name}'. Make sure your module contains this function."))
+          cli::cli_abort(sprintf("Missing or invalid 'run' function in module '%s'. Make sure your module contains this function.", module_name))
         }
       },
       error = function(e) {
-        cli::cli_abort(glue::glue("Error validating the '{module_name}' runtime methods module: {e}"))
+        cli::cli_abort(sprintf("Error validating the '%s' runtime methods module: %s", module_name, e))
       }
     )
   }
@@ -99,7 +99,7 @@ validate_runtime_method_modules <- function(modules) { # nolint: object_length_l
 #' @param pkg [character] The name of the package to get the exports of.
 #' @return [character] A vector of the exports of the package.
 get_pkg_exports <- function(pkg) {
-  import_statement <- glue::glue("box::use(mod = {pkg})")
+  import_statement <- sprintf("box::use(mod = %s)", pkg)
   eval(parse(text = import_statement))
   ns <- attr(mod, "namespace")
   exports <- base::getNamespaceExports(ns)

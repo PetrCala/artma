@@ -9,8 +9,8 @@
   variants <- unique(c(
     normalized,
     sub("^inst/", "", normalized),
-    sub(glue::glue("^{package_name}/"), "", normalized),
-    sub(glue::glue("^inst/{package_name}/"), "", normalized)
+    sub(paste0("^", package_name, "/"), "", normalized),
+    sub(paste0("^inst/", package_name, "/"), "", normalized)
   ))
 
   variants <- variants[nzchar(variants)]
@@ -86,7 +86,7 @@ turn_path_into_box_importable <- function(input_path) {
   i <- tools::file_path_sans_ext(resolved_path)
 
   while (i != ".") {
-    if (grepl(glue::glue("{CONST$PACKAGE_NAME}$"), i)) {
+    if (grepl(paste0(CONST$PACKAGE_NAME, "$"), i)) {
       break
     }
     parent <- dirname(i)
@@ -105,7 +105,7 @@ turn_path_into_box_importable <- function(input_path) {
   # Ensure the resulting import statement starts with '<pkg_name> / ...'
   path_parts <- c(CONST$PACKAGE_NAME, path_parts)
 
-  glue::glue_collapse(path_parts, sep = "/")
+  paste(path_parts, collapse = "/")
 }
 
 #' @title Turn path into box import
@@ -128,7 +128,7 @@ turn_path_into_box_import <- function(path) {
   }
 
   module_name <- base::basename(importable_box_path)
-  parse(text = glue::glue("box::use({module_name}={importable_box_path})"))
+  parse(text = sprintf("box::use(%s=%s)", module_name, importable_box_path))
 }
 
 box::export(

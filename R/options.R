@@ -45,7 +45,7 @@ options.validate <- function(
   validate(is.logical(should_flag_redundant))
   assert(
     failure_action %in% CONST$OPTIONS$VALIDATION_ACTIONS,
-    glue::glue("Invalid failure action specified: {failure_action}. Must be one of: {glue::glue_collapse(CONST$OPTIONS$VALIDATION_ACTIONS, sep = ", ")}")
+    sprintf("Invalid failure action specified: %s. Must be one of: %s", failure_action, paste(CONST$OPTIONS$VALIDATION_ACTIONS, collapse = ", "))
   )
 
   options_dir <- resolve_options_dir(options_dir)
@@ -53,7 +53,7 @@ options.validate <- function(
   options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the user options file you wish to delete: ")
   options_path <- options_file_path(options_dir, options_file_name)
 
-  assert(file.exists(options_path), glue::glue("Options file '{options_path}' does not exist."))
+  assert(file.exists(options_path), sprintf("Options file '%s' does not exist.", options_path))
 
   if (get_verbosity() >= 4) {
     cli::cli_inform("Validating the user options file {.file {options_file_name}}...")
@@ -132,7 +132,7 @@ options.validate <- function(
   }
 
   if (grepl("abort", failure_action) && length(errors) > 0) {
-    cli::cli_abort(glue::glue("Validation failed for file {options_file_name}."))
+    cli::cli_abort(sprintf("Validation failed for file %s.", options_file_name))
   }
 
   invisible(errors)
@@ -353,7 +353,7 @@ options.load <- function(
 
   assert(
     grepl(".yaml$|.yml$", options_file_name),
-    glue::glue("Please pass the name of the options to load with the .yaml suffix. Got: {options_file_name}.")
+    sprintf("Please pass the name of the options to load with the .yaml suffix. Got: %s.", options_file_name)
   )
 
   options_path <- options_file_path(options_dir, options_file_name)
@@ -489,7 +489,7 @@ options.open <- function(
   options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to open: ")
 
   file_path <- file.path(options_dir, options_file_name)
-  usethis::edit_file(file_path)
+  file.edit(file_path)
 
   return(invisible(NULL))
 }
@@ -695,7 +695,7 @@ options.fix <- function(
     fixed_options[[opt_name]] <- fixed_value
     proposed_changes <- append(
       proposed_changes,
-      glue::glue("{CONST$STYLES$OPTIONS$NAME(opt_name)}: {CONST$STYLES$OPTIONS$VALUE(opt_value)} -> {CONST$STYLES$OPTIONS$VALUE(fixed_value)}")
+      paste0(CONST$STYLES$OPTIONS$NAME(opt_name), ": ", CONST$STYLES$OPTIONS$VALUE(opt_value), " -> ", CONST$STYLES$OPTIONS$VALUE(fixed_value))
     )
   }
 
@@ -789,7 +789,7 @@ options.create <- function(
   options_file_name <- parse_options_file_name(options_file_name)
 
   if (get_verbosity() >= 4) {
-    cli::cli_inform("{stringr::str_to_title(action_name)} a user options file: {.path {options_file_name}}")
+    cli::cli_inform("{tools::toTitleCase(action_name)} a user options file: {.path {options_file_name}}")
   }
 
   options_dir <- resolve_options_dir(options_dir, must_exist = FALSE)
@@ -846,7 +846,7 @@ options.create <- function(
   }
 
   if (get_verbosity() >= 3) {
-    cli::cli_alert_success("{stringr::str_to_title(action_name)} a user options file {.path {options_file_name}} was successful.")
+    cli::cli_alert_success("{tools::toTitleCase(action_name)} a user options file {.path {options_file_name}} was successful.")
   }
 
   invisible(options_file_name)

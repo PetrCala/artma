@@ -35,7 +35,7 @@ resolve_options_dir <- function(options_dir = NULL, must_exist = TRUE) {
 
   if (isTRUE(must_exist) && !dir.exists(resolved)) {
     cli::cli_abort(
-      glue::glue("The following options directory does not exist: {resolved}")
+      sprintf("The following options directory does not exist: %s", resolved)
     )
   }
 

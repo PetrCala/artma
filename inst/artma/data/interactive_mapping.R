@@ -68,7 +68,7 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
 
     choice_idx <- menu(
       choices = choices,
-      title = glue::glue("Select the column for '{std_col}' (required)")
+      title = sprintf("Select the column for '%s' (required)", std_col)
     )
 
     if (choice_idx == 0) {
@@ -85,7 +85,7 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
       next
     } else if (grepl("^---.*None.*---$", selected)) {
       # Ask user to type column name manually
-      typed_col <- readline(glue::glue("Enter the exact column name for '{std_col}': "))
+      typed_col <- readline(sprintf("Enter the exact column name for '%s': ", std_col))
       typed_col <- trimws(typed_col)
 
       if (nchar(typed_col) == 0) {
@@ -128,7 +128,7 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
 
           choice_idx <- menu(
             choices = choices,
-            title = glue::glue("Select the column for '{std_col}' (optional)")
+            title = sprintf("Select the column for '%s' (optional)", std_col)
           )
 
           if (choice_idx == 0 || grepl("^---.*Skip.*---$", choices[choice_idx])) {
@@ -188,7 +188,7 @@ save_column_mapping_to_options <- function(mapping, options_file_name = NULL) {
   # Convert mapping to options format (artma.data.colnames.*)
   user_input <- list()
   for (std_col in names(mapping)) {
-    opt_key <- glue::glue("data.colnames.{std_col}")
+    opt_key <- paste0("data.colnames.", std_col)
     user_input[[opt_key]] <- mapping[[std_col]]
   }
 
@@ -201,7 +201,7 @@ save_column_mapping_to_options <- function(mapping, options_file_name = NULL) {
   } else {
     # Set in current session
     for (key in names(user_input)) {
-      opt_name <- glue::glue("artma.{key}")
+      opt_name <- paste0("artma.", key)
       options_list <- list()
       options_list[[opt_name]] <- user_input[[key]]
       do.call(options, options_list)

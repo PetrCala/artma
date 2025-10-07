@@ -55,17 +55,18 @@ trim_quotes <- function(s) gsub("^(\"|')+|(\"|')+$", "", s)
 #'
 #' @param input_string *\[character\]* The string to clean
 #' `character` The cleaned string
-#' @importFrom stringr
 clean_string <- function(input_string) {
+  box::use(artma / libs / polyfills[str_replace_all, str_trim])
+
   # Remove special characters
-  str_out <- stringr::str_replace_all(input_string, "[^a-zA-Z0-9]", "_")
+  str_out <- str_replace_all(input_string, "[^a-zA-Z0-9]", "_")
 
   # Convert to lowercase
   str_out <- tolower(str_out)
 
   # Remove leading or trailing underscores
-  str_out <- stringr::str_trim(str_out, side = "both")
-  str_out <- stringr::str_replace_all(str_out, "^_+|_+$", "")
+  str_out <- str_trim(str_out, side = "both")
+  str_out <- str_replace_all(str_out, "^_+|_+$", "")
 
   # Remove quotes
   str_out <- trim_quotes(str_out)

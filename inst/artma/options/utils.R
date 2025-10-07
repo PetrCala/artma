@@ -113,7 +113,7 @@ parse_options_file_name <- function(input_string) {
       str_out <- gsub('"', "", str_out, fixed = TRUE)
 
       # Remove trailing and leading whitespace
-      str_out <- stringr::str_trim(str_out, side = "both")
+      str_out <- trimws(str_out, which = "both")
     },
     error = function(e) {
       cli::cli_abort("There was an error parsing the following into a valid user options file name: {.emph {input_string}}")
