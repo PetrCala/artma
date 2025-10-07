@@ -20,7 +20,7 @@ simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress
 
   if (show_pb) {
     cli::cli_progress_bar(
-      "Simulating CDFs for LCM test",
+      "Simulating {iterations} Brownian bridge CDFs for LCM test",
       total = iterations,
       format = "{cli::pb_spin} {cli::pb_current}/{cli::pb_total} | ETA: {cli::pb_eta}"
     )
