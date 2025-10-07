@@ -69,16 +69,18 @@ run_single_caliper <- function(t_stats, study_id, threshold = 1.96, width = 0.05
     study = study_id[in_interval]
   )
 
-  # Run regression
+  # Run regression (suppress clubSandwich override messages)
   model <- stats::lm(significant ~ t_stat - 1, data = df_subset)
-  model_coefs <- tryCatch(
-    {
-      lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const", cluster = df_subset$study))
-    },
-    error = function(e) {
-      lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const"))
-    }
-  )
+  model_coefs <- suppressMessages({
+    tryCatch(
+      {
+        lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const", cluster = df_subset$study))
+      },
+      error = function(e) {
+        lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const"))
+      }
+    )
+  })
 
   estimate <- model_coefs["t_stat", "Estimate"]
   std_error <- model_coefs["t_stat", "Std. Error"]
@@ -121,7 +123,7 @@ run_caliper_tests <- function(t_stats, study_id, thresholds = c(0, 1.96, 2.58),
 
   if (show_pb) {
     cli::cli_progress_bar(
-      "Running Caliper tests",
+      "Running {total_tests} Caliper test{?s} across thresholds and widths",
       total = total_tests,
       format = "{cli::pb_spin} {cli::pb_current}/{cli::pb_total} tests [{cli::pb_elapsed}]"
     )
