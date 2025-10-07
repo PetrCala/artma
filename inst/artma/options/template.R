@@ -327,12 +327,16 @@ parse_options_from_template <- function(
     add_prefix = FALSE) {
   box::use(
     artma / const[CONST],
-    artma / libs / validation[assert_options_template_exists]
+    artma / libs / validation[assert_options_template_exists],
+    artma / options / column_preprocessing[preprocess_column_mapping]
   )
   assert_options_template_exists(path)
 
   raw_template_options <- read_template(path)
   options_def <- flatten_template_options(raw_template_options)
+
+  # Pre-process: Auto-detect column mappings if data.source_path is provided
+  user_input <- preprocess_column_mapping(user_input, options_def)
 
   parsed_options <- list()
   for (opt in options_def) {

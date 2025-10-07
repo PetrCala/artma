@@ -80,9 +80,11 @@ get_column_patterns <- function() {
         "^obs[_\\.]?id$",
         "^observation[_\\.]?id$",
         "^row[_\\.]?id$",
-        "^id$"
+        "^obs[_\\.]?n$",
+        "^n[_\\.]?obs$"
       ),
-      keywords = c("obs", "observation", "row", "id"),
+      keywords = c("obs_id", "observation_id", "row_id"),
+      exclude_keywords = c("region", "africa", "asia", "america", "europe", "middle", "east", "north", "south"),
       priority = 3
     ),
     reg_dof = list(
@@ -246,9 +248,13 @@ recognize_columns <- function(df, min_confidence = 0.7) {
   sorted_std_cols <- names(patterns)[order(pattern_priority)]
 
   for (std_col in sorted_std_cols) {
+    # Higher confidence threshold for optional columns to reduce false positives
+    is_required <- patterns[[std_col]]$priority == 1
+    confidence_threshold <- if (is_required) min_confidence else 0.95
+
     # Find all columns that matched this standard column
     candidates <- names(matches)[vapply(matches, function(m) {
-      !is.na(m$match) && m$match == std_col && m$score >= min_confidence
+      !is.na(m$match) && m$match == std_col && m$score >= confidence_threshold
     }, logical(1))]
 
     # Remove already used columns
@@ -265,7 +271,8 @@ recognize_columns <- function(df, min_confidence = 0.7) {
       if (get_verbosity() >= 4) {
         score <- matches[[best_candidate]]$score
         method <- matches[[best_candidate]]$method
-        cli::cli_inform("Recognized {.field {best_candidate}} as {.field {std_col}} (score: {round(score, 2)}, method: {method})")
+        req_label <- if (is_required) "required" else "optional"
+        cli::cli_inform("Recognized {.field {best_candidate}} as {.field {std_col}} ({req_label}, score: {round(score, 2)}, method: {method})")
       }
     }
   }
