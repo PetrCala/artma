@@ -23,6 +23,7 @@ p_hacking_tests <- function(df) {
   include_caliper <- opt$include_caliper %||% TRUE
   caliper_thresholds <- opt$caliper_thresholds %||% c(1.645, 1.96, 2.58)
   caliper_widths <- opt$caliper_widths %||% c(0.05, 0.1, 0.15)
+  caliper_display_ratios <- opt$caliper_display_ratios %||% TRUE
 
   # Elliott options
   include_elliott <- opt$include_elliott %||% TRUE
@@ -53,6 +54,7 @@ p_hacking_tests <- function(df) {
     is.logical(include_caliper),
     is.numeric(caliper_thresholds),
     is.numeric(caliper_widths),
+    is.logical(caliper_display_ratios),
     is.logical(include_elliott),
     is.numeric(lcm_iterations),
     is.numeric(lcm_grid_points),
@@ -94,6 +96,7 @@ p_hacking_tests <- function(df) {
     include_caliper = include_caliper,
     caliper_thresholds = caliper_thresholds,
     caliper_widths = caliper_widths,
+    caliper_display_ratios = caliper_display_ratios,
     include_elliott = include_elliott,
     lcm_iterations = as.integer(lcm_iterations),
     lcm_grid_points = as.integer(lcm_grid_points),
