@@ -8,10 +8,24 @@ linspace <- function(start_, stop_, n) seq(from = start_, to = stop_, length.out
 #'
 #' @param iterations [integer] Number of simulations.
 #' @param grid_points [integer] Number of grid points per simulation.
+#' @param show_progress [logical] Whether to show progress bar.
 #' @return Numeric vector of simulated suprema.
-simulate_cdfs <- function(iterations = 10000, grid_points = 10000) {
+simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress = TRUE) {
   c_grid <- seq_len(grid_points) / grid_points
   bb_sup <- numeric(iterations)
+
+  # Show progress bar if requested and verbosity allows
+  verbosity <- getOption("artma.verbose", 3)
+  show_pb <- show_progress && verbosity >= 3 && iterations >= 1000
+
+  if (show_pb) {
+    cli::cli_progress_bar(
+      "Simulating CDFs for LCM test",
+      total = iterations,
+      format = "{cli::pb_spin} {cli::pb_current}/{cli::pb_total} | ETA: {cli::pb_eta}"
+    )
+  }
+
   for (m in seq_len(iterations)) {
     eps <- stats::rnorm(grid_points, mean = 0, sd = 1) / sqrt(grid_points)
     w <- cumsum(eps)
@@ -31,7 +45,17 @@ simulate_cdfs <- function(iterations = 10000, grid_points = 10000) {
       y[lower:upper] <- yy
     }
     bb_sup[m] <- max(abs(y - b_values))
+
+    # Update progress every 50 iterations for better feedback
+    if (show_pb && m %% 50 == 0) {
+      cli::cli_progress_update(set = m)
+    }
   }
+
+  if (show_pb) {
+    cli::cli_progress_done()
+  }
+
   bb_sup
 }
 
