@@ -135,8 +135,6 @@ run_caliper_tests <- function(t_stats, study_id, thresholds = c(0, 1.96, 2.58),
   show_pb <- show_progress && verbosity >= 3 && total_tests >= 3
 
   if (show_pb) {
-    cli::cli_inform("Running Caliper tests to detect discontinuities around significance thresholds")
-    Sys.sleep(0.1)  # Brief pause so message is visible
     cli::cli_progress_bar(
       "Computing {total_tests} test{?s}",
       total = total_tests,
