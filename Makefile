@@ -8,7 +8,7 @@
 #   make build      - Build package tarball
 #   make clean      - Clean build artifacts
 
-.PHONY: help install test test-file test-filter test-e2e check check-fast lint document build clean coverage coverage-report style desc-normalize all dev quick setup vignettes fix-options clear-cache
+.PHONY: help install test test-file test-filter test-e2e check check-fast lint document build clean coverage coverage-report style desc-normalize all dev quick setup vignettes fix-options clear-cache stats
 
 # Default target
 help:
@@ -34,6 +34,7 @@ help:
 	@echo "  make desc-normalize   Normalize DESCRIPTION file"
 	@echo "  make fix-options      Validate option templates and default files"
 	@echo "  make clear-cache      Clear package cache"
+	@echo "  make stats            Display repository statistics"
 	@echo "  make all              Run document, test, lint, and check"
 	@echo "  make quick            Quick dev cycle (document + test)"
 	@echo "  make dev              Load package for interactive development"
@@ -153,6 +154,10 @@ fix-options:
 clear-cache:
 	@echo "Clearing package cache..."
 	@Rscript -e "source('scripts/R/clear_cache.R')"
+
+# Display repository statistics
+stats:
+	@bash scripts/repo-stats.sh
 
 # Run all quality checks
 all: document test lint check
