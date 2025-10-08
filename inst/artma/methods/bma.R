@@ -366,8 +366,8 @@ manual_select_bma_variables <- function(df, config) {
     return(character(0))
   }
 
-  # Get potential moderator variables (exclude effect, se, and other special columns)
-  excluded_vars <- c("effect", "se", "obs_id", "study", "study_id", "t_stat", "precision", "reg_dof", "n_obs", "study_size")
+  # Get potential moderator variables (exclude only effect as dependent variable)
+  excluded_vars <- c("effect")
 
   potential_vars <- names(config)[!names(config) %in% excluded_vars]
 
