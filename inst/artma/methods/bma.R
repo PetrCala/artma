@@ -539,8 +539,26 @@ auto_select_bma_variables <- function(df, config) {
 
   cli::cli_alert_success("Using {nrow(suggested_vars)} suggested moderator{?s}")
 
+  # Get variable names
+  var_names <- suggested_vars$var_name
+
+  # Prompt to save the selection
+  box::use(artma / libs / save_preference[prompt_save_variable_selection])
+
+  # For BMA, we don't have detailed configs, just mark as BMA variables
+  var_configs <- stats::setNames(
+    lapply(var_names, function(v) list(var_name = v, use_in_bma = TRUE)),
+    var_names
+  )
+
+  prompt_save_variable_selection(
+    var_names = var_names,
+    var_configs = var_configs,
+    description = "BMA moderator variables"
+  )
+
   # Return just the variable names (BMA doesn't need split specifications)
-  suggested_vars$var_name
+  var_names
 }
 
 #' Manual variable selection via interactive menu
