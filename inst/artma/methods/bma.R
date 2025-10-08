@@ -208,38 +208,86 @@ bma <- function(df) {
     }
   }
 
-  # Check for rank deficiency and multicollinearity
+  # Check for rank deficiency and multicollinearity, and remove aliased variables
   if (ncol(bma_data) > 2) {
-    # Build a design matrix to check rank
-    formula_check <- stats::as.formula(paste("effect ~", paste(setdiff(names(bma_data), "effect"), collapse = " + ")))
-    tryCatch(
-      {
-        lm_check <- stats::lm(formula_check, data = bma_data)
-        aliased <- stats::alias(lm_check)
+    max_iterations <- 50  # Prevent infinite loop
+    iteration <- 0
 
-        if (!is.null(aliased$Complete) && length(aliased$Complete) > 0) {
-          if (get_verbosity() >= 2) {
-            cli::cli_alert_warning("Detected {length(aliased$Complete)} aliased coefficient{?s} (perfect collinearity)")
-            cli::cli_alert_info("This usually indicates a dummy variable trap or redundant variables")
-          }
-
-          # Get coefficients with NA (these are the aliased ones)
-          lm_coefs <- stats::coef(lm_check)
-          aliased_vars <- names(lm_coefs)[is.na(lm_coefs)]
-          aliased_vars <- aliased_vars[aliased_vars != "(Intercept)"]
-
-          if (length(aliased_vars) > 0 && get_verbosity() >= 2) {
-            cli::cli_alert_warning("Variables causing collinearity: {.val {aliased_vars}}")
-            cli::cli_alert_info("Consider removing one variable from each categorical group")
-          }
+    repeat {
+      iteration <- iteration + 1
+      if (iteration > max_iterations) {
+        if (get_verbosity() >= 2) {
+          cli::cli_alert_warning("Reached maximum iterations for collinearity removal")
         }
-      },
-      error = function(e) {
-        if (get_verbosity() >= 3) {
-          cli::cli_alert_info("Could not check for collinearity: {e$message}")
-        }
+        break
       }
-    )
+
+      # Build a design matrix to check rank
+      formula_check <- stats::as.formula(paste("effect ~", paste(setdiff(names(bma_data), "effect"), collapse = " + ")))
+      aliased_vars <- character(0)
+
+      tryCatch(
+        {
+          lm_check <- stats::lm(formula_check, data = bma_data)
+          aliased <- stats::alias(lm_check)
+
+          if (!is.null(aliased$Complete) && length(aliased$Complete) > 0) {
+            # Get coefficients with NA (these are the aliased ones)
+            lm_coefs <- stats::coef(lm_check)
+            aliased_vars <- names(lm_coefs)[is.na(lm_coefs)]
+            aliased_vars <- aliased_vars[aliased_vars != "(Intercept)"]
+
+            if (length(aliased_vars) > 0) {
+              if (get_verbosity() >= 2 && iteration == 1) {
+                cli::cli_alert_warning("Detected {length(aliased_vars)} aliased coefficient{?s} (perfect collinearity)")
+                cli::cli_alert_info("Automatically removing collinear variables...")
+              }
+
+              # Get priority variables to preserve if possible
+              box::use(artma / libs / bma_variable_suggestion[get_bma_priority_variables])
+              priority_vars <- get_bma_priority_variables()
+
+              # Remove one aliased variable, preferring non-priority ones
+              non_priority_aliased <- setdiff(aliased_vars, priority_vars)
+              var_to_remove <- if (length(non_priority_aliased)) {
+                non_priority_aliased[1]
+              } else {
+                aliased_vars[1]
+              }
+
+              if (get_verbosity() >= 3) {
+                cli::cli_alert_info("Removing collinear variable: {.val {var_to_remove}}")
+              }
+
+              # Remove the variable from bma_data and bma_var_names
+              bma_data <- bma_data[, names(bma_data) != var_to_remove, drop = FALSE]
+              bma_var_names <- bma_var_names[bma_var_names != var_to_remove]
+
+              if (ncol(bma_data) < 2) {
+                cli::cli_abort("Not enough variables remaining after removing collinear variables. Need at least effect and one moderator.")
+              }
+
+              # Continue loop to check if more aliased variables remain
+              next
+            }
+          }
+        },
+        error = function(e) {
+          if (get_verbosity() >= 3) {
+            cli::cli_alert_info("Could not check for collinearity: {e$message}")
+          }
+        }
+      )
+
+      # No aliased variables found, exit loop
+      if (!length(aliased_vars)) {
+        break
+      }
+    }
+
+    if (iteration > 1 && get_verbosity() >= 2) {
+      cli::cli_alert_success("Removed {iteration - 1} collinear variable{?s}")
+    }
   }
 
   bma_params_list <- list(
