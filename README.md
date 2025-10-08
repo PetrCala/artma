@@ -31,6 +31,10 @@
   - [Loading an options file](#loading-an-options-file)
   - [Adding new options](#adding-new-options)
   - [Controlling verbosity](#controlling-verbosity)
+  - [Controlling autonomy](#controlling-autonomy)
+    - [Autonomy Levels](#autonomy-levels)
+    - [Setting the Autonomy Level](#setting-the-autonomy-level)
+    - [When Does Autonomy Matter?](#when-does-autonomy-matter)
 - [Using methods](#using-methods)
   - [Using available methods](#using-available-methods)
   - [Defining custom methods](#defining-custom-methods)
@@ -157,6 +161,73 @@ artma::options.modify(
 ```
 
 To check the current verbosity level, run `getOption('artma.verbose')`.
+
+## Controlling autonomy
+
+The package includes an **autonomy system** that controls how much user interaction is required during analysis. Higher autonomy levels mean less user interaction and more automatic decision-making. This is particularly useful for running analyses in batch mode or when you want to minimize interruptions.
+
+### Autonomy Levels
+
+| Level | Name    | Description                                                                  |
+| ----- | ------- | ---------------------------------------------------------------------------- |
+| 1     | Minimal | Maximum user control - prompt for all optional decisions                     |
+| 2     | Low     | Frequent prompts - ask for most non-critical decisions                       |
+| 3     | Medium  | Balanced - prompt for important decisions only                               |
+| 4     | High    | Mostly autonomous - minimal prompts for critical decisions only (default)    |
+| 5     | Full    | Fully autonomous - no prompts, use all defaults and auto-detection           |
+
+**Note**: In non-interactive mode (e.g., R scripts, batch jobs), the autonomy level is always set to 5 (Full) regardless of your configuration, as user prompts are not possible in such environments.
+
+### Setting the Autonomy Level
+
+The autonomy level is stored in your options file under `autonomy.level`. When you create a new options file, you'll be prompted to select your preferred autonomy level.
+
+To change the autonomy level for an existing options file:
+
+```yaml
+autonomy:
+  level: 4  # Set to your preferred level (1-5)
+```
+
+Or programmatically:
+
+```R
+# Set autonomy level for the current session
+artma::autonomy.set(4)
+
+# Get current autonomy level
+level <- artma::autonomy.get()
+
+# Get a description of the current or a specific level
+artma::autonomy.describe()
+artma::autonomy.describe(5)
+
+# Check if fully autonomous
+artma::autonomy.is_full()
+```
+
+### When Does Autonomy Matter?
+
+The autonomy level affects various aspects of the package behavior:
+
+- **Data configuration**: Whether to prompt for manual configuration or use automatic detection
+- **Missing value handling**: Whether to ask how to handle missing values or use defaults
+- **Method selection**: Whether to interactively select methods or use recommended defaults
+- **Parameter confirmation**: Whether to confirm default parameter values or accept them automatically
+
+Higher autonomy levels make the package more suitable for:
+
+- Batch processing and automated workflows
+- Reproducible research scripts
+- Non-interactive R sessions (Rscript, scheduled jobs)
+- Quick exploratory analyses
+
+Lower autonomy levels are better for:
+
+- Initial data exploration
+- Learning the package functionality
+- Custom analyses requiring careful parameter selection
+- Interactive research workflows
 
 # Using methods
 

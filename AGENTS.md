@@ -3,6 +3,36 @@
 ## Project Structure & Module Organization
 Source exports live in `R/`, while modular implementation code is grouped under `inst/artma` to support box-style imports. Tests reside in `tests/testthat` for unit coverage and `tests/E2E` for installation-level checks. Generated documentation belongs in `man/`, long-form guides in `vignettes/`, and helper scripts in `scripts/`. Run assets or large examples under `inst/` so they ship with the package.
 
+## Autonomy System
+The package includes an **autonomy system** that controls how much user interaction is required during analysis. When implementing new features, consider the autonomy level to determine whether to prompt the user or use automatic defaults.
+
+**Autonomy Levels (1-5):**
+- **Level 1 (Minimal)**: Maximum user control - prompt for all optional decisions
+- **Level 2 (Low)**: Frequent prompts - ask for most non-critical decisions
+- **Level 3 (Medium)**: Balanced - prompt for important decisions only
+- **Level 4 (High)**: Mostly autonomous - minimal prompts for critical decisions only (default for interactive mode)
+- **Level 5 (Full)**: Fully autonomous - no prompts, use all defaults and auto-detection (default for non-interactive mode)
+
+**When to Consider Autonomy:**
+- Before prompting the user with interactive menus or confirmations
+- When deciding between manual configuration and automatic detection
+- When choosing whether to ask for confirmation of defaults
+
+**Implementation Pattern:**
+```r
+box::use(artma / libs / autonomy[should_prompt_user])
+
+if (should_prompt_user(required_level = 4)) {
+  # Show interactive prompt for levels 1-3
+  choice <- climenu::select(...)
+} else {
+  # Use automatic default for levels 4-5
+  choice <- default_value
+}
+```
+
+The autonomy level is stored in the options file (`autonomy.level`) and automatically loaded when options are loaded. In non-interactive mode, the level is always 5 (Full) regardless of the stored value.
+
 ## Build, Test, and Development Commands
 - `make setup` — install package dependencies and local tooling.
 - `make lint` — load the package and run `lintr::lint_package()` with the project presets.

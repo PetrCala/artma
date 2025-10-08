@@ -387,6 +387,25 @@ options.load <- function(
   if (should_set_to_namespace) {
     remove_options_with_prefix(CONST$PACKAGE_NAME) # Remove all existing package options
     options(prefixed_options)
+
+    # Set autonomy level in the R options namespace if it exists
+    autonomy_key <- paste0(CONST$PACKAGE_NAME, ".autonomy.level")
+    if (autonomy_key %in% names(prefixed_options)) {
+      box::use(artma / libs / autonomy[set_autonomy_level])
+      tryCatch(
+        {
+          level <- as.integer(prefixed_options[[autonomy_key]])
+          if (!is.na(level) && level >= 1 && level <= 5) {
+            set_autonomy_level(level)
+          }
+        },
+        error = function(e) {
+          if (get_verbosity() >= 2) {
+            cli::cli_alert_warning("Failed to set autonomy level from options file: {e$message}")
+          }
+        }
+      )
+    }
   }
 
   if (should_return) {

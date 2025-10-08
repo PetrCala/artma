@@ -111,6 +111,58 @@ Template structure for each option node:
 - `prompt` — How to ask for value: "readline", "file", "directory"
 - `help` — Help text
 
+### Autonomy System
+
+The autonomy system controls how much user interaction is required during analysis. Higher levels mean less user interaction and more automatic decision-making.
+
+**Autonomy Levels:**
+
+1. **Level 1 - Minimal**: Maximum user control - prompt for all optional decisions
+2. **Level 2 - Low**: Frequent prompts - ask for most non-critical decisions
+3. **Level 3 - Medium**: Balanced - prompt for important decisions only
+4. **Level 4 - High**: Mostly autonomous - minimal prompts for critical decisions only (default for interactive mode)
+5. **Level 5 - Full**: Fully autonomous - no prompts, use all defaults and auto-detection (default for non-interactive mode)
+
+**Key Functions:**
+
+```r
+# Get current autonomy level
+level <- autonomy.get()
+
+# Set autonomy level
+autonomy.set(4)
+
+# Check if set
+autonomy.is_set()
+
+# Get description
+autonomy.describe()
+
+# Check if fully autonomous
+autonomy.is_full()
+```
+
+**Internal Usage:**
+
+When implementing features that may require user input, use the `should_prompt_user()` function to check if prompting is appropriate:
+
+```r
+box::use(artma / libs / autonomy[should_prompt_user])
+
+# Only prompt if autonomy level is below 4
+if (should_prompt_user(required_level = 4)) {
+  # Show interactive prompt
+  choice <- climenu::select(...)
+} else {
+  # Use automatic default
+  choice <- default_value
+}
+```
+
+**Configuration:**
+
+The autonomy level is stored in the options file under `autonomy.level` and is automatically loaded when options are loaded. In non-interactive mode, the level is always set to 5 (Full) regardless of the stored value, as prompts are not possible.
+
 ### Caching System
 
 Use `cache_cli()` to memoize expensive functions while preserving CLI output:

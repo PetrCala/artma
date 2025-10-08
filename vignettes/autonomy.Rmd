@@ -1,0 +1,357 @@
+---
+title: "Autonomy System"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Autonomy System}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<style>
+div.code-example pre { background-color:#f5f5f5; background-image: none; }
+div.output pre { background-color:#FFFFFF; background-image: none; }
+</style>
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+## Introduction
+
+The **artma** package includes an autonomy system that controls how much user interaction is required during analysis. This vignette explains the autonomy levels, how to configure them, and how they affect package behavior.
+
+## What is Autonomy?
+
+Autonomy refers to the degree of autonomy the package has in making decisions during analysis. Higher autonomy levels mean:
+
+- Fewer interactive prompts
+- More automatic decision-making
+- Faster workflow execution
+- Better suitability for batch processing
+
+Lower autonomy levels mean:
+
+- More user control over decisions
+- More interactive prompts
+- Better for learning and exploration
+- More suitable for custom analyses
+
+## Autonomy Levels
+
+The package defines five autonomy levels, numbered 1 through 5:
+
+### Level 1 - Minimal
+
+Maximum user control. The package will prompt for almost all optional decisions, giving you complete control over the analysis workflow.
+
+**Best for:**
+
+- First-time users learning the package
+- Exploratory analyses where every decision matters
+- Custom workflows requiring careful parameter selection
+
+**Example behaviors:**
+
+- Prompt for confirmation of default values
+- Ask for preferences on data preprocessing steps
+- Request input on handling edge cases
+
+### Level 2 - Low
+
+Frequent prompts for most non-critical decisions. The package will still ask for user input on many choices, but will automatically handle some trivial decisions.
+
+**Best for:**
+
+- Users familiar with the package but wanting control
+- Analyses where most but not all decisions should be customized
+
+### Level 3 - Medium
+
+Balanced approach. The package prompts only for important decisions, automatically handling routine choices with sensible defaults.
+
+**Best for:**
+
+- Routine analyses with occasional customization
+- Users comfortable with package defaults
+- Semi-automated workflows
+
+### Level 4 - High (Default for Interactive Mode)
+
+Mostly autonomous. The package minimizes prompts, only asking for input on critical decisions. This is the default level for interactive R sessions.
+
+**Best for:**
+
+- Experienced users
+- Standard analyses following recommended practices
+- Quick exploratory analyses
+- Most interactive research workflows
+
+**Example behaviors:**
+
+- Use automatic data configuration detection
+- Apply default missing value handling
+- Accept recommended method selections
+
+### Level 5 - Full (Default for Non-Interactive Mode)
+
+Fully autonomous. No prompts are shown; all decisions use defaults or automatic detection. This is the only level available in non-interactive mode (e.g., R scripts, batch jobs).
+
+**Best for:**
+
+- Batch processing
+- Automated workflows
+- Reproducible research scripts
+- Non-interactive R sessions (Rscript, scheduled jobs)
+
+**Example behaviors:**
+
+- Fully automatic data configuration
+- Default values for all parameters
+- No confirmation requests
+
+## Setting the Autonomy Level
+
+### During Options File Creation
+
+When you create a new options file using `artma::options.create()`, you'll be prompted to select your preferred autonomy level:
+
+```{r create-options}
+# Create a new options file
+artma::options.create()
+
+# You'll see an interactive menu to select your autonomy level:
+# 1. Level 1 - Minimal: Maximum user control - prompt for all optional decisions
+# 2. Level 2 - Low: Frequent prompts - ask for most non-critical decisions
+# 3. Level 3 - Medium: Balanced - prompt for important decisions only
+# 4. Level 4 - High: Mostly autonomous - minimal prompts (default)
+# 5. Level 5 - Full: Fully autonomous - no prompts
+```
+
+### In the Options File
+
+You can manually set the autonomy level in your options YAML file:
+
+```yaml
+autonomy:
+  level: 4  # Set to your preferred level (1-5)
+```
+
+### Programmatically
+
+You can set and query the autonomy level programmatically:
+
+```{r programmatic}
+# Set autonomy level for the current session
+artma::autonomy.set(4)
+
+# Get current autonomy level
+level <- artma::autonomy.get()
+print(level)  # Output: 4
+
+# Check if autonomy level is set
+is_set <- artma::autonomy.is_set()
+print(is_set)  # Output: TRUE
+
+# Get a description of the current level
+desc <- artma::autonomy.describe()
+print(desc)
+# Output: "Level 4 - High: Mostly autonomous - minimal prompts for critical decisions only (default for interactive mode)"
+
+# Get a description of a specific level
+desc5 <- artma::autonomy.describe(5)
+print(desc5)
+# Output: "Level 5 - Full: Fully autonomous - no prompts, use all defaults and auto-detection"
+
+# Check if running in fully autonomous mode
+is_full <- artma::autonomy.is_full()
+print(is_full)  # Output: FALSE (if level is 4)
+
+# List all available levels
+levels <- artma::autonomy.levels()
+print(levels)
+```
+
+## How Autonomy Affects Package Behavior
+
+The autonomy level affects various aspects of the package:
+
+### Data Configuration
+
+**Low levels (1-2):** You'll be prompted to manually configure data variables and their roles in the analysis.
+
+**Medium level (3):** You'll be asked to confirm automatic configuration or make adjustments.
+
+**High levels (4-5):** Automatic configuration is applied without prompting.
+
+### Missing Value Handling
+
+**Low levels (1-2):** You'll be asked how to handle missing values (remove, impute, etc.).
+
+**Medium level (3):** You'll be prompted only if missing values are detected.
+
+**High levels (4-5):** Default missing value handling strategy is applied.
+
+### Parameter Confirmation
+
+**Low levels (1-2):** Default parameter values are shown for confirmation.
+
+**Medium level (3):** Only non-standard defaults require confirmation.
+
+**High levels (4-5):** Default values are accepted automatically.
+
+### Method Selection
+
+**Low levels (1-2):** Interactive method selection with detailed information.
+
+**Medium level (3):** Recommended methods with option to customize.
+
+**High levels (4-5):** Standard method suite is applied.
+
+## Best Practices
+
+### For Interactive Analysis
+
+Start with level 4 (High) for standard analyses. Lower the level to 2-3 if you need more control over specific decisions.
+
+```{r interactive-example}
+# Standard workflow (level 4)
+artma::autonomy.set(4)
+results <- artma::run(
+  data_path = "my_data.csv",
+  methods = c("linear_tests", "nonlinear_tests")
+)
+
+# More control for custom analysis (level 3)
+artma::autonomy.set(3)
+custom_results <- artma::run(
+  data_path = "my_data.csv",
+  methods = c("bma", "p_hacking_tests")
+)
+```
+
+### For Batch Processing
+
+Always use level 5 (Full) for non-interactive scripts:
+
+```{r batch-example}
+# In a batch script
+artma::autonomy.set(5)
+
+# Or rely on automatic setting in non-interactive mode
+# (level 5 is set automatically when interactive() == FALSE)
+
+results <- artma::run(
+  data_path = "my_data.csv",
+  options_file_name = "batch_options.yaml"
+)
+```
+
+### For Learning
+
+Start with level 1 or 2 to understand all the decisions the package makes:
+
+```{r learning-example}
+# Learning mode
+artma::autonomy.set(1)
+
+# You'll see all prompts and decision points
+results <- artma::run(data_path = "tutorial_data.csv")
+```
+
+## Interaction with Non-Interactive Mode
+
+**Important**: In non-interactive R sessions (determined by `interactive() == FALSE`), the autonomy level is always set to 5 (Full), regardless of what's configured in your options file. This is because user prompts are not possible in non-interactive mode.
+
+This means:
+
+- Batch scripts always run with full autonomy
+- Scheduled jobs use all defaults
+- Rscript executions don't require user input
+
+To test batch behavior interactively:
+
+```{r test-batch}
+# Simulate batch mode by setting level 5
+artma::autonomy.set(5)
+
+# Your analysis will run without any prompts
+results <- artma::run(data_path = "my_data.csv")
+```
+
+## Persistence Across Sessions
+
+The autonomy level is stored in your options file and persists across R sessions. When you load an options file:
+
+1. The stored autonomy level is read
+2. The level is set automatically
+3. Unless you're in non-interactive mode (then it's always 5)
+
+```{r persistence}
+# Create options with level 3
+artma::options.create()  # Select level 3 in the menu
+
+# In a later session
+artma::options.load(options_file_name = "my_options.yaml")
+
+# The autonomy level is automatically set to 3
+level <- artma::autonomy.get()
+print(level)  # Output: 3
+```
+
+## Troubleshooting
+
+### Too Many Prompts
+
+If you find yourself answering too many prompts:
+
+```{r too-many-prompts}
+# Increase autonomy level
+artma::autonomy.set(4)  # or 5 for no prompts
+```
+
+### Want More Control
+
+If you want more control over decisions:
+
+```{r more-control}
+# Decrease autonomy level
+artma::autonomy.set(2)  # or 1 for maximum control
+```
+
+### Unexpected Behavior in Scripts
+
+If your batch script is prompting for input:
+
+```{r script-prompts}
+# Ensure you're using level 5
+artma::autonomy.set(5)
+
+# Or check if you're actually in non-interactive mode
+if (!interactive()) {
+  # Level is automatically 5
+  message("Running in batch mode")
+}
+```
+
+## Summary
+
+The autonomy system provides flexible control over user interaction in artma:
+
+- **5 levels** from Minimal (1) to Full (5)
+- **Default is 4 (High)** for interactive mode
+- **Always 5 (Full)** in non-interactive mode
+- **Configurable** via options file or programmatically
+- **Persists** across sessions
+- **Affects** data configuration, missing value handling, parameter confirmation, and more
+
+Choose your autonomy level based on your workflow needs:
+
+- Learning and exploration: levels 1-2
+- Standard interactive analysis: levels 3-4
+- Batch processing: level 5
+
+For more information on the options system, see `vignette("options", package = "artma")`.
