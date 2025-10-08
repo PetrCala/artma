@@ -357,8 +357,8 @@ prompt_bma_variable_selection_mode <- function() {
   box::use(artma / const[CONST])
 
   choices <- c(
-    "Manual selection (interactive menu)" = "manual",
-    "Automatic detection (not yet implemented)" = "auto"
+    "Automatic detection (recommended)" = "auto",
+    "Manual selection (interactive menu)" = "manual"
   )
 
   cli::cli_h1("BMA Variable Selection Mode")
@@ -368,12 +368,12 @@ prompt_bma_variable_selection_mode <- function() {
   selected <- climenu::select(
     choices = names(choices),
     prompt = "Select variable selection mode",
-    selected = 1 # "manual"
+    selected = 1 # "auto"
   )
 
   if (rlang::is_empty(selected)) {
-    cli::cli_alert_info("No selection made. Using default: {CONST$STYLES$OPTIONS$VALUE('manual')}")
-    return("manual")
+    cli::cli_alert_info("No selection made. Using default: {CONST$STYLES$OPTIONS$VALUE('auto')}")
+    return("auto")
   }
 
   selected_value <- choices[selected][[1]]
@@ -383,22 +383,116 @@ prompt_bma_variable_selection_mode <- function() {
   selected_value
 }
 
-#' Automatically select BMA variables (placeholder)
+#' Automatically select BMA variables
+#'
+#' @description
+#' Uses intelligent variable suggestion logic to automatically detect suitable
+#' moderator variables for BMA analysis. Filters based on data type, variance,
+#' and observation counts. Excludes reference variables from dummy groups to
+#' avoid the dummy variable trap.
+#'
 #' @param df *\[data.frame\]* The data frame
 #' @param config *\[list\]* The data config
 #' @return *\[character\]* Selected variable names
 auto_select_bma_variables <- function(df, config) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(
+    artma / libs / variable_suggestion[suggest_variables_for_effect_summary],
+    artma / libs / utils[get_verbosity]
+  )
 
-  # Placeholder for automatic variable selection
-  # This will be implemented later with logic to automatically detect
-  # suitable variables for BMA analysis
-  if (get_verbosity() >= 2) {
-    cli::cli_alert_warning("Automatic variable selection is not yet implemented.")
-    cli::cli_alert_info("Falling back to manual selection...")
+  cli::cli_h2("Automatic BMA Variable Suggestion")
+  cli::cli_text("Analyzing variables to identify suitable moderators...")
+  cli::cat_line()
+
+  # Use the existing variable suggestion logic
+  # This handles variance, observations, data types, and reference exclusion
+  suggestions <- suggest_variables_for_effect_summary(
+    df,
+    config = config,
+    min_obs_per_split = 5,
+    min_variance_ratio = 0.01,
+    exclude_reference = TRUE  # Important: avoid dummy variable trap
+  )
+
+  suggested_vars <- suggestions[suggestions$suggested, ]
+
+  if (nrow(suggested_vars) == 0) {
+    cli::cli_alert_warning("No variables were automatically suggested for BMA.")
+    cli::cli_text("This may occur if:")
+    cli::cli_ul(c(
+      "Variables have insufficient observations",
+      "Variables have very low variance",
+      "No numeric variables are available"
+    ))
+    cli::cat_line()
+
+    choices <- c("Yes, manual selection" = "yes", "No, skip BMA" = "no")
+    use_manual_selection <- climenu::select(
+      choices = names(choices),
+      prompt = "Would you like to manually select variables instead?",
+      selected = 1
+    )
+    use_manual <- !rlang::is_empty(use_manual_selection) &&
+      choices[use_manual_selection] == "yes"
+
+    if (use_manual) {
+      return(manual_select_bma_variables(df, config))
+    } else {
+      return(character(0))
+    }
   }
 
-  manual_select_bma_variables(df, config)
+  # Display suggestions with reasoning
+  cli::cli_alert_success("Found {nrow(suggested_vars)} suggested moderator{?s}:")
+  cli::cat_line()
+
+  for (i in seq_len(nrow(suggested_vars))) {
+    var <- suggested_vars[i, ]
+    var_name <- var$var_name
+    var_reason <- var$reason
+
+    # Get verbose name from config
+    var_config <- config[[make.names(var_name)]]
+    var_verbose <- if (!is.null(var_config$var_name_verbose)) {
+      var_config$var_name_verbose
+    } else {
+      var_name
+    }
+
+    reason_text <- cli::col_silver(paste0("[", var_reason, "]"))
+    cli::cli_text("{i}. {.field {var_verbose}} {reason_text}")
+  }
+  cli::cat_line()
+
+  # Display important notes about BMA
+  cli::cli_alert_info("Note: BMA will use these as continuous moderator variables")
+  cli::cli_text("• Reference variables in dummy groups have been automatically excluded")
+  cli::cli_text("• Consider enabling VIF optimization to handle multicollinearity")
+  cli::cat_line()
+
+  # Confirm suggestions
+  confirm_choices <- c(
+    "Yes, use these variables" = "yes",
+    "No, select manually" = "no"
+  )
+  confirmation <- climenu::select(
+    choices = names(confirm_choices),
+    prompt = "Do you want to use these suggested variables for BMA?",
+    selected = 1
+  )
+  confirmed <- !rlang::is_empty(confirmation) &&
+    confirm_choices[confirmation] == "yes"
+
+  if (!confirmed) {
+    cli::cli_alert_info("Suggestions declined. Switching to manual selection...")
+    cli::cat_line()
+    return(manual_select_bma_variables(df, config))
+  }
+
+  cli::cli_alert_success("Using {nrow(suggested_vars)} suggested moderator{?s}")
+
+  # Return just the variable names (BMA doesn't need split specifications)
+  suggested_vars$var_name
 }
 
 #' Manual variable selection via interactive menu
