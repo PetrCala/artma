@@ -33,7 +33,7 @@ Imports:
     yaml (>= 2.3.10)
 Remotes:
     PetrCala/climenu@0.1.1,
-    PetrCala/maive@0.0.2.11
+    PetrCala/maive@0.0.2.11-1
 Suggests:
     AER (>= 1.2-10),
     BMS (>= 0.3.4),
@@ -47,7 +47,7 @@ Suggests:
     ivmodel (>= 1.9.0),
     knitr (>= 1.50),
     languageserver (>= 0.3.16),
-    MAIVE (== 0.0.2.11),
+    maive (== 0.0.2.11-1),
     mathjaxr (>= 1.8-0),
     mice (>= 3.16.0),
     optparse (>= 1.7.5),
