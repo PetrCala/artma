@@ -253,6 +253,15 @@ methods:
         Use {.strong ML} for maximum likelihood or {.strong P} for method of moments.
 
   bma:
+    variables:
+      type: "character"
+      default: .na
+      allow_na: true
+      help: |
+        Variables to include as moderators in the BMA analysis.
+        The effect variable is always used as the dependent variable.
+        If not configured, you will be prompted to select variables when running BMA.
+
     burn:
       type: "integer"
       default: 10000
