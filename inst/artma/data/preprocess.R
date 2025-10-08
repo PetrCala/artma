@@ -106,30 +106,78 @@ remove_empty_rows <- function(df) {
   df
 }
 
-#' @title Check that required columns contain no empty cells
-#' @description Check that required columns contain no empty cells.
-#' @param df *\[data.frame\]* The data frame to check that required columns contain no empty cells for
-#' @return *\[data.frame\]* The data frame with the redundant columns removed
+#' @title Check that required columns contain no empty cells and handle optional missing values
+#' @description Check required columns for missing values (always errors) and handle optional column missing values based on strategy.
+#' @param df *\[data.frame\]* The data frame to check and process
+#' @return *\[data.frame\]* The data frame with missing values handled
 #' @keywords internal
-check_required_non_empty <- function(df) {
-  box::use(artma / libs / utils[get_verbosity])
+handle_missing_values_with_prompt <- function(df) {
+  box::use(
+    artma / libs / utils[get_verbosity],
+    artma / data / na_handling[detect_missing_values, handle_missing_values],
+    artma / options / prompts[prompt_na_handling]
+  )
 
   if (get_verbosity() >= 4) {
-    cli::cli_inform("Checking that required columns contain no empty cells…")
+    cli::cli_inform("Checking for missing values…")
   }
 
-  required_colnames <- get_required_colnames()
+  # Detect all missing values
+  na_summary <- detect_missing_values(df)
 
-  invalid_cols <- which(vapply(required_colnames, function(x) any(is.na(df[[x]])), logical(1)))
-  if (length(invalid_cols) > 0) {
-    box::use(artma / const[CONST])
-    cli::cli_abort(c(
-      "x" = "Missing values found in required columns: {.val {required_colnames[invalid_cols]}}",
-      "i" = "To use {.emph {CONST$PACKAGE_NAME}} runtime methods, please ensure that the required columns contain no empty cells."
-    ))
+  # Check if we need to prompt the user
+  na_handling_option <- getOption("artma.data.na_handling", default = NA)
+
+  # If option is not set AND there are optional missing values, prompt the user
+  if (is.na(na_handling_option) && na_summary$has_optional_na) {
+    if (interactive()) {
+      if (get_verbosity() >= 3) {
+        cli::cli_alert_info("Missing values detected and no handling strategy configured")
+      }
+
+      # Prompt the user for their preference
+      selected_strategy <- prompt_na_handling()
+
+      # Set the option for the current session
+      options(artma.data.na_handling = selected_strategy)
+
+      # Ask if they want to save this preference
+      save_preference <- climenu::select(
+        choices = c("Yes, save to options file", "No, use only for this session"),
+        prompt = "Do you want to save this preference to your options file?"
+      )
+
+      if (!rlang::is_empty(save_preference) && save_preference == 1) {
+        # Save to options file
+        tryCatch(
+          {
+            box::use(artma / options / files[update_option_in_file])
+            options_file <- getOption("artma.temp.file_name")
+            if (!is.null(options_file)) {
+              update_option_in_file(options_file, "data.na_handling", selected_strategy)
+              if (get_verbosity() >= 3) {
+                cli::cli_alert_success("Preference saved to options file")
+              }
+            }
+          },
+          error = function(e) {
+            cli::cli_alert_warning("Could not save preference to options file: {e$message}")
+          }
+        )
+      }
+    } else {
+      # Non-interactive mode: default to "stop"
+      if (get_verbosity() >= 2) {
+        cli::cli_warn("Running in non-interactive mode with missing values. Defaulting to 'stop' strategy.")
+      }
+      options(artma.data.na_handling = "stop")
+    }
   }
 
-  df
+  # Now handle missing values using the configured strategy
+  df_processed <- handle_missing_values(df)
+
+  df_processed
 }
 
 
@@ -260,7 +308,7 @@ preprocess_data <- function(df) {
     verify_variable_names() %>%
     verify_variable_order() %>%
     remove_empty_rows() %>%
-    check_required_non_empty() %>%
+    handle_missing_values_with_prompt() %>%
     enforce_data_types() %>%
     winsorize_data() %>%
     enforce_correct_values()
