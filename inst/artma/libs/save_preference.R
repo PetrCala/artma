@@ -267,12 +267,16 @@ save_variables_to_config <- function(var_names, var_configs = NULL) {
       }
 
       # Update config with variable selections
+      # Note: Computed columns (obs_id, precision, reg_dof, etc.) won't be in the config
+      # since they're added after config creation. This is expected behavior.
       for (var_name in var_names) {
         config_key <- make.names(var_name)
 
         if (!config_key %in% names(config)) {
-          if (get_verbosity() >= 3) {
-            cli::cli_warn("Variable {var_name} not found in config. Skipping.")
+          # Silently skip variables not in config (likely computed columns)
+          # Only log at debug verbosity level
+          if (get_verbosity() >= 4) {
+            cli::cli_inform("Skipping {.field {var_name}} - not in original data config (likely a computed column)")
           }
           next
         }
