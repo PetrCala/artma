@@ -92,15 +92,20 @@ save_to_options_file <- function(option_path, value) {
 
   tryCatch(
     {
-      box::use(artma / options / files[read_options_file, write_options_file])
+      box::use(artma / options / files[read_options_file, write_options_file, options_file_path])
 
-      options_file <- getOption("artma.temp.file_name")
-      if (is.null(options_file)) {
+      options_file_name <- getOption("artma.temp.file_name")
+      options_dir <- getOption("artma.temp.dir_name")
+
+      if (is.null(options_file_name) || is.null(options_dir)) {
         if (get_verbosity() >= 2) {
           cli::cli_warn("No options file found. Preference not saved.")
         }
         return(FALSE)
       }
+
+      # Construct full path
+      options_file <- options_file_path(options_dir, options_file_name)
 
       # Read current options
       current_opts <- read_options_file(options_file)
@@ -135,7 +140,7 @@ save_to_options_file <- function(option_path, value) {
       if (get_verbosity() >= 2) {
         cli::cli_warn("Could not save preference to options file: {e$message}")
       }
-      return(FALSE)
+      FALSE
     }
   )
 }
@@ -174,7 +179,7 @@ prompt_save_variable_selection <- function(var_names, var_configs = NULL, descri
 
   # Create description text
   desc_text <- if (!is.null(description)) {
-    sprintf("selected %s (%d variable%s)", description, length(var_names), ifelse(length(var_names) == 1, "", "s"))
+    sprintf("selected %s (%d variable%s)", description, length(var_names), if (length(var_names) == 1) "" else "s")
   } else {
     sprintf("selected variables (%d)", length(var_names))
   }
@@ -234,17 +239,22 @@ save_variables_to_config <- function(var_names, var_configs = NULL) {
   tryCatch(
     {
       box::use(
-        artma / options / files[read_options_file, write_options_file],
+        artma / options / files[read_options_file, write_options_file, options_file_path],
         artma / data_config / read[get_data_config]
       )
 
-      options_file <- getOption("artma.temp.file_name")
-      if (is.null(options_file)) {
+      options_file_name <- getOption("artma.temp.file_name")
+      options_dir <- getOption("artma.temp.dir_name")
+
+      if (is.null(options_file_name) || is.null(options_dir)) {
         if (get_verbosity() >= 2) {
           cli::cli_warn("No options file found. Variable selection not saved.")
         }
         return(FALSE)
       }
+
+      # Construct full path
+      options_file <- options_file_path(options_dir, options_file_name)
 
       # Read current options
       current_opts <- read_options_file(options_file)
@@ -301,7 +311,7 @@ save_variables_to_config <- function(var_names, var_configs = NULL) {
       if (get_verbosity() >= 2) {
         cli::cli_warn("Could not save variable selection: {e$message}")
       }
-      return(FALSE)
+      FALSE
     }
   )
 }
