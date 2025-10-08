@@ -43,7 +43,6 @@ bma <- function(df) {
   export_graphics <- opt$export_graphics %||% FALSE
   export_path <- opt$export_path %||% "./results/graphic"
   graph_scale <- opt$graph_scale %||% 1
-  variables <- opt$variables
 
   validate(
     is.numeric(burn),
@@ -70,32 +69,26 @@ bma <- function(df) {
     "print_results must be one of: none, fast, verbose, all, table"
   )
 
-  # Get BMA variables - prompt user if not configured
-  # Priority: 1) variables from options, 2) legacy bma=TRUE in config, 3) prompt user
-  if (!is.null(variables) && length(variables) > 0 && !all(is.na(variables))) {
-    bma_vars <- variables
-  } else {
-    # Fall back to legacy method (checking bma=TRUE in config)
-    bma_vars <- names(config)[vapply(config, function(var_cfg) {
-      if (!is.list(var_cfg)) {
-        return(FALSE)
-      }
-      isTRUE(var_cfg$bma)
-    }, logical(1))]
+  # Get BMA variables from data config (bma=TRUE)
+  bma_vars <- names(config)[vapply(config, function(var_cfg) {
+    if (!is.list(var_cfg)) {
+      return(FALSE)
+    }
+    isTRUE(var_cfg$bma)
+  }, logical(1))]
 
-    # If still no variables, prompt the user
-    if (!length(bma_vars)) {
-      if (get_verbosity() >= 3) {
-        cli::cli_alert_info("No BMA variables configured. Please select variables for analysis.")
-      }
+  # If no variables configured, prompt the user
+  if (!length(bma_vars)) {
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_info("No BMA variables configured. Please select variables for analysis.")
+    }
 
-      # Prompt for variable selection
-      bma_vars <- prompt_bma_variable_selection(df, config)
+    # Prompt for variable selection
+    bma_vars <- prompt_bma_variable_selection(df, config)
 
-      # Save the selected variables to options for future runs
-      if (length(bma_vars) > 0) {
-        save_bma_variables_to_options(bma_vars)
-      }
+    # Save the selected variables to data config for future runs
+    if (length(bma_vars) > 0) {
+      save_bma_variables_to_data_config(bma_vars, config)
     }
   }
 
@@ -394,40 +387,51 @@ manual_select_bma_variables <- function(df, config) {
   selected_vars
 }
 
-#' Save BMA variables to options
+#' Save BMA variables to data config
 #' @param variables *\[character\]* Variable names to save
-save_bma_variables_to_options <- function(variables) {
-  box::use(artma / libs / utils[get_verbosity])
+#' @param config *\[list\]* Current data config
+save_bma_variables_to_data_config <- function(variables, config) {
+  box::use(
+    artma / libs / utils[get_verbosity],
+    artma / data_config / write[update_data_config]
+  )
+
+  if (length(variables) == 0) {
+    return(invisible(NULL))
+  }
 
   tryCatch(
     {
-      # Update in-memory options
-      options(artma.methods.bma.variables = variables)
+      # Build changes: set bma=TRUE for selected variables, FALSE for others
+      changes <- list()
 
-      # Try to persist to file if we have an options file loaded
-      options_file <- getOption("artma.temp.file_name")
-      if (!is.null(options_file)) {
-        artma::options.modify(
-          options_file_name = options_file,
-          user_input = list(methods = list(bma = list(variables = variables))),
-          should_validate = FALSE
-        )
-        if (get_verbosity() >= 3) {
-          cli::cli_alert_success("BMA variables saved to options file for future runs")
+      # First, set all existing variables to bma=FALSE (clear previous selections)
+      for (var_name in names(config)) {
+        if (is.list(config[[var_name]])) {
+          changes[[var_name]] <- list(bma = FALSE)
         }
-      } else {
-        if (get_verbosity() >= 3) {
-          cli::cli_alert_success("BMA variables saved to current session (no options file to persist to)")
+      }
+
+      # Then set bma=TRUE for selected variables
+      for (var_name in variables) {
+        if (!is.list(changes[[var_name]])) {
+          changes[[var_name]] <- list()
         }
+        changes[[var_name]]$bma <- TRUE
+      }
+
+      # Update the data config
+      update_data_config(changes)
+
+      if (get_verbosity() >= 3) {
+        cli::cli_alert_success("BMA variables saved to data config for future runs")
       }
     },
     error = function(e) {
       if (get_verbosity() >= 2) {
-        cli::cli_alert_warning("Could not save BMA variables to options file: {e$message}")
+        cli::cli_alert_warning("Could not save BMA variables to data config: {e$message}")
         cli::cli_alert_info("Variables will be used for this session only")
       }
-      # Still update in-memory options even if file save fails
-      options(artma.methods.bma.variables = variables)
     }
   )
 }
