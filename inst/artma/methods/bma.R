@@ -212,7 +212,6 @@ bma <- function(df) {
 
     bma_model <- run_bma(bma_data, bma_params[[i]])
 
-    # Print results (handles graphics and output)
     extract_bma_results(
       bma_model,
       bma_data,
@@ -225,35 +224,36 @@ bma <- function(df) {
       graph_scale = graph_scale
     )
 
-    # Get PIP values and coefficient estimates
     pip_values <- BMS::pmp.bma(bma_model)
-
-    # Extract coefficients - include intercept then remove it
-    bma_coefs_with_intercept <- stats::coef(bma_model, exact = TRUE, order.by.pip = FALSE, include.constant = TRUE)
-
-    # Remove intercept (first element) if present
-    if (length(bma_coefs_with_intercept) > 0 &&
-      !is.null(names(bma_coefs_with_intercept)) &&
-      !is.na(names(bma_coefs_with_intercept)[1]) &&
-      names(bma_coefs_with_intercept)[1] == "(Intercept)") {
-      bma_coefs <- bma_coefs_with_intercept[-1]
-    } else {
-      bma_coefs <- bma_coefs_with_intercept
-    }
-
-    # Get variable names from the model (these are already renamed by extract_bma_results)
     var_names <- bma_model$reg.names
 
-    # Build the coefficients data frame
-    # Match each variable to its PIP and coefficient
-    if (length(bma_coefs) == length(var_names) && !is.null(names(bma_coefs))) {
-      # Coefficients have names - match them to var_names
-      coef_values <- as.numeric(bma_coefs[var_names])
-    } else if (length(bma_coefs) == length(var_names)) {
-      # Same length but no names - assume same order
-      coef_values <- as.numeric(bma_coefs)
+    # Extract coefficient matrix and get "Post Mean" column
+    bma_coefs_all <- stats::coef(bma_model, order.by.pip = FALSE, exact = TRUE, include.constant = TRUE)
+
+    if (is.matrix(bma_coefs_all) || length(dim(bma_coefs_all)) > 1) {
+      post_means <- bma_coefs_all[, "Post Mean"]
+
+      # Remove intercept row if present
+      rnames <- rownames(bma_coefs_all)
+      if (!is.null(rnames) && length(rnames) > 0) {
+        intercept_idx <- which(rnames == "(Intercept)")
+        if (length(intercept_idx) > 0) {
+          post_means <- post_means[-intercept_idx]
+        }
+      }
+
+      if (length(post_means) == length(var_names)) {
+        coef_values <- as.numeric(post_means)
+      } else {
+        if (get_verbosity() >= 2) {
+          cli::cli_alert_warning("Coefficient count mismatch: got {length(post_means)}, expected {length(var_names)}")
+        }
+        coef_values <- rep(NA, length(var_names))
+      }
     } else {
-      # Length mismatch or no coefficients - use NA
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning("Unexpected coefficient structure")
+      }
       coef_values <- rep(NA, length(var_names))
     }
 
