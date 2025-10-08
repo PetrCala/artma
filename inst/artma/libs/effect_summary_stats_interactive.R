@@ -175,6 +175,7 @@ auto_select_effect_summary_vars <- function(df, config) {
     var_name <- var$var_name
     split_method <- var$split_method
     split_value <- var$split_value
+    var_reason <- var$reason
 
     # Get verbose name from config
     var_config <- config[[make.names(var_name)]]
@@ -197,7 +198,8 @@ auto_select_effect_summary_vars <- function(df, config) {
       desc <- cli::format_inline("{.field {var_verbose}}")
     }
 
-    cli::cli_text("{i}. {desc} {cli::col_silver('[{var$reason}]')}")
+    reason_text <- cli::col_silver(paste0("[", var_reason, "]"))
+    cli::cli_text("{i}. {desc} {reason_text}")
   }
   cli::cat_line()
 
