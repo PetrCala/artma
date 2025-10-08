@@ -1,13 +1,21 @@
 #' @title Add observation ID column
-#' @description Add an observation ID column to the data frame.
+#' @description Add an observation ID column to the data frame if missing.
+#'   Creates a sequential integer ID from 1 to nrow.
 #' @param df *\[data.frame\]* The data frame to add the observation ID column to.
 #' @return *\[data.frame\]* The data frame with the observation ID column.
 #' @keywords internal
 add_obs_id_column <- function(df) {
+  box::use(artma / libs / utils[get_verbosity])
+
   if (!"obs_id" %in% colnames(df)) {
     df$obs_id <- seq_len(nrow(df))
+    if (get_verbosity() >= 4) {
+      cli::cli_inform("Created {.field obs_id} column with sequential integers")
+    }
   } else {
-    invalid_idxs <- which(df$obs_id != seq_len(nrow(df))) # For validation
+    # Validate existing obs_id
+    expected_ids <- seq_len(nrow(df))
+    invalid_idxs <- which(df$obs_id != expected_ids)
     n_invalid_idxs <- length(invalid_idxs)
 
     if (n_invalid_idxs > 0) {
@@ -17,7 +25,7 @@ add_obs_id_column <- function(df) {
           "i" = "Resetting them to sequential integers."
         ))
       }
-      df$obs_id[invalid_idxs] <- seq_len(nrow(df))[invalid_idxs]
+      df$obs_id[invalid_idxs] <- expected_ids[invalid_idxs]
     }
   }
 
@@ -117,20 +125,98 @@ add_study_size_column <- function(df) {
   df
 }
 
-# add_reg_dof_column <- function(df) {}
+#' @title Add regression degrees of freedom column
+#' @description Add a reg_dof column to the data frame if missing.
+#'   Calculates as n_obs - 2 (simple regression assumption).
+#' @param df *\[data.frame\]* The data frame to add the reg_dof column to.
+#' @return *\[data.frame\]* The data frame with the reg_dof column.
+#' @keywords internal
+add_reg_dof_column <- function(df) {
+  box::use(artma / libs / utils[get_verbosity])
 
+  if (!"reg_dof" %in% colnames(df)) {
+    # Calculate reg_dof from n_obs if available
+    if ("n_obs" %in% colnames(df)) {
+      df$reg_dof <- df$n_obs - 2
+      if (get_verbosity() >= 4) {
+        cli::cli_inform("Created {.field reg_dof} column from n_obs (n_obs - 2)")
+      }
+
+      # Warn about negative or zero degrees of freedom
+      negative_dof <- which(df$reg_dof <= 0)
+      if (length(negative_dof) > 0) {
+        if (get_verbosity() >= 2) {
+          cli::cli_alert_warning(c(
+            "!" = "Found {length(negative_dof)} rows with non-positive degrees of freedom.",
+            "i" = "This occurs when n_obs <= 2. Setting these to NA."
+          ))
+        }
+        df$reg_dof[negative_dof] <- NA_real_
+      }
+    } else {
+      # If n_obs is not available, set to NA
+      df$reg_dof <- NA_real_
+      if (get_verbosity() >= 4) {
+        cli::cli_inform("Created {.field reg_dof} column with NA (n_obs not available)")
+      }
+    }
+  } else {
+    # Validate existing reg_dof
+    negative_dof <- which(!is.na(df$reg_dof) & df$reg_dof < 0)
+    if (length(negative_dof) > 0) {
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning(c(
+          "!" = "Found {length(negative_dof)} rows with negative degrees of freedom.",
+          "i" = "Setting these to NA."
+        ))
+      }
+      df$reg_dof[negative_dof] <- NA_real_
+    }
+  }
+
+  df
+}
+
+
+#' @title Add precision column
+#' @description Add a precision column to the data frame if missing.
+#'   Calculates based on precision_type option: 1/SE or sqrt(DoF).
+#' @param df *\[data.frame\]* The data frame to add the precision column to.
+#' @return *\[data.frame\]* The data frame with the precision column.
+#' @keywords internal
 add_precision_column <- function(df) {
-  box::use(calc = artma / calc / index)
+  box::use(
+    calc = artma / calc / index,
+    artma / libs / utils[get_verbosity]
+  )
 
   if ("precision" %in% colnames(df)) {
+    # Validate existing precision column
     if (any(is.na(df$precision))) {
-      cli::cli_abort("The column {.val precision} must not contain missing values.")
+      n_missing <- sum(is.na(df$precision))
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning(c(
+          "!" = "Found {n_missing} missing precision values.",
+          "i" = "Recalculating these based on precision_type option."
+        ))
+      }
+      # Recalculate missing values
+      missing_idx <- which(is.na(df$precision))
+      calculated_precision <- calc$precision(se = df$se, reg_dof = df$reg_dof)
+      df$precision[missing_idx] <- calculated_precision[missing_idx]
     }
+
     if (!is.numeric(df$precision)) {
       cli::cli_abort("The column {.val precision} must be numeric.")
     }
   } else {
+    # Calculate precision based on option
+    precision_type <- getOption("artma.calc.precision_type", default = "1/SE")
     df$precision <- calc$precision(se = df$se, reg_dof = df$reg_dof)
+
+    if (get_verbosity() >= 4) {
+      cli::cli_inform("Created {.field precision} column using {.val {precision_type}} method")
+    }
   }
 
   df
@@ -138,14 +224,21 @@ add_precision_column <- function(df) {
 
 #' @title Compute optional columns
 #' @description Compute optional columns that the user did not provide.
+#'   This includes:
+#'   - obs_id: Sequential observation IDs (1 to nrow)
+#'   - study_id: Integer study IDs based on study names
+#'   - t_stat: T-statistics calculated from effect/se
+#'   - study_size: Number of estimates per study
+#'   - reg_dof: Regression degrees of freedom (n_obs - 2)
+#'   - precision: Precision calculated as 1/SE or sqrt(DoF)
 #' @param df *\[data.frame\]* The data frame to compute the optional columns for.
-#' @return *\[data.frame\]* The data frame with the optional columns.
+#' @return *\[data.frame\]* The data frame with all optional columns computed.
 compute_optional_columns <- function(df) {
   box::use(artma / libs / utils[get_verbosity])
   box::use(magrittr[`%>%`])
 
-  if (get_verbosity() >= 4) {
-    cli::cli_inform("Computing and validating optional columns…")
+  if (get_verbosity() >= 3) {
+    cli::cli_alert_info("Computing optional columns for {.val {nrow(df)}} observations…")
   }
 
   df %>%
@@ -153,6 +246,7 @@ compute_optional_columns <- function(df) {
     add_study_id_column() %>%
     add_t_stat_column() %>%
     add_study_size_column() %>%
+    add_reg_dof_column() %>%
     add_precision_column()
 }
 
