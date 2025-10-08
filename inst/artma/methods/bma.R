@@ -388,30 +388,30 @@ prompt_bma_variable_selection_mode <- function() {
 #' @description
 #' Uses intelligent variable suggestion logic to automatically detect suitable
 #' moderator variables for BMA analysis. Filters based on data type, variance,
-#' and observation counts. Excludes reference variables from dummy groups to
-#' avoid the dummy variable trap.
+#' observation counts, and collinearity. Prioritizes important variables like
+#' standard error. Ensures no dummy variable traps or perfect collinearity.
 #'
 #' @param df *\[data.frame\]* The data frame
 #' @param config *\[list\]* The data config
 #' @return *\[character\]* Selected variable names
 auto_select_bma_variables <- function(df, config) {
   box::use(
-    artma / libs / variable_suggestion[suggest_variables_for_effect_summary],
+    artma / libs / bma_variable_suggestion[suggest_variables_for_bma],
     artma / libs / utils[get_verbosity]
   )
 
   cli::cli_h2("Automatic BMA Variable Suggestion")
   cli::cli_text("Analyzing variables to identify suitable moderators...")
+  cli::cli_text("Checking for collinearity and prioritizing important variables...")
   cli::cat_line()
 
-  # Use the existing variable suggestion logic
-  # This handles variance, observations, data types, and reference exclusion
-  suggestions <- suggest_variables_for_effect_summary(
+  # Use BMA-specific variable suggestion with collinearity checking
+  suggestions <- suggest_variables_for_bma(
     df,
     config = config,
     min_obs_per_split = 5,
     min_variance_ratio = 0.01,
-    exclude_reference = TRUE  # Important: avoid dummy variable trap
+    exclude_reference = TRUE
   )
 
   suggested_vars <- suggestions[suggestions$suggested, ]
