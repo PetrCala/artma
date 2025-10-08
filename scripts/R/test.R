@@ -33,7 +33,6 @@ test <- function() {
       "cache.use_cache" = FALSE, # Disable cache to see progress bars
       "data.source_path" = mock_df_path,
       "data.winsorization_level" = 0.1,
-      "data.na_handling" = "stop",
       "data.config_setup" = "auto" # "auto" will recognize columns automatically, "manual" for interactive
       # Column mappings will be auto-detected - no need to specify them manually!
       # If auto-detection fails, the package will prompt interactively
