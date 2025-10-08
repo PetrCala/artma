@@ -152,14 +152,14 @@ effect_summary_stats <- function(df) {
         artma / libs / effect_summary_stats_interactive[
           prompt_effect_summary_var_selection
         ],
-        artma / data_config / write[set_data_config]
+        artma / data_config / write[update_data_config]
       )
 
       # Prompt for variable selection
       updated_config <- prompt_effect_summary_var_selection(df, config)
 
       # Update the config in options
-      set_data_config(updated_config)
+      update_data_config(updated_config)
       config <- updated_config
 
       # Re-check for effect vars after update
