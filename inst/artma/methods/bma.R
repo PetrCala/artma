@@ -277,19 +277,8 @@ bma <- function(df) {
   }
 
   if (length(results) == 1) {
-    if (get_verbosity() >= 3) {
-      cli::cli_h3("BMA Coefficients")
-      cli::cat_print(results[[1]]$coefficients)
-    }
     results[[1]]
   } else {
-    if (get_verbosity() >= 3) {
-      cli::cli_h3("BMA Results (multiple models)")
-      for (i in seq_along(results)) {
-        cli::cli_alert_info("Model {i}:")
-        cli::cat_print(results[[i]]$coefficients)
-      }
-    }
     results
   }
 }

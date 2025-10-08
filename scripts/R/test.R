@@ -21,7 +21,7 @@ test <- function() {
   # Artma methods
   options_file_name <- CONST$MOCKS$TMP_OPTIONS_FILE_NAME
 
-  withr::local_options(list("artma.verbose" = 3))
+  withr::local_options(list("artma.verbose" = 4))
   artma::options.delete(options_file_name = options_file_name, skip_confirmation = TRUE)
 
   # New workflow: much simpler column specification
