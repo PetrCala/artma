@@ -9,8 +9,7 @@
 get_bma_priority_variables <- function() {
   c(
     "se", # Standard error - critical for meta-analysis
-    "study_size", # Sample size - theoretical importance
-    "effect" # Main effect - sometimes used as moderator check
+    "study_size" # Sample size - theoretical importance
   )
 }
 
