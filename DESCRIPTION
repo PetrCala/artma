@@ -36,6 +36,7 @@ Remotes:
     PetrCala/maive@0.0.2.11
 Suggests:
     AER (>= 1.2-10),
+    BMS (>= 0.3.4),
     box (>= 1.2.0),
     box.linters (>= 0.10.6),
     covr (>= 3.6.4),
@@ -48,6 +49,7 @@ Suggests:
     languageserver (>= 0.3.16),
     MAIVE (== 0.0.2.11),
     mathjaxr (>= 1.8-0),
+    mice (>= 3.16.0),
     optparse (>= 1.7.5),
     pkgbuild (>= 1.4.8),
     quadprog (>= 1.5-8),
