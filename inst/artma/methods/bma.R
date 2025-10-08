@@ -212,7 +212,8 @@ bma <- function(df) {
 
     bma_model <- run_bma(bma_data, bma_params[[i]])
 
-    bma_coefs <- extract_bma_results(
+    # Print results (handles graphics and output)
+    extract_bma_results(
       bma_model,
       bma_data,
       bma_var_list,
@@ -224,12 +225,21 @@ bma <- function(df) {
       graph_scale = graph_scale
     )
 
+    # Get PIP values and coefficient estimates
     pip_values <- BMS::pmp.bma(bma_model)
 
+    # Extract coefficients properly - exclude intercept
+    bma_coefs <- stats::coef(bma_model, exact = TRUE, order.by.pip = FALSE, include.constant = FALSE)
+
+    # Get variable names from the model (these are already renamed by extract_bma_results)
+    var_names <- bma_model$reg.names
+
+    # Build the coefficients data frame
+    # Match each variable to its PIP and coefficient
     coef_df <- data.frame(
-      variable = names(bma_coefs),
-      pip = pip_values[match(names(bma_coefs), names(pip_values))],
-      post_mean = as.numeric(bma_coefs),
+      variable = var_names,
+      pip = as.numeric(pip_values[var_names]),
+      post_mean = if (length(bma_coefs) == length(var_names)) as.numeric(bma_coefs) else rep(NA, length(var_names)),
       post_sd = as.numeric(NA),
       cond_pos_sign = as.numeric(NA),
       stringsAsFactors = FALSE
