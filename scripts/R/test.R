@@ -43,7 +43,7 @@ test <- function() {
 
   artma::run(
     # methods = c("all"),
-    methods = c("p_hacking_tests"),
+    methods = c("bma"),
     options_file_name = options_file_name
   )
 

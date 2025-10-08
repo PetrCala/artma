@@ -43,6 +43,7 @@ bma <- function(df) {
   export_graphics <- opt$export_graphics %||% FALSE
   export_path <- opt$export_path %||% "./results/graphic"
   graph_scale <- opt$graph_scale %||% 1
+  variables <- opt$variables
 
   validate(
     is.numeric(burn),
@@ -69,29 +70,33 @@ bma <- function(df) {
     "print_results must be one of: none, fast, verbose, all, table"
   )
 
-  bma_vars <- names(config)[vapply(config, function(var_cfg) {
-    if (!is.list(var_cfg)) {
-      return(FALSE)
-    }
-    isTRUE(var_cfg$bma)
-  }, logical(1))]
+  # Get BMA variables - prompt user if not configured
+  # Priority: 1) variables from options, 2) legacy bma=TRUE in config, 3) prompt user
+  if (!is.null(variables) && length(variables) > 0 && !all(is.na(variables))) {
+    bma_vars <- variables
+  } else {
+    # Fall back to legacy method (checking bma=TRUE in config)
+    bma_vars <- names(config)[vapply(config, function(var_cfg) {
+      if (!is.list(var_cfg)) {
+        return(FALSE)
+      }
+      isTRUE(var_cfg$bma)
+    }, logical(1))]
 
-  if (!length(bma_vars)) {
-    if (get_verbosity() >= 2) {
-      cli::cli_alert_warning("No variables selected for BMA analysis")
+    # If still no variables, prompt the user
+    if (!length(bma_vars)) {
+      if (get_verbosity() >= 3) {
+        cli::cli_alert_info("No BMA variables configured. Please select variables for analysis.")
+      }
+
+      # Prompt for variable selection
+      bma_vars <- prompt_bma_variable_selection(df, config)
+
+      # Save the selected variables to options for future runs
+      if (length(bma_vars) > 0) {
+        save_bma_variables_to_options(bma_vars)
+      }
     }
-    return(list(
-      coefficients = data.frame(
-        variable = character(0),
-        pip = numeric(0),
-        post_mean = numeric(0),
-        post_sd = numeric(0),
-        cond_pos_sign = numeric(0),
-        stringsAsFactors = FALSE
-      ),
-      model = NULL,
-      skipped = "No BMA variables configured"
-    ))
   }
 
   missing_vars <- bma_vars[!bma_vars %in% names(df)]
@@ -103,6 +108,9 @@ bma <- function(df) {
   }
 
   if (!length(bma_vars)) {
+    if (get_verbosity() >= 2) {
+      cli::cli_alert_warning("No valid BMA variables available. Skipping BMA analysis.")
+    }
     return(list(
       coefficients = data.frame(
         variable = character(0),
@@ -113,7 +121,7 @@ bma <- function(df) {
         stringsAsFactors = FALSE
       ),
       model = NULL,
-      skipped = "No valid BMA variables available in data"
+      skipped = "No valid BMA variables available"
     ))
   }
 
@@ -243,6 +251,185 @@ bma <- function(df) {
     }
     results
   }
+}
+
+#' Prompt user to select BMA variables at runtime
+#' @param df *\[data.frame\]* The data frame
+#' @param config *\[list\]* The data config
+#' @return *\[character\]* Selected variable names
+prompt_bma_variable_selection <- function(df, config) {
+  box::use(artma / libs / utils[get_verbosity])
+
+  # First, prompt for selection mode
+  selection_mode <- prompt_bma_variable_selection_mode()
+
+  selection <- if (selection_mode == "auto") auto_select_bma_variables(df, config) else manual_select_bma_variables(df, config)
+
+  selection
+}
+
+#' Prompt for manual or auto variable selection mode
+#' @return *\[character\]* Either "manual" or "auto"
+prompt_bma_variable_selection_mode <- function() {
+  box::use(artma / const[CONST])
+
+  choices <- c(
+    "Manual selection (interactive menu)" = "manual",
+    "Automatic detection (not yet implemented)" = "auto"
+  )
+
+  cli::cli_h1("BMA Variable Selection Mode")
+  cli::cli_text("Choose how to select variables for Bayesian Model Averaging analysis.")
+  cli::cat_line()
+
+  selected <- climenu::select(
+    choices = names(choices),
+    prompt = "Select variable selection mode",
+    selected = 1 # "manual"
+  )
+
+  if (rlang::is_empty(selected)) {
+    cli::cli_alert_info("No selection made. Using default: {CONST$STYLES$OPTIONS$VALUE('manual')}")
+    return("manual")
+  }
+
+  selected_value <- choices[selected][[1]]
+  cli::cli_alert_success("Selected mode: {CONST$STYLES$OPTIONS$VALUE(selected_value)}")
+  cli::cat_line()
+
+  selected_value
+}
+
+#' Automatically select BMA variables (placeholder)
+#' @param df *\[data.frame\]* The data frame
+#' @param config *\[list\]* The data config
+#' @return *\[character\]* Selected variable names
+auto_select_bma_variables <- function(df, config) {
+  box::use(artma / libs / utils[get_verbosity])
+
+  # Placeholder for automatic variable selection
+  # This will be implemented later with logic to automatically detect
+  # suitable variables for BMA analysis
+  if (get_verbosity() >= 2) {
+    cli::cli_alert_warning("Automatic variable selection is not yet implemented.")
+    cli::cli_alert_info("Falling back to manual selection...")
+  }
+
+  manual_select_bma_variables(df, config)
+}
+
+#' Manual variable selection via interactive menu
+#' @param df *\[data.frame\]* The data frame
+#' @param config *\[list\]* The data config
+#' @return *\[character\]* Selected variable names
+manual_select_bma_variables <- function(df, config) {
+  box::use(
+    artma / const[CONST],
+    artma / libs / utils[get_verbosity]
+  )
+
+  cli::cli_h1("BMA Variable Selection")
+  cli::cat_line()
+
+  if (is.null(config) || length(config) == 0) {
+    cli::cli_alert_warning("No variables available for BMA analysis.")
+    return(character(0))
+  }
+
+  # Get potential moderator variables (exclude effect, se, and other special columns)
+  excluded_vars <- c("effect", "se", "obs_id", "study", "study_id", "t_stat", "precision", "reg_dof", "n_obs", "study_size")
+
+  potential_vars <- names(config)[!names(config) %in% excluded_vars]
+
+  # Filter to only variables that exist in the data
+  if (!is.null(df)) {
+    potential_vars <- potential_vars[potential_vars %in% names(df)]
+  }
+
+  if (length(potential_vars) == 0) {
+    cli::cli_alert_warning("No moderator variables available for BMA analysis.")
+    return(character(0))
+  }
+
+  # Create display names for variables
+  var_display_names <- vapply(potential_vars, function(var) {
+    var_config <- config[[var]]
+    if (!is.null(var_config$var_name_verbose)) {
+      paste0(var, " (", var_config$var_name_verbose, ")")
+    } else {
+      var
+    }
+  }, character(1))
+
+  # Display instructions
+  cli::cli_h2("Instructions")
+  cli::cli_text("{cli::symbol$info} The {.strong effect} variable is automatically used as the dependent variable")
+  cli::cli_text("{cli::symbol$info} Select moderator variables to include in the BMA analysis")
+  cli::cli_alert_warning("{cli::symbol$warning} {.strong Important:} Ensure you avoid the dummy variable trap!")
+  cli::cli_ul(c(
+    "Do not select all categories of a categorical variable (omit one as reference)",
+    "Avoid selecting variables with perfect collinearity",
+    "Be cautious with highly correlated variables (consider using VIF optimization)"
+  ))
+  cli::cat_line()
+
+  # Multi-select menu
+  selected_indices <- climenu::checkbox(
+    choices = var_display_names,
+    prompt = "Select variables to include in BMA analysis (use SPACE to select, ENTER to confirm)",
+    return_index = TRUE
+  )
+
+  if (rlang::is_empty(selected_indices) || length(selected_indices) == 0) {
+    cli::cli_alert_warning("No variables selected. BMA analysis will be skipped.")
+    return(character(0))
+  }
+
+  selected_vars <- potential_vars[selected_indices]
+
+  cli::cli_alert_success("Selected {length(selected_vars)} variable{?s} for BMA analysis:")
+  cli::cli_ul(selected_vars)
+  cli::cat_line()
+
+  selected_vars
+}
+
+#' Save BMA variables to options
+#' @param variables *\[character\]* Variable names to save
+save_bma_variables_to_options <- function(variables) {
+  box::use(artma / libs / utils[get_verbosity])
+
+  tryCatch(
+    {
+      # Update in-memory options
+      options(artma.methods.bma.variables = variables)
+
+      # Try to persist to file if we have an options file loaded
+      options_file <- getOption("artma.temp.file_name")
+      if (!is.null(options_file)) {
+        artma::options.modify(
+          options_file_name = options_file,
+          user_input = list(methods = list(bma = list(variables = variables))),
+          should_validate = FALSE
+        )
+        if (get_verbosity() >= 3) {
+          cli::cli_alert_success("BMA variables saved to options file for future runs")
+        }
+      } else {
+        if (get_verbosity() >= 3) {
+          cli::cli_alert_success("BMA variables saved to current session (no options file to persist to)")
+        }
+      }
+    },
+    error = function(e) {
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning("Could not save BMA variables to options file: {e$message}")
+        cli::cli_alert_info("Variables will be used for this session only")
+      }
+      # Still update in-memory options even if file save fails
+      options(artma.methods.bma.variables = variables)
+    }
+  )
 }
 
 
