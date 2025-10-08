@@ -233,9 +233,9 @@ bma <- function(df) {
 
     # Remove intercept (first element) if present
     if (length(bma_coefs_with_intercept) > 0 &&
-        !is.null(names(bma_coefs_with_intercept)) &&
-        !is.na(names(bma_coefs_with_intercept)[1]) &&
-        names(bma_coefs_with_intercept)[1] == "(Intercept)") {
+      !is.null(names(bma_coefs_with_intercept)) &&
+      !is.na(names(bma_coefs_with_intercept)[1]) &&
+      names(bma_coefs_with_intercept)[1] == "(Intercept)") {
       bma_coefs <- bma_coefs_with_intercept[-1]
     } else {
       bma_coefs <- bma_coefs_with_intercept
