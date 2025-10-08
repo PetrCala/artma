@@ -108,24 +108,28 @@ prompt_autonomy_level <- function(opt, ...) {
   cli::cli_text("Higher levels mean less user interaction and more automatic decision-making.")
   cli::cat_line()
 
-  choices <- vapply(
-    names(levels),
-    function(lvl) {
-      level_def <- levels[[lvl]]
-      sprintf(
-        "Level %s - %s: %s",
-        lvl,
-        level_def$name,
-        level_def$description
-      )
-    },
-    character(1)
+  # Create a named vector where names are display text and values are the level numbers
+  choices <- stats::setNames(
+    as.integer(names(levels)),  # Values: 1, 2, 3, 4, 5
+    vapply(
+      names(levels),
+      function(lvl) {
+        level_def <- levels[[lvl]]
+        sprintf(
+          "Level %s - %s: %s",
+          lvl,
+          level_def$name,
+          level_def$description
+        )
+      },
+      character(1)
+    )
   )
 
   selected <- climenu::select(
-    choices = choices,
+    choices = names(choices),  # Display the descriptive text
     prompt = "Select your preferred autonomy level",
-    selected = default_level
+    selected = default_level  # Default is index 4
   )
 
   if (rlang::is_empty(selected)) {
@@ -133,7 +137,8 @@ prompt_autonomy_level <- function(opt, ...) {
     return(default_level)
   }
 
-  selected_value <- as.integer(selected)
+  # Get the actual level value from the selected index
+  selected_value <- choices[selected][[1]]
   cli::cli_alert_success("Selected autonomy level: {CONST$STYLES$OPTIONS$VALUE(selected_value)}")
   cli::cat_line()
 

@@ -125,7 +125,7 @@ resolve_fixed_option <- function(opt, user_input) {
   )
 
   if (!is.null(user_input[[opt$name]])) {
-    if (user_input[[opt$opt_name]] == opt$default)
+    if (user_input[[opt$name]] == opt$default)
       return(opt$default)
     # User tried to set a value for a fixed option to a non-default value
     if (get_verbosity() >= 2) {
