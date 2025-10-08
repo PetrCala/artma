@@ -23,6 +23,7 @@ R/config.yaml
 man/*
 !man/*.Rd
 **/temp/*
+**/*.pdf
 
 # R files
 .Rproj.user/
