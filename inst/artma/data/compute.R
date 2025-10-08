@@ -222,8 +222,68 @@ add_precision_column <- function(df) {
   df
 }
 
+#' @title Update config with computed columns
+#' @description Add computed columns to the data config so they can be used
+#'   in variable summaries and other analyses.
+#' @param df *\[data.frame\]* The data frame with computed columns
+#' @keywords internal
+update_config_with_computed_columns <- function(df) {
+  box::use(
+    artma / data_config / read[get_data_config],
+    artma / data_config / write[update_data_config],
+    artma / data / utils[determine_vector_type],
+    artma / const[CONST],
+    artma / libs / string[make_verbose_name],
+    artma / libs / utils[get_verbosity]
+  )
+
+  # Get current config
+  config <- get_data_config()
+
+  # List of computed columns to add
+  computed_columns <- c("obs_id", "study_id", "t_stat", "study_size", "reg_dof", "precision")
+
+  # Add each computed column to config if it exists in df and not in config
+  changes <- list()
+  for (col_name in computed_columns) {
+    if (col_name %in% colnames(df)) {
+      config_key <- make.names(col_name)
+
+      if (!config_key %in% names(config)) {
+        col_data <- df[[col_name]]
+        col_data_type <- tryCatch(
+          determine_vector_type(col_data, CONST$DATA_CONFIG$DATA_TYPES),
+          error = function(e) "unknown"
+        )
+
+        changes[[config_key]] <- list(
+          var_name = col_name,
+          var_name_verbose = make_verbose_name(col_name),
+          data_type = col_data_type,
+          variable_summary = TRUE,  # Include in variable summaries
+          effect_sum_stats = FALSE,  # Don't split by computed columns
+          is_computed = TRUE  # Mark as computed for clarity
+        )
+
+        if (get_verbosity() >= 4) {
+          cli::cli_inform("Added computed column {.field {col_name}} to data config")
+        }
+      }
+    }
+  }
+
+  # Update config with changes
+  if (length(changes) > 0) {
+    suppressMessages(update_data_config(changes))
+  }
+
+  invisible(NULL)
+}
+
+
 #' @title Compute optional columns
-#' @description Compute optional columns that the user did not provide.
+#' @description Compute optional columns that the user did not provide,
+#'   then update the data config to include them.
 #'   This includes:
 #'   - obs_id: Sequential observation IDs (1 to nrow)
 #'   - study_id: Integer study IDs based on study names
@@ -241,13 +301,18 @@ compute_optional_columns <- function(df) {
     cli::cli_alert_info("Computing optional columns for {.val {nrow(df)}} observations…")
   }
 
-  df %>%
+  df_with_computed <- df %>%
     add_obs_id_column() %>%
     add_study_id_column() %>%
     add_t_stat_column() %>%
     add_study_size_column() %>%
     add_reg_dof_column() %>%
     add_precision_column()
+
+  # Update the data config to include computed columns
+  update_config_with_computed_columns(df_with_computed)
+
+  df_with_computed
 }
 
 box::export(compute_optional_columns)
