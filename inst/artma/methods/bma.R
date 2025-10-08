@@ -118,31 +118,35 @@ bma <- function(df) {
     ))
   }
 
+  # Only include 'effect' as required (dependent variable)
+  # All other variables (including 'se') must be explicitly selected by the user
+  all_vars <- c("effect", bma_vars)
+
   bma_var_list <- data.frame(
-    var_name = c("effect", "se", bma_vars),
-    var_name_verbose = vapply(c("effect", "se", bma_vars), function(v) {
+    var_name = all_vars,
+    var_name_verbose = vapply(all_vars, function(v) {
       if (v %in% names(config) && !is.null(config[[v]]$var_name_verbose) && is.character(config[[v]]$var_name_verbose)) {
         config[[v]]$var_name_verbose
       } else {
         v
       }
     }, character(1)),
-    bma = c(TRUE, TRUE, rep(TRUE, length(bma_vars))),
-    group_category = vapply(c("effect", "se", bma_vars), function(v) {
+    bma = rep(TRUE, length(all_vars)),
+    group_category = vapply(all_vars, function(v) {
       if (v %in% names(config) && !is.null(config[[v]]$group_category) && is.character(config[[v]]$group_category)) {
         config[[v]]$group_category
       } else {
         "other"
       }
     }, character(1)),
-    to_log_for_bma = vapply(c("effect", "se", bma_vars), function(v) {
+    to_log_for_bma = vapply(all_vars, function(v) {
       if (v %in% names(config) && !is.null(config[[v]]$bma_to_log) && is.logical(config[[v]]$bma_to_log)) {
         config[[v]]$bma_to_log
       } else {
         FALSE
       }
     }, logical(1)),
-    bma_reference_var = rep(FALSE, length(c("effect", "se", bma_vars))),
+    bma_reference_var = rep(FALSE, length(all_vars)),
     stringsAsFactors = FALSE
   )
 
@@ -160,7 +164,7 @@ bma <- function(df) {
     bma_formula <- formula_result$formula
     bma_var_names <- all.vars(bma_formula)
   } else {
-    bma_var_names <- c("effect", "se", bma_vars)
+    bma_var_names <- all_vars
   }
 
   bma_data <- get_bma_data(
@@ -187,6 +191,55 @@ bma <- function(df) {
     if (nrow(bma_data) == 0) {
       cli::cli_abort("No observations remaining after removing missing values. Cannot run BMA.")
     }
+  }
+
+  # Check for constant variables and remove them
+  is_constant <- vapply(bma_data, function(x) length(unique(x)) <= 1, logical(1))
+  if (any(is_constant)) {
+    constant_vars <- names(bma_data)[is_constant]
+    if (get_verbosity() >= 2) {
+      cli::cli_alert_warning("Removing {length(constant_vars)} constant variable{?s}: {.val {constant_vars}}")
+    }
+    bma_data <- bma_data[, !is_constant, drop = FALSE]
+    bma_var_names <- bma_var_names[!bma_var_names %in% constant_vars]
+
+    if (ncol(bma_data) < 2) {
+      cli::cli_abort("Not enough variables remaining after removing constants. Need at least effect and one moderator.")
+    }
+  }
+
+  # Check for rank deficiency and multicollinearity
+  if (ncol(bma_data) > 2) {
+    # Build a design matrix to check rank
+    formula_check <- stats::as.formula(paste("effect ~", paste(setdiff(names(bma_data), "effect"), collapse = " + ")))
+    tryCatch(
+      {
+        lm_check <- stats::lm(formula_check, data = bma_data)
+        aliased <- stats::alias(lm_check)
+
+        if (!is.null(aliased$Complete) && length(aliased$Complete) > 0) {
+          if (get_verbosity() >= 2) {
+            cli::cli_alert_warning("Detected {length(aliased$Complete)} aliased coefficient{?s} (perfect collinearity)")
+            cli::cli_alert_info("This usually indicates a dummy variable trap or redundant variables")
+          }
+
+          # Get coefficients with NA (these are the aliased ones)
+          lm_coefs <- stats::coef(lm_check)
+          aliased_vars <- names(lm_coefs)[is.na(lm_coefs)]
+          aliased_vars <- aliased_vars[aliased_vars != "(Intercept)"]
+
+          if (length(aliased_vars) > 0 && get_verbosity() >= 2) {
+            cli::cli_alert_warning("Variables causing collinearity: {.val {aliased_vars}}")
+            cli::cli_alert_info("Consider removing one variable from each categorical group")
+          }
+        }
+      },
+      error = function(e) {
+        if (get_verbosity() >= 3) {
+          cli::cli_alert_info("Could not check for collinearity: {e$message}")
+        }
+      }
+    )
   }
 
   bma_params_list <- list(
