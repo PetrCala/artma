@@ -121,7 +121,7 @@ bma <- function(df) {
   bma_var_list <- data.frame(
     var_name = c("effect", "se", bma_vars),
     var_name_verbose = vapply(c("effect", "se", bma_vars), function(v) {
-      if (v %in% names(config) && !is.null(config[[v]]$var_name_verbose)) {
+      if (v %in% names(config) && !is.null(config[[v]]$var_name_verbose) && is.character(config[[v]]$var_name_verbose)) {
         config[[v]]$var_name_verbose
       } else {
         v
@@ -129,14 +129,14 @@ bma <- function(df) {
     }, character(1)),
     bma = c(TRUE, TRUE, rep(TRUE, length(bma_vars))),
     group_category = vapply(c("effect", "se", bma_vars), function(v) {
-      if (v %in% names(config) && !is.null(config[[v]]$group_category)) {
+      if (v %in% names(config) && !is.null(config[[v]]$group_category) && is.character(config[[v]]$group_category)) {
         config[[v]]$group_category
       } else {
         "other"
       }
     }, character(1)),
     to_log_for_bma = vapply(c("effect", "se", bma_vars), function(v) {
-      if (v %in% names(config) && !is.null(config[[v]]$bma_to_log)) {
+      if (v %in% names(config) && !is.null(config[[v]]$bma_to_log) && is.logical(config[[v]]$bma_to_log)) {
         config[[v]]$bma_to_log
       } else {
         FALSE
@@ -171,6 +171,23 @@ bma <- function(df) {
     from_vector = TRUE,
     include_reference_groups = FALSE
   )
+
+  # Check for and handle missing values
+  if (any(is.na(bma_data))) {
+    na_count <- sum(is.na(bma_data))
+    row_count_before <- nrow(bma_data)
+
+    # Remove rows with any NA values
+    bma_data <- stats::na.omit(bma_data)
+
+    if (get_verbosity() >= 2) {
+      cli::cli_alert_warning("Removed {row_count_before - nrow(bma_data)} observation{?s} with missing values ({na_count} NA value{?s} total)")
+    }
+
+    if (nrow(bma_data) == 0) {
+      cli::cli_abort("No observations remaining after removing missing values. Cannot run BMA.")
+    }
+  }
 
   bma_params_list <- list(
     burn = as.integer(burn),
