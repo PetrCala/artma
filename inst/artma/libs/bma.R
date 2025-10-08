@@ -61,15 +61,15 @@ handle_bma_params <- function(bma_params) {
 #'
 #' @description
 #' Creates a formula for Bayesian model averaging based on the variables in input_var.
-#' The formula includes the variables "effect" and "se", as well as any other variables
-#' specified in input_var.
+#' The formula includes the variables specified in input_var, with "effect" as the
+#' dependent variable.
 #'
 #' @param input_var *\[character\]* A vector of variables that should be used to construct the formula.
-#' Must include "effect" and "se".
+#' Must include "effect". Other variables (including "se") are optional.
 #' @param input_data *\[data.frame\]* A data frame on which the formula will later be used.
 #' Skip adding any variables where all values of this data frame are 0 for the variable.
 #' @param get_var_vector_instead *\[logical\]* If TRUE, return a vector with variable names instead,
-#' with effect and se at the first two positions of the vector. Used for a simple rearrangement.
+#' with effect at the first position of the vector. Used for a simple rearrangement.
 #' Defaults to FALSE.
 #'
 #' @return A formula object (to be used for) Bayesian model averaging
@@ -88,21 +88,27 @@ get_bma_formula <- function(input_var, input_data, get_var_vector_instead = FALS
     is.logical(get_var_vector_instead)
   )
 
-  bool_wo_effect <- input_var != "effect"
-  bool_wo_se <- input_var != "se"
-  remaining_vars <- input_var[bool_wo_effect & bool_wo_se]
+  # Separate effect (dependent variable) from independent variables
+  independent_vars <- input_var[input_var != "effect"]
 
+  # Remove variables with no variance (constant values)
   zero_vars <- names(input_data)[vapply(input_data, function(col) {
     length(unique(col)) == 1
   }, logical(1))]
-  remaining_vars <- remaining_vars[!remaining_vars %in% zero_vars]
+  independent_vars <- independent_vars[!independent_vars %in% zero_vars]
 
   if (get_var_vector_instead) {
-    return(c("effect", "se", remaining_vars))
+    return(c("effect", independent_vars))
   }
 
-  remaining_vars_verbose <- paste(remaining_vars, sep = "", collapse = " + ")
-  all_vars_verbose <- paste0("effect ~ se + ", remaining_vars_verbose)
+  # Build formula: effect ~ var1 + var2 + ...
+  if (length(independent_vars) == 0) {
+    # No independent variables, just intercept
+    return(stats::as.formula("effect ~ 1"))
+  }
+
+  independent_vars_verbose <- paste(independent_vars, sep = "", collapse = " + ")
+  all_vars_verbose <- paste0("effect ~ ", independent_vars_verbose)
   stats::as.formula(all_vars_verbose)
 }
 
