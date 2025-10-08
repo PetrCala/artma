@@ -140,13 +140,41 @@ effect_summary_stats <- function(df) {
 
   effect_vars <- names(config)[vapply(config, is_effect_var, logical(1))]
 
+  # If no variables configured, prompt for interactive selection
   if (!length(effect_vars)) {
-    if (get_verbosity() >= 2) {
-      cli::cli_alert_warning("No variables selected to compute summary statistics for.")
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_info("No variables configured for effect summary statistics.")
     }
-    empty <- data.frame(matrix(nrow = 0, ncol = length(CONST$EFFECT_SUMMARY_STATS$NAMES)), stringsAsFactors = FALSE)
-    colnames(empty) <- CONST$EFFECT_SUMMARY_STATS$NAMES
-    return(empty)
+
+    # Check if interactive mode is available
+    if (interactive()) {
+      box::use(
+        artma / libs / effect_summary_stats_interactive[
+          prompt_effect_summary_var_selection
+        ],
+        artma / data_config / write[set_data_config]
+      )
+
+      # Prompt for variable selection
+      updated_config <- prompt_effect_summary_var_selection(df, config)
+
+      # Update the config in options
+      set_data_config(updated_config)
+      config <- updated_config
+
+      # Re-check for effect vars after update
+      effect_vars <- names(config)[vapply(config, is_effect_var, logical(1))]
+    }
+
+    # If still no variables (user declined or non-interactive), return empty
+    if (!length(effect_vars)) {
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning("No variables selected to compute summary statistics for.")
+      }
+      empty <- data.frame(matrix(nrow = 0, ncol = length(CONST$EFFECT_SUMMARY_STATS$NAMES)), stringsAsFactors = FALSE)
+      colnames(empty) <- CONST$EFFECT_SUMMARY_STATS$NAMES
+      return(empty)
+    }
   }
 
   add_row <- function(label, class_name, subset_data) {
