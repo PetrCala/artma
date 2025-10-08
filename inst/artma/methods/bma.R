@@ -228,18 +228,39 @@ bma <- function(df) {
     # Get PIP values and coefficient estimates
     pip_values <- BMS::pmp.bma(bma_model)
 
-    # Extract coefficients properly - exclude intercept
-    bma_coefs <- stats::coef(bma_model, exact = TRUE, order.by.pip = FALSE, include.constant = FALSE)
+    # Extract coefficients - include intercept then remove it
+    bma_coefs_with_intercept <- stats::coef(bma_model, exact = TRUE, order.by.pip = FALSE, include.constant = TRUE)
+
+    # Remove intercept (first element) if present
+    if (length(bma_coefs_with_intercept) > 0 &&
+        !is.null(names(bma_coefs_with_intercept)) &&
+        !is.na(names(bma_coefs_with_intercept)[1]) &&
+        names(bma_coefs_with_intercept)[1] == "(Intercept)") {
+      bma_coefs <- bma_coefs_with_intercept[-1]
+    } else {
+      bma_coefs <- bma_coefs_with_intercept
+    }
 
     # Get variable names from the model (these are already renamed by extract_bma_results)
     var_names <- bma_model$reg.names
 
     # Build the coefficients data frame
     # Match each variable to its PIP and coefficient
+    if (length(bma_coefs) == length(var_names) && !is.null(names(bma_coefs))) {
+      # Coefficients have names - match them to var_names
+      coef_values <- as.numeric(bma_coefs[var_names])
+    } else if (length(bma_coefs) == length(var_names)) {
+      # Same length but no names - assume same order
+      coef_values <- as.numeric(bma_coefs)
+    } else {
+      # Length mismatch or no coefficients - use NA
+      coef_values <- rep(NA, length(var_names))
+    }
+
     coef_df <- data.frame(
       variable = var_names,
       pip = as.numeric(pip_values[var_names]),
-      post_mean = if (length(bma_coefs) == length(var_names)) as.numeric(bma_coefs) else rep(NA, length(var_names)),
+      post_mean = coef_values,
       post_sd = as.numeric(NA),
       cond_pos_sign = as.numeric(NA),
       stringsAsFactors = FALSE
