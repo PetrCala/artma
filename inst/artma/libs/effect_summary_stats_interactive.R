@@ -232,6 +232,14 @@ auto_select_effect_summary_vars <- function(df, config) {
 
   cli::cli_alert_success("Using {length(var_configs)} suggested variable{?s}")
 
+  # Prompt to save the selection
+  box::use(artma / libs / save_preference[prompt_save_variable_selection])
+  prompt_save_variable_selection(
+    var_names = names(var_configs),
+    var_configs = var_configs,
+    description = "effect summary variables"
+  )
+
   var_configs
 }
 

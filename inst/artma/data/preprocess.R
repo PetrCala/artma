@@ -115,7 +115,8 @@ handle_missing_values_with_prompt <- function(df) {
   box::use(
     artma / libs / utils[get_verbosity],
     artma / data / na_handling[detect_missing_values, handle_missing_values],
-    artma / options / prompts[prompt_na_handling]
+    artma / options / prompts[prompt_na_handling],
+    artma / libs / save_preference[prompt_save_preference]
   )
 
   if (get_verbosity() >= 4) {
@@ -141,30 +142,12 @@ handle_missing_values_with_prompt <- function(df) {
       # Set the option for the current session
       options(artma.data.na_handling = selected_strategy)
 
-      # Ask if they want to save this preference
-      save_preference <- climenu::select(
-        choices = c("Yes, save to options file", "No, use only for this session"),
-        prompt = "Do you want to save this preference to your options file?"
+      # Use the reusable save preference function
+      prompt_save_preference(
+        option_path = "data.na_handling",
+        value = selected_strategy,
+        description = "missing value handling strategy"
       )
-
-      if (!rlang::is_empty(save_preference) && save_preference == 1) {
-        # Save to options file
-        tryCatch(
-          {
-            box::use(artma / options / files[update_option_in_file])
-            options_file <- getOption("artma.temp.file_name")
-            if (!is.null(options_file)) {
-              update_option_in_file(options_file, "data.na_handling", selected_strategy)
-              if (get_verbosity() >= 3) {
-                cli::cli_alert_success("Preference saved to options file")
-              }
-            }
-          },
-          error = function(e) {
-            cli::cli_alert_warning("Could not save preference to options file: {e$message}")
-          }
-        )
-      }
     } else {
       # Non-interactive mode: default to "stop"
       if (get_verbosity() >= 2) {
