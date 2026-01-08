@@ -156,7 +156,7 @@ detect_editor <- function() {
 resolve_cli_editor <- function(options_file_path = NULL) {
   # 1) Check options file
   if (!is.null(options_file_path) && is.character(options_file_path) &&
-      length(options_file_path) == 1 && file.exists(options_file_path)) {
+    length(options_file_path) == 1 && file.exists(options_file_path)) {
     candidate <- tryCatch(
       {
         opt <- yaml::read_yaml(options_file_path)
@@ -166,8 +166,8 @@ resolve_cli_editor <- function(options_file_path = NULL) {
     )
 
     if (is.character(candidate) && length(candidate) == 1 &&
-        !is.na(candidate) && nzchar(trimws(candidate)) &&
-        editor_available(trimws(candidate))) {
+      !is.na(candidate) && nzchar(trimws(candidate)) &&
+      editor_available(trimws(candidate))) {
       return(list(cmd = trimws(candidate), source = "options_file"))
     }
   }
