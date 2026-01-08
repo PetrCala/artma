@@ -92,7 +92,10 @@ ensure_system_paths_in_path <- function() {
       c(current_path, missing_paths),
       collapse = .Platform$path.sep
     )
+    # nolint start: undesirable_function_linter
+    # Intentional permanent session-level PATH modification for editor detection
     Sys.setenv(PATH = new_path)
+    # nolint end
   }
 
   invisible(NULL)
