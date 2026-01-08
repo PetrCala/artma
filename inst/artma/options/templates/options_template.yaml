@@ -518,17 +518,19 @@ cli:
     allow_na: true
     default: .na
     help: |
-      Preferred editor command used when opening files for editing (e.g. via {.code artma::options.open()}).
+      Preferred editor command for opening options files via {.code artma::options.open()}.
 
       Examples:
-        {cli::symbol$bullet} {.code "cursor -w"} (Cursor, wait until file is closed)
+        {cli::symbol$bullet} {.code "nano"} (terminal editor, user-friendly)
+        {cli::symbol$bullet} {.code "vim"} (Vi IMproved)
         {cli::symbol$bullet} {.code "code -w"} (VS Code, wait until file is closed)
+        {cli::symbol$bullet} {.code "cursor -w"} (Cursor editor)
         {cli::symbol$bullet} {.code "open -t"} (macOS TextEdit)
-        {cli::symbol$bullet} {.code "nano"} (terminal editor)
 
-      If this option is not set (NA), {.emph artma} will attempt to detect a suitable editor
-      automatically (also respecting the environment variables {.envvar VISUAL} and {.envvar EDITOR}).
-      When an editor is detected interactively, you will be asked whether to save it to your options file.
+      If not set, {.emph artma} uses this priority:
+        1. {.envvar VISUAL} environment variable
+        2. {.envvar EDITOR} environment variable
+        3. System default ({.code open -t} on macOS, {.code notepad} on Windows, {.code xdg-open} on Linux)
 
 verbose:
   type: "integer"

@@ -48,30 +48,50 @@ test_that("detect_editor respects VISUAL then EDITOR", {
   withr::local_envvar(PATH = paste(bin_dir, Sys.getenv("PATH"), sep = .Platform$path.sep))
   withr::local_envvar(VISUAL = "visedit -w", EDITOR = "ededit")
 
-  detected <- detect_editor(sysname = "darwin")
+  detected <- detect_editor()
   expect_equal(detected$source, "env")
   expect_equal(detected$cmd, "visedit -w")
 })
 
 
-test_that("detect_editor uses OS-specific fallbacks when env vars are unset", {
+test_that("detect_editor falls back to EDITOR when VISUAL is unset", {
   box::use(artma / libs / editor[detect_editor])
 
   bin_dir <- tempfile("artma-bin-")
   dir.create(bin_dir)
-  create_fake_executable(bin_dir, "code")
+  create_fake_executable(bin_dir, "ededit")
 
-  # Isolate PATH so system-installed candidates (e.g. cursor) don't affect ordering.
-  withr::local_envvar(PATH = bin_dir)
-  withr::local_envvar(VISUAL = "", EDITOR = "")
+  withr::local_envvar(PATH = paste(bin_dir, Sys.getenv("PATH"), sep = .Platform$path.sep))
+  withr::local_envvar(VISUAL = "", EDITOR = "ededit")
 
-  detected <- detect_editor(sysname = "darwin")
-  expect_equal(detected$source, "auto")
-  expect_equal(detected$cmd, "code -w")
+  detected <- detect_editor()
+  expect_equal(detected$source, "env")
+  expect_equal(detected$cmd, "ededit")
 })
 
 
-test_that("resolve_cli_editor prefers options file, then session option, then env/fallback", {
+test_that("detect_editor falls back to system default when env vars unset", {
+  box::use(artma / libs / editor[detect_editor])
+
+  withr::local_envvar(VISUAL = "", EDITOR = "")
+
+  detected <- detect_editor()
+
+  sysname <- tolower(Sys.info()[["sysname"]])
+  if (sysname == "darwin") {
+    expect_equal(detected$cmd, "open -t")
+    expect_equal(detected$source, "system_default")
+  } else if (sysname == "windows") {
+    expect_equal(detected$cmd, "notepad")
+    expect_equal(detected$source, "system_default")
+  } else {
+    expect_equal(detected$cmd, "xdg-open")
+    expect_equal(detected$source, "system_default")
+  }
+})
+
+
+test_that("resolve_cli_editor prefers options file over env vars", {
   box::use(artma / libs / editor[resolve_cli_editor])
 
   bin_dir <- tempfile("artma-bin-")
@@ -87,24 +107,45 @@ test_that("resolve_cli_editor prefers options file, then session option, then en
   resolved <- resolve_cli_editor(options_file_path = opts_file)
   expect_equal(resolved$source, "options_file")
   expect_equal(resolved$cmd, "myeditor -w")
-
-  withr::local_options(artma.cli.editor = "myeditor")
-  resolved2 <- resolve_cli_editor()
-  expect_equal(resolved2$source, "session")
-  expect_equal(resolved2$cmd, "myeditor")
 })
 
 
-test_that("resolve_cli_editor can return none when PATH contains no candidates", {
+test_that("resolve_cli_editor falls back to env vars when options file has no editor", {
+  box::use(artma / libs / editor[resolve_cli_editor])
+
+  bin_dir <- tempfile("artma-bin-")
+  dir.create(bin_dir)
+  create_fake_executable(bin_dir, "visedit")
+
+  withr::local_envvar(PATH = paste(bin_dir, Sys.getenv("PATH"), sep = .Platform$path.sep))
+  withr::local_envvar(VISUAL = "visedit", EDITOR = "")
+
+  opts_file <- tempfile("artma-options-", fileext = ".yaml")
+  writeLines(c("cli:", "  editor: .na"), opts_file)
+
+  resolved <- resolve_cli_editor(options_file_path = opts_file)
+  expect_equal(resolved$source, "env")
+  expect_equal(resolved$cmd, "visedit")
+})
+
+
+test_that("resolve_cli_editor falls back to system default when nothing else available", {
   box::use(artma / libs / editor[resolve_cli_editor])
 
   empty_bin_dir <- tempfile("artma-empty-bin-")
   dir.create(empty_bin_dir)
 
   withr::local_envvar(PATH = empty_bin_dir, VISUAL = "", EDITOR = "")
-  withr::local_options(artma.cli.editor = NA_character_)
 
   resolved <- resolve_cli_editor()
-  expect_equal(resolved$source, "none")
-  expect_true(is.na(resolved$cmd))
+  expect_equal(resolved$source, "system_default")
+
+  sysname <- tolower(Sys.info()[["sysname"]])
+  if (sysname == "darwin") {
+    expect_equal(resolved$cmd, "open -t")
+  } else if (sysname == "windows") {
+    expect_equal(resolved$cmd, "notepad")
+  } else {
+    expect_equal(resolved$cmd, "xdg-open")
+  }
 })

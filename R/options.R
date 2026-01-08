@@ -466,9 +466,8 @@ options.modify <- function(
 #' @title Options Open
 #' @description
 #' Open an options file for editing. Must be run interactively.
-#' The editor command is taken from the `cli.editor` option (if set). If it is missing,
-#' the package attempts to detect a suitable editor (respecting `VISUAL`/`EDITOR`)
-#' and will offer to save the detected editor back to your options file.
+#' The editor is resolved from: (1) cli.editor option, (2) VISUAL/EDITOR env vars,
+#' or (3) system default file handler.
 #' @param options_file_name *\[character, optional\]* Name of the user options file to modify, including the suffix.
 #' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
 #' @return `NULL` Opens the file for editing
@@ -480,61 +479,37 @@ options.open <- function(
     artma / options / files[resolve_options_dir],
     artma / options / ask[ask_for_existing_options_file_name],
     artma / libs / utils[get_verbosity],
-    editor_mod = artma / libs / editor,
-    save_preference_mod = artma / libs / save_preference
+    editor_mod = artma / libs / editor
   )
 
   if (!rlang::is_interactive()) {
     if (get_verbosity() >= 2) {
-      cli::cli_alert_warning("Running in non-interactive mode. The user options file cannot be opened.")
+      cli::cli_alert_warning("Running in non-interactive mode. Cannot open options file.")
     }
     return(invisible(NULL))
   }
 
   options_dir <- resolve_options_dir(options_dir)
-  options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the name of the user options file you wish to open: ")
+  options_file_name <- options_file_name %||% ask_for_existing_options_file_name(
+    options_dir = options_dir,
+    prompt = "Select the options file to open: "
+  )
 
   file_path <- file.path(options_dir, options_file_name)
 
   editor_res <- editor_mod$resolve_cli_editor(options_file_path = file_path)
   editor_cmd <- editor_res$cmd
 
-  if (!is.character(editor_cmd) || length(editor_cmd) != 1 || is.na(editor_cmd) || !nzchar(trimws(editor_cmd))) {
+  if (!is.character(editor_cmd) || length(editor_cmd) != 1 ||
+      is.na(editor_cmd) || !nzchar(trimws(editor_cmd))) {
     cli::cli_abort(c(
-      "x" = "No suitable editor could be found to open the options file.",
-      "i" = "Set {.strong cli.editor} in your options file (e.g., {.code \"code -w\"}, {.code \"cursor -w\"}, {.code \"open -t\"}, {.code \"nano\"}).",
-      "i" = "Alternatively, set the environment variable {.envvar VISUAL} or {.envvar EDITOR}."
+      "x" = "No suitable editor could be found.",
+      "i" = "Set {.field cli.editor} in your options file (e.g., {.code \"nano\"}, {.code \"vim\"}).",
+      "i" = "Or set the {.envvar VISUAL} or {.envvar EDITOR} environment variable."
     ))
   }
 
-  if (identical(editor_res$source, "auto")) {
-    # Cache for this session to avoid repeated detection.
-    options("artma.cli.editor" = editor_cmd)
-
-    # Offer to persist the detected editor for future sessions.
-    withr::with_options(
-      list(
-        "artma.temp.file_name" = options_file_name,
-        "artma.temp.dir_name" = options_dir
-      ),
-      {
-        cli::cli_alert_info("Using {.code {editor_cmd}} as the editor for this session.")
-        save_preference_mod$prompt_save_preference(
-          option_path = "cli.editor",
-          value = editor_cmd,
-          description = "preferred editor command"
-        )
-      }
-    )
-  }
-
-  withr::with_options(
-    list(
-      editor = editor_cmd,
-      edit = editor_cmd
-    ),
-    file.edit(file_path)
-  )
+  editor_mod$open_with_cli(path = file_path, editor_cmd = editor_cmd)
 
   return(invisible(NULL))
 }
