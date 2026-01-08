@@ -16,4 +16,7 @@ options.open(options_file_name = NULL, options_dir = NULL)
 }
 \description{
 Open an options file for editing. Must be run interactively.
+The editor command is taken from the \code{cli.editor} option (if set). If it is missing,
+the package attempts to detect a suitable editor (respecting \code{VISUAL}/\code{EDITOR})
+and will offer to save the detected editor back to your options file.
 }

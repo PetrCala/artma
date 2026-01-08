@@ -480,8 +480,8 @@ options.open <- function(
     artma / options / files[resolve_options_dir],
     artma / options / ask[ask_for_existing_options_file_name],
     artma / libs / utils[get_verbosity],
-    artma / libs / editor[resolve_cli_editor],
-    artma / libs / save_preference[prompt_save_preference]
+    editor_mod = artma / libs / editor,
+    save_preference_mod = artma / libs / save_preference
   )
 
   if (!rlang::is_interactive()) {
@@ -496,8 +496,8 @@ options.open <- function(
 
   file_path <- file.path(options_dir, options_file_name)
 
-  editor <- resolve_cli_editor(options_file_path = file_path)
-  editor_cmd <- editor$cmd
+  editor_res <- editor_mod$resolve_cli_editor(options_file_path = file_path)
+  editor_cmd <- editor_res$cmd
 
   if (!is.character(editor_cmd) || length(editor_cmd) != 1 || is.na(editor_cmd) || !nzchar(trimws(editor_cmd))) {
     cli::cli_abort(c(
@@ -507,7 +507,7 @@ options.open <- function(
     ))
   }
 
-  if (identical(editor$source, "auto")) {
+  if (identical(editor_res$source, "auto")) {
     # Cache for this session to avoid repeated detection.
     options("artma.cli.editor" = editor_cmd)
 
@@ -517,7 +517,7 @@ options.open <- function(
         "artma.temp.file_name" = options_file_name,
         "artma.temp.dir_name" = options_dir
       ),
-      prompt_save_preference(
+      save_preference_mod$prompt_save_preference(
         option_path = "cli.editor",
         value = editor_cmd,
         description = "preferred editor command"
