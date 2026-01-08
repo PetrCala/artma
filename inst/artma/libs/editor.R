@@ -60,12 +60,55 @@ editor_available <- function(cmd) {
 }
 
 
+#' @title Ensure system paths are in PATH
+#' @description Adds common system paths to PATH for this R session if
+#'   they're not already present. This ensures system commands like `open`,
+#'   `xdg-open`, etc. can be found even in restricted environments (IDEs,
+#'   Docker, SSH).
+#' @return NULL (modifies PATH via Sys.setenv)
+#' @keywords internal
+ensure_system_paths_in_path <- function() {
+  current_path <- Sys.getenv("PATH")
+
+  # Common system paths that should be in PATH
+  system_paths <- if (.Platform$OS.type == "windows") {
+    c("C:\\Windows\\System32", "C:\\Windows")
+  } else {
+    c("/usr/bin", "/bin", "/usr/local/bin")
+  }
+
+  # Check which system paths are missing
+  missing_paths <- character(0)
+  for (sys_path in system_paths) {
+    path_exists <- !grepl(sys_path, current_path, fixed = TRUE)
+    if (path_exists && dir.exists(sys_path)) {
+      missing_paths <- c(missing_paths, sys_path)
+    }
+  }
+
+  # Add missing paths to PATH
+  if (length(missing_paths) > 0) {
+    new_path <- paste(
+      c(current_path, missing_paths),
+      collapse = .Platform$path.sep
+    )
+    Sys.setenv(PATH = new_path)
+  }
+
+  invisible(NULL)
+}
+
+
 #' @title Detect a suitable editor
 #' @description Attempts to find a suitable editor command by checking environment
 #'   variables (VISUAL, EDITOR) and falling back to system default file handlers.
 #' @return *[list]* A list with fields `cmd` and `source` in {"env","system_default"}.
 #' @keywords internal
 detect_editor <- function() {
+  # Ensure common system paths are in PATH for detection
+  # This handles cases where R sessions have restricted PATH (e.g., in some IDEs/environments)
+  ensure_system_paths_in_path()
+
   # 1) Check VISUAL environment variable
   env_visual <- Sys.getenv("VISUAL", unset = "")
   if (nzchar(env_visual) && editor_available(env_visual)) {
