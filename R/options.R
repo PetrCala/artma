@@ -517,11 +517,14 @@ options.open <- function(
         "artma.temp.file_name" = options_file_name,
         "artma.temp.dir_name" = options_dir
       ),
-      save_preference_mod$prompt_save_preference(
-        option_path = "cli.editor",
-        value = editor_cmd,
-        description = "preferred editor command"
-      )
+      {
+        cli::cli_alert_info("Using {.code {editor_cmd}} as the editor for this session.")
+        save_preference_mod$prompt_save_preference(
+          option_path = "cli.editor",
+          value = editor_cmd,
+          description = "preferred editor command"
+        )
+      }
     )
   }
 

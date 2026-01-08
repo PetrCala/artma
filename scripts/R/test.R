@@ -41,10 +41,10 @@ test <- function() {
     should_overwrite = TRUE
   )
 
-  artma::run(
-    # methods = c("all"),
-    options_file_name = options_file_name
-  )
+  # artma::run(
+  #   # methods = c("all"),
+  #   options_file_name = options_file_name
+  # )
 
   # artma::main(
   #   options = options_file_name,
