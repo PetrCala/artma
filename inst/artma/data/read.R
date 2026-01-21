@@ -10,7 +10,9 @@ read_excel_file <- function(path) {
     cli::cli_abort("Package {.pkg readxl} is required to read Excel files. Install with: install.packages('readxl')")
   }
 
-  readxl::read_excel(path, na = CONST$DATA$NA_STRINGS)
+  # Explicitly trim whitespace and use centralized NA strings
+  # trim_ws = TRUE ensures whitespace-only cells become empty strings, which are then converted to NA
+  readxl::read_excel(path, na = CONST$DATA$NA_STRINGS, trim_ws = TRUE)
 }
 
 #' @title Read data

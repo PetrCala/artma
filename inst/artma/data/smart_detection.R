@@ -143,18 +143,31 @@ smart_read_csv <- function(path, delim = NULL, encoding = NULL) {
 
 
 #' @title Normalize whitespace-only strings to NA
-#' @description Convert character columns where values are whitespace-only strings to NA.
+#' @description Convert columns where values are whitespace-only strings to NA.
 #' This ensures that rows with only whitespace are properly detected as empty.
+#' Handles both character columns and columns that might be read as character but should be numeric.
 #' @param df *\[data.frame\]* The data frame to normalize
 #' @return *\[data.frame\]* The data frame with whitespace-only strings converted to NA
 #' @keywords internal
 normalize_whitespace_to_na <- function(df) {
   for (col in colnames(df)) {
+    # Handle character columns (most common case)
     if (is.character(df[[col]])) {
       # Convert whitespace-only strings to NA
       # Matches: empty string, or strings containing only whitespace characters (space, tab, newline, etc.)
       whitespace_only <- grepl("^\\s*$", df[[col]])
       df[[col]][whitespace_only] <- NA_character_
+    }
+    # Also handle factor columns (which might contain whitespace)
+    else if (is.factor(df[[col]])) {
+      # Convert factor levels that are whitespace-only to NA
+      levels_whitespace <- grepl("^\\s*$", levels(df[[col]]))
+      if (any(levels_whitespace)) {
+        # Convert whitespace factor levels to NA
+        df[[col]] <- as.character(df[[col]])
+        whitespace_only <- grepl("^\\s*$", df[[col]])
+        df[[col]][whitespace_only] <- NA_character_
+      }
     }
   }
   df
@@ -230,5 +243,6 @@ box::export(
   detect_delimiter,
   detect_encoding,
   smart_read_csv,
-  validate_df_structure
+  validate_df_structure,
+  normalize_whitespace_to_na
 )

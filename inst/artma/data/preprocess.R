@@ -1,7 +1,8 @@
 box::use(
   artma / data / utils[get_required_colnames],
   artma / data_config / read[get_data_config],
-  artma / data_config / utils[get_config_values]
+  artma / data_config / utils[get_config_values],
+  artma / data / smart_detection[normalize_whitespace_to_na]
 )
 
 #' @title Handle extra columns with data
@@ -229,7 +230,9 @@ verify_variable_names <- function(df) {
 
 
 #' @title Remove empty rows
-#' @description Remove rows that are empty.
+#' @description Remove rows that are empty or have missing critical required columns.
+#' A row is considered empty if all required columns are NA, or if the critical
+#' required columns (study, effect, se) are all missing, regardless of n_obs.
 #' @param df *\[data.frame\]* The data frame to remove empty rows from
 #' @return *\[data.frame\]* The data frame with the empty rows removed
 #' @keywords internal
@@ -244,7 +247,26 @@ remove_empty_rows <- function(df) {
   }
 
   required_colnames <- get_required_colnames()
-  na_rows <- which(map_lgl(seq_len(nrow(df)), ~ all(is.na(df[., required_colnames, drop = FALSE]))))
+
+  # Critical required columns that must be present for a row to be valid
+  # n_obs can be missing/imputed, but study, effect, and se are essential
+  critical_cols <- c("study", "effect", "se")
+  critical_cols <- critical_cols[critical_cols %in% colnames(df)]
+
+  # Remove rows where all required columns are NA
+  all_na_rows <- which(map_lgl(seq_len(nrow(df)), ~ all(is.na(df[., required_colnames, drop = FALSE]))))
+
+  # Also remove rows where all critical columns are missing (even if n_obs has a value)
+  # This catches rows that have n_obs but are missing the essential analysis columns
+  critical_na_rows <- if (length(critical_cols) > 0) {
+    which(map_lgl(seq_len(nrow(df)), ~ all(is.na(df[., critical_cols, drop = FALSE]))))
+  } else {
+    integer(0)
+  }
+
+  # Combine both sets of rows to remove
+  na_rows <- unique(c(all_na_rows, critical_na_rows))
+
   if (length(na_rows)) {
     df <- df[-na_rows, ]
     cli::cli_alert_success("Removed {.val {length(na_rows)}} empty rows.")
@@ -436,9 +458,12 @@ preprocess_data <- function(df) {
   df %>%
     remove_redundant_columns() %>%
     verify_variable_names() %>%
+    normalize_whitespace_to_na() %>%
     remove_empty_rows() %>%
     handle_missing_values_with_prompt() %>%
     enforce_data_types() %>%
+    normalize_whitespace_to_na() %>%
+    remove_empty_rows() %>%
     winsorize_data() %>%
     enforce_correct_values()
 }
