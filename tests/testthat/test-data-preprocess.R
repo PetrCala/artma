@@ -6,8 +6,7 @@ box::use(
     expect_false,
     test_that
   ],
-  withr[local_options],
-  yaml[write_yaml]
+  withr[local_options]
 )
 
 test_that <- getFromNamespace("test_that", "testthat")
@@ -95,6 +94,9 @@ test_that("remove_redundant_columns keeps columns with data when strategy is 'ke
   # Create a minimal options file that update_data_config can read
   minimal_options <- list(data = list(config = config))
   yaml::write_yaml(minimal_options, tmp_file)
+
+  # Ensure file exists before proceeding
+  stopifnot(file.exists(tmp_file))
 
   withr::local_options(list(
     "artma.data.config" = config,
@@ -188,6 +190,9 @@ test_that("remove_redundant_columns handles mixed empty and data columns", {
   # Create a minimal options file that update_data_config can read
   minimal_options <- list(data = list(config = config))
   yaml::write_yaml(minimal_options, tmp_file)
+
+  # Ensure file exists before proceeding
+  stopifnot(file.exists(tmp_file))
 
   withr::local_options(list(
     "artma.data.config" = config,
