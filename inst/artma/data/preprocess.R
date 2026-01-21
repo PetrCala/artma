@@ -4,8 +4,134 @@ box::use(
   artma / data_config / utils[get_config_values]
 )
 
+#' @title Handle extra columns with data
+#' @description Handle columns that contain data but aren't in the expected config.
+#' @param df *\[data.frame\]* The data frame
+#' @param data_cols *\[character\]* Vector of column names that contain data
+#' @return *\[data.frame\]* The data frame (potentially modified)
+#' @keywords internal
+handle_extra_columns_with_data <- function(df, data_cols) {
+  box::use(
+    artma / libs / utils[get_verbosity],
+    artma / data_config / write[update_data_config],
+    artma / const[CONST],
+    artma / data / utils[determine_vector_type],
+    artma / libs / string[make_verbose_name]
+  )
+
+  strategy <- getOption("artma.data.extra_columns_strategy", default = "keep")
+
+  if (strategy == "abort") {
+    cli::cli_abort(c(
+      "x" = "Found {length(data_cols)} extra column{?s} with data that are not in the data config: {.val {data_cols}}",
+      "i" = "Set {.code options(artma.data.extra_columns_strategy = \"keep\")} to automatically include them",
+      "i" = "Or set {.code options(artma.data.extra_columns_strategy = \"remove\")} to remove them (data loss)"
+    ))
+  }
+
+  if (strategy == "remove") {
+    if (get_verbosity() >= 2) {
+      cli::cli_warn(c(
+        "!" = "Removing {length(data_cols)} extra column{?s} with data: {.val {data_cols}}",
+        "i" = "This will result in data loss. Consider using {.code options(artma.data.extra_columns_strategy = \"keep\")}"
+      ))
+    }
+    df <- df[, !colnames(df) %in% data_cols, drop = FALSE]
+    return(df)
+  }
+
+  if (strategy == "prompt") {
+    if (!interactive()) {
+      # Non-interactive mode: fall back to "keep" strategy
+      if (get_verbosity() >= 2) {
+        cli::cli_warn("Running in non-interactive mode. Falling back to 'keep' strategy for extra columns.")
+      }
+      strategy <- "keep"
+    } else {
+      box::use(climenu[menu])
+      
+      for (col in data_cols) {
+        choice <- menu(
+          choices = c(
+            "Keep column (add to data config)",
+            "Remove column (data loss)",
+            "Abort"
+          ),
+          title = paste0("Column '", col, "' contains data but is not in the data config. What would you like to do?")
+        )
+        
+        if (choice == 1) {
+          # Keep - will be handled below
+        } else if (choice == 2) {
+          df <- df[, colnames(df) != col, drop = FALSE]
+          data_cols <- setdiff(data_cols, col)
+          if (get_verbosity() >= 3) {
+            cli::cli_alert_info("Removed column {.val {col}}")
+          }
+        } else {
+          cli::cli_abort("Aborted by user")
+        }
+      }
+    }
+  }
+
+  # Strategy is "keep" or user chose to keep in prompt mode
+  if (length(data_cols) > 0) {
+    # Add these columns to the data config
+    config_changes <- list()
+    
+    for (col in data_cols) {
+      col_name_clean <- make.names(col)
+      col_data <- df[[col]]
+      
+      col_data_type <- tryCatch(
+        determine_vector_type(
+          data = col_data,
+          recognized_data_types = CONST$DATA_CONFIG$DATA_TYPES
+        ),
+        error = function(e) {
+          if (get_verbosity() >= 2) {
+            cli::cli_alert_warning("Failed to determine data type for column {.val {col}}, using 'unknown'")
+          }
+          "unknown"
+        }
+      )
+
+      config_changes[[col_name_clean]] <- list(
+        "var_name" = col,
+        "var_name_verbose" = make_verbose_name(col),
+        "var_name_description" = make_verbose_name(col),
+        "data_type" = col_data_type,
+        "group_category" = NA,
+        "na_handling" = getOption("artma.data.na_handling"),
+        "variable_summary" = is.numeric(col_data),
+        "effect_sum_stats" = NA,
+        "equal" = NA,
+        "gltl" = NA,
+        "bma" = NA,
+        "bma_reference_var" = NA,
+        "bma_to_log" = NA,
+        "bpe" = NA,
+        "bpe_sum_stats" = NA,
+        "bpe_equal" = NA,
+        "bpe_gltl" = NA
+      )
+    }
+
+    if (length(config_changes) > 0) {
+      suppressMessages(update_data_config(changes = config_changes))
+      if (get_verbosity() >= 3) {
+        cli::cli_alert_success("Added {length(config_changes)} extra column{?s} to data config: {.val {data_cols}}")
+      }
+    }
+  }
+
+  df
+}
+
 #' @title Remove redundant columns
 #' @description Remove columns that are not expected in the data frame.
+#' Uses name-based identification rather than position-based removal.
 #' @param df *\[data.frame\]* The data frame to remove columns from
 #' @return *\[data.frame\]* The data frame with the redundant columns removed
 #' @keywords internal
@@ -15,14 +141,50 @@ remove_redundant_columns <- function(df) {
   if (get_verbosity() >= 4) {
     cli::cli_inform("Removing redundant columns…")
   }
-  expected_col_n <- length(get_data_config())
-  while (ncol(df) > expected_col_n) {
-    col_to_remove <- colnames(df)[ncol(df)]
-    if (!all(is.na(df[[col_to_remove]]))) {
-      cli::cli_abort("Cannot remove column {.val {col_to_remove}} as it contains non-NA values.")
-    }
-    df <- df[, -ncol(df)]
+
+  # Get expected column names from config
+  config <- get_data_config()
+  expected_varnames <- get_config_values(config, "var_name")
+  expected_varnames_clean <- make.names(expected_varnames)
+
+  # Identify redundant columns (in df but not expected)
+  # Apply make.names to df column names for consistent comparison
+  df_colnames <- colnames(df)
+  df_colnames_clean <- make.names(df_colnames)
+  redundant_cols <- setdiff(df_colnames_clean, expected_varnames_clean)
+  
+  # Map back to original column names for removal
+  redundant_cols_original <- df_colnames[df_colnames_clean %in% redundant_cols]
+
+  if (length(redundant_cols_original) == 0) {
+    return(df)  # No redundant columns
   }
+
+  # Separate into empty vs non-empty
+  empty_cols <- character(0)
+  data_cols <- character(0)
+
+  for (col in redundant_cols_original) {
+    if (all(is.na(df[[col]]))) {
+      empty_cols <- c(empty_cols, col)
+    } else {
+      data_cols <- c(data_cols, col)
+    }
+  }
+
+  # Remove empty columns silently
+  if (length(empty_cols) > 0) {
+    df <- df[, !colnames(df) %in% empty_cols, drop = FALSE]
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_success("Removed {length(empty_cols)} empty redundant column{?s}: {.val {empty_cols}}")
+    }
+  }
+
+  # Handle columns with data
+  if (length(data_cols) > 0) {
+    df <- handle_extra_columns_with_data(df, data_cols)
+  }
+
   df
 }
 
