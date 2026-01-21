@@ -18,7 +18,7 @@ data:
     prompt: "function"
     prompt_function: "prompt_na_handling"
     help: |
-      How to handle missing values in optional (non-required) columns:
+      How to handle missing values:
         {cli::symbol$bullet} {.strong stop}: Abort if any missing values are found (safest, default)
         {cli::symbol$bullet} {.strong remove}: Remove entire rows with any missing values (listwise deletion)
         {cli::symbol$bullet} {.strong median}: Replace missing values with the variable's median (robust to outliers)
@@ -26,7 +26,11 @@ data:
         {cli::symbol$bullet} {.strong interpolate}: Use linear interpolation based on neighboring values (best for sequential data)
         {cli::symbol$bullet} {.strong mice}: Multiple Imputation by Chained Equations (advanced, requires mice package)
 
-      Note: Required columns (effect, se, study, n_obs) must always be complete regardless of this setting.
+      Imputation strategies (median, mean, interpolate, mice) can be applied to numeric required columns
+      (effect, se, n_obs) as well as optional columns. Non-numeric required columns (study) must always be
+      complete and cannot be imputed. The "remove" strategy will remove rows with any missing values,
+      including in required columns.
+
       If this option is not set (NA), you will be prompted interactively when missing values are detected.
 
   colnames:

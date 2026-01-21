@@ -57,17 +57,14 @@ handle_na_remove <- function(df) {
 
 
 #' @title Handle missing values with median imputation
-#' @description Replace missing values with the column's median.
+#' @description Replace missing values with the column's median. Works on all numeric columns (both required and optional).
 #' @param df *\[data.frame\]* The data frame to process
 #' @return *\[data.frame\]* The data frame with imputed values
 #' @keywords internal
 handle_na_median <- function(df) {
-  required_cols <- get_required_colnames()
-  cols_to_impute <- setdiff(colnames(df), required_cols)
-
   imputed_count <- 0
 
-  for (col in cols_to_impute) {
+  for (col in colnames(df)) {
     if (is.numeric(df[[col]]) && any(is.na(df[[col]]))) {
       na_indices <- is.na(df[[col]])
       median_val <- stats::median(df[[col]], na.rm = TRUE)
@@ -92,17 +89,14 @@ handle_na_median <- function(df) {
 
 
 #' @title Handle missing values with mean imputation
-#' @description Replace missing values with the column's mean.
+#' @description Replace missing values with the column's mean. Works on all numeric columns (both required and optional).
 #' @param df *\[data.frame\]* The data frame to process
 #' @return *\[data.frame\]* The data frame with imputed values
 #' @keywords internal
 handle_na_mean <- function(df) {
-  required_cols <- get_required_colnames()
-  cols_to_impute <- setdiff(colnames(df), required_cols)
-
   imputed_count <- 0
 
-  for (col in cols_to_impute) {
+  for (col in colnames(df)) {
     if (is.numeric(df[[col]]) && any(is.na(df[[col]]))) {
       na_indices <- is.na(df[[col]])
       mean_val <- mean(df[[col]], na.rm = TRUE)
@@ -127,17 +121,14 @@ handle_na_mean <- function(df) {
 
 
 #' @title Handle missing values with linear interpolation
-#' @description Use linear interpolation to fill missing values based on neighboring values.
+#' @description Use linear interpolation to fill missing values based on neighboring values. Works on all numeric columns (both required and optional).
 #' @param df *\[data.frame\]* The data frame to process
 #' @return *\[data.frame\]* The data frame with interpolated values
 #' @keywords internal
 handle_na_interpolate <- function(df) {
-  required_cols <- get_required_colnames()
-  cols_to_impute <- setdiff(colnames(df), required_cols)
-
   imputed_count <- 0
 
-  for (col in cols_to_impute) {
+  for (col in colnames(df)) {
     if (is.numeric(df[[col]]) && any(is.na(df[[col]]))) {
       na_indices <- is.na(df[[col]])
       initial_na_count <- sum(na_indices)
@@ -183,7 +174,7 @@ handle_na_interpolate <- function(df) {
 
 
 #' @title Handle missing values with MICE
-#' @description Use Multiple Imputation by Chained Equations to fill missing values.
+#' @description Use Multiple Imputation by Chained Equations to fill missing values. Works on all numeric columns (both required and optional).
 #' @param df *\[data.frame\]* The data frame to process
 #' @return *\[data.frame\]* The data frame with imputed values
 #' @keywords internal
@@ -195,11 +186,10 @@ handle_na_mice <- function(df) {
     ))
   }
 
-  required_cols <- get_required_colnames()
-  cols_to_impute <- setdiff(colnames(df), required_cols)
-
-  # Only impute columns that have missing values
-  cols_with_na <- cols_to_impute[vapply(cols_to_impute, function(x) any(is.na(df[[x]])), logical(1))]
+  # Only impute numeric columns that have missing values
+  cols_with_na <- colnames(df)[vapply(colnames(df), function(x) {
+    is.numeric(df[[x]]) && any(is.na(df[[x]]))
+  }, logical(1))]
 
   if (length(cols_with_na) == 0) {
     return(df)
@@ -209,8 +199,8 @@ handle_na_mice <- function(df) {
     cli::cli_alert_info("Running MICE imputation for {.val {length(cols_with_na)}} column{?s}...")
   }
 
-  # Create a subset with only columns to impute
-  df_subset <- df[, c(required_cols, cols_with_na), drop = FALSE]
+  # Create a subset with all columns (MICE can handle non-numeric columns as predictors)
+  df_subset <- df[, colnames(df), drop = FALSE]
 
   # Run MICE (suppress output unless verbosity is high)
   mice_obj <- if (get_verbosity() >= 4) {
@@ -237,6 +227,12 @@ handle_na_mice <- function(df) {
 
 #' @title Handle missing values
 #' @description Main function to handle missing values according to the selected strategy.
+#'
+#' This function handles missing values differently for required vs optional columns:
+#' - Non-numeric required columns (e.g., study) must be complete and will cause an error if missing
+#' - Numeric required columns (e.g., effect, se, n_obs) can be imputed if a non-"stop" strategy is selected
+#' - Optional columns are handled according to the selected strategy
+#'
 #' @param df *\[data.frame\]* The data frame to process
 #' @return *\[data.frame\]* The processed data frame
 #' @keywords internal
@@ -246,30 +242,84 @@ handle_missing_values <- function(df) {
   # Detect missing values
   na_summary <- detect_missing_values(df)
 
-  # First, check if required columns have missing values - this is always an error
+  # Get the handling strategy
+  na_handling <- getOption("artma.data.na_handling", default = "stop")
+
+  # Check if required columns have missing values
   if (na_summary$has_required_na) {
-    required_cols_msg <- paste0(
-      names(na_summary$required_cols_with_na),
-      " (", na_summary$required_cols_with_na, ")",
-      collapse = ", "
-    )
-    cli::cli_abort(c(
-      "x" = "Missing values found in required columns: {required_cols_msg}",
-      "i" = "Required columns must be complete for {.emph {CONST$PACKAGE_NAME}} to run.",
-      "i" = "Please clean your data or remove incomplete rows before analysis."
-    ))
+    required_cols_with_na <- names(na_summary$required_cols_with_na)
+
+    # Separate required columns into numeric and non-numeric
+    non_numeric_required_with_na <- required_cols_with_na[
+      !vapply(required_cols_with_na, function(col) is.numeric(df[[col]]), logical(1))
+    ]
+    numeric_required_with_na <- setdiff(required_cols_with_na, non_numeric_required_with_na)
+
+    # Non-numeric required columns (like study) cannot be imputed - always error
+    if (length(non_numeric_required_with_na) > 0) {
+      non_numeric_msg <- paste0(
+        non_numeric_required_with_na,
+        " (", na_summary$required_cols_with_na[non_numeric_required_with_na], ")",
+        collapse = ", "
+      )
+      cli::cli_abort(c(
+        "x" = "Missing values found in non-numeric required columns: {non_numeric_msg}",
+        "i" = "Non-numeric required columns (e.g., study) cannot be imputed and must be complete.",
+        "i" = "Please clean your data or remove incomplete rows before analysis."
+      ))
+    }
+
+    # For numeric required columns, check if strategy allows imputation
+    if (length(numeric_required_with_na) > 0) {
+      if (na_handling == "stop") {
+        numeric_msg <- paste0(
+          numeric_required_with_na,
+          " (", na_summary$required_cols_with_na[numeric_required_with_na], ")",
+          collapse = ", "
+        )
+        cli::cli_abort(c(
+          "x" = "Missing values found in required columns: {numeric_msg}",
+          "i" = "Current strategy is {.val stop}. Change {.field artma.data.na_handling} to handle missing values automatically.",
+          "i" = "Available strategies: {.val remove}, {.val median}, {.val mean}, {.val interpolate}, {.val mice}"
+        ))
+      }
+      # If strategy is not "stop", allow processing to continue (will be handled by imputation functions)
+      if (get_verbosity() >= 3) {
+        numeric_msg <- paste0(
+          numeric_required_with_na,
+          " (", na_summary$required_cols_with_na[numeric_required_with_na], ")",
+          collapse = ", "
+        )
+        cli::cli_alert_warning("Missing values detected in numeric required columns: {numeric_msg}. Will apply {.val {na_handling}} strategy.")
+      }
+    }
   }
 
-  # If no optional missing values, return early
-  if (!na_summary$has_optional_na) {
+  # Check if we need to process missing values
+  # We need to process if:
+  # 1. There are optional missing values, OR
+  # 2. There are numeric required missing values and strategy is not "stop"
+  has_numeric_required_na <- if (na_summary$has_required_na) {
+    required_cols_with_na <- names(na_summary$required_cols_with_na)
+    numeric_required_with_na <- required_cols_with_na[
+      vapply(required_cols_with_na, function(col) is.numeric(df[[col]]), logical(1))
+    ]
+    length(numeric_required_with_na) > 0 && na_handling != "stop"
+  } else {
+    FALSE
+  }
+
+  needs_processing <- na_summary$has_optional_na || has_numeric_required_na
+
+  if (!needs_processing) {
     if (get_verbosity() >= 4) {
-      cli::cli_alert_success("No missing values detected in optional columns")
+      cli::cli_alert_success("No missing values detected that require processing")
     }
     return(df)
   }
 
   # Report missing values in optional columns
-  if (get_verbosity() >= 3) {
+  if (get_verbosity() >= 3 && na_summary$has_optional_na) {
     optional_cols_msg <- paste0(
       names(na_summary$optional_cols_with_na),
       " (", na_summary$optional_cols_with_na, ")",
@@ -277,9 +327,6 @@ handle_missing_values <- function(df) {
     )
     cli::cli_alert_warning("Missing values detected in optional columns: {optional_cols_msg}")
   }
-
-  # Get the handling strategy
-  na_handling <- getOption("artma.data.na_handling", default = "stop")
 
   # Apply the selected strategy
   df_processed <- switch(na_handling,
