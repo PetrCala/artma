@@ -552,7 +552,7 @@ verbose:
 cache:
   use_cache:
     type: "logical"
-    default: true
+    default: false
     help: |
       If `TRUE`, use caching to speed up the package.
       If `FALSE`, do not use caching.
