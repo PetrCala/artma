@@ -7,7 +7,9 @@ CONST <- list(
   PACKAGE_NAME_VERBOSE = PACKAGE_NAME_VERBOSE,
   DATA = list(
     # A list of recognized data (meaning data frame) types
-    TYPES = c("csv", "tsv", "xlsx", "xls", "xlsm", "json", "dta", "rds")
+    TYPES = c("csv", "tsv", "xlsx", "xls", "xlsm", "json", "dta", "rds"),
+    # Strings that should be interpreted as NA when reading data files
+    NA_STRINGS = c("", "NA", "N/A", "na", "n/a", "NULL", "null")
   ),
   DATE_FORMAT = "%Y-%m-%d %H:%M:%S",
   DATE_ONLY_FORMAT = "%Y-%m-%d",

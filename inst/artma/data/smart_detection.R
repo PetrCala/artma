@@ -30,7 +30,9 @@ detect_delimiter <- function(path, n_lines = 5) {
     line_counts <- vapply(lines, function(line) {
       length(gregexpr(delim, line, fixed = TRUE)[[1]])
     }, integer(1))
-    if (max(line_counts) == 0) return(0)
+    if (max(line_counts) == 0) {
+      return(0)
+    }
     1 - (stats::sd(line_counts) / max(max(line_counts), 1))
   }, numeric(1))
 
@@ -82,6 +84,7 @@ detect_encoding <- function(path) {
 #' @return *\[data.frame\]* The data frame
 smart_read_csv <- function(path, delim = NULL, encoding = NULL) {
   box::use(
+    artma / const[CONST],
     artma / libs / validation[validate],
     artma / libs / utils[get_verbosity]
   )
@@ -111,7 +114,7 @@ smart_read_csv <- function(path, delim = NULL, encoding = NULL) {
         sep = delim,
         fileEncoding = encoding,
         stringsAsFactors = FALSE,
-        na.strings = c("", "NA", "N/A", "na", "n/a", "NULL", "null"),
+        na.strings = CONST$DATA$NA_STRINGS,
         strip.white = TRUE,
         comment.char = "",
         quote = "\""
@@ -123,7 +126,7 @@ smart_read_csv <- function(path, delim = NULL, encoding = NULL) {
         cli::cli_alert_warning("Failed to read with detected parameters, trying fallback method")
       }
       tryCatch(
-        utils::read.csv(path, stringsAsFactors = FALSE),
+        utils::read.csv(path, stringsAsFactors = FALSE, na.strings = CONST$DATA$NA_STRINGS),
         error = function(e2) {
           cli::cli_abort(c(
             "x" = "Failed to read CSV file: {.path {path}}",
@@ -139,8 +142,28 @@ smart_read_csv <- function(path, delim = NULL, encoding = NULL) {
 }
 
 
+#' @title Normalize whitespace-only strings to NA
+#' @description Convert character columns where values are whitespace-only strings to NA.
+#' This ensures that rows with only whitespace are properly detected as empty.
+#' @param df *\[data.frame\]* The data frame to normalize
+#' @return *\[data.frame\]* The data frame with whitespace-only strings converted to NA
+#' @keywords internal
+normalize_whitespace_to_na <- function(df) {
+  for (col in colnames(df)) {
+    if (is.character(df[[col]])) {
+      # Convert whitespace-only strings to NA
+      # Matches: empty string, or strings containing only whitespace characters (space, tab, newline, etc.)
+      whitespace_only <- grepl("^\\s*$", df[[col]])
+      df[[col]][whitespace_only] <- NA_character_
+    }
+  }
+  df
+}
+
+
 #' @title Validate and clean data frame structure
-#' @description Check for and fix common data frame issues
+#' @description Check for and fix common data frame issues. Normalizes whitespace-only strings to NA
+#' before detecting empty rows and columns, ensuring consistent handling across all data formats.
 #' @param df *\[data.frame\]* The data frame to validate
 #' @param path *\[character\]* Original file path (for error messages)
 #' @return *\[data.frame\]* Cleaned data frame
@@ -160,6 +183,9 @@ validate_df_structure <- function(df, path) {
   if (ncol(df) == 0) {
     cli::cli_abort("The data frame read from {.path {path}} has no columns.")
   }
+
+  # Normalize whitespace-only strings to NA (must happen before empty row/column detection)
+  df <- normalize_whitespace_to_na(df)
 
   # Check for completely empty columns (parsing artifacts)
   empty_cols <- vapply(df, function(col) all(is.na(col)), logical(1))

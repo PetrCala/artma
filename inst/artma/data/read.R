@@ -1,3 +1,18 @@
+#' @title Read Excel file with consistent NA handling
+#' @description Read Excel files (xlsx, xls, xlsm) with standardized NA string handling
+#' @param path *\[character\]* Path to the Excel file
+#' @return *\[data.frame\]* The data frame
+#' @keywords internal
+read_excel_file <- function(path) {
+  box::use(artma / const[CONST])
+
+  if (!requireNamespace("readxl", quietly = TRUE)) {
+    cli::cli_abort("Package {.pkg readxl} is required to read Excel files. Install with: install.packages('readxl')")
+  }
+
+  readxl::read_excel(path, na = CONST$DATA$NA_STRINGS)
+}
+
 #' @title Read data
 #' @description Read data from a path. Returns a data frame with smart handling of various formats.
 #' @param path *\[str, optional\]* The path to the data source. If NULL, the options data source path is used.
@@ -38,24 +53,9 @@ read_data <- function(path = NULL) {
       switch(df_type,
         csv = smart_read_csv(path),
         tsv = smart_read_csv(path, delim = "\t"),
-        xlsx = {
-          if (!requireNamespace("readxl", quietly = TRUE)) {
-            cli::cli_abort("Package {.pkg readxl} is required to read Excel files. Install with: install.packages('readxl')")
-          }
-          readxl::read_excel(path, na = c("", "NA", "N/A", "na", "n/a", "NULL", "null"))
-        },
-        xls = {
-          if (!requireNamespace("readxl", quietly = TRUE)) {
-            cli::cli_abort("Package {.pkg readxl} is required to read Excel files. Install with: install.packages('readxl')")
-          }
-          readxl::read_excel(path, na = c("", "NA", "N/A", "na", "n/a", "NULL", "null"))
-        },
-        xlsm = {
-          if (!requireNamespace("readxl", quietly = TRUE)) {
-            cli::cli_abort("Package {.pkg readxl} is required to read Excel files. Install with: install.packages('readxl')")
-          }
-          readxl::read_excel(path, na = c("", "NA", "N/A", "na", "n/a", "NULL", "null"))
-        },
+        xlsx = read_excel_file(path),
+        xls = read_excel_file(path),
+        xlsm = read_excel_file(path),
         json = {
           if (!requireNamespace("jsonlite", quietly = TRUE)) {
             cli::cli_abort("Package {.pkg jsonlite} is required to read JSON files. Install with: install.packages('jsonlite')")
