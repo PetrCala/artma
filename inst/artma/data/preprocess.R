@@ -49,7 +49,7 @@ handle_extra_columns_with_data <- function(df, data_cols) {
       strategy <- "keep"
     } else {
       box::use(climenu[menu])
-      
+
       for (col in data_cols) {
         choice <- menu(
           choices = c(
@@ -59,7 +59,7 @@ handle_extra_columns_with_data <- function(df, data_cols) {
           ),
           title = paste0("Column '", col, "' contains data but is not in the data config. What would you like to do?")
         )
-        
+
         if (choice == 1) {
           # Keep - will be handled below
         } else if (choice == 2) {
@@ -79,11 +79,11 @@ handle_extra_columns_with_data <- function(df, data_cols) {
   if (length(data_cols) > 0) {
     # Add these columns to the data config
     config_changes <- list()
-    
+
     for (col in data_cols) {
       col_name_clean <- make.names(col)
       col_data <- df[[col]]
-      
+
       col_data_type <- tryCatch(
         determine_vector_type(
           data = col_data,
@@ -139,7 +139,7 @@ remove_redundant_columns <- function(df) {
   box::use(artma / libs / utils[get_verbosity])
 
   if (get_verbosity() >= 4) {
-    cli::cli_inform("Removing redundant columns…")
+    cli::cli_inform("Removing redundant columns...")
   }
 
   # Get expected column names from config
@@ -152,12 +152,12 @@ remove_redundant_columns <- function(df) {
   df_colnames <- colnames(df)
   df_colnames_clean <- make.names(df_colnames)
   redundant_cols <- setdiff(df_colnames_clean, expected_varnames_clean)
-  
+
   # Map back to original column names for removal
   redundant_cols_original <- df_colnames[df_colnames_clean %in% redundant_cols]
 
   if (length(redundant_cols_original) == 0) {
-    return(df)  # No redundant columns
+    return(df) # No redundant columns
   }
 
   # Separate into empty vs non-empty
@@ -189,57 +189,41 @@ remove_redundant_columns <- function(df) {
 }
 
 #' @title Verify variable names
-#' @description Verify that the variable names in the data frame match the expected variable names.
+#' @description Verify that all expected columns exist in the data frame and no extra columns are present.
+#' Column order does not matter - only the presence of all expected columns and absence of unexpected ones.
 #' @param df *\[data.frame\]* The data frame to verify variable names for
-#' @return *\[data.frame\]* The data frame with the redundant columns removed
+#' @return *\[data.frame\]* The data frame (unchanged, validation only)
 #' @keywords internal
 verify_variable_names <- function(df) {
   box::use(artma / libs / utils[get_verbosity])
 
   if (get_verbosity() >= 4) {
-    cli::cli_inform("Checking variable names…")
+    cli::cli_inform("Checking variable names...")
   }
 
-  varnames <- colnames(df)
+  # Get expected column names from config
   config <- get_data_config()
   expected_varnames <- get_config_values(config, "var_name")
 
+  # Filter out NA values (edge case: config might have invalid entries)
+  expected_varnames <- expected_varnames[!is.na(expected_varnames)]
+
+  # Get actual column names
+  varnames <- colnames(df)
+
+  # Verify exact match: all expected columns exist, no extra columns
   if (!setequal(varnames, expected_varnames)) {
-    missing_from_var_list <- setdiff(varnames, expected_varnames)
     missing_from_data <- setdiff(expected_varnames, varnames)
+    extra_in_data <- setdiff(varnames, expected_varnames)
+
     cli::cli_abort(c(
-      "x" = "Mismatching variable names.",
-      "i" = "Not in variable list: {.val {missing_from_var_list}}",
-      "i" = "Not in data frame: {.val {missing_from_data}}"
+      "x" = "Column name mismatch.",
+      "i" = "All expected columns must exist, and no extra columns are allowed.",
+      "i" = "Missing columns: {.val {missing_from_data}}",
+      "i" = "Unexpected columns: {.val {extra_in_data}}"
     ))
   }
-  df
-}
 
-
-#' @title Verify variable order
-#' @description Verify that the variable order in the data frame matches the expected variable order.
-#' @param df *\[data.frame\]* The data frame to verify variable order for
-#' @return *\[data.frame\]* The data frame with the redundant columns removed
-#' @keywords internal
-verify_variable_order <- function(df) {
-  box::use(artma / libs / utils[get_verbosity])
-
-  if (get_verbosity() >= 4) {
-    cli::cli_inform("Checking variable name order…")
-  }
-
-  varnames <- colnames(df)
-  config <- get_data_config()
-  expected_varnames <- get_config_values(config, "var_name")
-  if (!identical(varnames, expected_varnames)) {
-    problematic <- which(varnames != expected_varnames)
-    cli::cli_abort(c(
-      "x" = "Column order differs from expected list.",
-      "i" = "Problematic indexes: {.val {problematic}}",
-      "i" = "DF: '{.val {varnames[problematic]}}'; Expected: '{.val {expected_varnames[problematic]}}'"
-    ))
-  }
   df
 }
 
@@ -256,7 +240,7 @@ remove_empty_rows <- function(df) {
   )
 
   if (get_verbosity() >= 4) {
-    cli::cli_inform("Removing empty rows…")
+    cli::cli_inform("Removing empty rows...")
   }
 
   required_colnames <- get_required_colnames()
@@ -282,7 +266,7 @@ handle_missing_values_with_prompt <- function(df) {
   )
 
   if (get_verbosity() >= 4) {
-    cli::cli_inform("Checking for missing values…")
+    cli::cli_inform("Checking for missing values...")
   }
 
   # Detect all missing values
@@ -336,7 +320,7 @@ enforce_data_types <- function(df) {
   box::use(artma / libs / utils[get_verbosity])
 
   if (get_verbosity() >= 4) {
-    cli::cli_inform("Enforcing correct data types…")
+    cli::cli_inform("Enforcing correct data types...")
   }
 
   config <- get_data_config()
@@ -362,7 +346,7 @@ enforce_correct_values <- function(df) {
   box::use(artma / libs / utils[get_verbosity])
 
   if (get_verbosity() >= 4) {
-    cli::cli_inform("Checking for invalid values…")
+    cli::cli_inform("Checking for invalid values...")
   }
 
   box::use(artma / libs / validation[assert])
@@ -403,7 +387,7 @@ winsorize_data <- function(df) {
   }
 
   if (get_verbosity() >= 3) {
-    cli::cli_inform("Winsorizing data at {.val {winsorization_level}} level…")
+    cli::cli_inform("Winsorizing data at {.val {winsorization_level}} level...")
   }
 
   # Winsorize effect column
@@ -442,16 +426,16 @@ winsorize_data <- function(df) {
 
 
 #' @title Preprocess data
-#' @description Preprocess the raw data frame.
+#' @description Preprocess the raw data frame. Validates column names (all expected columns must exist, no extra columns allowed), removes empty rows and columns, handles missing values, enforces data types, and applies winsorization.
+#' Column order does not matter - columns are identified by name only.
 #' @param df *[data.frame]* Raw data frame to clean.
-#' @return *[data.frame]* The validated, type‑safe, and trimmed data frame.
+#' @return *[data.frame]* The validated, type-safe, and trimmed data frame.
 preprocess_data <- function(df) {
   box::use(magrittr[`%>%`])
 
   df %>%
     remove_redundant_columns() %>%
     verify_variable_names() %>%
-    verify_variable_order() %>%
     remove_empty_rows() %>%
     handle_missing_values_with_prompt() %>%
     enforce_data_types() %>%
@@ -459,4 +443,8 @@ preprocess_data <- function(df) {
     enforce_correct_values()
 }
 
-box::export(preprocess_data)
+box::export(
+  preprocess_data,
+  remove_redundant_columns,
+  verify_variable_names
+)
