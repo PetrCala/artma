@@ -74,16 +74,14 @@ present_detected_mapping <- function(
   }
 
   # Present choices to user
+  cli::cli_inform("What would you like to do?")
   choices <- c(
     "Accept all detected columns",
     "Modify mappings",
     "Skip optional columns (keep only required)"
   )
 
-  choice_idx <- menu(
-    choices = choices,
-    title = "What would you like to do?"
-  )
+  choice_idx <- menu(choices = choices)
 
   if (choice_idx == 0) {
     cli::cli_abort("Column mapping cancelled by user")
@@ -138,6 +136,9 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
   # Track missing required columns
   missing_required <- setdiff(required_cols, names(auto_mapping))
 
+  # Track user's choice from the initial presentation
+  user_choice <- NULL
+
   # If show_detected_first is TRUE and we have detected columns, present them first
   if (show_detected_first && length(auto_mapping) > 0) {
     user_choice <- present_detected_mapping(
@@ -156,7 +157,7 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
       if (length(missing_required) == 0) {
         return(auto_mapping)
       }
-      # Fall through to prompt for missing required columns
+      # Fall through to prompt for missing required columns only
       mapping <- auto_mapping
     } else if (user_choice == "skip_optional") {
       # Remove optional columns, keep only required
@@ -164,6 +165,8 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
       if (get_verbosity() >= 3) {
         cli::cli_alert_info("Skipped optional columns, keeping only required mappings")
       }
+      # Recalculate missing required after removing optional
+      missing_required <- setdiff(required_cols, names(mapping))
       # Fall through to check for missing required
     } else {
       # User chose to modify - continue with interactive mapping
@@ -182,7 +185,17 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
     return(mapping)
   }
 
-  if (get_verbosity() >= 3) {
+  # If user accepted all and all required are present, return early
+  if (!is.null(user_choice) && user_choice == "accept" && length(missing_required) == 0) {
+    return(mapping)
+  }
+
+  # Only show interactive mapping messages if user didn't accept or if there are missing required
+  should_show_interactive <- is.null(user_choice) ||
+    (user_choice != "accept" && user_choice != "skip_optional") ||
+    length(missing_required) > 0
+
+  if (should_show_interactive && get_verbosity() >= 3) {
     cli::cli_alert_info("Interactive column mapping")
     if (length(mapping) > 0) {
       cli::cli_inform("Current mappings: {.field {paste(names(mapping), collapse = ', ')}}")
@@ -194,79 +207,101 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
 
   available_cols <- names(df)
 
+  # Only show modification section if user explicitly chose to modify
+  # Skip if user accepted or skipped optional (unless there are missing required)
+  should_show_modify <- show_detected_first &&
+    length(mapping) > 0 &&
+    !is.null(user_choice) &&
+    user_choice == "modify"
+
   # If user chose to modify, allow editing existing mappings first
-  if (show_detected_first && length(mapping) > 0) {
+  if (should_show_modify) {
     cli::cli_h2("Modify Column Mappings")
     cli::cli_inform("You can modify any of the detected mappings or skip to keep them as-is.")
 
-    # Ask if user wants to modify existing mappings
-    modify_choices <- c(
-      names(mapping),
-      "--- Keep all current mappings ---",
-      "--- Modify all mappings ---"
+    # Use multi-select to allow selecting multiple columns to modify
+    modify_choices <- names(mapping)
+    keep_all_option <- "--- Keep all current mappings (skip modifications) ---"
+    modify_all_option <- "--- Modify all mappings ---"
+
+    cli::cli_inform("Select columns to modify (use SPACE to select, ENTER to confirm)")
+    selected_indices <- climenu::checkbox(
+      choices = c(modify_choices, keep_all_option, modify_all_option),
+      prompt = "Select columns to modify, or keep/modify all",
+      return_index = TRUE
     )
 
-    modify_idx <- menu(
-      choices = modify_choices,
-      title = "Select a mapping to modify, or keep/modify all"
-    )
-
-    if (modify_idx == 0) {
+    if (length(selected_indices) == 0) {
       cli::cli_abort("Column mapping cancelled by user")
     }
 
-    selected_modify <- modify_choices[modify_idx]
+    selected_items <- c(modify_choices, keep_all_option, modify_all_option)[selected_indices]
 
-    if (grepl("Keep all", selected_modify, fixed = TRUE)) {
-      # Keep all mappings, just continue to missing required
-    } else if (grepl("Modify all", selected_modify, fixed = TRUE)) {
+    # Check if user selected "Keep all" option
+    if (keep_all_option %in% selected_items) {
+      # User wants to keep all mappings as-is, skip modifications
+      if (get_verbosity() >= 3) {
+        cli::cli_alert_success("Keeping all detected mappings as-is")
+      }
+      # Continue to check for missing required columns
+    } else if (modify_all_option %in% selected_items) {
       # Clear all mappings and re-map everything
       mapping <- list()
       missing_required <- required_cols
     } else {
-      # Modify specific column
-      std_col_to_modify <- selected_modify
-      pattern_def <- patterns[[std_col_to_modify]]
+      # User selected specific columns to modify
+      columns_to_modify <- intersect(selected_items, modify_choices)
 
-      cli::cli_h2("Modify mapping: {.field {std_col_to_modify}}")
-      cli::cli_inform("Current mapping: {.val {mapping[[std_col_to_modify]]}}")
-      cli::cli_inform("Examples: {.val {pattern_def$keywords[1:min(3, length(pattern_def$keywords))]}}")
+      if (length(columns_to_modify) > 0) {
+        # Loop through each selected column and allow modification
+        for (std_col_to_modify in columns_to_modify) {
+          pattern_def <- patterns[[std_col_to_modify]]
 
-      # Add current mapping back to available if it was removed
-      current_mapped <- mapping[[std_col_to_modify]]
-      if (!current_mapped %in% available_cols) {
-        available_cols <- c(available_cols, current_mapped)
-      }
+          cli::cli_h2("Modify mapping: {.field {std_col_to_modify}}")
+          cli::cli_inform("Current mapping: {.val {mapping[[std_col_to_modify]]}}")
 
-      choices <- c(
-        available_cols,
-        "--- Keep current mapping ---",
-        "--- Remove this mapping ---"
-      )
+          # Safely get examples from keywords
+          if (!is.null(pattern_def$keywords) && length(pattern_def$keywords) > 0) {
+            n_examples <- min(3, length(pattern_def$keywords))
+            examples <- pattern_def$keywords[seq_len(n_examples)]
+            cli::cli_inform("Examples: {.val {examples}}")
+          }
 
-      choice_idx <- menu(
-        choices = choices,
-        title = sprintf("Select new column for '%s'", std_col_to_modify)
-      )
+          # Add current mapping back to available if it was removed
+          current_mapped <- mapping[[std_col_to_modify]]
+          if (!is.null(current_mapped) && !current_mapped %in% available_cols) {
+            available_cols <- c(available_cols, current_mapped)
+          }
 
-      if (choice_idx == 0) {
-        cli::cli_abort("Column mapping cancelled by user")
-      }
+          choices <- c(
+            available_cols,
+            "--- Keep current mapping ---",
+            "--- Remove this mapping ---"
+          )
 
-      selected <- choices[choice_idx]
+          cli::cli_inform("Select new column for '{std_col_to_modify}'")
+          choice_idx <- menu(choices = choices)
 
-      if (grepl("Keep current", selected, fixed = TRUE)) {
-        # Keep as-is, do nothing
-      } else if (grepl("Remove", selected, fixed = TRUE)) {
-        # Remove this mapping
-        mapping <- mapping[names(mapping) != std_col_to_modify]
-        if (std_col_to_modify %in% required_cols) {
-          missing_required <- unique(c(missing_required, std_col_to_modify))
+          if (choice_idx == 0) {
+            cli::cli_abort("Column mapping cancelled by user")
+          }
+
+          selected <- choices[choice_idx]
+
+          if (grepl("Keep current", selected, fixed = TRUE)) {
+            # Keep as-is, do nothing
+          } else if (grepl("Remove", selected, fixed = TRUE)) {
+            # Remove this mapping
+            mapping <- mapping[names(mapping) != std_col_to_modify]
+            if (std_col_to_modify %in% required_cols) {
+              missing_required <- unique(c(missing_required, std_col_to_modify))
+            }
+          } else {
+            # Update mapping
+            mapping[[std_col_to_modify]] <- selected
+            available_cols <- setdiff(available_cols, selected)
+          }
         }
-      } else {
-        # Update mapping
-        mapping[[std_col_to_modify]] <- selected
-        available_cols <- setdiff(available_cols, selected)
       }
     }
   }
@@ -276,7 +311,12 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
     pattern_def <- patterns[[std_col]]
 
     cli::cli_h2("Map column: {.field {std_col}}")
-    cli::cli_inform("Examples: {.val {pattern_def$keywords[1:min(3, length(pattern_def$keywords))]}}")
+    # Safely get examples from keywords
+    if (!is.null(pattern_def$keywords) && length(pattern_def$keywords) > 0) {
+      n_examples <- min(3, length(pattern_def$keywords))
+      examples <- pattern_def$keywords[seq_len(n_examples)]
+      cli::cli_inform("Examples: {.val {examples}}")
+    }
 
     # Add "Skip (column not present)" and "None of these" options
     choices <- c(
@@ -285,10 +325,8 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
       "--- None of these ---"
     )
 
-    choice_idx <- menu(
-      choices = choices,
-      title = sprintf("Select the column for '%s' (required)", std_col)
-    )
+    cli::cli_inform("Select the column for '{std_col}' (required)")
+    choice_idx <- menu(choices = choices)
 
     if (choice_idx == 0) {
       # User cancelled
@@ -345,10 +383,8 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
             "--- Skip ---"
           )
 
-          choice_idx <- menu(
-            choices = choices,
-            title = sprintf("Select the column for '%s' (optional)", std_col)
-          )
+          cli::cli_inform("Select the column for '{std_col}' (optional)")
+          choice_idx <- menu(choices = choices)
 
           if (choice_idx == 0 || grepl("^---.*Skip.*---$", choices[choice_idx])) {
             next

@@ -26,9 +26,19 @@ get_column_patterns <- function() {
         "^es$",
         "^d$",
         "^g$",
-        "^r$"
+        "^r$",
+        "^pcc$",
+        "^pearson[_\\.]?r$",
+        "^cohen[_\\.]?d$",
+        "^hedges[_\\.]?g$",
+        "^odds[_\\.]?ratio$",
+        "^or$",
+        "^risk[_\\.]?ratio$",
+        "^rr$",
+        "^hazard[_\\.]?ratio$",
+        "^hr$"
       ),
-      keywords = c("effect", "estimate", "coef", "beta", "es"),
+      keywords = c("effect", "estimate", "coef", "beta", "es", "pcc", "pearson", "cohen", "hedges", "odds", "ratio", "risk", "hazard"),
       priority = 1,
       exclude_keywords = c("standard", "error", "se")
     ),
