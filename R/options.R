@@ -321,26 +321,23 @@ options.load <- function(
         cli::cli_abort("No user options file to load was provided. Exiting...")
       }
 
-      action <- climenu::select(
-        choices = c("Create a new options file", "Choose from existing options files"),
-        prompt = "You have not specified the options file name to load. Please choose one of the following:"
+      # Combine "Create new" option with existing files in a single menu
+      create_new_option_text <- "Create a new options file"
+      menu_choices <- c(create_new_option_text, existing_options_files)
+      selected <- climenu::select(
+        choices = menu_choices,
+        prompt = "Select an options file to load, or create a new one:"
       )
 
-      if (action == "Create a new options file") {
+      if (selected == create_new_option_text) {
         options_file_name <- options.create(
           options_file_name = options_file_name,
           options_dir = options_dir
         )
-      } else if (action == "Choose from existing options files") {
-        options_file_name <- climenu::select(
-          choices = existing_options_files,
-          prompt = "Please choose an options file to load:"
-        )
-        if (rlang::is_empty(options_file_name)) {
-          cli::cli_abort("No user options file was selected. Aborting...")
-        }
+      } else if (selected %in% existing_options_files) {
+        options_file_name <- selected
       } else {
-        cli::cli_abort("No action was chosen for loading user options. Exiting...")
+        cli::cli_abort("No user options file was selected. Aborting...")
       }
     }
   }
