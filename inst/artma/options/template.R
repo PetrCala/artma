@@ -335,15 +335,33 @@ parse_options_from_template <- function(
   raw_template_options <- read_template(path)
   options_def <- flatten_template_options(raw_template_options)
 
-  # Pre-process: Auto-detect column mappings if data.source_path is provided
+  parsed_options <- list()
+  column_name_prefix <- "data.colnames."
+
+  # First pass: Resolve non-column-name options (especially data.source_path)
+  for (opt in options_def) {
+    if (!startsWith(opt$name, column_name_prefix)) {
+      val <- resolve_option_value(opt, user_input)
+      val <- coerce_option_value(val, opt)
+      # We do not validate here, only after all options are parsed
+      parsed_options[[opt$name]] <- val
+
+      # Update user_input with resolved value for preprocessing
+      user_input[[opt$name]] <- val
+    }
+  }
+
+  # Now that data.source_path might be resolved, run column preprocessing
   user_input <- preprocess_column_mapping(user_input, options_def)
 
-  parsed_options <- list()
+  # Second pass: Resolve column name options (should now be in user_input from preprocessing)
   for (opt in options_def) {
-    val <- resolve_option_value(opt, user_input)
-    val <- coerce_option_value(val, opt)
-    # We do not validate here, only after all options are parsed
-    parsed_options[[opt$name]] <- val
+    if (startsWith(opt$name, column_name_prefix)) {
+      val <- resolve_option_value(opt, user_input)
+      val <- coerce_option_value(val, opt)
+      # We do not validate here, only after all options are parsed
+      parsed_options[[opt$name]] <- val
+    }
   }
 
   # Possibly add a prefix to all names
