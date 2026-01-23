@@ -1,7 +1,7 @@
 box::use(testthat[test_that, expect_equal, expect_true, expect_false, expect_setequal, expect_length])
 
 test_that("options lifecycle helpers operate on user files", {
-  box::use(artma[options.create, options.copy, options.delete, options.fix, options.list, options.load, options.validate])
+  box::use(artma[options.create, options.copy, options.delete, options.fix, options.list, options.load, options.remove, options.validate])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -123,4 +123,21 @@ test_that("options lifecycle helpers operate on user files", {
     skip_confirmation = TRUE
   )
   expect_false(file.exists(file.path(tmp_dir, "copied.yaml")))
+
+  # Test that options.remove is an alias for options.delete
+  options.create(
+    options_file_name = "to_remove.yaml",
+    options_dir = tmp_dir,
+    template_path = template_path,
+    user_input = list(),
+    should_validate = TRUE,
+    should_overwrite = TRUE
+  )
+  expect_true(file.exists(file.path(tmp_dir, "to_remove.yaml")))
+  options.remove(
+    options_file_name = "to_remove.yaml",
+    options_dir = tmp_dir,
+    skip_confirmation = TRUE
+  )
+  expect_false(file.exists(file.path(tmp_dir, "to_remove.yaml")))
 })

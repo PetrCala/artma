@@ -236,6 +236,25 @@ options.delete <- function(
   }))
 }
 
+#' @title Remove user options
+#' @description Provide a name of a user options file to remove, and remove that file.
+#' @details This function is an alias for \code{\link{options.delete}} and behaves identically.
+#' @param options_file_name *\[character, optional\]* Name of the options file to remove. If not provided, the user will be prompted. Defaults to `NULL`.
+#' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
+#' @param skip_confirmation *\[boolean, optional\]* If passed as TRUE, the user will not be prompted for deletion confirmation. Defaults to FALSE.
+#' @return `NULL`
+#' @export
+options.remove <- function(
+    options_file_name = NULL,
+    options_dir = NULL,
+    skip_confirmation = FALSE) {
+  options.delete(
+    options_file_name = options_file_name,
+    options_dir = options_dir,
+    skip_confirmation = skip_confirmation
+  )
+}
+
 #' @title List available user options
 #' @description Retrieves the list of the existing options files and returns their names as a character vector. By default, this retrieves the names of the files including the yaml suffix, but can be modified to retrieve options verbose names instead.
 #' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
