@@ -43,7 +43,8 @@ invoke_runtime_methods <- function(methods, df, ...) {
   if (is.null(methods)) {
     methods <- climenu::checkbox(
       choices = supported_methods,
-      prompt = "No runtime methods were provided. Please select the methods you would like to run: "
+      prompt = "No runtime methods were provided. Please select the methods you would like to run: ",
+      allow_select_all = TRUE
     )
     if (rlang::is_empty(methods)) {
       cli::cli_abort("No runtime methods were selected. Aborting...")

@@ -69,7 +69,8 @@ ask_for_existing_options_file_name <- function(
     selected_file_name <- climenu::checkbox(
       choices = user_options_file_names,
       prompt = prompt,
-      return_index = FALSE
+      return_index = FALSE,
+      allow_select_all = TRUE
     )
   } else {
     selected_file_name <- climenu::select(

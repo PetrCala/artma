@@ -311,7 +311,8 @@ manual_select_effect_summary_vars <- function(df, config) {
   selected_indices <- climenu::checkbox(
     choices = var_display_names,
     prompt = "Select variables (use SPACE to select, ENTER to confirm)",
-    return_index = TRUE
+    return_index = TRUE,
+    allow_select_all = TRUE
   )
 
   if (rlang::is_empty(selected_indices) || length(selected_indices) == 0) {
