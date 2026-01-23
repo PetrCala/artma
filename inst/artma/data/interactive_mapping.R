@@ -31,10 +31,7 @@ present_detected_mapping <- function(
     df,
     required_cols,
     all_std_cols = NULL) {
-  box::use(
-    climenu[menu],
-    artma / libs / utils[get_verbosity]
-  )
+  box::use(artma / libs / utils[get_verbosity])
 
   if (length(auto_mapping) == 0) {
     return("modify")
@@ -81,13 +78,11 @@ present_detected_mapping <- function(
     "Skip optional columns (keep only required)"
   )
 
-  choice_idx <- menu(choices = choices)
+  choice <- climenu::menu(choices = choices)
 
-  if (choice_idx == 0) {
+  if (is.null(choice)) {
     cli::cli_abort("Column mapping cancelled by user")
   }
-
-  choice <- choices[choice_idx]
 
   if (grepl("Accept", choice, fixed = TRUE)) {
     return("accept")
@@ -280,17 +275,14 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
           )
 
           cli::cli_inform("Select new column for '{std_col_to_modify}'")
-          choice_idx <- menu(choices = choices)
+          selected <- climenu::menu(choices = choices)
 
-          if (choice_idx == 0) {
+          if (is.null(selected)) {
             cli::cli_abort("Column mapping cancelled by user")
           }
 
-          selected <- choices[choice_idx]
-
-          # Validate selected value
-          if (is.null(selected) || (length(selected) == 1 && is.na(selected)) || !nzchar(trimws(selected))) {
-            cli::cli_abort("Invalid column selection: received NULL, NA, or empty value")
+          if (is.na(selected) || !nzchar(trimws(selected))) {
+            cli::cli_abort("Invalid column selection: received NA or empty value")
           }
 
           if (grepl("Keep current", selected, fixed = TRUE)) {
@@ -335,14 +327,11 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
     )
 
     cli::cli_inform("Select the column for '{std_col}' (required)")
-    choice_idx <- menu(choices = choices)
+    selected <- climenu::menu(choices = choices)
 
-    if (choice_idx == 0) {
-      # User cancelled
+    if (is.null(selected)) {
       cli::cli_abort("Column mapping cancelled by user")
     }
-
-    selected <- choices[choice_idx]
 
     if (grepl("^---.*Skip.*---$", selected)) {
       if (std_col %in% required_cols) {
@@ -393,13 +382,11 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
           )
 
           cli::cli_inform("Select the column for '{std_col}' (optional)")
-          choice_idx <- menu(choices = choices)
+          selected <- climenu::menu(choices = choices)
 
-          if (choice_idx == 0 || grepl("^---.*Skip.*---$", choices[choice_idx])) {
+          if (is.null(selected) || grepl("^---.*Skip.*---$", selected)) {
             next
           }
-
-          selected <- choices[choice_idx]
           mapping[[std_col]] <- selected
           available_cols <- setdiff(available_cols, selected)
         }
