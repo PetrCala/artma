@@ -53,12 +53,13 @@ preprocess_column_mapping <- function(user_input, options_def) {
     cli::cli_alert_info("Reading data from {.path {data_source_path}}")
   }
 
-  # Read and recognize columns
+  # Read and recognize columns with user confirmation
   tryCatch(
     {
       box::use(
         artma / data / smart_detection[smart_read_csv, validate_df_structure],
-        artma / data / column_recognition[recognize_columns]
+        artma / data / column_recognition[recognize_columns],
+        artma / data / interactive_mapping[interactive_column_mapping]
       )
 
       # Read the data
@@ -66,16 +67,23 @@ preprocess_column_mapping <- function(user_input, options_def) {
       df <- validate_df_structure(df, data_source_path)
 
       # Recognize columns
-      mapping <- recognize_columns(df, min_confidence = 0.7)
+      auto_mapping <- recognize_columns(df, min_confidence = 0.7)
 
-      if (get_verbosity() >= 3) {
-        cli::cli_alert_success("Recognized {length(mapping)} column{?s}")
-        for (std_col in names(mapping)) {
-          cli::cli_inform("  {.field {std_col}} -> {.val {mapping[[std_col]]}}")
-        }
+      # Present detected columns to user for confirmation
+      # This will show detected columns and allow user to accept, modify, or skip optional
+      if (length(auto_mapping) > 0) {
+        mapping <- interactive_column_mapping(
+          df = df,
+          auto_mapping = auto_mapping,
+          required_only = TRUE,
+          show_detected_first = TRUE
+        )
+      } else {
+        # No columns detected, will prompt later during options creation
+        mapping <- list()
       }
 
-      # Add recognized mappings to user_input (but don't override existing ones)
+      # Add confirmed mappings to user_input (but don't override existing ones)
       for (std_col in names(mapping)) {
         opt_key <- paste0("data.colnames.", std_col)
         if (!opt_key %in% names(user_input)) {
