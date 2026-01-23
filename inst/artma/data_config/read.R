@@ -37,7 +37,7 @@ get_data_config <- function(
   }
 
   config <- suppressMessages(fix_data_config(create_if_missing = create_if_missing))
-  return(config)
+  config
 }
 
 box::export(get_data_config)

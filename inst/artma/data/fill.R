@@ -60,5 +60,5 @@ fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL,
     df <- drop_rows(df$dof == 0, "rows with zero degrees of freedom.")
   }
 
-  return(df)
+  df
 }

@@ -157,9 +157,8 @@ normalize_whitespace_to_na <- function(df) {
       # Matches: empty string, or strings containing only whitespace characters (space, tab, newline, etc.)
       whitespace_only <- grepl("^\\s*$", df[[col]])
       df[[col]][whitespace_only] <- NA_character_
-    }
-    # Also handle factor columns (which might contain whitespace)
-    else if (is.factor(df[[col]])) {
+    } else if (is.factor(df[[col]])) {
+      # Also handle factor columns (which might contain whitespace)
       # Convert factor levels that are whitespace-only to NA
       levels_whitespace <- grepl("^\\s*$", levels(df[[col]]))
       if (any(levels_whitespace)) {

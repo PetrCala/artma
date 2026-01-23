@@ -195,7 +195,7 @@ is_char_vector_or_empty <- function(x, throw_error = FALSE) {
   if (throw_error && !is_empty) {
     cli::cli_abort("The object is not a character vector or empty")
   }
-  return(is_empty)
+  is_empty
 }
 
 #' @title Check if an option path is valid

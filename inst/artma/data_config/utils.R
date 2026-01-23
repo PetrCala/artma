@@ -6,9 +6,7 @@ data_config_is_valid <- function(
     config = NULL) {
   config <- if (is.null(config)) getOption("artma.data.config") else config
   # There is potentially room for more checks here
-  if (is.list(config))
-    return(TRUE)
-  return(FALSE)
+  is.list(config)
 }
 
 

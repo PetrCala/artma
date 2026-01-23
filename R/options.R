@@ -505,7 +505,7 @@ options.open <- function(
 
   editor_mod$open_with_cli(path = file_path, editor_cmd = editor_cmd)
 
-  return(invisible(NULL))
+  invisible(NULL)
 }
 
 #' @title Options Help

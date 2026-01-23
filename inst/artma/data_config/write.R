@@ -107,7 +107,7 @@ fix_data_config <- function(
     cli::cli_alert_success("The data config has been fixed.")
   }
 
-  return(fixed_config)
+  fixed_config
 }
 
 box::export(

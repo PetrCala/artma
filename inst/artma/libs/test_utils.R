@@ -1,7 +1,6 @@
 # Function to find all test files recursively
 find_test_files <- function(path = file.path("tests", "testthat")) {
-  test_files <- list.files(path, pattern = "^test.*\\.[rR]$", recursive = TRUE, full.names = TRUE)
-  return(test_files)
+  list.files(path, pattern = "^test.*\\.[rR]$", recursive = TRUE, full.names = TRUE)
 }
 
 #' Function to run test_dir on a directory and all its subdirectories

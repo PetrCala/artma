@@ -295,18 +295,17 @@ update_config_with_computed_columns <- function(df) {
 #' @return *\[data.frame\]* The data frame with all optional columns computed.
 compute_optional_columns <- function(df) {
   box::use(artma / libs / utils[get_verbosity])
-  box::use(magrittr[`%>%`])
 
   if (get_verbosity() >= 3) {
     cli::cli_alert_info("Computing optional columns for {.val {nrow(df)}} observations…")
   }
 
-  df_with_computed <- df %>%
-    add_obs_id_column() %>%
-    add_study_id_column() %>%
-    add_t_stat_column() %>%
-    add_study_size_column() %>%
-    add_reg_dof_column() %>%
+  df_with_computed <- df |>
+    add_obs_id_column() |>
+    add_study_id_column() |>
+    add_t_stat_column() |>
+    add_study_size_column() |>
+    add_reg_dof_column() |>
     add_precision_column()
 
   # Update the data config to include computed columns

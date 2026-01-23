@@ -16,7 +16,7 @@ pcc_variance <- function(df, offset = 0) {
   denominator <- df$dof - offset
 
   variance <- numerator / denominator
-  return(variance)
+  variance
 }
 
 #' Calculate random effects
@@ -62,7 +62,7 @@ re <- function(df, effect = NULL, se = NULL, method = "DL") {
     }
   )
 
-  return(result)
+  result
 }
 
 #' Calculate UWLS
@@ -102,7 +102,7 @@ uwls <- function(df, effect = NULL, se = NULL) {
     }
   )
 
-  return(result)
+  result
 }
 
 
@@ -197,7 +197,7 @@ fishers_z <- function(df, method = "ML") {
 
   re_z <- (exp(2 * re_est) - 1) / (exp(2 * re_est) + 1)
 
-  return(list(est = re_z, t_value = re_t_value))
+  list(est = re_z, t_value = re_t_value)
 }
 
 #' Calculate various summary statistics associated with the PCC data frame

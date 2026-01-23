@@ -87,7 +87,7 @@ create_mock_df <- function(
     utils::write.csv(data_frame, file_path, row.names = FALSE)
   }
 
-  return(data_frame)
+  data_frame
 }
 
 

@@ -455,18 +455,16 @@ winsorize_data <- function(df) {
 #' @param df *[data.frame]* Raw data frame to clean.
 #' @return *[data.frame]* The validated, type-safe, and trimmed data frame.
 preprocess_data <- function(df) {
-  box::use(magrittr[`%>%`])
-
-  df %>%
-    remove_redundant_columns() %>%
-    verify_variable_names() %>%
-    normalize_whitespace_to_na() %>%
-    remove_empty_rows() %>%
-    handle_missing_values_with_prompt() %>%
-    enforce_data_types() %>%
-    normalize_whitespace_to_na() %>%
-    remove_empty_rows() %>%
-    winsorize_data() %>%
+  df |>
+    remove_redundant_columns() |>
+    verify_variable_names() |>
+    normalize_whitespace_to_na() |>
+    remove_empty_rows() |>
+    handle_missing_values_with_prompt() |>
+    enforce_data_types() |>
+    normalize_whitespace_to_na() |>
+    remove_empty_rows() |>
+    winsorize_data() |>
     enforce_correct_values()
 }
 

@@ -235,7 +235,7 @@ digest <- function(object, algo = "xxhash64", ...) {
   # Convert to hex string (16 characters for consistency with xxhash64)
   hex_hash <- sprintf("%08x%08x", as.integer(hash_high), as.integer(hash_low))
 
-  return(hex_hash)
+  hex_hash
 }
 
 # File utilities (usethis replacement) ----

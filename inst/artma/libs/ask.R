@@ -25,7 +25,7 @@ ask_for_overwrite_permission <- function(file_path, action_name = "the operation
       cli::cli_abort(sprintf("Aborting %s.", action_name))
     }
   }
-  return(TRUE)
+  TRUE
 }
 
 box::export(ask_for_overwrite_permission)
