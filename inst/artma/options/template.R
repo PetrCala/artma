@@ -32,9 +32,9 @@ flatten_template_options <- function(x, parent = NULL) {
     path <- if (is.null(parent)) nm else paste(parent, nm, sep = ".")
     node <- x[[nm]]
 
-    # ──► A leaf?  (= list that has a 'type' field)
+    # <U+2500><U+2500><U+25BA> A leaf?  (= list that has a 'type' field)
     if (is_option_def(node)) {
-      node$name <- path # <── add the synthetic name
+      node$name <- path # <<U+2500><U+2500> add the synthetic name
       flattened[[length(flattened) + 1L]] <- node
       next
     }
@@ -69,7 +69,7 @@ flatten_user_options <- function(user_options, leaf_set, parent = NULL) {
   for (nm in names(user_options)) {
     path <- if (is.null(parent)) nm else paste(parent, nm, sep = ".")
 
-    # ──► If we've reached a declared template leaf, take the whole value as-is
+    # <U+2500><U+2500><U+25BA> If we've reached a declared template leaf, take the whole value as-is
     if (path %in% leaf_set || !is.list(user_options[[nm]])) {
       flat[[path]] <- user_options[[nm]]
       next
@@ -105,8 +105,9 @@ get_option_defs <- function(template_path = NULL, opt_path = NULL) {
   raw_template_options <- read_template(template_path)
   options_def <- flatten_template_options(raw_template_options)
 
-  if (is.null(opt_path))
+  if (is.null(opt_path)) {
     return(options_def)
+  }
 
   options_def[startsWith(vapply(options_def, `[[`, character(1), "name"), opt_path)]
 }
@@ -125,15 +126,17 @@ resolve_fixed_option <- function(opt, user_input) {
   )
 
   if (!is.null(user_input[[opt$name]])) {
-    if (user_input[[opt$opt_name]] == opt$default)
+    if (user_input[[opt$opt_name]] == opt$default) {
       return(opt$default)
+    }
     # User tried to set a value for a fixed option to a non-default value
     if (get_verbosity() >= 2) {
       cli::cli_alert_warning("Ignoring user-provided value for fixed option {CONST$STYLES$OPTIONS$NAME(opt$name)}.")
     }
   }
-  if (!is.null(opt$default))
+  if (!is.null(opt$default)) {
     return(opt$default)
+  }
   if (is.null(opt$default)) {
     cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} is fixed, but no default is provided.")
   } else {
@@ -184,7 +187,7 @@ prompt_user_for_option_value <- function(opt) {
 
   base_msg <- cli::format_inline("Enter a value for {.strong {opt$name}}")
   choose_msg <- switch(prompt_type,
-    "file" = cli::format_inline(" (or type in {.emph {'choose'}} to select a file interactively)"),
+    "file" = cli::format_inline(" (or type in {.emph {'choose'}} to select a file interactively, or {.emph {'mock'}} to generate mock data)"),
     "directory" = cli::format_inline(" (or type in {.emph {'choose'}} to select a directory interactively)"),
     "readline" = "",
     cli::cli_abort(cli::format_inline("Invalid prompt type {.emph {prompt_type}}."))
@@ -199,15 +202,42 @@ prompt_user_for_option_value <- function(opt) {
       cli::cli_abort(cli::format_inline("Interactive selection is not supported for type {.emph {prompt_type}}."))
     )
     Sys.sleep(0.5) # Allow tk to print the closing message into the console
+  } else if (input_val == "mock" && prompt_type == "file") {
+    # Generate mock data and save to temp file
+    box::use(
+      artma / testing / mocks / mock_df[create_mock_df],
+      artma / libs / utils[get_verbosity]
+    )
+
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_info("Generating mock data...")
+    }
+
+    # Create temp file in R temp directory
+    temp_file <- tempfile(pattern = "artma-mock-data-", fileext = ".csv")
+
+    # Generate mock data frame and save to temp file
+    mock_df <- create_mock_df(
+      with_file_creation = TRUE,
+      file_path = temp_file
+    )
+
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_success("Mock data generated and saved to {.path {temp_file}}")
+    }
+
+    input_val <- temp_file
   }
 
   val_is_empty <- (!nzchar(input_val) || rlang::is_empty(input_val))
 
   if (val_is_empty) {
-    if (!is.null(opt$default))
+    if (!is.null(opt$default)) {
       return(opt$default)
-    if (isTRUE(opt$allow_na))
+    }
+    if (isTRUE(opt$allow_na)) {
       return(NA)
+    }
     cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} was left blank. Aborting.")
   }
 
@@ -225,23 +255,27 @@ resolve_option_value <- function(
     user_input) {
   is_interactive <- interactive()
 
-  if (isTRUE(opt$fixed))
+  if (isTRUE(opt$fixed)) {
     return(resolve_fixed_option(opt, user_input))
+  }
 
-  if (opt$name %in% names(user_input))
+  if (opt$name %in% names(user_input)) {
     return(user_input[[opt$name]])
+  }
 
   # 2) No user value, check default
   if (!is.null(opt$default)) {
-    if (is_interactive && isTRUE(opt$confirm_default))
+    if (is_interactive && isTRUE(opt$confirm_default)) {
       return(prompt_user_for_option_value(opt))
+    }
     return(opt$default)
   }
 
   # 3) No user value, no default
   if (is.null(opt$default)) {
-    if (!is_interactive)
+    if (!is_interactive) {
       cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} not provided, and no default is available.")
+    }
     return(prompt_user_for_option_value(opt))
   }
 
@@ -262,15 +296,18 @@ coerce_option_value <- function(val, opt) {
   )
 
   # If the value is NULL, there's nothing to coerce
-  if (is.null(val))
+  if (is.null(val)) {
     return(val)
+  }
 
-  if (length(val) == 1 && is.na(val) && isTRUE(opt$allow_na))
+  if (length(val) == 1 && is.na(val) && isTRUE(opt$allow_na)) {
     return(val)
+  }
 
   # Enumerations, e.g. "enum: red|blue|green", return as is
-  if (startsWith(opt$type, "enum:"))
+  if (startsWith(opt$type, "enum:")) {
     return(val)
+  }
 
   enforce_na_allowed <- function(val, opt) {
     if (any(is.na(val)) && !isTRUE(opt$allow_na)) {
