@@ -7,6 +7,10 @@ test_that <- getFromNamespace("test_that", "testthat")
 expect_true <- getFromNamespace("expect_true", "testthat")
 expect_error <- getFromNamespace("expect_error", "testthat")
 
+# Note: These tests use auto_detect = FALSE to test core logic without interaction.
+# When auto_detect = TRUE, the new confirmation flow is triggered which requires
+# user interaction via climenu. Those tests are in E2E tests (tests/E2E/).
+
 test_that("standardize_column_names handles missing required columns in options correctly", {
   box::use(
     artma / libs / validation[assert],

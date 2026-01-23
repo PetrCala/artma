@@ -85,25 +85,30 @@ standardize_column_names <- function(df, auto_detect = TRUE) {
     # Get automatic recognition
     auto_mapping <- recognize_columns(df, min_confidence = 0.7)
 
-    # Run interactive workflow if needed
+    # Always present detected columns to user for confirmation
     config_setup <- getOption("artma.data.config_setup", "auto")
 
-    if (config_setup == "auto" && length(setdiff(required_colnames, names(auto_mapping))) == 0) {
-      # All required columns recognized automatically
-      final_mapping <- auto_mapping
+    if (length(auto_mapping) > 0) {
+      # Columns were detected - always present them for confirmation
       if (get_verbosity() >= 3) {
-        cli::cli_alert_success("All required columns automatically recognized")
-      }
-    } else {
-      # Need user input
-      if (get_verbosity() >= 3) {
-        cli::cli_alert_info("Starting interactive column mapping...")
+        cli::cli_alert_info("Starting column mapping workflow...")
       }
       final_mapping <- column_mapping_workflow(
         df = df,
         auto_mapping = auto_mapping,
         options_file_name = getOption("artma.options_file_name"),
         force_interactive = (config_setup == "manual")
+      )
+    } else {
+      # No columns detected, go straight to interactive mapping
+      if (get_verbosity() >= 3) {
+        cli::cli_alert_info("No columns automatically detected, starting interactive mapping...")
+      }
+      final_mapping <- column_mapping_workflow(
+        df = df,
+        auto_mapping = list(),
+        options_file_name = getOption("artma.options_file_name"),
+        force_interactive = TRUE
       )
     }
 

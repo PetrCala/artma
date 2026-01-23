@@ -1,8 +1,10 @@
 box::use(
   artma / data / interactive_mapping[
     confirm_column_mapping,
-    save_column_mapping_to_options
-  ]
+    save_column_mapping_to_options,
+    format_mapping_display
+  ],
+  artma / data / column_recognition[get_required_column_names]
 )
 
 test_that <- getFromNamespace("test_that", "testthat")
@@ -12,7 +14,8 @@ expect_no_error <- getFromNamespace("expect_no_error", "testthat")
 
 
 # Note: interactive_column_mapping and column_mapping_workflow require
-# user interaction via climenu, so they are tested in E2E tests instead
+# user interaction via climenu, so they are tested in E2E tests instead.
+# However, we test the non-interactive helper functions here.
 
 
 test_that("confirm_column_mapping returns mapping unchanged", {
@@ -155,4 +158,47 @@ test_that("save_column_mapping_to_options works with verbose output", {
   expect_no_error(
     save_column_mapping_to_options(mapping, options_file_name = NULL)
   )
+})
+
+
+test_that("format_mapping_display correctly separates required and optional", {
+  mapping <- list(
+    study = "study_name",
+    effect = "effect_size",
+    se = "se",
+    n_obs = "n_obs",
+    t_stat = "t_statistic"
+  )
+
+  required_cols <- get_required_column_names()
+
+  result <- format_mapping_display(mapping, required_cols)
+
+  expect_true(is.list(result))
+  expect_true("required" %in% names(result))
+  expect_true("optional" %in% names(result))
+
+  # All required columns should be in required list
+  expect_true(all(required_cols %in% names(result$required)))
+
+  # Optional columns should be in optional list
+  expect_true("t_stat" %in% names(result$optional))
+  expect_false("t_stat" %in% names(result$required))
+})
+
+
+test_that("format_mapping_display handles empty optional columns", {
+  mapping <- list(
+    study = "study_name",
+    effect = "effect_size",
+    se = "se",
+    n_obs = "n_obs"
+  )
+
+  required_cols <- get_required_column_names()
+
+  result <- format_mapping_display(mapping, required_cols)
+
+  expect_equal(length(result$optional), 0)
+  expect_equal(length(result$required), 4)
 })
