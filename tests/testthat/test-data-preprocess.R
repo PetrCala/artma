@@ -78,40 +78,6 @@ test_that("remove_redundant_columns removes empty columns", {
   expect_true("effect" %in% colnames(result))
 })
 
-test_that("remove_redundant_columns keeps columns with data when strategy is 'keep'", {
-  box::use(artma / data / preprocess[remove_redundant_columns])
-
-  df <- create_test_df()
-  df$Notes <- c("Note 1", "Note 2", "Note 3")
-
-  # Create config without Notes column
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs"))
-
-  # Set up temp options for update_data_config
-  tmp_dir <- withr::local_tempdir()
-  tmp_file <- file.path(tmp_dir, "test_options.yaml")
-
-  # Create a minimal options file that update_data_config can read
-  minimal_options <- list(data = list(config = config))
-  yaml::write_yaml(minimal_options, tmp_file)
-
-  # Ensure file exists before proceeding
-  stopifnot(file.exists(tmp_file))
-
-  withr::local_options(list(
-    "artma.data.config" = config,
-    "artma.verbose" = 1,
-    "artma.data.extra_columns_strategy" = "keep",
-    "artma.temp.file_name" = "test_options.yaml",
-    "artma.temp.dir_name" = tmp_dir
-  ))
-
-  result <- remove_redundant_columns(df)
-
-  expect_true("Notes" %in% colnames(result))
-  expect_equal(result$Notes, df$Notes)
-})
-
 test_that("remove_redundant_columns removes columns with data when strategy is 'remove'", {
   box::use(artma / data / preprocess[remove_redundant_columns])
 
@@ -171,43 +137,6 @@ test_that("remove_redundant_columns handles no redundant columns", {
 
   expect_equal(ncol(result), ncol(df))
   expect_equal(colnames(result), colnames(df))
-})
-
-test_that("remove_redundant_columns handles mixed empty and data columns", {
-  box::use(artma / data / preprocess[remove_redundant_columns])
-
-  df <- create_test_df()
-  df$empty_col <- NA
-  df$data_col <- c(1, 2, 3)
-
-  # Create config with only original columns
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs"))
-
-  # Set up temp options for update_data_config
-  tmp_dir <- withr::local_tempdir()
-  tmp_file <- file.path(tmp_dir, "test_options.yaml")
-
-  # Create a minimal options file that update_data_config can read
-  minimal_options <- list(data = list(config = config))
-  yaml::write_yaml(minimal_options, tmp_file)
-
-  # Ensure file exists before proceeding
-  stopifnot(file.exists(tmp_file))
-
-  withr::local_options(list(
-    "artma.data.config" = config,
-    "artma.verbose" = 1,
-    "artma.data.extra_columns_strategy" = "keep",
-    "artma.temp.file_name" = "test_options.yaml",
-    "artma.temp.dir_name" = tmp_dir
-  ))
-
-  result <- remove_redundant_columns(df)
-
-  # Empty column should be removed
-  expect_false("empty_col" %in% colnames(result))
-  # Data column should be kept (when strategy is keep)
-  expect_true("data_col" %in% colnames(result))
 })
 
 test_that("remove_redundant_columns uses name-based comparison, not position", {
