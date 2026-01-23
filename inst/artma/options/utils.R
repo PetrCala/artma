@@ -120,8 +120,14 @@ parse_options_file_name <- function(input_string) {
     }
   )
 
-  if (!grepl(".yaml$|.yml$", str_out)) {
-    cli::cli_abort("Please provide the name of the options file with .yaml suffix. Got: {.emph {str_out}}.")
+  # Validate that the string is not empty after cleaning
+  if (str_out == "") {
+    cli::cli_abort("Options file name cannot be empty.")
+  }
+
+  # Automatically append .yaml suffix if missing
+  if (!grepl("\\.yaml$|\\.yml$", str_out)) {
+    str_out <- paste0(str_out, ".yaml")
   }
 
   str_out

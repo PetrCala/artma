@@ -168,7 +168,7 @@ options.copy <- function(
 
   assert(file.exists(source_path), cli::format_inline("The source options file does not exist under the following path: {.path {source_path}}"))
 
-  options_file_name_to <- options_file_name_to %||% ask_for_options_file_name(prompt = "Please provide a name for your new options file, including the .yaml suffix: ")
+  options_file_name_to <- options_file_name_to %||% ask_for_options_file_name()
   destination_path <- options_file_path(options_dir, options_file_name_to)
 
   ask_for_overwrite_permission(

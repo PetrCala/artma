@@ -1,0 +1,463 @@
+---
+title: "Understanding Options Files in artma"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Understanding Options Files in artma}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Introduction
+
+Options files are the primary mechanism for configuring **artma** (Automatic Replication Tools for Meta-Analysis) analyses. They store all the settings needed to run your meta-analysis, including data paths, column mappings, method parameters, and output preferences. This vignette explains how options files work, how to create and use them, and provides best practices for managing your analysis configurations.
+
+## What Are Options Files?
+
+Options files are hierarchical YAML (YAML Ain't Markup Language) configuration files that store all settings for an artma analysis. Instead of passing dozens of parameters to functions, you create a single options file that contains everything needed to run your analysis.
+
+### Key Benefits
+
+- **Reproducibility**: Save your exact analysis configuration for future reference
+- **Organization**: Keep different analysis configurations separate (e.g., one per dataset or research question)
+- **Simplicity**: Create once, reuse many times
+- **Validation**: Options are validated against a template to ensure correctness
+
+### File Format
+
+Options files use YAML format, which is human-readable and supports hierarchical structures:
+
+```yaml
+data:
+  source_path: "/path/to/your/data.csv"
+  colnames:
+    effect: "effect_size"
+    se: "standard_error"
+    study: "study_name"
+methods:
+  effect_summary_stats:
+    conf_level: 0.95
+```
+
+## Options File Structure
+
+Options files are organized into several main sections, each controlling different aspects of your analysis:
+
+### 1. `general`
+
+Contains general package information:
+
+- `artma_version`: Version of artma used to create the file (automatically set)
+
+### 2. `data`
+
+Controls data loading and preprocessing:
+
+- `source_path`: Path to your dataset file (CSV, Excel, JSON, Stata, or RDS)
+- `colnames`: Column name mappings (effect, se, study, n_obs, etc.)
+- `na_handling`: How to handle missing values (stop, remove, median, mean, interpolate, mice)
+- `config_setup`: Whether to auto-configure or manually configure data
+- `config`: Detailed data configuration for each variable
+- `winsorization_level`: Outlier treatment level (0, 0.01, 0.05, 0.10)
+
+### 3. `calc`
+
+Calculation settings:
+
+- `precision_type`: How to calculate precision ('1/SE' or 'DoF')
+- `se_zero_handling`: How to handle zero standard errors (stop, warn, ignore)
+
+### 4. `methods`
+
+Method-specific parameters for each analysis method:
+
+#### `effect_summary_stats`
+
+- `conf_level`: Confidence level for intervals (default: 0.95)
+- `formal_output`: Whether to format output for LaTeX
+
+#### `linear_tests`
+
+- `bootstrap_replications`: Number of bootstrap replications (default: 100)
+- `conf_level`: Confidence level for bootstrap intervals
+
+#### `nonlinear_tests`
+
+- `stem_representative_sample`: How to select representative observations (medians, first, all)
+- `selection_cutoffs`: Publication probability thresholds
+- `selection_symmetric`: Whether to impose symmetry in selection model
+- `selection_model`: Distribution assumption (normal, t)
+- `hierarchical_iterations`: Number of posterior draws
+
+#### `exogeneity_tests`
+
+- `iv_instrument`: Instrument selection (automatic or specific formula)
+- `puniform_alpha`: Significance level for p-uniform*
+- `puniform_method`: Estimation method (ML or P)
+
+#### `bma` (Bayesian Model Averaging)
+
+- `burn`: Burn-in iterations (default: 10000)
+- `iter`: MCMC iterations (default: 50000)
+- `g`: Prior specification (default: "UIP")
+- `mprior`: Model prior (default: "uniform")
+- `nmodel`: Number of top models to retain
+- `mcmc`: Sampler type ("bd" or "rev.jump")
+- `use_vif_optimization`: Whether to use VIF optimization
+- `print_results`: Output level (none, fast, verbose, all, table)
+- `export_graphics`: Whether to export plots
+- `export_path`: Directory for exported graphics
+
+#### `p_hacking_tests`
+
+- `include_caliper`: Whether to include Caliper tests
+- `caliper_thresholds`: T-statistic thresholds to test
+- `caliper_widths`: Interval widths around thresholds
+- `include_elliott`: Whether to include Elliott et al. tests
+- `lcm_iterations`: Number of simulations for LCM test
+
+### 5. `output`
+
+Controls output formatting:
+
+- `round_to`: Number of decimal places for numeric output
+- `format`: Output format options
+
+### 6. `cli`
+
+Command-line interface settings:
+
+- `editor`: Preferred editor for opening options files
+- `save_preference`: Whether to save user preferences
+
+### 7. `verbose`
+
+Controls verbosity levels:
+
+- `level`: How much information to display (1-4)
+  - 1: Errors only
+  - 2: Warnings + errors
+  - 3: Info (default)
+  - 4: Debug/trace
+
+### 8. `cache`
+
+Caching behavior:
+
+- `use_cache`: Whether to use caching
+- `max_age`: Time-to-live for cached results
+
+### 9. `temp`
+
+Temporary file settings (runtime only, not stored)
+
+## Creating Options Files
+
+### Interactive Creation
+
+The easiest way to create an options file is interactively. When you run an artma function without specifying an options file, you'll be prompted to create one:
+
+```r
+# This will prompt you to create an options file
+artma::run()
+```
+
+You can also create one explicitly:
+
+```r
+artma::options.create()
+```
+
+During creation, you'll be guided through:
+
+1. **Naming your file**: Enter a descriptive name (e.g., `my_analysis`, `meta_analysis_2025`). The `.yaml` extension is added automatically.
+2. **Setting required options**: You'll be prompted for essential settings like:
+   - Data source path
+   - Column name mappings
+   - Missing value handling strategy
+3. **Optional settings**: You can accept defaults or customize method parameters
+
+### Naming Your Options File
+
+Choose descriptive names that help you identify the analysis:
+
+- `my_analysis.yaml` - Simple, generic
+- `meta_analysis_2025.yaml` - Includes date
+- `charity_effects.yaml` - Domain-specific
+- `project_config.yaml` - Descriptive
+
+**Note**: The `.yaml` extension is automatically added, so you only need to provide the base name.
+
+### Programmatic Creation
+
+You can also create options files programmatically by providing values:
+
+```r
+artma::options.create(
+  options_file_name = "my_analysis",
+  user_input = list(
+    "data.source_path" = "/path/to/data.csv",
+    "data.colnames.effect" = "effect_size",
+    "data.colnames.se" = "standard_error",
+    "data.colnames.study" = "study_name",
+    "methods.effect_summary_stats.conf_level" = 0.99
+  )
+)
+```
+
+## Loading and Using Options Files
+
+### Loading Options
+
+Options files are loaded automatically when you call artma functions:
+
+```r
+artma::run(
+  options_file_name = "my_analysis.yaml",
+  options_dir = NULL  # Uses default directory if NULL
+)
+```
+
+### How Options Are Accessed
+
+When an options file is loaded, its values are temporarily stored in R's `options()` namespace with the `artma.` prefix:
+
+```r
+# Within a function that has loaded an options file
+conf_level <- getOption("artma.methods.effect_summary_stats.conf_level")
+# Returns: 0.95 (or whatever was set in the options file)
+```
+
+You can also use the helper function to get option groups:
+
+```r
+box::use(artma / options / utils[get_option_group])
+
+effect_stats_opts <- get_option_group("artma.methods.effect_summary_stats")
+# Returns a list with conf_level, formal_output, etc.
+```
+
+### Important: Temporary Loading
+
+**Options are loaded only for the duration of the function call**. This prevents different analyses from interfering with each other. Each time you call `artma::run()`, the options file is freshly loaded.
+
+## Best Practices
+
+### One Dataset Per Options File
+
+By default, you should have **one dataset per options file**. This keeps configurations clear and prevents confusion. If you need to run the same analysis with different parameters, create separate options files:
+
+- `analysis_default.yaml` - Default parameters
+- `analysis_sensitivity.yaml` - Sensitivity analysis parameters
+- `analysis_robustness.yaml` - Robustness check parameters
+
+### Organizing Multiple Options Files
+
+Store related options files together. The default location is a temporary directory, but you can specify a custom directory:
+
+```r
+artma::run(
+  options_file_name = "my_analysis.yaml",
+  options_dir = "~/my_meta_analyses/configs"
+)
+```
+
+### Version Control
+
+Options files are text files (YAML), making them perfect for version control. Consider:
+
+- Tracking options files in Git for reproducibility
+- Including options files in research project repositories
+- Documenting changes in commit messages
+
+### Validation
+
+Always validate your options files before using them:
+
+```r
+artma::options.validate("my_analysis.yaml")
+```
+
+This checks that:
+
+- All required options are present
+- Option values match expected types
+- The file structure matches the template
+
+## Examples
+
+### Minimal Options File
+
+A minimal options file for a basic analysis:
+
+```yaml
+general:
+  artma_version: "0.3.2"
+
+data:
+  source_path: "/data/my_meta_analysis.csv"
+  colnames:
+    effect: "effect_size"
+    se: "standard_error"
+    study: "study_name"
+    n_obs: "sample_size"
+  na_handling: "stop"
+  config_setup: "auto"
+
+methods:
+  effect_summary_stats:
+    conf_level: 0.95
+```
+
+### Advanced Options File
+
+An options file with custom method parameters:
+
+```yaml
+general:
+  artma_version: "0.3.2"
+
+data:
+  source_path: "/data/complex_analysis.csv"
+  colnames:
+    effect: "beta"
+    se: "se_beta"
+    study: "paper_id"
+    n_obs: "n"
+    study_id: "study_id"
+  na_handling: "median"
+  winsorization_level: 0.05
+  config_setup: "manual"
+
+calc:
+  precision_type: "1/SE"
+  se_zero_handling: "warn"
+
+methods:
+  effect_summary_stats:
+    conf_level: 0.99
+    formal_output: true
+  
+  bma:
+    burn: 20000
+    iter: 100000
+    g: "UIP"
+    mprior: "uniform"
+    nmodel: 2000
+    use_vif_optimization: true
+    print_results: "verbose"
+  
+  linear_tests:
+    bootstrap_replications: 500
+    conf_level: 0.95
+  
+  p_hacking_tests:
+    include_caliper: true
+    caliper_thresholds: [1.645, 1.96, 2.58]
+    include_elliott: true
+
+verbose:
+  level: 3
+
+cache:
+  use_cache: true
+  max_age: 86400
+```
+
+## Managing Options Files
+
+### Listing Options Files
+
+See all available options files:
+
+```r
+artma::options.list()
+```
+
+### Copying Options Files
+
+Create a new options file based on an existing one:
+
+```r
+artma::options.copy(
+  options_file_name_from = "baseline.yaml",
+  options_file_name_to = "sensitivity.yaml"
+)
+```
+
+### Modifying Options Files
+
+Update an existing options file:
+
+```r
+artma::options.modify(
+  options_file_name = "my_analysis.yaml",
+  options_to_modify = list(
+    "methods.effect_summary_stats.conf_level" = 0.99,
+    "methods.bma.iter" = 100000
+  )
+)
+```
+
+### Opening Options Files
+
+Open an options file in your preferred editor:
+
+```r
+artma::options.open("my_analysis.yaml")
+```
+
+### Fixing Options Files
+
+If an options file has errors, fix it automatically:
+
+```r
+artma::options.fix("my_analysis.yaml")
+```
+
+This will:
+
+- Add missing required options with defaults
+- Fix type mismatches
+- Validate the corrected file
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"Options file not found"**
+   - Check the file name and directory path
+   - Ensure the `.yaml` extension is correct
+   - Verify the file exists in the specified directory
+
+2. **"Invalid option value"**
+   - Check that option values match expected types (character, numeric, logical)
+   - For enum options, ensure the value is one of the allowed choices
+   - Validate the file: `artma::options.validate("file.yaml")`
+
+3. **"Missing required option"**
+   - Use `artma::options.fix()` to add missing options with defaults
+   - Or manually add the missing option to the YAML file
+
+4. **"Column not found in data"**
+   - Verify column name mappings in `data.colnames`
+   - Check that your dataset contains the specified columns
+   - Use standardized column names if available
+
+## Summary
+
+Options files are the foundation of reproducible meta-analysis in artma. They:
+
+- Store all analysis configuration in one place
+- Enable easy reproduction of analyses
+- Support version control and collaboration
+- Validate settings automatically
+- Work seamlessly with all artma functions
+
+Remember:
+
+- Create descriptive file names
+- One dataset per options file (typically)
+- Validate files before use
+- Keep options files in version control for reproducibility
+
+For more information on specific options, see the help documentation for individual functions or explore the options template using `artma::options.help()`.

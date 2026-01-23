@@ -12,7 +12,17 @@ ask_for_options_file_name <- function(should_clean = TRUE, prompt = NULL) {
 
   box::use(artma / options / utils[parse_options_file_name])
 
-  prompt <- prompt %||% "Please provide the name for your options file, including the .yaml suffix: "
+  if (is.null(prompt)) {
+    cli::cli_h3("Create Options File")
+    cli::cli_text("Options files store configuration for your meta-analysis, including data paths, column mappings, method parameters, and analysis settings.")
+    cli::cat_line()
+    cli::cli_text("Sample names: {.emph my_analysis}, {.emph meta_analysis_2025}, {.emph project_config}, {.emph charity_effects}")
+    cli::cat_line()
+    cli::cli_text("For detailed information, see: {.code vignette('options-files', package='artma')}")
+    cli::cat_line()
+    prompt <- "Enter a name for your options file (the .yaml extension will be added automatically): "
+  }
+
   options_file_name <- readline(prompt = prompt)
 
   if (should_clean) {
@@ -48,7 +58,7 @@ ask_for_existing_options_file_name <- function(
 
   user_options_file_names <- options.list(options_dir = options_dir) # nolint: box_usage_linter.
   if (length(user_options_file_names) == 0) {
-    cli::cli_abort("No existing user options files were found. Aborting…")
+    cli::cli_abort("No existing user options files were found. Aborting...")
   }
 
   if (multiple) {
@@ -65,7 +75,7 @@ ask_for_existing_options_file_name <- function(
   }
 
   if (rlang::is_empty(selected_file_name)) {
-    cli::cli_abort("No user options file was selected. Aborting…")
+    cli::cli_abort("No user options file was selected. Aborting...")
   }
   return(selected_file_name)
 }
