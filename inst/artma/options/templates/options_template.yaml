@@ -99,7 +99,7 @@ data:
   config_setup:
     type: "enum: auto|manual"
     default: "auto"
-    confirm_default: true
+    confirm_default: false # Changed from true as the manual setup is just less flexible overall
     prompt: "readline"
     help: |
       How should the system identify which columns in your data file contain which variables?
