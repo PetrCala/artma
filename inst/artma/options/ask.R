@@ -29,7 +29,11 @@ ask_for_options_file_name <- function(should_clean = TRUE, prompt = NULL) {
     options_file_name <- parse_options_file_name(options_file_name)
   }
 
-  return(options_file_name)
+  # Print confirmation of the entered filename
+  cli::cli_alert_success("Options file name: {.file {options_file_name}}")
+  cli::cat_line()
+
+  options_file_name
 }
 
 
@@ -77,7 +81,7 @@ ask_for_existing_options_file_name <- function(
   if (rlang::is_empty(selected_file_name)) {
     cli::cli_abort("No user options file was selected. Aborting...")
   }
-  return(selected_file_name)
+  selected_file_name
 }
 
 #' @title Ask for an option value

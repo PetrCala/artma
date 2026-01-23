@@ -311,13 +311,7 @@ options.load <- function(
       if (!create_options_if_null) {
         cli::cli_abort("No user options file to load was provided. Exiting...")
       }
-      can_proceed <- climenu::select(
-        choices = c("Yes", "No"),
-        prompt = "We have not found any option files to load for you. Would you like to create one now?"
-      )
-      if (can_proceed != "Yes") {
-        cli::cli_abort("To load user options, you must create an options file first.")
-      }
+      # Automatically create a new options file when none exist
       options_file_name <- options.create(
         options_file_name = options_file_name,
         options_dir = options_dir
@@ -501,7 +495,7 @@ options.open <- function(
   editor_cmd <- editor_res$cmd
 
   if (!is.character(editor_cmd) || length(editor_cmd) != 1 ||
-      is.na(editor_cmd) || !nzchar(trimws(editor_cmd))) {
+    is.na(editor_cmd) || !nzchar(trimws(editor_cmd))) {
     cli::cli_abort(c(
       "x" = "No suitable editor could be found.",
       "i" = "Set {.field cli.editor} in your options file (e.g., {.code \"nano\"}, {.code \"vim\"}).",
