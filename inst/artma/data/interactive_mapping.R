@@ -288,6 +288,11 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
 
           selected <- choices[choice_idx]
 
+          # Validate selected value
+          if (is.null(selected) || (length(selected) == 1 && is.na(selected)) || !nzchar(trimws(selected))) {
+            cli::cli_abort("Invalid column selection: received NULL, NA, or empty value")
+          }
+
           if (grepl("Keep current", selected, fixed = TRUE)) {
             # Keep as-is, do nothing
           } else if (grepl("Remove", selected, fixed = TRUE)) {
@@ -297,9 +302,13 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
               missing_required <- unique(c(missing_required, std_col_to_modify))
             }
           } else {
-            # Update mapping
-            mapping[[std_col_to_modify]] <- selected
-            available_cols <- setdiff(available_cols, selected)
+            # Update mapping - ensure selected is a valid non-empty string
+            selected_clean <- trimws(selected)
+            if (!nzchar(selected_clean)) {
+              cli::cli_abort("Cannot map {.field {std_col_to_modify}} to an empty column name")
+            }
+            mapping[[std_col_to_modify]] <- selected_clean
+            available_cols <- setdiff(available_cols, selected_clean)
           }
         }
       }
@@ -396,6 +405,26 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
         }
       }
     }
+  }
+
+  # Validate all mapping values before returning
+  # Remove any NULL, NA, or empty string values and warn user
+  invalid_mappings <- character(0)
+  for (std_col in names(mapping)) {
+    val <- mapping[[std_col]]
+    if (is.null(val) || (length(val) == 1 && is.na(val)) || !nzchar(trimws(val))) {
+      invalid_mappings <- c(invalid_mappings, std_col)
+      mapping <- mapping[names(mapping) != std_col]
+      if (std_col %in% required_cols) {
+        missing_required <- unique(c(missing_required, std_col))
+      }
+    }
+  }
+
+  if (length(invalid_mappings) > 0 && get_verbosity() >= 2) {
+    cli::cli_alert_warning(
+      "Removed invalid mappings for: {.field {paste(invalid_mappings, collapse = ', ')}}"
+    )
   }
 
   mapping

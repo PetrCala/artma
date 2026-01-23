@@ -137,10 +137,22 @@ preprocess_column_mapping <- function(user_input, options_def) {
       }
 
       # Add confirmed mappings to user_input (but don't override existing ones)
+      # Skip any NULL, NA, or empty string values to prevent validation errors
       for (std_col in names(mapping)) {
+        val <- mapping[[std_col]]
+        # Validate mapping value before adding to user_input
+        if (is.null(val) || (length(val) == 1 && is.na(val)) || !nzchar(trimws(val))) {
+          if (get_verbosity() >= 2) {
+            cli::cli_alert_warning(
+              "Skipping invalid mapping for {.field {std_col}}: value is NULL, NA, or empty"
+            )
+          }
+          next
+        }
+
         opt_key <- paste0("data.colnames.", std_col)
         if (!opt_key %in% names(user_input)) {
-          user_input[[opt_key]] <- mapping[[std_col]]
+          user_input[[opt_key]] <- trimws(val)
         }
       }
     },
