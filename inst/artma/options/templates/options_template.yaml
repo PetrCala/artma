@@ -102,9 +102,9 @@ data:
     confirm_default: true
     prompt: "readline"
     help: |
-      How to configure the data:
-        {cli::symbol$bullet} {.strong auto}: Automatically generate and validate the data configuration
-        {cli::symbol$bullet} {.strong manual}: Manually configure and validate the data configuration
+      How should the system identify which columns in your data file contain which variables?
+        {cli::symbol$bullet} {.strong auto}: Automatically detect column names (e.g., recognizes "effect", "se", "study_name") and ask you to confirm the mapping
+        {cli::symbol$bullet} {.strong manual}: Skip automatic detection and manually specify which columns map to which variables (interactive mode only)
 
   config:
     type: "list"
