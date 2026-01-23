@@ -57,13 +57,66 @@ preprocess_column_mapping <- function(user_input, options_def) {
   tryCatch(
     {
       box::use(
+        artma / data / utils[determine_df_type, raise_invalid_data_type_error],
         artma / data / smart_detection[smart_read_csv, validate_df_structure],
         artma / data / column_recognition[recognize_columns],
-        artma / data / interactive_mapping[interactive_column_mapping]
+        artma / data / interactive_mapping[interactive_column_mapping],
+        artma / const[CONST],
+        artma / libs / utils[get_verbosity]
       )
 
-      # Read the data
-      df <- smart_read_csv(data_source_path)
+      # Read the data based on file type (same logic as read_data but without standardization)
+      df_type <- determine_df_type(data_source_path, should_validate = TRUE)
+
+      # Helper function to read Excel files (inline version of read_excel_file)
+      read_excel_inline <- function(path) {
+        if (!requireNamespace("readxl", quietly = TRUE)) {
+          cli::cli_abort("Package {.pkg readxl} is required to read Excel files. Install with: install.packages('readxl')")
+        }
+        # Read all columns as text first, then we'll handle type detection if needed
+        suppressWarnings(
+          readxl::read_excel(
+            path,
+            col_types = "text",
+            na = CONST$DATA$NA_STRINGS,
+            trim_ws = TRUE
+          )
+        )
+      }
+
+      df <- switch(df_type,
+        csv = smart_read_csv(data_source_path),
+        tsv = smart_read_csv(data_source_path, delim = "\t"),
+        xlsx = read_excel_inline(data_source_path),
+        xls = read_excel_inline(data_source_path),
+        xlsm = read_excel_inline(data_source_path),
+        json = {
+          if (!requireNamespace("jsonlite", quietly = TRUE)) {
+            cli::cli_abort("Package {.pkg jsonlite} is required to read JSON files. Install with: install.packages('jsonlite')")
+          }
+          jsonlite::fromJSON(data_source_path)
+        },
+        dta = {
+          if (!requireNamespace("haven", quietly = TRUE)) {
+            cli::cli_abort("Package {.pkg haven} is required to read Stata files. Install with: install.packages('haven')")
+          }
+          as.data.frame(haven::read_dta(data_source_path))
+        },
+        rds = {
+          obj <- readRDS(data_source_path)
+          if (!is.data.frame(obj)) {
+            cli::cli_abort("RDS file does not contain a data frame. Found: {.type {class(obj)}}")
+          }
+          obj
+        },
+        raise_invalid_data_type_error(df_type)
+      )
+
+      if (!is.data.frame(df)) {
+        cli::cli_abort("Failed to read data from {.path {data_source_path}}. Expected a data frame but got {.type {class(df)}}.")
+      }
+
+      # Validate and clean structure (but don't standardize column names yet)
       df <- validate_df_structure(df, data_source_path)
 
       # Recognize columns
