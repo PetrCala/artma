@@ -106,7 +106,6 @@ present_detected_mapping <- function(
 #' @return *\[list\]* User-confirmed column mapping
 interactive_column_mapping <- function(df, auto_mapping = list(), required_only = TRUE, show_detected_first = FALSE) {
   box::use(
-    climenu[menu],
     artma / libs / validation[validate],
     artma / libs / utils[get_verbosity],
     artma / data / column_recognition[

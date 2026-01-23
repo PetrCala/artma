@@ -49,21 +49,23 @@ handle_extra_columns_with_data <- function(df, data_cols) {
       }
       strategy <- "keep"
     } else {
-      box::use(climenu[menu])
-
       for (col in data_cols) {
-        choice <- menu(
+        choice <- climenu::menu(
           choices = c(
             "Keep column (add to data config)",
             "Remove column (data loss)",
             "Abort"
           ),
-          title = paste0("Column '", col, "' contains data but is not in the data config. What would you like to do?")
+          prompt = paste0("Column '", col, "' contains data but is not in the data config. What would you like to do?")
         )
 
-        if (choice == 1) {
+        if (is.null(choice)) {
+          cli::cli_abort("Column mapping cancelled by user")
+        }
+
+        if (choice == "Keep column (add to data config)") {
           # Keep - will be handled below
-        } else if (choice == 2) {
+        } else if (choice == "Remove column (data loss)") {
           df <- df[, colnames(df) != col, drop = FALSE]
           data_cols <- setdiff(data_cols, col)
           if (get_verbosity() >= 3) {
