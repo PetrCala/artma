@@ -87,10 +87,29 @@ artma <- function(
     options = NULL,
     options_dir = NULL,
     ...) {
+  box::use(
+    artma / libs / welcome[
+      show_welcome_message,
+      is_first_time_user,
+      mark_welcome_as_shown
+    ]
+  )
+
+  # Check and show welcome message if first-time user (only in interactive mode)
+  if (interactive() && is_first_time_user(options_dir)) {
+    show_welcome_message()
+    mark_welcome_as_shown(options_dir)
+  }
+
   main <- function() {
     box::use(
       artma / data / index[prepare_data],
-      artma / libs / utils[get_verbosity]
+      artma / libs / utils[get_verbosity],
+      artma / libs / welcome[
+        show_welcome_message,
+        is_first_time_user,
+        mark_welcome_as_shown
+      ]
     )
 
     # Prepare data: use provided data or load from options
