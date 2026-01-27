@@ -186,9 +186,26 @@ Depending on your IDE of choice, the setup for using _styler_ may differ, so we 
 
 # Understanding the folder structure
 
-This package is structured with most files located in the `inst/artma` folder, following the design principles encouraged by the box package. This setup allows for a modular and clean organization of the package's components. By keeping the R directory focused on exported functions and placing the core logic and internal scripts in the `inst/pkgname folder`, the package leverages box's module-based approach to encapsulate functionality. This structure promotes better code reuse, easier debugging, and improved separation of concerns, aligning with modern software development practices.
+This package is structured with most files located in the `inst/artma` folder, following the design principles encouraged by the box package. This setup allows for a modular and clean organization of the package's components. By keeping the R directory focused on exported functions and placing the core logic and internal scripts in the `inst/artma` folder, the package leverages box's module-based approach to encapsulate functionality.
 
-During the package installation, the `inst` folder gets bundled too, and becomes thus available fox `box` imports.
+The module structure is organized by domain:
+
+- **`inst/artma/libs/`** — Shared utilities organized by category:
+  - `libs/core/` — Fundamental utilities (validation, utils, string, number, file)
+  - `libs/infrastructure/` — System-level functionality (cache, debug, polyfills)
+  - `libs/formatting/` — Result formatting (results)
+- **`inst/artma/interactive/`** — Interactive UI components (ask, editor, save_preference, effect_summary_stats, welcome)
+- **`inst/artma/variable/`** — Variable analysis and suggestion (detection, suggestion, bma)
+- **`inst/artma/econometric/`** — Econometric calculation helpers (bma, linear, nonlinear, exogeneity, p_hacking)
+- **`inst/artma/methods/`** — Runtime methods (the core analytical functions)
+- **`inst/artma/data/`** — Data pipeline (read, preprocess, compute)
+- **`inst/artma/options/`** — Options system and templates
+- **`inst/artma/data_config/`** — Data configuration handling
+- **`inst/artma/calc/`** — Computation engines for specific methods
+- **`inst/artma/modules/`** — Higher-level orchestration modules
+- **`inst/artma/testing/`** — Test fixtures and mocks
+
+This structure promotes better code reuse, easier debugging, and improved separation of concerns, aligning with modern software development practices. During the package installation, the `inst` folder gets bundled too, and becomes thus available for `box` imports.
 
 # Using the options template
 
@@ -248,7 +265,7 @@ DRY:
 
 ```r
 box::use(
-  artma / libs / cache[cache_cli_runner],
+  artma / libs / infrastructure / cache[cache_cli_runner],
   artma / data / cache_signatures[build_data_cache_signature]
 )
 
