@@ -19,9 +19,9 @@ create_mock_df <- function(
     seed = NULL) {
   box::use(
     artma / const[CONST],
-    artma / libs / number_utils[generate_random_vector],
-    artma / libs / validation[assert],
-    artma / libs / utils[get_verbosity],
+    artma / libs / core / number[generate_random_vector],
+    artma / libs / core / validation[assert],
+    artma / libs / core / utils[get_verbosity],
     artma / data / utils[get_standardized_colnames],
     artma / testing / mocks / mock_utils[create_mock_study_names]
   )

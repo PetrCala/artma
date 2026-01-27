@@ -24,7 +24,7 @@ test_that("effect_summary_stats_interactive module exports expected functions", 
   # This will fail if the module can't be loaded or exports are wrong
   expect_no_error({
     box::use(
-      artma / libs / effect_summary_stats_interactive[
+      artma / interactive / effect_summary_stats[
         prompt_effect_summary_var_selection,
         update_config_with_selections
       ]
@@ -40,7 +40,7 @@ test_that("effect_summary_stats method can import interactive module", {
   # Verify the imports used in effect_summary_stats.R work
   expect_no_error({
     box::use(
-      artma / libs / effect_summary_stats_interactive[
+      artma / interactive / effect_summary_stats[
         prompt_effect_summary_var_selection
       ],
       artma / data_config / write[update_data_config]
@@ -70,10 +70,10 @@ test_that("all required data_config functions are available", {
 test_that("interactive module integrates with variable suggestion", {
   expect_no_error({
     box::use(
-      artma / libs / effect_summary_stats_interactive[
+      artma / interactive / effect_summary_stats[
         auto_select_effect_summary_vars
       ],
-      artma / libs / variable_suggestion[
+      artma / variable / suggestion[
         suggest_variables_for_effect_summary
       ]
     )
@@ -186,7 +186,7 @@ test_that("effect_summary_stats processes configured variables correctly", {
 
 test_that("update_config_with_selections integrates with effect_summary_stats", {
   box::use(
-    artma / libs / effect_summary_stats_interactive[
+    artma / interactive / effect_summary_stats[
       update_config_with_selections
     ],
     artma / methods / effect_summary_stats[effect_summary_stats]
@@ -329,12 +329,10 @@ test_that("all interactive module dependencies are resolvable", {
   # Verify all imports in the interactive module work
   expect_no_error({
     box::use(
-      artma / libs / variable_suggestion[
-        suggest_variables_for_effect_summary,
-        detect_variable_groups
-      ],
-      artma / libs / utils[get_verbosity],
-      artma / libs / validation[validate, assert],
+      artma / variable / suggestion[suggest_variables_for_effect_summary],
+      artma / variable / detection[detect_variable_groups],
+      artma / libs / core / utils[get_verbosity],
+      artma / libs / core / validation[validate, assert],
       artma / data / utils[determine_vector_type],
       artma / const[CONST]
     )
@@ -347,8 +345,8 @@ test_that("effect_summary_stats method dependencies are resolvable", {
     box::use(
       artma / const[CONST],
       artma / data_config / read[get_data_config],
-      artma / libs / utils[get_verbosity],
-      artma / libs / validation[assert, validate, validate_columns],
+      artma / libs / core / utils[get_verbosity],
+      artma / libs / core / validation[assert, validate, validate_columns],
       artma / options / index[get_option_group]
     )
   })
@@ -359,8 +357,8 @@ test_that("effect_summary_stats method dependencies are resolvable", {
 
 test_that("full workflow: suggestion -> config -> analysis works end-to-end", {
   box::use(
-    artma / libs / variable_suggestion[suggest_variables_for_effect_summary],
-    artma / libs / effect_summary_stats_interactive[update_config_with_selections],
+    artma / variable / suggestion[suggest_variables_for_effect_summary],
+    artma / interactive / effect_summary_stats[update_config_with_selections],
     artma / methods / effect_summary_stats[effect_summary_stats]
   )
 

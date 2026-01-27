@@ -1,5 +1,5 @@
 test_that("extract_editor_exe parses common editor command formats", {
-  box::use(artma / libs / editor[extract_editor_exe])
+  box::use(artma / interactive / editor[extract_editor_exe])
 
   expect_equal(extract_editor_exe("code -w"), "code")
   expect_equal(extract_editor_exe("  nano  "), "nano")
@@ -24,7 +24,7 @@ create_fake_executable <- function(dir, name) {
 
 
 test_that("editor_available detects fake executables on PATH", {
-  box::use(artma / libs / editor[editor_available])
+  box::use(artma / interactive / editor[editor_available])
 
   bin_dir <- tempfile("artma-bin-")
   dir.create(bin_dir)
@@ -38,7 +38,7 @@ test_that("editor_available detects fake executables on PATH", {
 
 
 test_that("detect_editor respects VISUAL then EDITOR", {
-  box::use(artma / libs / editor[detect_editor])
+  box::use(artma / interactive / editor[detect_editor])
 
   bin_dir <- tempfile("artma-bin-")
   dir.create(bin_dir)
@@ -55,7 +55,7 @@ test_that("detect_editor respects VISUAL then EDITOR", {
 
 
 test_that("detect_editor falls back to EDITOR when VISUAL is unset", {
-  box::use(artma / libs / editor[detect_editor])
+  box::use(artma / interactive / editor[detect_editor])
 
   bin_dir <- tempfile("artma-bin-")
   dir.create(bin_dir)
@@ -71,7 +71,7 @@ test_that("detect_editor falls back to EDITOR when VISUAL is unset", {
 
 
 test_that("detect_editor falls back to system default when env vars unset", {
-  box::use(artma / libs / editor[detect_editor])
+  box::use(artma / interactive / editor[detect_editor])
 
   withr::local_envvar(VISUAL = "", EDITOR = "")
 
@@ -92,7 +92,7 @@ test_that("detect_editor falls back to system default when env vars unset", {
 
 
 test_that("resolve_cli_editor prefers options file over env vars", {
-  box::use(artma / libs / editor[resolve_cli_editor])
+  box::use(artma / interactive / editor[resolve_cli_editor])
 
   bin_dir <- tempfile("artma-bin-")
   dir.create(bin_dir)
@@ -111,7 +111,7 @@ test_that("resolve_cli_editor prefers options file over env vars", {
 
 
 test_that("resolve_cli_editor falls back to env vars when options file has no editor", {
-  box::use(artma / libs / editor[resolve_cli_editor])
+  box::use(artma / interactive / editor[resolve_cli_editor])
 
   bin_dir <- tempfile("artma-bin-")
   dir.create(bin_dir)
@@ -130,7 +130,7 @@ test_that("resolve_cli_editor falls back to env vars when options file has no ed
 
 
 test_that("resolve_cli_editor falls back to system default when nothing else available", {
-  box::use(artma / libs / editor[resolve_cli_editor])
+  box::use(artma / interactive / editor[resolve_cli_editor])
 
   empty_bin_dir <- tempfile("artma-empty-bin-")
   dir.create(empty_bin_dir)

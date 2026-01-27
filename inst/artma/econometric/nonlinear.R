@@ -6,8 +6,8 @@ NULL
 box::use(
   stats[quantile],
   utils[capture.output],
-  artma / libs / validation[validate, validate_columns, assert],
-  artma / libs / result_formatters[
+  artma / libs / core / validation[validate, validate_columns, assert],
+  artma / libs / formatting / results[
     significance_mark,
     format_number,
     format_se

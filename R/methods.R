@@ -5,7 +5,7 @@
 methods.list <- function() {
   box::use(
     artma / const[CONST],
-    artma / libs / utils[get_verbosity],
+    artma / libs / core / utils[get_verbosity],
     artma / modules / runtime_methods[get_runtime_method_modules]
   )
 

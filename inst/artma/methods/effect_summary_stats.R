@@ -9,8 +9,8 @@ effect_summary_stats <- function(df) {
   box::use(
     artma / const[CONST],
     artma / data_config / read[get_data_config],
-    artma / libs / utils[get_verbosity],
-    artma / libs / validation[assert, validate, validate_columns],
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / core / validation[assert, validate, validate_columns],
     artma / options / index[get_option_group]
   )
 
@@ -149,7 +149,7 @@ effect_summary_stats <- function(df) {
     # Check if interactive mode is available
     if (interactive()) {
       box::use(
-        artma / libs / effect_summary_stats_interactive[
+        artma / interactive / effect_summary_stats[
           prompt_effect_summary_var_selection
         ],
         artma / data_config / write[update_data_config]
@@ -302,7 +302,7 @@ effect_summary_stats <- function(df) {
 }
 
 box::use(
-  artma / libs / cache[cache_cli_runner],
+  artma / libs / infrastructure / cache[cache_cli_runner],
   artma / data / cache_signatures[build_data_cache_signature]
 )
 

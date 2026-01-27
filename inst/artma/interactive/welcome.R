@@ -190,7 +190,7 @@ mark_welcome_as_shown <- function(options_dir = NULL) {
   box::use(
     artma / paths[PATHS],
     artma / options / files[resolve_options_dir],
-    artma / libs / file_utils[ensure_folder_existence]
+    artma / libs / core / file[ensure_folder_existence]
   )
 
   # Set R option for current session

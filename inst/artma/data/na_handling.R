@@ -1,6 +1,6 @@
 box::use(
   artma / data / utils[get_required_colnames],
-  artma / libs / utils[get_verbosity]
+  artma / libs / core / utils[get_verbosity]
 )
 
 #' @title Detect missing values

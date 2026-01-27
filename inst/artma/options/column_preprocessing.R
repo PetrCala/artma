@@ -6,7 +6,7 @@
 #' @return [list] Updated user_input with auto-detected column mappings
 #' @keywords internal
 preprocess_column_mapping <- function(user_input, options_def) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   # Check if data source path is provided
   data_source_path <- user_input[["data.source_path"]]
@@ -62,7 +62,7 @@ preprocess_column_mapping <- function(user_input, options_def) {
         artma / data / column_recognition[recognize_columns],
         artma / data / interactive_mapping[interactive_column_mapping],
         artma / const[CONST],
-        artma / libs / utils[get_verbosity]
+        artma / libs / core / utils[get_verbosity]
       )
 
       # Read the data based on file type (same logic as read_data but without standardization)

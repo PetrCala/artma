@@ -12,12 +12,14 @@ box::use(
 )
 
 box::use(
-  artma / libs / variable_suggestion[
+  artma / variable / detection[
     detect_variable_groups,
     detect_dummy_groups,
     detect_transformation_groups,
     detect_power_groups,
-    detect_categorical_groups,
+    detect_categorical_groups
+  ],
+  artma / variable / suggestion[
     suggest_variables_for_effect_summary,
     decide_variable_suggestion
   ]

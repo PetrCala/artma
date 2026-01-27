@@ -1,10 +1,10 @@
 box::use(
-  artma / libs / cache[cache_cli_runner],
+  artma / libs / infrastructure / cache[cache_cli_runner],
   artma / data / cache_signatures[build_data_cache_signature]
 )
 
 prepare_data_impl <- function() {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (get_verbosity() >= 4) {
     cli::cli_inform("Preparing data for analysis.")

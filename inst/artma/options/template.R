@@ -94,7 +94,7 @@ flatten_user_options <- function(user_options, leaf_set, parent = NULL) {
 get_option_defs <- function(template_path = NULL, opt_path = NULL) {
   box::use(
     artma / paths[PATHS],
-    artma / libs / validation[assert_options_template_exists, validate_opt_path]
+    artma / libs / core / validation[assert_options_template_exists, validate_opt_path]
   )
 
   validate_opt_path(opt_path)
@@ -122,7 +122,7 @@ get_option_defs <- function(template_path = NULL, opt_path = NULL) {
 resolve_fixed_option <- function(opt, user_input) {
   box::use(
     artma / const[CONST],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity]
   )
 
   if (!is.null(user_input[[opt$name]])) {
@@ -151,7 +151,7 @@ resolve_fixed_option <- function(opt, user_input) {
 prompt_user_for_option_value <- function(opt) {
   box::use(
     artma / const[CONST],
-    artma / libs / validation[assert],
+    artma / libs / core / validation[assert],
     artma / options / utils[print_options_help_text]
   )
 
@@ -206,7 +206,7 @@ prompt_user_for_option_value <- function(opt) {
     # Generate mock data and save to temp file
     box::use(
       artma / testing / mocks / mock_df[create_mock_df],
-      artma / libs / utils[get_verbosity]
+      artma / libs / core / utils[get_verbosity]
     )
 
     if (get_verbosity() >= 3) {
@@ -292,7 +292,7 @@ resolve_option_value <- function(
 coerce_option_value <- function(val, opt) {
   box::use(
     artma / const[CONST],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity]
   )
 
   # If the value is NULL, there's nothing to coerce
@@ -364,7 +364,7 @@ parse_options_from_template <- function(
     add_prefix = FALSE) {
   box::use(
     artma / const[CONST],
-    artma / libs / validation[assert_options_template_exists],
+    artma / libs / core / validation[assert_options_template_exists],
     artma / options / column_preprocessing[preprocess_column_mapping]
   )
   assert_options_template_exists(path)

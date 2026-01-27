@@ -5,9 +5,9 @@
 #' coefficient estimates and a publication-ready summary table.
 linear_tests <- function(df) {
   box::use(
-    artma / libs / validation[assert, validate, validate_columns],
-    artma / libs / utils[get_verbosity],
-    artma / libs / linear_tests[run_linear_models],
+    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / utils[get_verbosity],
+    artma / econometric / linear[run_linear_models],
     artma / options / index[get_option_group],
     artma / options / significance_marks[resolve_add_significance_marks]
   )
@@ -76,7 +76,7 @@ linear_tests <- function(df) {
 }
 
 box::use(
-  artma / libs / cache[cache_cli_runner],
+  artma / libs / infrastructure / cache[cache_cli_runner],
   artma / data / cache_signatures[build_data_cache_signature]
 )
 

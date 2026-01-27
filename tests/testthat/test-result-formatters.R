@@ -6,7 +6,7 @@ box::use(
   ]
 )
 
-box::use(artma / libs / result_formatters[significance_mark])
+box::use(artma / libs / formatting / results[significance_mark])
 
 test_that("significance_mark handles vector inputs", {
   p_values <- c(0.001, 0.02, 0.08, 0.2, NA, Inf)

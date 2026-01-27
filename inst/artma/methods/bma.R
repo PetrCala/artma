@@ -8,7 +8,7 @@ bma <- function(df) {
   box::use(
     artma / const[CONST],
     artma / data_config / read[get_data_config],
-    artma / libs / bma[
+    artma / econometric / bma[
       get_bma_data,
       get_bma_formula,
       handle_bma_params,
@@ -16,8 +16,8 @@ bma <- function(df) {
       extract_bma_results,
       find_optimal_bma_formula
     ],
-    artma / libs / utils[get_verbosity],
-    artma / libs / validation[assert, validate, validate_columns],
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / core / validation[assert, validate, validate_columns],
     artma / options / index[get_option_group]
   )
 
@@ -244,7 +244,7 @@ bma <- function(df) {
               }
 
               # Get priority variables to preserve if possible
-              box::use(artma / libs / bma_variable_suggestion[get_bma_priority_variables])
+              box::use(artma / variable / bma[get_bma_priority_variables])
               priority_vars <- get_bma_priority_variables()
 
               # Remove one aliased variable, preferring non-priority ones
@@ -389,7 +389,7 @@ bma <- function(df) {
 #' @param config *\[list\]* The data config
 #' @return *\[character\]* Selected variable names
 prompt_bma_variable_selection <- function(df, config) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   # First, prompt for selection mode
   selection_mode <- prompt_bma_variable_selection_mode()
@@ -444,8 +444,8 @@ prompt_bma_variable_selection_mode <- function() {
 #' @return *\[character\]* Selected variable names
 auto_select_bma_variables <- function(df, config) {
   box::use(
-    artma / libs / bma_variable_suggestion[suggest_variables_for_bma],
-    artma / libs / utils[get_verbosity]
+    artma / variable / bma[suggest_variables_for_bma],
+    artma / libs / core / utils[get_verbosity]
   )
 
   cli::cli_h2("Automatic BMA Variable Suggestion")
@@ -543,7 +543,7 @@ auto_select_bma_variables <- function(df, config) {
   var_names <- suggested_vars$var_name
 
   # Prompt to save the selection
-  box::use(artma / libs / save_preference[prompt_save_variable_selection])
+  box::use(artma / interactive / save_preference[prompt_save_variable_selection])
 
   # For BMA, we don't have detailed configs, just mark as BMA variables
   var_configs <- stats::setNames(
@@ -568,7 +568,7 @@ auto_select_bma_variables <- function(df, config) {
 manual_select_bma_variables <- function(df, config) {
   box::use(
     artma / const[CONST],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity]
   )
 
   cli::cli_h1("BMA Variable Selection")
@@ -643,7 +643,7 @@ manual_select_bma_variables <- function(df, config) {
 #' @param config *\[list\]* Current data config
 save_bma_variables_to_data_config <- function(variables, config) {
   box::use(
-    artma / libs / utils[get_verbosity],
+    artma / libs / core / utils[get_verbosity],
     artma / data_config / write[update_data_config]
   )
 
@@ -689,7 +689,7 @@ save_bma_variables_to_data_config <- function(variables, config) {
 
 
 box::use(
-  artma / libs / cache[cache_cli_runner],
+  artma / libs / infrastructure / cache[cache_cli_runner],
   artma / data / cache_signatures[build_data_cache_signature]
 )
 

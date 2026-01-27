@@ -53,7 +53,7 @@ ask_for_existing_options_file_name <- function(
 
   box::use(
     artma[options.list],
-    artma / libs / string[pluralize]
+    artma / libs / core / string[pluralize]
   )
 
   file_str <- if (isTRUE(multiple)) pluralize("name") else "name"
@@ -100,7 +100,7 @@ ask_for_option_value <- function(
   box::use(
     artma / const[CONST],
     artma / options / utils[validate_option_value],
-    artma / libs / string[trim_quotes]
+    artma / libs / core / string[trim_quotes]
   )
 
   retries <- 0

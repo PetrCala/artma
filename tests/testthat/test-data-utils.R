@@ -13,7 +13,7 @@ expect_error <- getFromNamespace("expect_error", "testthat")
 
 test_that("standardize_column_names handles missing required columns in options correctly", {
   box::use(
-    artma / libs / validation[assert],
+    artma / libs / core / validation[assert],
     artma / data / utils[get_required_colnames, standardize_column_names]
   )
 

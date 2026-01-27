@@ -36,8 +36,8 @@ options.validate <- function(
       validate_option_value
     ],
     artma / options / template[flatten_template_options, flatten_user_options, read_template, collect_leaf_paths],
-    artma / libs / utils[get_verbosity],
-    artma / libs / validation[assert, validate]
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / core / validation[assert, validate]
   )
 
   template_path <- resolve_template_path(template_path)
@@ -157,9 +157,9 @@ options.copy <- function(
       options_file_path,
       resolve_options_dir
     ],
-    artma / libs / validation[assert],
-    artma / libs / ask[ask_for_overwrite_permission],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[assert],
+    artma / interactive / ask[ask_for_overwrite_permission],
+    artma / libs / core / utils[get_verbosity]
   )
 
   options_dir <- resolve_options_dir(options_dir)
@@ -200,8 +200,8 @@ options.delete <- function(
       options_file_path,
       resolve_options_dir
     ],
-    artma / libs / validation[assert, validate],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[assert, validate],
+    artma / libs / core / utils[get_verbosity]
   )
 
   options_dir <- resolve_options_dir(options_dir)
@@ -307,8 +307,8 @@ options.load <- function(
     ],
     artma / options / utils[remove_options_with_prefix],
     artma / options / template[flatten_user_options, collect_leaf_paths],
-    artma / libs / validation[validate, assert],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[validate, assert],
+    artma / libs / core / utils[get_verbosity]
   )
 
   options_dir <- resolve_options_dir(options_dir, must_exist = FALSE)
@@ -427,7 +427,7 @@ options.modify <- function(
       ask_for_existing_options_file_name,
       ask_for_options_to_modify
     ],
-    artma / libs / validation[assert, validate],
+    artma / libs / core / validation[assert, validate],
     artma / options / utils[validate_user_input]
   )
 
@@ -488,8 +488,8 @@ options.open <- function(
   box::use(
     artma / options / files[resolve_options_dir],
     artma / options / ask[ask_for_existing_options_file_name],
-    artma / libs / utils[get_verbosity],
-    editor_mod = artma / libs / editor
+    artma / libs / core / utils[get_verbosity],
+    editor_mod = artma / interactive / editor
   )
 
   if (!rlang::is_interactive()) {
@@ -544,8 +544,8 @@ options.help <- function(
     artma / options / files[resolve_template_path],
     artma / options / utils[print_options_help_text],
     artma / options / template[flatten_template_options, read_template],
-    artma / libs / validation[assert, validate],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[assert, validate],
+    artma / libs / core / utils[get_verbosity]
   )
 
   if (is.null(options)) {
@@ -619,7 +619,7 @@ options.help <- function(
 options.print_default_dir <- function(...) { # nolint: object_name_linter.
   box::use(
     artma / paths[PATHS],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity]
   )
 
   if (get_verbosity() >= 2) {
@@ -651,8 +651,8 @@ options.fix <- function(
       resolve_template_path
     ],
     artma / options / utils[parse_options_file_name],
-    artma / libs / validation[validate],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[validate],
+    artma / libs / core / utils[get_verbosity]
   )
 
   validate(is.logical(force_default_overwrites))
@@ -803,8 +803,8 @@ options.create <- function(
       resolve_template_path,
       write_options_file
     ],
-    artma / libs / validation[assert, validate],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[assert, validate],
+    artma / libs / core / utils[get_verbosity]
   )
 
   validate(is.character(action_name))

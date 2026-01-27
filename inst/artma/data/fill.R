@@ -10,7 +10,7 @@
 #' @export
 fill_dof_using_pcc <- function(df, replace_existing = NULL, drop_missing = NULL, drop_negative = NULL, drop_zero = NULL) {
   box::use(
-    artma / libs / utils[get_verbosity],
+    artma / libs / core / utils[get_verbosity],
     dof_calc = artma / calc / dof
   )
 

@@ -1,4 +1,4 @@
-box::use(artma / libs / validation[assert, validate])
+box::use(artma / libs / core / validation[assert, validate])
 
 
 #' Calculate the PCC variance.
@@ -27,7 +27,7 @@ pcc_variance <- function(df, offset = 0) {
 #' @param method *\[character\]* The method to use for the RE calculation. Defaults to "DL". Other common options include "ML" and "REML".
 #' @export
 re <- function(df, effect = NULL, se = NULL, method = "DL") {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
   if (is.null(effect)) effect <- df$effect
   if (is.null(se)) se <- df$se
   validate(length(effect) == nrow(df), length(se) == nrow(df))
@@ -75,7 +75,7 @@ re <- function(df, effect = NULL, se = NULL, method = "DL") {
 #' `list` A list with properties "est", "t_value".
 #' @export
 uwls <- function(df, effect = NULL, se = NULL) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
   if (is.null(effect)) effect <- df$effect
   if (is.null(se)) se <- df$se
   validate(length(effect) == nrow(df), length(se) == nrow(df))
@@ -139,7 +139,7 @@ hsma <- function(df) {
   meta <- unique(df$meta)
   assert(sum(is.na(df$effect)) == 0, paste("Missing effect values in the PCC data frame for meta-analysis", meta))
 
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   # Safety check
   missing_dof <- sum(is.na(df$dof))
@@ -172,7 +172,7 @@ hsma <- function(df) {
 #' @note For the calculation, all studies should be present in the dataset.
 #' @export
 fishers_z <- function(df, method = "ML") {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   meta <- unique(df$meta)
   n_ <- df$dof
@@ -203,7 +203,7 @@ fishers_z <- function(df, method = "ML") {
 #' Calculate various summary statistics associated with the PCC data frame
 #' @export
 pcc_sum_stats <- function(df) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   meta <- unique(df$meta)
   obs_ <- nrow(df)

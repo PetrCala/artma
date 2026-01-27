@@ -9,10 +9,10 @@
 variable_summary_stats <- function(df) {
   box::use(
     artma / const[CONST],
-    artma / libs / validation[assert],
+    artma / libs / core / validation[assert],
     artma / data_config / read[get_data_config],
     artma / options / index[get_option_group],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity]
   )
 
   config <- get_data_config()
@@ -91,7 +91,7 @@ variable_summary_stats <- function(df) {
 }
 
 box::use(
-  artma / libs / cache[cache_cli_runner],
+  artma / libs / infrastructure / cache[cache_cli_runner],
   artma / data / cache_signatures[build_data_cache_signature]
 )
 

@@ -19,8 +19,8 @@
 #' @export
 prompt_effect_summary_var_selection <- function(df, config) {
   box::use(
-    artma / libs / utils[get_verbosity],
-    artma / libs / validation[validate]
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / core / validation[validate]
   )
 
   validate(
@@ -121,8 +121,8 @@ prompt_selection_mode <- function() {
 #' @keywords internal
 auto_select_effect_summary_vars <- function(df, config) {
   box::use(
-    artma / libs / variable_suggestion[suggest_variables_for_effect_summary],
-    artma / libs / utils[get_verbosity]
+    artma / variable / suggestion[suggest_variables_for_effect_summary],
+    artma / libs / core / utils[get_verbosity]
   )
 
   cli::cli_h2("Automatic Variable Suggestion")
@@ -233,7 +233,7 @@ auto_select_effect_summary_vars <- function(df, config) {
   cli::cli_alert_success("Using {length(var_configs)} suggested variable{?s}")
 
   # Prompt to save the selection
-  box::use(artma / libs / save_preference[prompt_save_variable_selection])
+  box::use(artma / interactive / save_preference[prompt_save_variable_selection])
   prompt_save_variable_selection(
     var_names = names(var_configs),
     var_configs = var_configs,
@@ -257,7 +257,7 @@ auto_select_effect_summary_vars <- function(df, config) {
 #'
 #' @keywords internal
 manual_select_effect_summary_vars <- function(df, config) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   cli::cli_h2("Manual Variable Selection")
   cli::cat_line()
@@ -356,7 +356,7 @@ manual_select_effect_summary_vars <- function(df, config) {
 #' @keywords internal
 specify_variable_split <- function(var_name, df, config) {
   box::use(
-    artma / libs / validation[validate],
+    artma / libs / core / validation[validate],
     artma / data / utils[determine_vector_type],
     artma / const[CONST]
   )
@@ -596,7 +596,7 @@ prompt_gltl_value <- function(var_name, var_data, data_type) {
 #'
 #' @keywords internal
 update_config_with_selections <- function(config, var_configs) {
-  box::use(artma / libs / validation[validate])
+  box::use(artma / libs / core / validation[validate])
 
   validate(is.list(config), is.list(var_configs))
 

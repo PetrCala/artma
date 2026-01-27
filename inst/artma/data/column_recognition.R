@@ -399,7 +399,7 @@ score_candidate_values <- function(df, candidate_col, std_col, name_score) {
 #' @param matches *\[list\]* Match results from match_column_name
 #' @return *\[character\]* Best candidate column name
 resolve_multiple_matches <- function(df, candidates, std_col, matches) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (length(candidates) == 1) {
     return(candidates[1])
@@ -452,8 +452,8 @@ resolve_multiple_matches <- function(df, candidates, std_col, matches) {
 #' @return *\[list\]* Named list mapping standard columns to data frame columns
 recognize_columns <- function(df, min_confidence = 0.7) {
   box::use(
-    artma / libs / validation[validate],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[validate],
+    artma / libs / core / utils[get_verbosity]
   )
 
   validate(is.data.frame(df))

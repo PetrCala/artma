@@ -22,7 +22,7 @@
 #' my_custom_module$another_method()
 #' modules$my_custom_module$some_method()
 crawl_and_import_modules <- function(dir_path, pattern = "\\.R$") {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   dir_path <- normalizePath(dir_path, mustWork = FALSE)
   if (!dir.exists(dir_path)) {
@@ -63,7 +63,7 @@ crawl_and_import_modules <- function(dir_path, pattern = "\\.R$") {
 #' @param modules [list[box.module]] A list of modules to validate.
 #' @return `NULL` Validates the object structure
 validate_runtime_method_modules <- function(modules) { # nolint: object_length_linter.
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (!is.list(modules)) {
     obj_class <- class(modules)

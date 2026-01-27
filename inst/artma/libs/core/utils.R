@@ -34,7 +34,7 @@ to_perc <- function(x) paste0(round(x * 100, 2), "%")
 #' @export
 nullable_lapply <- function(x, FUN) {
   box::use(
-    artma / libs / validation[assert, validate]
+    artma / libs / core / validation[assert, validate]
   )
   validate(is.function(FUN))
 

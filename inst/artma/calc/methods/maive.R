@@ -17,7 +17,7 @@
 maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2L,
                   SE = 3L, AR = 1L, first_stage = 0L) {
   box::use(
-    artma / libs / validation[validate, assert]
+    artma / libs / core / validation[validate, assert]
   )
 
   validate(

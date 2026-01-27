@@ -28,7 +28,7 @@ get_option_group <- function(prefix) {
 #' @param prefix A string representing the prefix of the options to remove.
 #' @return `NULL`
 remove_options_with_prefix <- function(prefix) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   opts <- options()
   opts_to_remove <- names(opts)[startsWith(names(opts), prefix)]
@@ -98,7 +98,7 @@ parse_template_enum_value <- function(opt_type) {
 #' @title Parse options file name
 #' @description Parse a string into one that can be used as an options file name. If this fails, raise an error.
 parse_options_file_name <- function(input_string) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   str_out <- rlang::duplicate(input_string)
 
@@ -156,7 +156,7 @@ get_expected_type <- function(opt_def) {
 validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
   box::use(
     artma / const[CONST],
-    artma / libs / validation[validate]
+    artma / libs / core / validation[validate]
   )
 
   validate(is.character(opt_type), is.character(opt_name)) # 'allow_na' can be NULL

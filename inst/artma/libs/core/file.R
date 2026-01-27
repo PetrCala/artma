@@ -7,8 +7,8 @@
 #' @export
 ensure_folder_existence <- function(folder_name, require_existence = FALSE) {
   box::use(
-    artma / libs / validation[validate],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[validate],
+    artma / libs / core / utils[get_verbosity]
   )
   validate(is.character(folder_name), is.logical(require_existence))
 
@@ -34,7 +34,7 @@ ensure_folder_existence <- function(folder_name, require_existence = FALSE) {
 #' @param files*\[vector\]* A vector of strings.
 #' @export
 validate_files <- function(files) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   for (file in files) {
     if (!file.exists(file)) {
@@ -61,7 +61,8 @@ validate_files <- function(files) {
 #' @return `NULL` The function writes the file and does not return anything
 #' @export
 write_txt_file <- function(msg_list, full_path) {
-  if (rlang::is_empty(msg_list))
-    return(NULL) # Nothing to write
+  if (rlang::is_empty(msg_list)) {
+    return(NULL)
+  } # Nothing to write
   writeLines(unlist(msg_list), full_path)
 }

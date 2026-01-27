@@ -7,9 +7,9 @@ get_data_config <- function(
     create_if_missing = TRUE,
     fix_if_invalid = FALSE) {
   box::use(
-    artma / libs / validation[validate],
+    artma / libs / core / validation[validate],
     artma / data_config / utils[data_config_is_valid],
-    artma / libs / utils[get_verbosity],
+    artma / libs / core / utils[get_verbosity],
     artma / data_config / write[fix_data_config]
   )
 

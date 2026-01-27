@@ -5,9 +5,9 @@
 #' The function returns both detailed coefficients and a publication-ready summary table.
 exogeneity_tests <- function(df) {
   box::use(
-    artma / libs / validation[assert, validate, validate_columns],
-    artma / libs / utils[get_verbosity],
-    artma / libs / exogeneity_tests[run_exogeneity_tests],
+    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / utils[get_verbosity],
+    artma / econometric / exogeneity[run_exogeneity_tests],
     artma / options / index[get_option_group],
     artma / options / significance_marks[resolve_add_significance_marks]
   )
@@ -86,7 +86,7 @@ exogeneity_tests <- function(df) {
 }
 
 box::use(
-  artma / libs / cache[cache_cli_runner],
+  artma / libs / infrastructure / cache[cache_cli_runner],
   artma / data / cache_signatures[build_data_cache_signature]
 )
 

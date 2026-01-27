@@ -14,8 +14,8 @@
 #' @export
 prompt_save_preference <- function(option_path, value, description = NULL) {
   box::use(
-    artma / libs / utils[get_verbosity],
-    artma / libs / validation[validate]
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / core / validation[validate]
   )
 
   validate(
@@ -88,7 +88,7 @@ prompt_save_preference <- function(option_path, value, description = NULL) {
 #' @return *\[logical\]* TRUE if successfully saved, FALSE otherwise
 #' @keywords internal
 save_to_options_file <- function(option_path, value) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   tryCatch(
     {
@@ -156,8 +156,8 @@ save_to_options_file <- function(option_path, value) {
 #' @export
 prompt_save_variable_selection <- function(var_names, var_configs = NULL, description = NULL) {
   box::use(
-    artma / libs / utils[get_verbosity],
-    artma / libs / validation[validate]
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / core / validation[validate]
   )
 
   validate(is.character(var_names))
@@ -234,7 +234,7 @@ prompt_save_variable_selection <- function(var_names, var_configs = NULL, descri
 #' @return *\[logical\]* TRUE if successfully saved, FALSE otherwise
 #' @keywords internal
 save_variables_to_config <- function(var_names, var_configs = NULL) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   tryCatch(
     {

@@ -1,4 +1,4 @@
-box::use(artma / libs / validation[validate, assert])
+box::use(artma / libs / core / validation[validate, assert])
 
 #' Pluralize a word based on count
 #'
@@ -61,7 +61,7 @@ trim_quotes <- function(s) gsub("^(\"|')+|(\"|')+$", "", s)
 #' @param input_string *\[character\]* The string to clean
 #' `character` The cleaned string
 clean_string <- function(input_string) {
-  box::use(artma / libs / polyfills[str_replace_all, str_trim])
+  box::use(artma / libs / infrastructure / polyfills[str_replace_all, str_trim])
 
   # Remove special characters
   str_out <- str_replace_all(input_string, "[^a-zA-Z0-9]", "_")

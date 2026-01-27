@@ -6,9 +6,9 @@ parse_df_into_data_config <- function(df) {
   box::use(
     artma / const[CONST],
     artma / data / utils[determine_vector_type],
-    artma / libs / validation[validate, assert],
-    artma / libs / utils[get_verbosity],
-    artma / libs / string[make_verbose_name]
+    artma / libs / core / validation[validate, assert],
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / core / string[make_verbose_name]
   )
 
   validate(is.data.frame(df))

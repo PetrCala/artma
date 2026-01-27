@@ -2,9 +2,9 @@
 #' @description Run publication bias diagnostics based on non-linear estimators.
 nonlinear_tests <- function(df) {
   box::use(
-    artma / libs / validation[validate, validate_columns, assert],
-    artma / libs / utils[get_verbosity],
-    artma / libs / nonlinear_tests[run_nonlinear_methods],
+    artma / libs / core / validation[validate, validate_columns, assert],
+    artma / libs / core / utils[get_verbosity],
+    artma / econometric / nonlinear[run_nonlinear_methods],
     artma / options / index[get_option_group],
     artma / options / significance_marks[resolve_add_significance_marks]
   )
@@ -88,7 +88,7 @@ nonlinear_tests <- function(df) {
 }
 
 box::use(
-  artma / libs / cache[cache_cli_runner],
+  artma / libs / infrastructure / cache[cache_cli_runner],
   artma / data / cache_signatures[build_data_cache_signature]
 )
 

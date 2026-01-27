@@ -61,7 +61,7 @@ detect_excel_column_types <- function(df) {
 coerce_columns_to_types <- function(df, types) {
   box::use(
     artma / const[CONST],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity]
   )
 
   for (i in seq_len(ncol(df))) {
@@ -123,7 +123,7 @@ coerce_columns_to_types <- function(df, types) {
 read_excel_file <- function(path) {
   box::use(
     artma / const[CONST],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity]
   )
 
   if (!requireNamespace("readxl", quietly = TRUE)) {
@@ -175,7 +175,7 @@ read_data <- function(path = NULL) {
       smart_read_csv,
       validate_df_structure
     ],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity]
   )
 
   path <- if (!is.null(path)) path else getOption("artma.data.source_path")

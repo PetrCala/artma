@@ -88,7 +88,7 @@ artma <- function(
     options_dir = NULL,
     ...) {
   box::use(
-    artma / libs / welcome[
+    artma / interactive / welcome[
       show_welcome_message,
       is_first_time_user,
       mark_welcome_as_shown
@@ -104,8 +104,8 @@ artma <- function(
   main <- function() {
     box::use(
       artma / data / index[prepare_data],
-      artma / libs / utils[get_verbosity],
-      artma / libs / welcome[
+      artma / libs / core / utils[get_verbosity],
+      artma / interactive / welcome[
         show_welcome_message,
         is_first_time_user,
         mark_welcome_as_shown
@@ -164,8 +164,8 @@ artma <- function(
 invoke_runtime_methods <- function(methods, df, ...) {
   box::use(
     artma / const[CONST],
-    artma / libs / string[pluralize],
-    artma / libs / utils[get_verbosity],
+    artma / libs / core / string[pluralize],
+    artma / libs / core / utils[get_verbosity],
     artma / modules / runtime_methods[get_runtime_method_modules]
   )
 

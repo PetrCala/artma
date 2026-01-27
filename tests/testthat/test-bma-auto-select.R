@@ -113,7 +113,7 @@ test_that("auto_select_bma_variables uses variable suggestion logic", {
   # but we can verify the underlying suggestion logic works for BMA
 
   box::use(
-    artma / libs / variable_suggestion[suggest_variables_for_effect_summary]
+    artma / variable / suggestion[suggest_variables_for_effect_summary]
   )
 
   df <- make_bma_test_data()
@@ -147,10 +147,8 @@ test_that("auto_select_bma_variables uses variable suggestion logic", {
 
 test_that("BMA suggestions exclude reference variables correctly", {
   box::use(
-    artma / libs / variable_suggestion[
-      suggest_variables_for_effect_summary,
-      detect_variable_groups
-    ]
+    artma / variable / suggestion[suggest_variables_for_effect_summary],
+    artma / variable / detection[detect_variable_groups]
   )
 
   df <- make_bma_test_data()
@@ -186,7 +184,7 @@ test_that("BMA suggestions exclude reference variables correctly", {
 
 test_that("BMA suggestions include appropriate variable types", {
   box::use(
-    artma / libs / variable_suggestion[suggest_variables_for_effect_summary]
+    artma / variable / suggestion[suggest_variables_for_effect_summary]
   )
 
   df <- make_bma_test_data()
@@ -212,7 +210,7 @@ test_that("BMA suggestions include appropriate variable types", {
 
 test_that("BMA variable suggestion reasons are appropriate", {
   box::use(
-    artma / libs / variable_suggestion[suggest_variables_for_effect_summary]
+    artma / variable / suggestion[suggest_variables_for_effect_summary]
   )
 
   df <- make_bma_test_data()
@@ -240,7 +238,7 @@ test_that("BMA variable suggestion reasons are appropriate", {
 
 test_that("suggestions filter out inappropriate variables for BMA", {
   box::use(
-    artma / libs / variable_suggestion[suggest_variables_for_effect_summary]
+    artma / variable / suggestion[suggest_variables_for_effect_summary]
   )
 
   # Create data with problematic variables
@@ -296,10 +294,8 @@ test_that("suggestions filter out inappropriate variables for BMA", {
 
 test_that("reference exclusion prevents dummy variable trap", {
   box::use(
-    artma / libs / variable_suggestion[
-      suggest_variables_for_effect_summary,
-      detect_variable_groups
-    ]
+    artma / variable / suggestion[suggest_variables_for_effect_summary],
+    artma / variable / detection[detect_variable_groups]
   )
 
   df <- make_bma_test_data()
@@ -342,8 +338,8 @@ test_that("reference exclusion prevents dummy variable trap", {
 
 test_that("BMA suggestions are compatible with BMA data preparation", {
   box::use(
-    artma / libs / variable_suggestion[suggest_variables_for_effect_summary],
-    artma / libs / bma[get_bma_data]
+    artma / variable / suggestion[suggest_variables_for_effect_summary],
+    artma / econometric / bma[get_bma_data]
   )
 
   df <- make_bma_test_data()
@@ -387,7 +383,7 @@ test_that("BMA suggestions are compatible with BMA data preparation", {
 
 test_that("BMA auto-select handles empty dataset gracefully", {
   box::use(
-    artma / libs / variable_suggestion[suggest_variables_for_effect_summary]
+    artma / variable / suggestion[suggest_variables_for_effect_summary]
   )
 
   df <- data.frame(
@@ -414,7 +410,7 @@ test_that("BMA auto-select handles empty dataset gracefully", {
 
 test_that("BMA auto-select handles dataset with only reserved columns", {
   box::use(
-    artma / libs / variable_suggestion[suggest_variables_for_effect_summary]
+    artma / variable / suggestion[suggest_variables_for_effect_summary]
   )
 
   df <- data.frame(

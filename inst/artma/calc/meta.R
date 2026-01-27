@@ -5,8 +5,8 @@
 #' @return *\[numeric\]* The t-statistic
 t_stat <- function(effect, se) {
   box::use(
-    artma / libs / validation[assert],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[assert],
+    artma / libs / core / utils[get_verbosity]
   )
   assert(sum(is.na(effect)) == 0, "The 'effect' column contains missing values")
   assert(sum(is.na(se)) == 0, "The 'se' column contains missing values")
@@ -39,7 +39,7 @@ reg_dof <- function(n_obs, n_predictors) n_obs - n_predictors
 #' @param reg_dof *\[numeric, optional\]* The degrees of freedom for the regression. Has to be provided if `se` is not provided.
 #' @return *\[numeric\]* The precision of the effect estimates
 precision <- function(se = NULL, reg_dof = NULL) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   precision_type <- getOption("artma.calc.precision_type")
   if (precision_type == "1/SE") {

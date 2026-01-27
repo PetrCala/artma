@@ -7,9 +7,9 @@
 #' - MAIVE estimator (Irsova et al., 2023)
 p_hacking_tests <- function(df) {
   box::use(
-    artma / libs / validation[assert, validate, validate_columns],
-    artma / libs / utils[get_verbosity],
-    artma / libs / p_hacking_tests[run_p_hacking_tests],
+    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / utils[get_verbosity],
+    artma / econometric / p_hacking[run_p_hacking_tests],
     artma / options / index[get_option_group],
     artma / options / significance_marks[resolve_add_significance_marks]
   )
@@ -178,7 +178,7 @@ p_hacking_tests <- function(df) {
 }
 
 box::use(
-  artma / libs / cache[cache_cli_runner],
+  artma / libs / infrastructure / cache[cache_cli_runner],
   artma / data / cache_signatures[build_data_cache_signature]
 )
 

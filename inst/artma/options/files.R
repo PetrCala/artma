@@ -13,7 +13,7 @@
 resolve_template_path <- function(template_path = NULL) {
   box::use(
     artma / paths[PATHS],
-    artma / libs / validation[assert_options_template_exists]
+    artma / libs / core / validation[assert_options_template_exists]
   )
 
   resolved <- template_path %||% PATHS$FILE_OPTIONS_TEMPLATE
@@ -69,7 +69,7 @@ read_options_file <- function(path) {
 #' @param path *[character]* Path to the YAML file to create.
 #' @param options *[list]* Options to write.
 write_options_file <- function(path, options) {
-  box::use(artma / libs / file_utils[ensure_folder_existence])
+  box::use(artma / libs / core / file[ensure_folder_existence])
 
   ensure_folder_existence(dirname(path))
   yaml::write_yaml(options, path)
@@ -84,7 +84,7 @@ write_options_file <- function(path, options) {
 list_options_files <- function(options_dir, should_return_verbose_names = FALSE) {
   box::use(
     artma / const[CONST],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity]
   )
 
   if (!dir.exists(options_dir)) {

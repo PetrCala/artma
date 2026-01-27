@@ -23,7 +23,7 @@ get_bma_priority_variables <- function() {
 #'   - `aliased` (character) - Names of aliased variables
 #'   - `rank` (integer) - Matrix rank
 detect_perfect_collinearity <- function(df, var_names) {
-  box::use(artma / libs / validation[validate])
+  box::use(artma / libs / core / validation[validate])
 
   validate(is.data.frame(df), is.character(var_names))
 
@@ -111,7 +111,7 @@ detect_perfect_collinearity <- function(df, var_names) {
 #' @param priority_vars *\[character\]* Variables to prioritize keeping
 #' @return *\[character\]* Filtered variable names without collinearity
 remove_collinear_variables <- function(df, var_names, priority_vars = character(0)) {
-  box::use(artma / libs / validation[validate])
+  box::use(artma / libs / core / validation[validate])
 
   validate(is.data.frame(df), is.character(var_names))
 
@@ -168,8 +168,8 @@ remove_collinear_variables <- function(df, var_names, priority_vars = character(
 #'   - `groups_with_trap` (list) - Groups that have all members included
 detect_dummy_traps <- function(df, var_names, config = NULL) {
   box::use(
-    artma / libs / validation[validate],
-    artma / libs / variable_suggestion[detect_variable_groups]
+    artma / libs / core / validation[validate],
+    artma / variable / detection[detect_variable_groups]
   )
 
   validate(is.data.frame(df), is.character(var_names))
@@ -230,7 +230,7 @@ detect_dummy_traps <- function(df, var_names, config = NULL) {
 #' @param config *\[list, optional\]* Data configuration
 #' @return *\[character\]* Filtered variable names without dummy traps
 remove_dummy_trap_variables <- function(df, var_names, priority_vars = character(0), config = NULL) {
-  box::use(artma / libs / validation[validate])
+  box::use(artma / libs / core / validation[validate])
 
   validate(is.data.frame(df), is.character(var_names))
 
@@ -293,9 +293,9 @@ suggest_variables_for_bma <- function(
     exclude_reference = TRUE,
     priority_vars = NULL) {
   box::use(
-    artma / libs / validation[validate],
-    artma / libs / variable_suggestion[suggest_variables_for_effect_summary],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[validate],
+    artma / variable / suggestion[suggest_variables_for_effect_summary],
+    artma / libs / core / utils[get_verbosity]
   )
 
   validate(is.data.frame(df))

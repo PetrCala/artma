@@ -1,5 +1,5 @@
 test_that("str_trim removes whitespace correctly", {
-  box::use(artma / libs / polyfills[str_trim])
+  box::use(artma / libs / infrastructure / polyfills[str_trim])
 
   # Test both sides
   expect_equal(str_trim("  hello  ", side = "both"), "hello")
@@ -19,7 +19,7 @@ test_that("str_trim removes whitespace correctly", {
 })
 
 test_that("str_replace_all replaces all matches", {
-  box::use(artma / libs / polyfills[str_replace_all])
+  box::use(artma / libs / infrastructure / polyfills[str_replace_all])
 
   # Test basic replacement
   expect_equal(str_replace_all("hello world", "o", "0"), "hell0 w0rld")
@@ -35,7 +35,7 @@ test_that("str_replace_all replaces all matches", {
 })
 
 test_that("str_remove removes first match", {
-  box::use(artma / libs / polyfills[str_remove])
+  box::use(artma / libs / infrastructure / polyfills[str_remove])
 
   # Test basic removal
   expect_equal(str_remove("hello world", "world"), "hello ")
@@ -51,7 +51,7 @@ test_that("str_remove removes first match", {
 })
 
 test_that("str_to_title converts to title case", {
-  box::use(artma / libs / polyfills[str_to_title])
+  box::use(artma / libs / infrastructure / polyfills[str_to_title])
 
   # Test basic conversion
   expect_equal(str_to_title("hello world"), "Hello World")
@@ -64,7 +64,7 @@ test_that("str_to_title converts to title case", {
 })
 
 test_that("map_chr extracts character values", {
-  box::use(artma / libs / polyfills[map_chr])
+  box::use(artma / libs / infrastructure / polyfills[map_chr])
 
   # Test with function
   result <- map_chr(1:3, as.character)
@@ -85,7 +85,7 @@ test_that("map_chr extracts character values", {
 })
 
 test_that("map_lgl returns logical values", {
-  box::use(artma / libs / polyfills[map_lgl])
+  box::use(artma / libs / infrastructure / polyfills[map_lgl])
 
   # Test with function
   result <- map_lgl(1:3, function(x) x > 1)
@@ -97,7 +97,7 @@ test_that("map_lgl returns logical values", {
 })
 
 test_that("keep filters elements", {
-  box::use(artma / libs / polyfills[keep])
+  box::use(artma / libs / infrastructure / polyfills[keep])
 
   # Test basic filtering
   result <- keep(1:10, function(x) x %% 2 == 0)
@@ -114,7 +114,7 @@ test_that("keep filters elements", {
 })
 
 test_that("glue interpolates strings", {
-  box::use(artma / libs / polyfills[glue])
+  box::use(artma / libs / infrastructure / polyfills[glue])
 
   # Test basic interpolation
   name <- "World"
@@ -137,7 +137,7 @@ test_that("glue interpolates strings", {
 })
 
 test_that("glue_collapse joins strings", {
-  box::use(artma / libs / polyfills[glue_collapse])
+  box::use(artma / libs / infrastructure / polyfills[glue_collapse])
 
   # Test basic collapse
   result <- glue_collapse(c("a", "b", "c"), sep = ", ")
@@ -157,7 +157,7 @@ test_that("glue_collapse joins strings", {
 })
 
 test_that("digest creates consistent hashes", {
-  box::use(artma / libs / polyfills[digest])
+  box::use(artma / libs / infrastructure / polyfills[digest])
 
   # Test basic hashing
   obj1 <- list(a = 1, b = 2)
@@ -181,7 +181,7 @@ test_that("digest creates consistent hashes", {
 })
 
 test_that("edit_file validates file existence", {
-  box::use(artma / libs / polyfills[edit_file])
+  box::use(artma / libs / infrastructure / polyfills[edit_file])
 
   # Test error on non-existent file
   expect_error(
@@ -195,7 +195,7 @@ test_that("edit_file validates file existence", {
 
 test_that("polyfills match original behavior on real usage patterns", {
   box::use(
-    artma / libs / polyfills[str_replace_all, str_trim, map_chr, keep]
+    artma / libs / infrastructure / polyfills[str_replace_all, str_trim, map_chr, keep]
   )
 
   # Test pattern from inst/artma/libs/string.R

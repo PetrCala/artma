@@ -11,7 +11,7 @@ update_data_config <- function(changes) {
     cli::cli_abort("There was an error loading the options file - the options file name and directory are not set.")
   }
 
-  box::use(artma / libs / validation[validate])
+  box::use(artma / libs / core / validation[validate])
   validate(is.list(changes))
 
   if (is.null(changes)) changes <- list()
@@ -46,7 +46,7 @@ fix_data_config <- function(
     create_if_missing = TRUE) {
   box::use(
     artma / data_config / utils[data_config_is_valid],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity]
   )
 
   current_config <- getOption("artma.data.config")
@@ -68,7 +68,7 @@ fix_data_config <- function(
 
   box::use(
     artma / const[CONST],
-    artma / libs / validation[assert],
+    artma / libs / core / validation[assert],
     artma / data / read[read_data],
     artma / data_config / parse[parse_df_into_data_config],
     artma / data_config / utils[data_config_is_valid]

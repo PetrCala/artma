@@ -1,6 +1,6 @@
 box::use(
   artma / const[CONST],
-  artma / libs / validation[assert]
+  artma / libs / core / validation[assert]
 )
 
 .find_package_root <- function(package_name, start = getwd()) {

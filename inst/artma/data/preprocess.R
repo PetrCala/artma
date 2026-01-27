@@ -13,11 +13,11 @@ box::use(
 #' @keywords internal
 handle_extra_columns_with_data <- function(df, data_cols) {
   box::use(
-    artma / libs / utils[get_verbosity],
+    artma / libs / core / utils[get_verbosity],
     artma / data_config / write[update_data_config],
     artma / const[CONST],
     artma / data / utils[determine_vector_type],
-    artma / libs / string[make_verbose_name]
+    artma / libs / core / string[make_verbose_name]
   )
 
   strategy <- getOption("artma.data.extra_columns_strategy", default = "keep")
@@ -139,7 +139,7 @@ handle_extra_columns_with_data <- function(df, data_cols) {
 #' @return *\[data.frame\]* The data frame with the redundant columns removed
 #' @keywords internal
 remove_redundant_columns <- function(df) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (get_verbosity() >= 4) {
     cli::cli_inform("Removing redundant columns...")
@@ -198,7 +198,7 @@ remove_redundant_columns <- function(df) {
 #' @return *\[data.frame\]* The data frame (unchanged, validation only)
 #' @keywords internal
 verify_variable_names <- function(df) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (get_verbosity() >= 4) {
     cli::cli_inform("Checking variable names...")
@@ -240,8 +240,8 @@ verify_variable_names <- function(df) {
 #' @keywords internal
 remove_empty_rows <- function(df) {
   box::use(
-    artma / libs / utils[get_verbosity],
-    artma / libs / polyfills[map_lgl]
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / infrastructure / polyfills[map_lgl]
   )
 
   if (get_verbosity() >= 4) {
@@ -283,10 +283,10 @@ remove_empty_rows <- function(df) {
 #' @keywords internal
 handle_missing_values_with_prompt <- function(df) {
   box::use(
-    artma / libs / utils[get_verbosity],
+    artma / libs / core / utils[get_verbosity],
     artma / data / na_handling[detect_missing_values, handle_missing_values],
     artma / options / prompts[prompt_na_handling],
-    artma / libs / save_preference[prompt_save_preference]
+    artma / interactive / save_preference[prompt_save_preference]
   )
 
   if (get_verbosity() >= 4) {
@@ -341,7 +341,7 @@ handle_missing_values_with_prompt <- function(df) {
 #' @return *\[data.frame\]* The data frame with the correct data types enforced
 #' @keywords internal
 enforce_data_types <- function(df) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (get_verbosity() >= 4) {
     cli::cli_inform("Enforcing correct data types...")
@@ -367,13 +367,13 @@ enforce_data_types <- function(df) {
 #' @return *\[data.frame\]* The data frame with the invalid values enforced
 #' @keywords internal
 enforce_correct_values <- function(df) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (get_verbosity() >= 4) {
     cli::cli_inform("Checking for invalid values...")
   }
 
-  box::use(artma / libs / validation[assert])
+  box::use(artma / libs / core / validation[assert])
 
   se_zero_handling <- getOption("artma.calc.se_zero_handling")
 
@@ -398,7 +398,7 @@ enforce_correct_values <- function(df) {
 #' @return *\[data.frame\]* The data frame with winsorized values
 #' @keywords internal
 winsorize_data <- function(df) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   winsorization_level <- getOption("artma.data.winsorization_level", default = 0)
 

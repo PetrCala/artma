@@ -34,7 +34,7 @@ build_data_cache_signature <- function() {
     }
   }
 
-  box::use(artma / libs / polyfills[digest])
+  box::use(artma / libs / infrastructure / polyfills[digest])
 
   config_hash <- digest(get_data_config(), algo = "xxhash64")
   artma_options_hash <- digest(get_option_group("artma"), algo = "xxhash64")

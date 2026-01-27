@@ -12,7 +12,7 @@ box::use(
 
 box::use(
   artma / methods / nonlinear_tests[nonlinear_tests],
-  artma / libs / nonlinear_tests[run_nonlinear_methods]
+  artma / econometric / nonlinear[run_nonlinear_methods]
 )
 
 make_demo_data <- function() {

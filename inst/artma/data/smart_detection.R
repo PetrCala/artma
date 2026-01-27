@@ -4,7 +4,7 @@
 #' @param n_lines *\[integer\]* Number of lines to sample for detection
 #' @return *\[character\]* The detected delimiter
 detect_delimiter <- function(path, n_lines = 5) {
-  box::use(artma / libs / validation[validate])
+  box::use(artma / libs / core / validation[validate])
 
   validate(is.character(path), file.exists(path))
 
@@ -52,7 +52,7 @@ detect_delimiter <- function(path, n_lines = 5) {
 #' @param path *\[character\]* Path to the file
 #' @return *\[character\]* The detected encoding
 detect_encoding <- function(path) {
-  box::use(artma / libs / validation[validate])
+  box::use(artma / libs / core / validation[validate])
 
   validate(is.character(path), file.exists(path))
 
@@ -85,8 +85,8 @@ detect_encoding <- function(path) {
 smart_read_csv <- function(path, delim = NULL, encoding = NULL) {
   box::use(
     artma / const[CONST],
-    artma / libs / validation[validate],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[validate],
+    artma / libs / core / utils[get_verbosity]
   )
 
   validate(is.character(path), file.exists(path))
@@ -181,8 +181,8 @@ normalize_whitespace_to_na <- function(df) {
 #' @return *\[data.frame\]* Cleaned data frame
 validate_df_structure <- function(df, path) {
   box::use(
-    artma / libs / validation[validate],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[validate],
+    artma / libs / core / utils[get_verbosity]
   )
 
   validate(is.data.frame(df))

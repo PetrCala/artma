@@ -12,7 +12,7 @@ box::use(
 )
 
 box::use(
-  artma / libs / bma_variable_suggestion[
+  artma / variable / bma[
     detect_perfect_collinearity,
     detect_dummy_traps,
     remove_collinear_variables,

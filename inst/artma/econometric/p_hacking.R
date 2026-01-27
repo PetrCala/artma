@@ -7,8 +7,8 @@ NULL
 
 box::use(
   stats[pchisq, ecdf, lm, coef],
-  artma / libs / validation[validate, assert],
-  artma / libs / result_formatters[
+  artma / libs / core / validation[validate, assert],
+  artma / libs / formatting / results[
     format_number,
     significance_mark
   ],

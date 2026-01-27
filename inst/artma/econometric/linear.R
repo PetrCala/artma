@@ -7,7 +7,7 @@ box::use(
 )
 
 box::use(
-  artma / libs / result_formatters[
+  artma / libs / formatting / results[
     significance_mark,
     format_number,
     format_se,
@@ -25,7 +25,7 @@ box::use(
 #'   observations kept and dropped, and the number of clusters.
 prepare_linear_data <- function(df, spec) {
   box::use(
-    artma / libs / validation[validate]
+    artma / libs / core / validation[validate]
   )
 
   validate(is.data.frame(df))

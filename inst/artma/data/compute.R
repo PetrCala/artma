@@ -5,7 +5,7 @@
 #' @return *\[data.frame\]* The data frame with the observation ID column.
 #' @keywords internal
 add_obs_id_column <- function(df) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (!"obs_id" %in% colnames(df)) {
     df$obs_id <- seq_len(nrow(df))
@@ -38,7 +38,7 @@ add_obs_id_column <- function(df) {
 #' @return *\[data.frame\]* The data frame with the study ID column.
 #' @keywords internal
 add_study_id_column <- function(df) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   study_names <- df$study
 
@@ -101,7 +101,7 @@ add_t_stat_column <- function(df) {
 #' @return *\[data.frame\]* The data frame with the study size column.
 #' @keywords internal
 add_study_size_column <- function(df) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   study_id_col <- df$study_id
 
@@ -132,7 +132,7 @@ add_study_size_column <- function(df) {
 #' @return *\[data.frame\]* The data frame with the reg_dof column.
 #' @keywords internal
 add_reg_dof_column <- function(df) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (!"reg_dof" %in% colnames(df)) {
     # Calculate reg_dof from n_obs if available
@@ -187,7 +187,7 @@ add_reg_dof_column <- function(df) {
 add_precision_column <- function(df) {
   box::use(
     calc = artma / calc / index,
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity]
   )
 
   if ("precision" %in% colnames(df)) {
@@ -233,8 +233,8 @@ update_config_with_computed_columns <- function(df) {
     artma / data_config / write[update_data_config],
     artma / data / utils[determine_vector_type],
     artma / const[CONST],
-    artma / libs / string[make_verbose_name],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / string[make_verbose_name],
+    artma / libs / core / utils[get_verbosity]
   )
 
   # Get current config
@@ -294,7 +294,7 @@ update_config_with_computed_columns <- function(df) {
 #' @param df *\[data.frame\]* The data frame to compute the optional columns for.
 #' @return *\[data.frame\]* The data frame with all optional columns computed.
 compute_optional_columns <- function(df) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (get_verbosity() >= 3) {
     cli::cli_alert_info("Computing optional columns for {.val {nrow(df)}} observations…")

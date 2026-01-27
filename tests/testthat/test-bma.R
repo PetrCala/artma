@@ -13,7 +13,7 @@ box::use(
 )
 
 box::use(
-  artma / libs / bma[
+  artma / econometric / bma[
     get_bma_formula,
     handle_bma_params,
     run_vif_test,
@@ -175,7 +175,7 @@ test_that("get_bma_data scales non-binary variables", {
 })
 
 test_that("run_bma executes without errors", {
-  box::use(artma / libs / bma[run_bma])
+  box::use(artma / econometric / bma[run_bma])
 
   df <- make_demo_bma_data()
   bma_data <- df[c("effect", "se", "moderator1", "moderator2")]

@@ -7,13 +7,13 @@ box::use(
 )
 
 box::use(
-  artma / libs / result_formatters[
+  artma / libs / formatting / results[
     significance_mark,
     format_number,
     format_se,
     format_ci
   ],
-  artma / libs / validation[validate, assert]
+  artma / libs / core / validation[validate, assert]
 )
 
 # IV regression utilities --------------------------------------------------

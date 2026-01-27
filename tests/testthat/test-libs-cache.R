@@ -6,7 +6,7 @@ box::use(
 box::use(artma / testing / fixtures / index[FIXTURES])
 
 test_that("new_artifact constructs the correct S3 object", {
-  box::use(artma / libs / cache[new_artifact])
+  box::use(artma / libs / infrastructure / cache[new_artifact])
 
   a <- new_artifact(1:3, list(), list(pkg = "demo"))
   expect_s3_class(a, "cached_artifact")
@@ -16,7 +16,7 @@ test_that("new_artifact constructs the correct S3 object", {
 })
 
 test_that("capture_cli traps cli conditions and replay_log re-emits them", {
-  box::use(artma / libs / cache[capture_cli, replay_log])
+  box::use(artma / libs / infrastructure / cache[capture_cli, replay_log])
 
   FIXTURES$local_cli_silence()
 
@@ -43,7 +43,7 @@ test_that("capture_cli traps cli conditions and replay_log re-emits them", {
 })
 
 test_that("capture_cli captures cat helpers and replays them faithfully", {
-  box::use(artma / libs / cache[capture_cli, replay_log])
+  box::use(artma / libs / infrastructure / cache[capture_cli, replay_log])
 
   FIXTURES$local_cli_silence()
 
@@ -67,7 +67,7 @@ test_that("capture_cli captures cat helpers and replays them faithfully", {
 })
 
 test_that("cache_cli memoises value + log and replays on hit", {
-  box::use(artma / libs / cache[cache_cli, get_artifact])
+  box::use(artma / libs / infrastructure / cache[cache_cli, get_artifact])
 
   FIXTURES$local_cli_silence()
 
@@ -108,7 +108,7 @@ test_that("cache_cli memoises value + log and replays on hit", {
 })
 
 test_that("invalidate_fun forces recomputation for selected arguments", {
-  box::use(artma / libs / cache[cache_cli])
+  box::use(artma / libs / infrastructure / cache[cache_cli])
 
   FIXTURES$local_cli_silence()
 
@@ -143,7 +143,7 @@ test_that("invalidate_fun forces recomputation for selected arguments", {
 test_that("print.cached_artifact produces a human-readable summary", {
   FIXTURES$local_cli_silence()
 
-  box::use(artma / libs / cache[new_artifact, print.cached_artifact])
+  box::use(artma / libs / infrastructure / cache[new_artifact, print.cached_artifact])
 
   art <- new_artifact(99, list(), list(note = "demo"))
   out <- testthat::capture_messages(print.cached_artifact(art))
@@ -154,7 +154,7 @@ test_that("print.cached_artifact produces a human-readable summary", {
 })
 
 test_that("cache_cli honours max_age to refresh stale artifacts", {
-  box::use(artma / libs / cache[cache_cli])
+  box::use(artma / libs / infrastructure / cache[cache_cli])
 
   FIXTURES$local_cli_silence()
 
@@ -179,7 +179,7 @@ test_that("cache_cli honours max_age to refresh stale artifacts", {
 })
 
 test_that("cache_cli bypasses caching when disabled via option", {
-  box::use(artma / libs / cache[cache_cli])
+  box::use(artma / libs / infrastructure / cache[cache_cli])
 
   FIXTURES$local_cli_silence()
 
@@ -203,7 +203,7 @@ test_that("cache_cli bypasses caching when disabled via option", {
 })
 
 test_that("cache_cli_runner injects reusable cache signature metadata", {
-  box::use(artma / libs / cache[cache_cli_runner, get_artifact])
+  box::use(artma / libs / infrastructure / cache[cache_cli_runner, get_artifact])
 
   FIXTURES$local_cli_silence()
 
@@ -245,7 +245,7 @@ test_that("cache_cli_runner injects reusable cache signature metadata", {
 })
 
 test_that("cache_cli_runner works with implementations that ignore cache_signature", {
-  box::use(artma / libs / cache[cache_cli_runner])
+  box::use(artma / libs / infrastructure / cache[cache_cli_runner])
 
   FIXTURES$local_cli_silence()
 
@@ -271,7 +271,7 @@ test_that("cache_cli_runner works with implementations that ignore cache_signatu
 })
 
 test_that("cache_cli_runner isolates caches across stages", {
-  box::use(artma / libs / cache[cache_cli_runner])
+  box::use(artma / libs / infrastructure / cache[cache_cli_runner])
 
   FIXTURES$local_cli_silence()
 

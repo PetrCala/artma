@@ -12,7 +12,7 @@ box::use(
 )
 
 box::use(
-  artma / libs / effect_summary_stats_interactive[
+  artma / interactive / effect_summary_stats[
     update_config_with_selections
   ]
 )

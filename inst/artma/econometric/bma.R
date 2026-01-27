@@ -27,7 +27,7 @@
 #' @export
 handle_bma_params <- function(bma_params) {
   box::use(
-    artma / libs / validation[validate]
+    artma / libs / core / validation[validate]
   )
 
   validate(is.list(bma_params))
@@ -79,7 +79,7 @@ handle_bma_params <- function(bma_params) {
 #' @export
 get_bma_formula <- function(input_var, input_data, get_var_vector_instead = FALSE) {
   box::use(
-    artma / libs / validation[validate]
+    artma / libs / core / validation[validate]
   )
 
   validate(
@@ -141,8 +141,8 @@ get_bma_formula <- function(input_var, input_data, get_var_vector_instead = FALS
 #' @export
 run_vif_test <- function(input_var, input_data, print_all_coefs = FALSE, verbose = TRUE) {
   box::use(
-    artma / libs / validation[validate],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[validate],
+    artma / libs / core / utils[get_verbosity]
   )
 
   validate(
@@ -221,8 +221,8 @@ run_vif_test <- function(input_var, input_data, print_all_coefs = FALSE, verbose
 find_optimal_bma_formula <- function(input_data, input_var_list, max_groups_to_remove = 30,
                                      return_variable_vector_instead = FALSE, verbose = TRUE) {
   box::use(
-    artma / libs / validation[validate],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[validate],
+    artma / libs / core / utils[get_verbosity]
   )
 
   validate(
@@ -341,7 +341,7 @@ find_optimal_bma_formula <- function(input_data, input_var_list, max_groups_to_r
 get_bma_data <- function(input_data, input_var_list, variable_info, scale_data = TRUE,
                          from_vector = TRUE, include_reference_groups = FALSE) {
   box::use(
-    artma / libs / validation[validate, assert]
+    artma / libs / core / validation[validate, assert]
   )
 
   validate(
@@ -412,7 +412,7 @@ get_bma_data <- function(input_data, input_var_list, variable_info, scale_data =
 #' @export
 run_bma <- function(bma_data, bma_params) {
   box::use(
-    artma / libs / validation[validate]
+    artma / libs / core / validation[validate]
   )
 
   validate(
@@ -458,7 +458,7 @@ run_bma <- function(bma_data, bma_params) {
 #' @export
 rename_bma_model <- function(bma_model, input_var_list) {
   box::use(
-    artma / libs / validation[validate]
+    artma / libs / core / validation[validate]
   )
 
   validate(
@@ -500,8 +500,8 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
                                 adjustable_theme = FALSE, theme = "blue", export_graphics = TRUE,
                                 export_path = "./results/graphic", graph_scale = 1) {
   box::use(
-    artma / libs / validation[validate],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / validation[validate],
+    artma / libs / core / utils[get_verbosity]
   )
 
   validate(

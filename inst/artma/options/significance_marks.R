@@ -1,6 +1,6 @@
 box::use(
-  artma / libs / utils[get_verbosity],
-  artma / libs / validation[validate],
+  artma / libs / core / utils[get_verbosity],
+  artma / libs / core / validation[validate],
   artma / options / index[get_option_group]
 )
 

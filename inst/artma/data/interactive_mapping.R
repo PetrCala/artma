@@ -31,7 +31,7 @@ present_detected_mapping <- function(
     df,
     required_cols,
     all_std_cols = NULL) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (length(auto_mapping) == 0) {
     return("modify")
@@ -106,8 +106,8 @@ present_detected_mapping <- function(
 #' @return *\[list\]* User-confirmed column mapping
 interactive_column_mapping <- function(df, auto_mapping = list(), required_only = TRUE, show_detected_first = FALSE) {
   box::use(
-    artma / libs / validation[validate],
-    artma / libs / utils[get_verbosity],
+    artma / libs / core / validation[validate],
+    artma / libs / core / utils[get_verbosity],
     artma / data / column_recognition[
       get_required_column_names,
       get_column_patterns
@@ -423,7 +423,7 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
 #' @param required_cols *\[character\]* Required column names
 #' @return *\[list\]* Confirmed mapping
 confirm_column_mapping <- function(mapping, required_cols) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (get_verbosity() >= 3) {
     cli::cli_h2("Column Mapping Summary")
@@ -449,7 +449,7 @@ confirm_column_mapping <- function(mapping, required_cols) {
 #' @param options_file_name *\[character, optional\]* Options file name
 #' @return *\[invisible\]* NULL
 save_column_mapping_to_options <- function(mapping, options_file_name = NULL) {
-  box::use(artma / libs / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (get_verbosity() >= 4) {
     cli::cli_inform("Saving column mapping to options")
@@ -506,7 +506,7 @@ column_mapping_workflow <- function(
       check_mapping_completeness,
       get_required_column_names
     ],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity]
   )
 
   # Auto-recognize if not provided

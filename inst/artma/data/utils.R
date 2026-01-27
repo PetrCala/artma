@@ -11,7 +11,7 @@ assign_na_col <- function(df, colname) {
 get_standardized_colnames <- function(filter_fn = function(x) TRUE) {
   box::use(
     artma / options / template[get_option_defs],
-    artma / libs / polyfills[keep, map_chr, str_remove]
+    artma / libs / infrastructure / polyfills[keep, map_chr, str_remove]
   )
   opt_path <- "data.colnames"
   defs <- get_option_defs(opt_path = opt_path)
@@ -46,9 +46,9 @@ get_number_of_studies <- function(df) {
 #' @return *\[data.frame\]* The standardized data frame
 standardize_column_names <- function(df, auto_detect = TRUE) {
   box::use(
-    artma / libs / validation[validate],
+    artma / libs / core / validation[validate],
     artma / options / utils[get_option_group],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity]
   )
 
   validate(is.data.frame(df))
@@ -170,7 +170,7 @@ raise_invalid_data_type_error <- function(data_type) {
 determine_df_type <- function(path, should_validate = TRUE) {
   box::use(
     artma / const[CONST],
-    artma / libs / validation[validate]
+    artma / libs / core / validation[validate]
   )
 
   validate(is.character(path))
@@ -190,7 +190,7 @@ determine_df_type <- function(path, should_validate = TRUE) {
 
 determine_vector_type <- function(data, recognized_data_types = NULL) {
   box::use(
-    artma / libs / validation[validate]
+    artma / libs / core / validation[validate]
   )
 
   validate(is.vector(data))
