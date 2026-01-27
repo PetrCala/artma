@@ -41,12 +41,7 @@ test <- function() {
     should_overwrite = TRUE
   )
 
-  # artma::run(
-  #   # methods = c("all"),
-  #   options_file_name = options_file_name
-  # )
-
-  # artma::main(
+  # artma::artma(
   #   options = options_file_name,
   #   FUN = function() {
   #     box::use(artma / data_config / read[get_data_config])

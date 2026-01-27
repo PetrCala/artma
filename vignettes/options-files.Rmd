@@ -158,7 +158,7 @@ The easiest way to create an options file is interactively. When you run an artm
 
 ```r
 # This will prompt you to create an options file
-artma::run()
+artma::artma()
 ```
 
 You can also create one explicitly:
@@ -211,8 +211,8 @@ artma::options.create(
 Options files are loaded automatically when you call artma functions:
 
 ```r
-artma::run(
-  options_file_name = "my_analysis.yaml",
+artma::artma(
+  options = "my_analysis.yaml",
   options_dir = NULL  # Uses default directory if NULL
 )
 ```
@@ -238,7 +238,7 @@ effect_stats_opts <- get_option_group("artma.methods.effect_summary_stats")
 
 ### Important: Temporary Loading
 
-**Options are loaded only for the duration of the function call**. This prevents different analyses from interfering with each other. Each time you call `artma::run()`, the options file is freshly loaded.
+**Options are loaded only for the duration of the function call**. This prevents different analyses from interfering with each other. Each time you call `artma::artma()`, the options file is freshly loaded.
 
 ## Best Practices
 
@@ -255,8 +255,8 @@ By default, you should have **one dataset per options file**. This keeps configu
 Store related options files together. The default location is a temporary directory, but you can specify a custom directory:
 
 ```r
-artma::run(
-  options_file_name = "my_analysis.yaml",
+artma::artma(
+  options = "my_analysis.yaml",
   options_dir = "~/my_meta_analyses/configs"
 )
 ```

@@ -64,7 +64,7 @@ You can use the [**devtools**](https://devtools.r-lib.org) package to install th
 devtools::load_all()
 
 ## The folowing should now work
-artma::run()
+artma::artma()
 artma::methods.list()
 # etc.
 ```
@@ -102,13 +102,13 @@ In case you wish to do so explicitly, you can call `artma::options.create()`.
 
 ## Loading an options file
 
-You can load an options file by providing its name to runtime functions that require it, such as `artma::run()`. We explicitly **advice against loading the the options in a persistent manner**, so that different options do not interfere with each other across different sessions or invocations.
+You can load an options file by providing its name to the main `artma()` function. We explicitly **advice against loading the the options in a persistent manner**, so that different options do not interfere with each other across different sessions or invocations.
 
 For example, providing a name of a custom user options file would look as follows:
 
 ```R
-artma::run(
-  options_file_name="my_custom_options.yaml", # if not provided, you will be prompted to enter the name through the R console
+artma::artma(
+  options="my_custom_options.yaml", # if not provided, you will be prompted to enter the name through the R console
   options_dir="path/to/your/options" # optional, defaults to a temporary folder
 )
 ```

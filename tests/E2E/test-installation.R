@@ -10,5 +10,6 @@ if (!dir.exists(artma_path)) {
 remotes::install_local(artma_path, force = TRUE)
 library(artma) # nolint: undesirable_function_linter.
 
-# Should pass without error
-artma::main()
+# Should pass without error (interactive mode will prompt for options)
+# In non-interactive mode, this will return invisibly
+artma::artma()

@@ -63,7 +63,7 @@ Always reference external package functions explicitly: `pkg::function()` (never
 
 ### Runtime Methods System
 
-Runtime methods are the main analytical functions users invoke via `artma::run(methods = c("method_name"))`.
+Runtime methods are the main analytical functions users invoke via `artma::artma(methods = c("method_name"))`.
 
 Each method is defined in `inst/artma/methods/<method_name>.R` and **must** export a `run` function with this signature:
 
@@ -176,6 +176,7 @@ choice <- menu(
 ```
 
 Key features:
+
 - Keyboard navigation with arrow keys and vim bindings (j/k)
 - Search/filter functionality with `/`
 - Multi-select support

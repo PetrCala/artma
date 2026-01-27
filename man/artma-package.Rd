@@ -2,7 +2,6 @@
 % Please edit documentation in R/artma_package.R
 \docType{package}
 \name{artma-package}
-\alias{artma}
 \alias{artma-package}
 \title{artma: Automatic Replication Tools for Meta-Analysis}
 \description{
