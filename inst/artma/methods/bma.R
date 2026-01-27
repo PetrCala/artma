@@ -378,9 +378,9 @@ bma <- function(df) {
   }
 
   if (length(results) == 1) {
-    results[[1]]
+    invisible(results[[1]])
   } else {
-    results
+    invisible(results)
   }
 }
 

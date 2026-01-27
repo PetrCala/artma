@@ -313,16 +313,67 @@ test_that("verify_variable_names provides clear error messages", {
 
   expect_error(
     verify_variable_names(df),
-    "All expected columns must exist"
+    "All expected non-computed columns must exist"
   )
 
   expect_error(
     verify_variable_names(df),
-    "Missing columns"
+    "Missing required columns"
   )
 
   expect_error(
     verify_variable_names(df),
     "Unexpected columns"
+  )
+})
+
+test_that("verify_variable_names allows computed columns to be missing", {
+  box::use(artma / data / preprocess[verify_variable_names])
+
+  df <- create_test_df()
+  # df does NOT have t_stat, study_size, reg_dof, precision (computed columns)
+
+  # Create config with both required and computed columns
+  config <- create_mock_data_config(c("study", "effect", "se", "n_obs", "t_stat", "study_size", "reg_dof", "precision"))
+
+  # Mark computed columns as computed
+  config[["t_stat"]]$is_computed <- TRUE
+  config[["study_size"]]$is_computed <- TRUE
+  config[["reg_dof"]]$is_computed <- TRUE
+  config[["precision"]]$is_computed <- TRUE
+
+  withr::local_options(list(
+    "artma.data.config" = config,
+    "artma.verbose" = 1
+  ))
+
+  # Should pass validation - computed columns are allowed to be missing
+  result <- verify_variable_names(df)
+
+  expect_equal(ncol(result), ncol(df))
+  expect_setequal(colnames(result), c("study", "effect", "se", "n_obs"))
+})
+
+test_that("verify_variable_names still requires non-computed columns", {
+  box::use(artma / data / preprocess[verify_variable_names])
+
+  df <- create_test_df()
+  df$se <- NULL # Remove required column
+
+  # Create config with both required and computed columns
+  config <- create_mock_data_config(c("study", "effect", "se", "n_obs", "t_stat"))
+
+  # Mark t_stat as computed
+  config[["t_stat"]]$is_computed <- TRUE
+
+  withr::local_options(list(
+    "artma.data.config" = config,
+    "artma.verbose" = 1
+  ))
+
+  # Should fail - se is required but missing
+  expect_error(
+    verify_variable_names(df),
+    "Missing required columns"
   )
 })

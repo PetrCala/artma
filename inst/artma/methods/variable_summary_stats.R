@@ -87,7 +87,7 @@ variable_summary_stats <- function(df) {
     cli::cli_alert_warning("Missing data for {.val {length(missing_data_vars)}} variables: {.val {missing_data_vars}}")
   }
 
-  df_out
+  invisible(df_out)
 }
 
 box::use(

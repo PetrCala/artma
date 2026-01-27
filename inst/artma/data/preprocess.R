@@ -192,8 +192,9 @@ remove_redundant_columns <- function(df) {
 }
 
 #' @title Verify variable names
-#' @description Verify that all expected columns exist in the data frame and no extra columns are present.
-#' Column order does not matter - only the presence of all expected columns and absence of unexpected ones.
+#' @description Verify that all expected non-computed columns exist in the data frame and no extra columns are present.
+#' Computed columns (marked with is_computed = TRUE in config) are allowed to be missing as they will be computed later.
+#' Column order does not matter - only the presence of all expected non-computed columns and absence of unexpected ones.
 #' @param df *\[data.frame\]* The data frame to verify variable names for
 #' @return *\[data.frame\]* The data frame (unchanged, validation only)
 #' @keywords internal
@@ -211,18 +212,35 @@ verify_variable_names <- function(df) {
   # Filter out NA values (edge case: config might have invalid entries)
   expected_varnames <- expected_varnames[!is.na(expected_varnames)]
 
+  # Identify computed columns (columns that will be computed later, not required in raw data)
+  computed_varnames <- character(0)
+  for (config_key in names(config)) {
+    config_entry <- config[[config_key]]
+    if (isTRUE(config_entry$is_computed)) {
+      var_name <- config_entry$var_name
+      if (!is.na(var_name)) {
+        computed_varnames <- c(computed_varnames, var_name)
+      }
+    }
+  }
+
+  # Only require non-computed columns to exist in the data
+  required_varnames <- setdiff(expected_varnames, computed_varnames)
+
   # Get actual column names
   varnames <- colnames(df)
 
-  # Verify exact match: all expected columns exist, no extra columns
-  if (!setequal(varnames, expected_varnames)) {
-    missing_from_data <- setdiff(expected_varnames, varnames)
-    extra_in_data <- setdiff(varnames, expected_varnames)
+  # Check for missing required (non-computed) columns
+  missing_from_data <- setdiff(required_varnames, varnames)
+  
+  # Check for unexpected extra columns (excluding computed columns that might be in config but not in data yet)
+  extra_in_data <- setdiff(varnames, expected_varnames)
 
+  if (length(missing_from_data) > 0 || length(extra_in_data) > 0) {
     cli::cli_abort(c(
       "x" = "Column name mismatch.",
-      "i" = "All expected columns must exist, and no extra columns are allowed.",
-      "i" = "Missing columns: {.val {missing_from_data}}",
+      "i" = "All expected non-computed columns must exist, and no extra columns are allowed.",
+      "i" = "Missing required columns: {.val {missing_from_data}}",
       "i" = "Unexpected columns: {.val {extra_in_data}}"
     ))
   }

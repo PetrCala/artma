@@ -298,7 +298,7 @@ effect_summary_stats <- function(df) {
     cli::cat_print(out)
   }
 
-  out
+  invisible(out)
 }
 
 box::use(

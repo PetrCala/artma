@@ -174,7 +174,7 @@ p_hacking_tests <- function(df) {
     }
   }
 
-  results
+  invisible(results)
 }
 
 box::use(
