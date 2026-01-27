@@ -97,6 +97,8 @@ box_plot <- function(df) {
     )
   }
 
+  # Add class for clean printing (print method defined in R/print.R)
+  class(result) <- c("artma_box_plot", class(result))
   invisible(result)
 }
 
@@ -128,7 +130,9 @@ resolve_factor_by <- function(df, config, factor_by_option) {
     return(NA_character_)
   }
 
-  if (should_prompt_user(required_level = 4) && length(candidates) > 1) {
+  # For box plots, "study" is almost always the right choice, so we only prompt
+  # at low autonomy levels (1-2). At medium and above, auto-select.
+  if (should_prompt_user(required_level = 3) && length(candidates) > 1) {
     box::use(artma / interactive / box_plot[prompt_factor_by_selection])
     return(prompt_factor_by_selection(df, config, candidates))
   }
@@ -144,6 +148,8 @@ resolve_factor_by <- function(df, config, factor_by_option) {
 #'
 #' @description
 #' Identifies variables that would be good candidates for grouping box plots.
+#' Prioritizes "study" as the default grouping variable since box plots in
+#' meta-analysis typically show effect distribution across studies.
 #'
 #' @param df *\[data.frame\]* The data frame
 #' @param config *\[list\]* Data configuration
@@ -151,12 +157,15 @@ resolve_factor_by <- function(df, config, factor_by_option) {
 #' @return *\[character\]* Vector of candidate variable names
 #' @keywords internal
 detect_factor_candidates <- function(df, config) {
-  reserved_names <- c(
-    "effect", "se", "t_stat", "study_id", "study", "study_size",
+
+  # For box plots, we want to INCLUDE study as a candidate (unlike other methods)
+  # but exclude numeric identifiers and computed columns
+  excluded_names <- c(
+    "effect", "se", "t_stat", "study_size",
     "n_obs", "sample_size", "dof", "reg_dof", "precision", "obs_id"
   )
 
-  var_names <- setdiff(names(df), reserved_names)
+  var_names <- setdiff(names(df), excluded_names)
 
   if (length(var_names) == 0) {
     return(character(0))
@@ -192,6 +201,15 @@ detect_factor_candidates <- function(df, config) {
     }
   }
 
+  # Prioritize "study" and "study_id" as the default grouping variables
+  # since box plots in meta-analysis typically show effect distribution across studies
+  study_vars <- intersect(c("study", "study_id"), candidates)
+  if (length(study_vars) > 0) {
+    other <- setdiff(candidates, study_vars)
+    candidates <- c(study_vars, other)
+  }
+
+  # Also prioritize variables marked in config
   if (!is.null(config)) {
     prioritized <- character(0)
     for (var in candidates) {

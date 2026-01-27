@@ -22,21 +22,42 @@ prompt_factor_by_selection <- function(df, config, candidates) {
 
   validate(is.data.frame(df), is.character(candidates), length(candidates) > 0)
 
-  if (!should_prompt_user(required_level = 4)) {
+  # Only prompt at low autonomy levels (1-2); study is almost always correct
+  if (!should_prompt_user(required_level = 3)) {
     return(candidates[1])
   }
 
   cli::cli_h2("Box Plot - Variable Selection")
-  cli::cli_text("Select a variable to group the box plots by.")
+  cli::cli_text(
+    "A box plot shows the distribution of effect sizes grouped by a categorical variable."
+  )
+  cli::cli_text(
+    "Each group will have its own box showing the median, quartiles, and outliers."
+  )
   cli::cat_line()
+  cli::cli_text("Select a variable to group the box plots by:")
+  cli::cat_line()
+
+  # Build display names, marking study/study_id as recommended
+  study_vars <- c("study", "study_id")
 
   display_names <- vapply(candidates, function(var) {
     n_unique <- length(unique(stats::na.omit(df[[var]])))
     verbose_name <- get_verbose_name(var, config)
-    if (verbose_name != var) {
-      sprintf("%s (%s) - %d groups", var, verbose_name, n_unique)
+
+    base_name <- if (verbose_name != var) {
+      sprintf("%s (%s)", var, verbose_name)
     } else {
-      sprintf("%s - %d groups", var, n_unique)
+      var
+    }
+
+    suffix <- sprintf(" - %d groups", n_unique)
+
+    # Mark study variables as recommended (they should be first in the list)
+    if (var %in% study_vars) {
+      paste0(base_name, suffix, " (Recommended)")
+    } else {
+      paste0(base_name, suffix)
     }
   }, character(1))
 
@@ -51,7 +72,15 @@ prompt_factor_by_selection <- function(df, config, candidates) {
     return(candidates[1])
   }
 
-  candidates[selected]
+  # climenu::select returns the selected value (display string), not the index
+  # Find which candidate corresponds to the selected display name
+  selected_idx <- which(display_names == selected)
+  if (length(selected_idx) == 0) {
+    cli::cli_alert_warning("Could not match selection. Using default: {.field {candidates[1]}}")
+    return(candidates[1])
+  }
+
+  candidates[selected_idx[1]]
 }
 
 

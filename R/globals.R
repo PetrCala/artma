@@ -51,6 +51,7 @@ utils::globalVariables(c(
   "prepare_data",
   "preprocess_data",
   "print_options_help_text",
+  "print.artma_box_plot",
   "print.cached_artifact",
   "replay_log",
   "read_data",
