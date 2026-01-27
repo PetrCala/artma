@@ -1,5 +1,6 @@
 PACKAGE_NAME <- "artma"
 PACKAGE_NAME_VERBOSE <- "Automatic Replication Tools for Meta-Analysis"
+RUN_URL <- "https://petrcala.r-universe.dev/"
 
 #' @export
 CONST <- list(
@@ -102,5 +103,11 @@ CONST <- list(
       "p_hacking_tests",
       "bma"
     )
+  ),
+  URLS = list(
+    BASE = RUN_URL,
+    PACKAGE_BASE = paste0(RUN_URL, "/", PACKAGE_NAME),
+    VIGNETTE_BASE = paste0(RUN_URL, "/articles/", PACKAGE_NAME),
+    PACKAGE_PDF = paste0(RUN_URL, "/", PACKAGE_NAME, "/", PACKAGE_NAME, ".pdf")
   )
 )

@@ -1,3 +1,23 @@
+#' @title Open URL in browser with error handling
+#' @description Helper function to open URLs and provide user feedback.
+#' @param url *\[character\]* URL to open.
+#' @param description *\[character\]* Description of what is being opened.
+#' @keywords internal
+open_url_in_browser <- function(url, description) {
+  cli::cli_inform("Opening {description} in your browser...")
+  tryCatch(
+    {
+      utils::browseURL(url)
+      cli::cli_alert_success("{description} opened in browser.")
+    },
+    error = function(e) {
+      cli::cli_alert_warning("Could not open browser: {e$message}")
+      cli::cli_inform("Please visit: {.url {url}}")
+    }
+  )
+  cli::cli_par()
+}
+
 #' @title Show welcome message for first-time users
 #' @description Displays an elegant welcome message introducing artma to new users.
 #' @keywords internal
@@ -47,16 +67,60 @@ show_welcome_message <- function() {
   }
 
   if (grepl("more information", choice, ignore.case = TRUE)) {
-    cli::cli_par()
-    cli::cli_inform(c(
-      "i" = "For detailed information, see:",
-      " " = "  {.code vignette('getting-started', package='artma')} - Quick start guide",
-      " " = "  {.code vignette('options-files', package='artma')} - Options files guide",
-      " " = "  {.code ?artma} - Function documentation"
-    ))
-    cli::cli_par()
-    cli::cli_text("Press Enter to continue...")
-    readline()
+    # Interactive menu loop for more information
+    repeat {
+      cli::cli_par()
+      cli::cli_h2("More Information")
+      cli::cli_par()
+
+      info_choices <- c(
+        "Open 'Getting Started' vignette",
+        "Open 'Options Files' vignette",
+        "View artma package help",
+        "Continue with analysis",
+        "Exit"
+      )
+
+      info_choice <- climenu::menu(
+        choices = info_choices,
+        prompt = "What would you like to do?"
+      )
+
+      if (is.null(info_choice)) {
+        # User cancelled - treat as exit
+        cli::cli_abort("Welcome cancelled by user.")
+      }
+
+      # Map menu choices to vignette names
+      vignette_map <- list(
+        "Getting Started" = "getting-started",
+        "Options Files" = "options-files"
+      )
+
+      # Check if it's a vignette choice
+      vignette_name <- NULL
+      for (key in names(vignette_map)) {
+        if (grepl(key, info_choice, fixed = TRUE)) {
+          vignette_name <- vignette_map[[key]]
+          break
+        }
+      }
+
+      if (!is.null(vignette_name)) {
+        vignette_url <- paste0(CONST$URLS$VIGNETTE_BASE, "/", vignette_name, ".html")
+        # Get the display name for the vignette
+        display_name <- names(vignette_map)[vignette_map == vignette_name]
+        open_url_in_browser(vignette_url, paste0("'", display_name, "' vignette"))
+      } else if (grepl("package help", info_choice, ignore.case = TRUE)) {
+        open_url_in_browser(CONST$URLS$PACKAGE_BASE, "artma package website")
+      } else if (grepl("Continue", info_choice, fixed = TRUE)) {
+        # Break out of loop and continue
+        break
+      } else if (grepl("Exit", info_choice, fixed = TRUE)) {
+        # Exit - abort the welcome
+        cli::cli_abort("Welcome cancelled by user.")
+      }
+    }
   }
 
   cli::cli_par()
