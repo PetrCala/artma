@@ -108,6 +108,7 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
   box::use(
     artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity],
+    artma / libs / core / autonomy[should_prompt_user],
     artma / data / column_recognition[
       get_required_column_names,
       get_column_patterns
@@ -129,6 +130,19 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
 
   # Track missing required columns
   missing_required <- setdiff(required_cols, names(auto_mapping))
+
+  if (!should_prompt_user(required_level = 4)) {
+    if (get_verbosity() >= 3) {
+      cli::cli_inform("Autonomy level is high - using auto-detected column mappings")
+    }
+    # If all required columns are present, return auto_mapping
+    if (length(missing_required) == 0) {
+      return(auto_mapping)
+    }
+    # If some required columns are missing, we still need to map them
+    # But we'll skip the interactive confirmation and just use auto-detection if possible
+    # For now, fall through to handle missing required columns
+  }
 
   # Track user's choice from the initial presentation
   user_choice <- NULL

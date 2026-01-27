@@ -15,7 +15,8 @@
 prompt_save_preference <- function(option_path, value, description = NULL) {
   box::use(
     artma / libs / core / utils[get_verbosity],
-    artma / libs / core / validation[validate]
+    artma / libs / core / validation[validate],
+    artma / libs / core / autonomy[should_prompt_user]
   )
 
   validate(
@@ -27,6 +28,13 @@ prompt_save_preference <- function(option_path, value, description = NULL) {
   if (!interactive()) {
     if (get_verbosity() >= 4) {
       cli::cli_inform("Non-interactive mode: preference not saved to file")
+    }
+    return(FALSE)
+  }
+
+  if (!should_prompt_user(required_level = 3)) {
+    if (get_verbosity() >= 4) {
+      cli::cli_inform("Autonomy level is high - preference not saved to file")
     }
     return(FALSE)
   }
@@ -157,7 +165,8 @@ save_to_options_file <- function(option_path, value) {
 prompt_save_variable_selection <- function(var_names, var_configs = NULL, description = NULL) {
   box::use(
     artma / libs / core / utils[get_verbosity],
-    artma / libs / core / validation[validate]
+    artma / libs / core / validation[validate],
+    artma / libs / core / autonomy[should_prompt_user]
   )
 
   validate(is.character(var_names))
@@ -173,6 +182,13 @@ prompt_save_variable_selection <- function(var_names, var_configs = NULL, descri
   if (!interactive()) {
     if (get_verbosity() >= 4) {
       cli::cli_inform("Non-interactive mode: variable selection not saved to file")
+    }
+    return(FALSE)
+  }
+
+  if (!should_prompt_user(required_level = 3)) {
+    if (get_verbosity() >= 4) {
+      cli::cli_inform("Autonomy level is high - variable selection not saved to file")
     }
     return(FALSE)
   }

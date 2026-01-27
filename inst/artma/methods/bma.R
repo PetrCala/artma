@@ -389,7 +389,29 @@ bma <- function(df) {
 #' @param config *\[list\]* The data config
 #' @return *\[character\]* Selected variable names
 prompt_bma_variable_selection <- function(df, config) {
-  box::use(artma / libs / core / utils[get_verbosity])
+  box::use(
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / core / autonomy[should_prompt_user],
+    artma / variable / bma[suggest_variables_for_bma]
+  )
+
+  if (!should_prompt_user(required_level = 4)) {
+    if (get_verbosity() >= 3) {
+      cli::cli_inform("Autonomy level is high - using automatic variable selection")
+    }
+    suggestions <- suggest_variables_for_bma(
+      df,
+      config = config,
+      min_obs_per_split = 5,
+      min_variance_ratio = 0.01,
+      exclude_reference = TRUE
+    )
+    suggested_vars <- suggestions[suggestions$suggested, ]
+    if (nrow(suggested_vars) > 0) {
+      return(suggested_vars$var_name)
+    }
+    return(character(0))
+  }
 
   # First, prompt for selection mode
   selection_mode <- prompt_bma_variable_selection_mode()
@@ -402,7 +424,14 @@ prompt_bma_variable_selection <- function(df, config) {
 #' Prompt for manual or auto variable selection mode
 #' @return *\[character\]* Either "manual" or "auto"
 prompt_bma_variable_selection_mode <- function() {
-  box::use(artma / const[CONST])
+  box::use(
+    artma / const[CONST],
+    artma / libs / core / autonomy[should_prompt_user]
+  )
+
+  if (!should_prompt_user(required_level = 4)) {
+    return("auto")
+  }
 
   choices <- c(
     "Automatic detection (recommended)" = "auto",
@@ -518,6 +547,13 @@ auto_select_bma_variables <- function(df, config) {
   cli::cli_text("• Consider enabling VIF optimization to handle multicollinearity")
   cli::cat_line()
 
+  box::use(artma / libs / core / autonomy[should_prompt_user])
+  if (!should_prompt_user(required_level = 4)) {
+    var_names <- suggested_vars$var_name
+    cli::cli_alert_success("Using {length(var_names)} suggested moderator{?s} (autonomy level: high)")
+    return(var_names)
+  }
+
   # Confirm suggestions
   confirm_choices <- c(
     "Yes, use these variables" = "yes",
@@ -568,8 +604,16 @@ auto_select_bma_variables <- function(df, config) {
 manual_select_bma_variables <- function(df, config) {
   box::use(
     artma / const[CONST],
-    artma / libs / core / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / core / autonomy[should_prompt_user]
   )
+
+  if (!should_prompt_user(required_level = 4)) {
+    if (get_verbosity() >= 3) {
+      cli::cli_inform("Autonomy level is high - skipping manual variable selection")
+    }
+    return(character(0))
+  }
 
   cli::cli_h1("BMA Variable Selection")
   cli::cat_line()

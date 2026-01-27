@@ -8,7 +8,7 @@ Source exports live in `R/`, while modular implementation code is grouped under 
   - `libs/core/` — Fundamental utilities (validation, utils, string, number, file)
   - `libs/infrastructure/` — System-level functionality (cache, debug, polyfills)
   - `libs/formatting/` — Result formatting (results)
-- **`inst/artma/interactive/`** — Interactive UI components (ask, editor, save_preference, effect_summary_stats, welcome)
+- **`inst/artma/interactive/`** — Interactive UI components (ask, editor, save_preference, effect_summary_stats, welcome). These components respect the autonomy system (`inst/artma/libs/core/autonomy.R`) which controls user interaction levels.
 - **`inst/artma/variable/`** — Variable analysis and suggestion (detection, suggestion, bma)
 - **`inst/artma/econometric/`** — Econometric calculation helpers (bma, linear, nonlinear, exogeneity, p_hacking)
 - **`inst/artma/methods/`** — Runtime methods (the core analytical functions)

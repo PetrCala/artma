@@ -215,6 +215,59 @@ if (get_verbosity() >= 3) {
 }
 ```
 
+### Autonomy System
+
+The autonomy system controls how much user interaction is required during analysis. It provides 5 levels of autonomy:
+
+| Level | Name | Description |
+|-------|------|-------------|
+| 1 | Minimal | Maximum user control - prompt for all optional decisions |
+| 2 | Low | Frequent prompts - ask for most non-critical decisions |
+| 3 | Medium | Balanced - prompt for important decisions only |
+| 4 | High | Mostly autonomous - minimal prompts for critical decisions only (default for interactive mode) |
+| 5 | Full | Fully autonomous - no prompts, use all defaults and auto-detection (default for non-interactive mode) |
+
+**Core Mechanism**: The `should_prompt_user(required_level)` function determines whether to prompt based on current autonomy level. If current level < required_level, prompt; otherwise use defaults.
+
+**Usage in Code**:
+
+```r
+box::use(artma / libs / core / autonomy[should_prompt_user])
+
+# Before prompting for variable selection
+if (!should_prompt_user(required_level = 4)) {
+  # Use automatic selection with defaults
+  return(auto_select_variables(df, config))
+}
+
+# Show interactive menu
+selected <- climenu::select(...)
+```
+
+**Required Level Guidelines**:
+
+- `required_level=2`: Non-critical options, preferences
+- `required_level=3`: Save preferences, overwrite confirmations
+- `required_level=4`: Variable selection, method selection, column mapping
+- `required_level=5`: Critical decisions (rarely used, would never prompt)
+
+**Non-Interactive Mode**: In non-interactive mode (e.g., R scripts, batch jobs), level 5 is always enforced regardless of the setting, as user prompts are not possible.
+
+**Setting Autonomy Level**:
+
+```r
+# Get current level
+artma::autonomy.get()
+
+# Set level
+artma::autonomy.set(4)
+
+# Check if fully autonomous
+artma::autonomy.is_full()
+```
+
+The autonomy level is stored in the options file under `general.autonomy.level` and is automatically loaded when options are loaded via `options.load()`.
+
 ## Code Style
 
 - **Formatting**: Use `styler::style_pkg()` before committing

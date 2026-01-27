@@ -5,6 +5,11 @@
 #' @param should_overwrite *\[logical, optional\]* Whether to overwrite without asking. If TRUE, will overwrite without prompting. If FALSE, will abort without prompting. If NULL (default), will prompt interactively.
 #' @return *\[logical\]* TRUE if overwrite is permitted, FALSE otherwise
 ask_for_overwrite_permission <- function(file_path, action_name = "the operation", should_overwrite = NULL) {
+  box::use(
+    artma / libs / core / autonomy[should_prompt_user],
+    artma / libs / core / utils[get_verbosity]
+  )
+
   if (file.exists(file_path)) {
     if (!is.null(should_overwrite)) {
       if (!should_overwrite) {
@@ -15,6 +20,13 @@ ask_for_overwrite_permission <- function(file_path, action_name = "the operation
 
     if (!interactive()) {
       cli::cli_abort("Cannot prompt for overwrite permission in non-interactive mode.")
+    }
+
+    if (!should_prompt_user(required_level = 3)) {
+      if (get_verbosity() >= 3) {
+        cli::cli_alert_info("Autonomy level is high - aborting to avoid overwriting existing file.")
+      }
+      cli::cli_abort(sprintf("Aborting %s.", action_name))
     }
 
     overwrite_permitted <- climenu::select(

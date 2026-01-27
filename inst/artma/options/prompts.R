@@ -94,7 +94,59 @@ prompt_na_handling <- function(opt, ...) {
   selected_value
 }
 
+prompt_autonomy_level <- function(opt, ...) {
+  box::use(
+    artma / const[CONST],
+    artma / libs / core / autonomy[get_autonomy_levels, get_default_autonomy_level]
+  )
+
+  levels <- get_autonomy_levels()
+  default_level <- get_default_autonomy_level()
+
+  cli::cli_h1("Autonomy Level")
+  cli::cli_text("Autonomy controls how much user interaction is required during analysis.")
+  cli::cli_text("Higher levels mean less user interaction and more automatic decision-making.")
+  cli::cat_line()
+
+  # Create a named vector where names are display text and values are the level numbers
+  choices <- stats::setNames(
+    as.integer(names(levels)), # Values: 1, 2, 3, 4, 5
+    vapply(
+      names(levels),
+      function(lvl) {
+        level_def <- levels[[lvl]]
+        sprintf(
+          "Level %s - %s: %s",
+          lvl,
+          level_def$name,
+          level_def$description
+        )
+      },
+      character(1)
+    )
+  )
+
+  selected <- climenu::select(
+    choices = names(choices), # Display the descriptive text
+    prompt = "Select your preferred autonomy level",
+    selected = default_level # Default is index 4
+  )
+
+  if (rlang::is_empty(selected)) {
+    cli::cli_alert_info("No selection made. Using default: {CONST$STYLES$OPTIONS$VALUE(default_level)}")
+    return(default_level)
+  }
+
+  # Get the actual level value from the selected index
+  selected_value <- choices[selected][[1]]
+  cli::cli_alert_success("Selected autonomy level: {CONST$STYLES$OPTIONS$VALUE(selected_value)}")
+  cli::cat_line()
+
+  selected_value
+}
+
 box::export(
+  prompt_autonomy_level,
   prompt_data_config,
   prompt_winsorization_level,
   prompt_na_handling

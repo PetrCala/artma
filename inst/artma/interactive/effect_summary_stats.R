@@ -20,13 +20,42 @@
 prompt_effect_summary_var_selection <- function(df, config) {
   box::use(
     artma / libs / core / utils[get_verbosity],
-    artma / libs / core / validation[validate]
+    artma / libs / core / validation[validate],
+    artma / libs / core / autonomy[should_prompt_user],
+    artma / variable / suggestion[suggest_variables_for_effect_summary]
   )
 
   validate(
     is.data.frame(df),
     is.list(config)
   )
+
+  if (!should_prompt_user(required_level = 4)) {
+    if (get_verbosity() >= 3) {
+      cli::cli_inform("Autonomy level is high - using automatic variable selection")
+    }
+    suggestions <- suggest_variables_for_effect_summary(
+      df,
+      config = config,
+      min_obs_per_split = 5,
+      min_variance_ratio = 0.01,
+      exclude_reference = TRUE
+    )
+    suggested_vars <- suggestions[suggestions$suggested, ]
+    if (nrow(suggested_vars) > 0) {
+      var_configs <- list()
+      for (i in seq_len(nrow(suggested_vars))) {
+        var <- suggested_vars[i, ]
+        var_configs[[var$var_name]] <- list(
+          var_name = var$var_name,
+          split_method = var$split_method,
+          split_value = var$split_value
+        )
+      }
+      return(update_config_with_selections(config, var_configs))
+    }
+    return(config)
+  }
 
   if (get_verbosity() >= 3) {
     cli::cli_h1("Effect Summary Statistics - Variable Selection")
@@ -71,7 +100,14 @@ prompt_effect_summary_var_selection <- function(df, config) {
 #'
 #' @keywords internal
 prompt_selection_mode <- function() {
-  box::use(artma / const[CONST])
+  box::use(
+    artma / const[CONST],
+    artma / libs / core / autonomy[should_prompt_user]
+  )
+
+  if (!should_prompt_user(required_level = 4)) {
+    return("auto")
+  }
 
   choices <- c(
     "Automatic suggestion (recommended)" = "auto",
@@ -203,6 +239,21 @@ auto_select_effect_summary_vars <- function(df, config) {
   }
   cli::cat_line()
 
+  box::use(artma / libs / core / autonomy[should_prompt_user])
+  if (!should_prompt_user(required_level = 4)) {
+    var_configs <- list()
+    for (i in seq_len(nrow(suggested_vars))) {
+      var <- suggested_vars[i, ]
+      var_configs[[var$var_name]] <- list(
+        var_name = var$var_name,
+        split_method = var$split_method,
+        split_value = var$split_value
+      )
+    }
+    cli::cli_alert_success("Using {length(var_configs)} suggested variable{?s} (autonomy level: high)")
+    return(var_configs)
+  }
+
   # Confirm suggestions
   confirm_choices <- c("Yes, use these suggestions" = "yes", "No, manual selection" = "no")
   confirmation <- climenu::select(
@@ -257,7 +308,17 @@ auto_select_effect_summary_vars <- function(df, config) {
 #'
 #' @keywords internal
 manual_select_effect_summary_vars <- function(df, config) {
-  box::use(artma / libs / core / utils[get_verbosity])
+  box::use(
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / core / autonomy[should_prompt_user]
+  )
+
+  if (!should_prompt_user(required_level = 4)) {
+    if (get_verbosity() >= 3) {
+      cli::cli_inform("Autonomy level is high - skipping manual variable selection")
+    }
+    return(list())
+  }
 
   cli::cli_h2("Manual Variable Selection")
   cli::cat_line()
