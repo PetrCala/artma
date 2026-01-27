@@ -42,7 +42,13 @@ See `.make-help.md` for a quick reference guide.
 The package uses the `box` package for Python-style module imports. Implementation code lives in `inst/artma/` and is organized into:
 
 - `inst/artma/methods/` — Runtime methods (the core analytical functions)
-- `inst/artma/libs/` — Shared utilities (validation, caching, string manipulation, etc.)
+- `inst/artma/libs/` — Shared utilities organized by category:
+  - `libs/core/` — Fundamental utilities (validation, utils, string, number, file)
+  - `libs/infrastructure/` — System-level functionality (cache, debug, polyfills)
+  - `libs/formatting/` — Result formatting (results)
+- `inst/artma/interactive/` — Interactive UI components (ask, editor, save_preference, effect_summary_stats, welcome)
+- `inst/artma/variable/` — Variable analysis and suggestion (detection, suggestion, bma)
+- `inst/artma/econometric/` — Econometric calculation helpers (bma, linear, nonlinear, exogeneity, p_hacking)
 - `inst/artma/data/` — Data pipeline (read, preprocess, compute)
 - `inst/artma/options/` — Options system and templates
 - `inst/artma/data_config/` — Data configuration handling
@@ -54,8 +60,12 @@ Import modules using:
 
 ```r
 box::use(
-  artma / libs / validation[validate, assert],
-  artma / data / index[prepare_data]
+  artma / libs / core / validation[validate, assert],
+  artma / libs / core / utils[get_verbosity],
+  artma / data / index[prepare_data],
+  artma / econometric / bma[get_bma_formula, run_bma],
+  artma / interactive / ask[ask_for_overwrite_permission],
+  artma / variable / suggestion[suggest_variables_for_effect_summary]
 )
 ```
 
@@ -116,7 +126,7 @@ Template structure for each option node:
 Use `cache_cli()` to memoize expensive functions while preserving CLI output:
 
 ```r
-box::use(artma / libs / cache[cache_cli, cache_cli_runner])
+box::use(artma / libs / infrastructure / cache[cache_cli, cache_cli_runner])
 
 run_models <- cache_cli(
   .run_models_impl,
@@ -153,7 +163,7 @@ The main entry point is `prepare_data()` from `artma/data/index.R`.
 Use custom validation helpers instead of base R stopifnot:
 
 ```r
-box::use(artma / libs / validation[validate, assert])
+box::use(artma / libs / core / validation[validate, assert])
 
 validate(is.numeric(x), length(x) > 0, is.function(fn))
 # Validates conditions; prints verbose messages for type checks
@@ -198,6 +208,8 @@ Control output verbosity via `options(artma.verbose = <level>)`:
 Check verbosity in code:
 
 ```r
+box::use(artma / libs / core / utils[get_verbosity])
+
 if (get_verbosity() >= 3) {
   cli::cli_inform("Processing data...")
 }
