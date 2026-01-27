@@ -16,6 +16,54 @@ box::use(
   artma / libs / core / validation[validate, assert]
 )
 
+# Robust variance-covariance matrix helper ---------------------------------
+
+#' @title Get robust variance-covariance matrix with fallbacks
+#' @description
+#' Computes robust variance-covariance matrix using multiple fallback strategies
+#' to avoid numerical instability warnings. Tries clustered standard errors first,
+#' then falls back to non-clustered robust standard errors, and finally to standard
+#' variance-covariance matrix.
+#' @param model *[model object]* Regression model (e.g., from AER::ivreg).
+#' @param cluster *[vector]* Clustering variable (e.g., study_id).
+#' @return *[matrix]* Variance-covariance matrix.
+get_robust_vcov <- function(model, cluster) {
+  validate(!is.null(model), !is.null(cluster))
+
+  # Try vcovCL with HC1 (clustered, most stable)
+  vcov_result <- tryCatch(
+    suppressWarnings(sandwich::vcovCL(model, cluster = cluster, type = "HC1")),
+    error = function(e) NULL
+  )
+
+  if (!is.null(vcov_result)) {
+    return(vcov_result)
+  }
+
+  # Fall back to vcovHC with HC1 (non-clustered, stable)
+  vcov_result <- tryCatch(
+    suppressWarnings(sandwich::vcovHC(model, type = "HC1")),
+    error = function(e) NULL
+  )
+
+  if (!is.null(vcov_result)) {
+    return(vcov_result)
+  }
+
+  # Fall back to vcovHC with HC0 (less stable but more robust)
+  vcov_result <- tryCatch(
+    suppressWarnings(sandwich::vcovHC(model, type = "HC0")),
+    error = function(e) NULL
+  )
+
+  if (!is.null(vcov_result)) {
+    return(vcov_result)
+  }
+
+  # Last resort: standard vcov
+  stats::vcov(model)
+}
+
 # IV regression utilities --------------------------------------------------
 
 #' @title Identify best instrument for IV regression
@@ -62,7 +110,7 @@ find_best_instrument <- function(df, instruments, instruments_verbose) {
     }
 
     model_summary <- tryCatch(
-      summary(model, vcov = sandwich::vcovHC(model, cluster = df$study_id), diagnostics = TRUE),
+      summary(model, vcov = get_robust_vcov(model, df$study_id), diagnostics = TRUE),
       error = function(e) NULL
     )
 
@@ -154,7 +202,7 @@ run_iv_regression <- function(df, iv_instrument = "automatic", add_significance_
   df$instr_temp <- best_instrument_values
   iv_formula <- stats::as.formula("effect ~ se | instr_temp")
   model <- AER::ivreg(formula = iv_formula, data = df)
-  model_summary <- summary(model, vcov = sandwich::vcovHC(model, cluster = df$study_id), diagnostics = TRUE)
+  model_summary <- summary(model, vcov = get_robust_vcov(model, df$study_id), diagnostics = TRUE)
 
   # Extract Anderson-Rubin F-statistic
   fstat <- tryCatch({
