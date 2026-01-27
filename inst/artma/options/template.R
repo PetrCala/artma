@@ -164,7 +164,9 @@ prompt_user_for_option_value <- function(opt) {
     cli::cli_text("{.strong Default}: {CONST$STYLES$OPTIONS$DEFAULT(opt$default)}")
   }
 
-  if (!is.null(opt$help)) print_options_help_text(opt$help)
+  if (!is.null(opt$help) && !isTRUE(opt$suppress_help_in_prompt)) {
+    print_options_help_text(opt$help)
+  }
 
   prompt_type <- if (is.null(opt$prompt)) CONST$OPTIONS$DEFAULT_PROMPT_TYPE else opt$prompt
 

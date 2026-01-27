@@ -12,6 +12,7 @@ general:
       confirm_default: true
       prompt: "function"
       prompt_function: "prompt_autonomy_level"
+      suppress_help_in_prompt: true
       help: |
         The autonomy level controls how much user interaction is required during analysis.
         Higher levels mean less user interaction and more automatic decision-making.
@@ -38,6 +39,7 @@ data:
     allow_na: true
     prompt: "function"
     prompt_function: "prompt_na_handling"
+    suppress_help_in_prompt: true
     help: |
       How to handle missing values:
         {cli::symbol$bullet} {.strong stop}: Abort if any missing values are found (safest, default)
@@ -144,6 +146,7 @@ data:
     confirm_default: true
     prompt: "function"
     prompt_function: "prompt_winsorization_level"
+    suppress_help_in_prompt: true
     help: |
       Winsorization level for effect and standard error variables.
       Values will be capped at the specified quantile from both tails.
