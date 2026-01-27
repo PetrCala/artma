@@ -8,7 +8,7 @@ test <- function() {
     artma / paths[PATHS],
     artma / testing / mocks / mock_df[create_mock_df],
     artma / data_config / parse[parse_df_into_data_config],
-    artma / libs / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity]
   )
 
   # mock_df_path <- PATHS$FILE_MOCKS_TMP_DATA
