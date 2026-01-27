@@ -287,6 +287,67 @@ methods:
         Estimation method for p-uniform*.
         Use {.strong ML} for maximum likelihood or {.strong P} for method of moments.
 
+  box_plot:
+    factor_by:
+      type: "character"
+      allow_na: true
+      default: .na
+      help: |
+        Column name to group the box plots by.
+        If not specified, the system will auto-detect suitable categorical variables
+        or prompt for selection in interactive mode.
+
+    max_boxes:
+      type: "integer"
+      default: 60
+      help: |
+        Maximum number of boxes to display in a single plot.
+        When the number of unique factor values exceeds this threshold,
+        the data will be split across multiple plots.
+
+    theme:
+      type: "enum: blue|yellow|green|red|purple"
+      default: "blue"
+      help: |
+        Color theme for the box plot:
+          {cli::symbol$bullet} {.strong blue}: Default blue theme
+          {cli::symbol$bullet} {.strong yellow}: Yellow/gold theme
+          {cli::symbol$bullet} {.strong green}: Green theme
+          {cli::symbol$bullet} {.strong red}: Red theme
+          {cli::symbol$bullet} {.strong purple}: Purple theme
+
+    show_mean_line:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, display a horizontal line at the overall mean effect value.
+
+    effect_label:
+      type: "character"
+      default: "effect"
+      help: |
+        Verbose label for the effect axis (e.g., "Effect of Price Elasticity").
+
+    export_graphics:
+      type: "logical"
+      default: false
+      help: |
+        If `TRUE`, export box plots to PNG files.
+
+    export_path:
+      type: "character"
+      default: "./results/graphic"
+      help: |
+        Directory path for exporting box plot graphics.
+        Only used if export_graphics is `TRUE`.
+
+    graph_scale:
+      type: "numeric"
+      default: 2
+      help: |
+        Scaling factor for exported graphics.
+        Values > 1 increase resolution; values < 1 decrease it.
+
   bma:
     burn:
       type: "integer"

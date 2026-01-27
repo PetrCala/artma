@@ -97,6 +97,7 @@ CONST <- list(
     EXECUTION_ORDER = c(
       "variable_summary_stats",
       "effect_summary_stats",
+      "box_plot",
       "linear_tests",
       "nonlinear_tests",
       "exogeneity_tests",
