@@ -139,7 +139,7 @@ artma <- function(
       cli::cli_alert_success("Analysis complete.")
     }
 
-    results
+    invisible(results)
   }
 
   runtime_setup( # nolint: box_usage_linter. # Imported on a package-level
