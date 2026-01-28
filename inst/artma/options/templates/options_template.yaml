@@ -31,6 +31,7 @@ data:
   source_path:
     type: "character"
     prompt: "file"
+    prompt_hint: "or type {.emph {'mock'}} to generate mock data"
     help: "Full path to your dataset source"
 
   na_handling:

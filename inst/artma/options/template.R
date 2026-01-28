@@ -187,17 +187,23 @@ prompt_user_for_option_value <- function(opt) {
     return(prompt_function(opt = opt))
   }
 
-  base_msg <- cli::format_inline("Enter a value for {.strong {opt$name}}")
-  choose_msg <- switch(prompt_type,
-    "file" = cli::format_inline(" (or type in {.emph {'choose'}} to select a file interactively, or {.emph {'mock'}} to generate mock data)"),
-    "directory" = cli::format_inline(" (or type in {.emph {'choose'}} to select a directory interactively)"),
-    "readline" = "",
+  hints <- switch(prompt_type,
+    "file" = cli::format_inline("type in {.emph {'choose'}} or press {.code <Enter>} to select a file interactively"),
+    "directory" = cli::format_inline("type in {.emph {'choose'}} or press {.code <Enter>} to select a directory interactively"),
+    "readline" = character(0),
     cli::cli_abort(cli::format_inline("Invalid prompt type {.emph {prompt_type}}."))
   )
-  default_msg <- if (!is.null(opt$default)) cli::format_inline(" (or press {.code <Enter>} to accept default: {.strong {opt$default}})") else ""
-  input_val <- readline(prompt = cli::format_inline("{base_msg}{choose_msg}{default_msg}: "))
+  if (!is.null(opt$prompt_hint)) {
+    hints <- c(hints, cli::format_inline(opt$prompt_hint))
+  }
+  if (!is.null(opt$default)) {
+    hints <- c(hints, cli::format_inline("press {.code <Enter>} to accept default: {.strong {opt$default}}"))
+  }
 
-  if (input_val == "choose") {
+  hint_msg <- if (length(hints)) paste0(" (or ", paste(hints, collapse = ", "), ")") else ""
+  input_val <- readline(prompt = cli::format_inline("Enter a value for {.strong {opt$name}}{hint_msg}: "))
+
+  if (input_val == "choose" || is.na(input_val)) {
     input_val <- switch(prompt_type,
       file = tcltk::tk_choose.files(default = "", caption = "Select file", multi = FALSE),
       directory = tcltk::tk_choose.dir(default = getwd(), caption = "Select directory"),
