@@ -174,11 +174,15 @@ handle_na_interpolate <- function(df) {
 
 
 #' @title Handle missing values with MICE
-#' @description Use Multiple Imputation by Chained Equations to fill missing values. Works on all numeric columns (both required and optional).
+#' @description Use Multiple Imputation by Chained Equations to fill missing values.
+#' Includes automatic detection and exclusion of problematic columns (dummy groups,
+#' near-zero variance, high-NA) to prevent singularity errors.
 #' @param df *\[data.frame\]* The data frame to process
 #' @return *\[data.frame\]* The data frame with imputed values
 #' @keywords internal
 handle_na_mice <- function(df) {
+  box::use(artma / variable / detection[detect_dummy_groups])
+
   if (!requireNamespace("mice", quietly = TRUE)) {
     cli::cli_abort(c(
       "x" = "The {.pkg mice} package is required for multiple imputation",
@@ -186,7 +190,8 @@ handle_na_mice <- function(df) {
     ))
   }
 
-  # Only impute numeric columns that have missing values
+  # Identify numeric columns with missing values
+
   cols_with_na <- colnames(df)[vapply(colnames(df), function(x) {
     is.numeric(df[[x]]) && any(is.na(df[[x]]))
   }, logical(1))]
@@ -199,23 +204,149 @@ handle_na_mice <- function(df) {
     cli::cli_alert_info("Running MICE imputation for {.val {length(cols_with_na)}} column{?s}...")
   }
 
-  # Create a subset with all columns (MICE can handle non-numeric columns as predictors)
-  df_subset <- df[, colnames(df), drop = FALSE]
+  # --- Pre-MICE validation: detect problematic columns ---
 
-  # Run MICE (suppress output unless verbosity is high)
-  mice_obj <- if (get_verbosity() >= 4) {
-    mice::mice(df_subset, m = 1, method = "pmm", printFlag = TRUE)
-  } else {
-    suppressWarnings(suppressMessages(
-      mice::mice(df_subset, m = 1, method = "pmm", printFlag = FALSE)
-    ))
+  df_for_mice <- df
+  excluded_cols <- character(0)
+  dummy_groups <- data.frame()
+
+  # 1. Detect dummy groups (e.g., gender_male/gender_female) - exclude non-reference
+
+  dummy_groups <- detect_dummy_groups(colnames(df), df)
+  if (nrow(dummy_groups) > 0) {
+    non_ref_dummies <- dummy_groups$var_name[!dummy_groups$is_reference]
+    if (length(non_ref_dummies) > 0) {
+      excluded_cols <- c(excluded_cols, non_ref_dummies)
+      if (get_verbosity() >= 3) {
+        cli::cli_alert_info(
+          "Excluding {length(non_ref_dummies)} dummy variable{?s} from MICE predictors: {.val {non_ref_dummies}}"
+        )
+      }
+    }
   }
 
-  # Extract the completed dataset
-  df_imputed <- mice::complete(mice_obj, 1)
+  # 2. Detect near-zero variance columns (can't predict, cause singularity)
+  numeric_cols <- colnames(df)[vapply(df, is.numeric, logical(1))]
+  near_zero_var <- vapply(numeric_cols, function(col) {
+    vals <- df[[col]][!is.na(df[[col]])]
+    if (length(vals) < 2) return(TRUE)
+    stats::var(vals) < 1e-10
+  }, logical(1))
+  zero_var_cols <- numeric_cols[near_zero_var]
+  if (length(zero_var_cols) > 0) {
+    excluded_cols <- c(excluded_cols, zero_var_cols)
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_info(
+        "Excluding {length(zero_var_cols)} near-zero variance column{?s} from MICE: {.val {zero_var_cols}}"
+      )
+    }
+  }
 
-  # Replace only the imputed columns in the original data frame
-  df[, cols_with_na] <- df_imputed[, cols_with_na]
+  # 3. Detect high-NA columns (>80% missing) - impute separately with median
+  high_na_threshold <- 0.8
+  high_na_cols <- vapply(cols_with_na, function(col) {
+    mean(is.na(df[[col]])) > high_na_threshold
+  }, logical(1))
+  high_na_col_names <- cols_with_na[high_na_cols]
+  if (length(high_na_col_names) > 0) {
+    excluded_cols <- c(excluded_cols, high_na_col_names)
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_info(
+        "Excluding {length(high_na_col_names)} high-NA column{?s} (>{high_na_threshold * 100}% missing) from MICE: {.val {high_na_col_names}}"
+      )
+    }
+    # Pre-impute high-NA columns with median
+    for (col in high_na_col_names) {
+      col_median <- stats::median(df[[col]], na.rm = TRUE)
+      if (!is.na(col_median)) {
+        df[[col]][is.na(df[[col]])] <- col_median
+      }
+    }
+  }
+
+  # Remove excluded columns from MICE predictor set
+  excluded_cols <- unique(excluded_cols)
+  keep_cols <- setdiff(colnames(df), excluded_cols)
+  df_for_mice <- df[, keep_cols, drop = FALSE]
+
+  # Update cols_with_na to exclude already-handled columns
+  cols_to_impute <- setdiff(cols_with_na, c(high_na_col_names, excluded_cols))
+  cols_to_impute <- intersect(cols_to_impute, keep_cols)
+
+  if (length(cols_to_impute) == 0) {
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_success("All missing values handled via pre-processing (no MICE needed)")
+    }
+    return(df)
+  }
+
+  # --- Run MICE with tryCatch for graceful fallback ---
+
+  run_mice <- function() {
+    mice::mice(df_for_mice, m = 1, method = "pmm", ridge = 1e-4, printFlag = get_verbosity() >= 4)
+  }
+
+  mice_obj <- tryCatch(
+    {
+      if (get_verbosity() >= 4) run_mice() else suppressWarnings(suppressMessages(run_mice()))
+    },
+    error = function(e) {
+      if (grepl("singular", e$message, ignore.case = TRUE)) {
+        if (get_verbosity() >= 2) {
+          cli::cli_alert_warning(
+            "MICE imputation failed due to collinearity. Falling back to median imputation."
+          )
+        }
+        return(NULL)
+      }
+      stop(e)
+    }
+  )
+
+  # Fallback to median if MICE failed
+  if (is.null(mice_obj)) {
+    return(handle_na_median(df))
+  }
+
+  # Extract completed dataset and update original
+  df_imputed <- mice::complete(mice_obj, 1)
+  imputed_cols <- intersect(cols_to_impute, colnames(df_imputed))
+  df[, imputed_cols] <- df_imputed[, imputed_cols]
+
+  # Check for columns MICE skipped (still have NAs) - fall back to median
+  still_na_cols <- imputed_cols[vapply(imputed_cols, function(col) any(is.na(df[[col]])), logical(1))]
+  if (length(still_na_cols) > 0) {
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_info(
+        "MICE skipped {length(still_na_cols)} column{?s} (likely due to collinearity), using median: {.val {still_na_cols}}"
+      )
+    }
+    for (col in still_na_cols) {
+      col_median <- stats::median(df[[col]], na.rm = TRUE)
+      if (!is.na(col_median)) {
+        df[[col]][is.na(df[[col]])] <- col_median
+      }
+    }
+  }
+
+  # --- Post-imputation: reconstruct dummy complements ---
+
+  if (nrow(dummy_groups) > 0) {
+    for (gid in unique(dummy_groups$group_id)) {
+      group <- dummy_groups[dummy_groups$group_id == gid, ]
+      ref_var <- group$var_name[group$is_reference]
+      non_ref_vars <- group$var_name[!group$is_reference]
+
+      # For binary dummy groups (2 vars), non-ref = 1 - ref
+      if (length(group$var_name) == 2 && length(non_ref_vars) == 1 && length(ref_var) == 1) {
+        if (ref_var %in% colnames(df) && non_ref_vars %in% colnames(df)) {
+          # Only fill NAs in non-ref where ref was imputed
+          na_mask <- is.na(df[[non_ref_vars]])
+          df[[non_ref_vars]][na_mask] <- 1 - df[[ref_var]][na_mask]
+        }
+      }
+    }
+  }
 
   if (get_verbosity() >= 3) {
     cli::cli_alert_success("MICE imputation completed successfully")
