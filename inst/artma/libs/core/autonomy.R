@@ -45,11 +45,8 @@ get_autonomy_levels <- function() {
 get_autonomy_level <- function() {
   box::use(artma / const[CONST])
 
-  # Option path matches options template: general.autonomy.level
-  level <- getOption(
-    paste0(CONST$PACKAGE_NAME, ".general.autonomy.level"),
-    default = NULL
-  )
+  opt_name <- paste0(CONST$PACKAGE_NAME, ".autonomy.level")
+  level <- getOption(opt_name, default = NULL)
 
   # In non-interactive mode, default to level 5 if not set
   if (is.null(level) && !interactive()) {
@@ -83,8 +80,7 @@ set_autonomy_level <- function(level) {
   )
 
   level <- as.integer(level)
-  # Option path matches options template: general.autonomy.level
-  opt_name <- paste0(CONST$PACKAGE_NAME, ".general.autonomy.level")
+  opt_name <- paste0(CONST$PACKAGE_NAME, ".autonomy.level")
   options(stats::setNames(list(level), opt_name))
 
   invisible(NULL)

@@ -240,7 +240,7 @@ verify_variable_names <- function(df) {
     cli::cli_abort(c(
       "x" = "Column name mismatch.",
       "i" = "All expected non-computed columns must exist, and no extra columns are allowed.",
-      "i" = "Missing required columns: {.val {missing_from_data}}",
+      "i" = "Missing columns: {.val {missing_from_data}}",
       "i" = "Unexpected columns: {.val {extra_in_data}}"
     ))
   }
