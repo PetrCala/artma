@@ -288,7 +288,8 @@ auto_select_effect_summary_vars <- function(df, config) {
   prompt_save_variable_selection(
     var_names = names(var_configs),
     var_configs = var_configs,
-    description = "effect summary variables"
+    description = "effect summary variables",
+    respect_autonomy = FALSE
   )
 
   var_configs

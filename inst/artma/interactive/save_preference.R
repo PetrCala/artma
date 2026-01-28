@@ -10,9 +10,10 @@
 #' @param value *\[any\]* The value to save
 #' @param description *\[character, optional\]* Short description of what's being saved
 #'   (e.g., "missing value handling strategy", "selected variables")
+#' @param respect_autonomy *\[logical\]* If TRUE, only prompt when autonomy allows it.
 #' @return *\[logical\]* TRUE if successfully saved, FALSE otherwise
 #' @export
-prompt_save_preference <- function(option_path, value, description = NULL) {
+prompt_save_preference <- function(option_path, value, description = NULL, respect_autonomy = TRUE) {
   box::use(
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[validate],
@@ -21,7 +22,9 @@ prompt_save_preference <- function(option_path, value, description = NULL) {
 
   validate(
     is.character(option_path),
-    length(option_path) == 1
+    length(option_path) == 1,
+    is.logical(respect_autonomy),
+    length(respect_autonomy) == 1
   )
 
   # Only prompt in interactive mode
@@ -32,7 +35,7 @@ prompt_save_preference <- function(option_path, value, description = NULL) {
     return(FALSE)
   }
 
-  if (!should_prompt_user(required_level = 3)) {
+  if (respect_autonomy && !should_prompt_user(required_level = 3)) {
     if (get_verbosity() >= 4) {
       cli::cli_inform("Autonomy level is high - preference not saved to file")
     }
@@ -160,16 +163,21 @@ save_to_options_file <- function(option_path, value) {
 #' @param var_names *\[character\]* Vector of variable names
 #' @param var_configs *\[list\]* Named list of variable configurations (optional)
 #' @param description *\[character, optional\]* Description of the variables
+#' @param respect_autonomy *\[logical\]* If TRUE, only prompt when autonomy allows it.
 #' @return *\[logical\]* TRUE if successfully saved, FALSE otherwise
 #' @export
-prompt_save_variable_selection <- function(var_names, var_configs = NULL, description = NULL) {
+prompt_save_variable_selection <- function(var_names, var_configs = NULL, description = NULL, respect_autonomy = TRUE) {
   box::use(
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[validate],
     artma / libs / core / autonomy[should_prompt_user]
   )
 
-  validate(is.character(var_names))
+  validate(
+    is.character(var_names),
+    is.logical(respect_autonomy),
+    length(respect_autonomy) == 1
+  )
 
   if (length(var_names) == 0) {
     if (get_verbosity() >= 4) {
@@ -186,7 +194,7 @@ prompt_save_variable_selection <- function(var_names, var_configs = NULL, descri
     return(FALSE)
   }
 
-  if (!should_prompt_user(required_level = 3)) {
+  if (respect_autonomy && !should_prompt_user(required_level = 3)) {
     if (get_verbosity() >= 4) {
       cli::cli_inform("Autonomy level is high - variable selection not saved to file")
     }

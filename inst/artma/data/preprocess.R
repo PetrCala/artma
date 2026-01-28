@@ -334,7 +334,8 @@ handle_missing_values_with_prompt <- function(df) {
       prompt_save_preference(
         option_path = "data.na_handling",
         value = selected_strategy,
-        description = "missing value handling strategy"
+        description = "missing value handling strategy",
+        respect_autonomy = FALSE
       )
     } else {
       # Non-interactive mode: default to "stop"

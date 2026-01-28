@@ -590,7 +590,8 @@ auto_select_bma_variables <- function(df, config) {
   prompt_save_variable_selection(
     var_names = var_names,
     var_configs = var_configs,
-    description = "BMA moderator variables"
+    description = "BMA moderator variables",
+    respect_autonomy = FALSE
   )
 
   # Return just the variable names (BMA doesn't need split specifications)
