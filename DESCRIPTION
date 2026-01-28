@@ -21,6 +21,8 @@ Depends:
 Imports:
     cli (>= 3.6.5),
     climenu (== 0.1.2),
+    ggplot2 (>= 3.4.0),
+    ggtext (>= 0.1.2),
     lintr (>= 3.2.0),
     lmtest (>= 0.9-40),
     memoise (>= 2.0.1),

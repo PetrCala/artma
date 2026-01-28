@@ -8,8 +8,10 @@
 #' Constructs a consistent ggplot2 theme based on the selected color theme.
 #' Used across all artma visualization methods for visual consistency.
 #'
+#' Uses ggtext::element_markdown() for x-axis text to support per-tick coloring
+#' via HTML spans in tick labels.
+#'
 #' @param theme_name *\[character\]* One of: blue, yellow, green, red, purple
-#' @param x_axis_tick_text *\[character\]* Color for x-axis tick text. Defaults to "black".
 #'
 #' @return A ggplot2 theme object
 #'
@@ -20,7 +22,7 @@
 #'   geom_point() +
 #'   get_theme("blue")
 #' }
-get_theme <- function(theme_name, x_axis_tick_text = "black") {
+get_theme <- function(theme_name) {
   box::use(artma / visualization / colors[validate_theme, get_background])
 
   validate_theme(theme_name)
@@ -28,7 +30,7 @@ get_theme <- function(theme_name, x_axis_tick_text = "black") {
 
   ggplot2::theme(
     axis.line = ggplot2::element_line(color = "black", linewidth = 0.5, linetype = "solid"),
-    axis.text.x = ggplot2::element_text(color = x_axis_tick_text, size = 12),
+    axis.text.x = ggtext::element_markdown(size = 12),
     axis.text.y = ggplot2::element_text(color = "black", size = 12),
     axis.title.x = ggplot2::element_text(size = 14),
     axis.title.y = ggplot2::element_text(size = 14),

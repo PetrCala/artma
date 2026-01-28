@@ -310,7 +310,7 @@ create_funnel_plot <- function(df, tick_info, theme_name, precision_to_log, use_
 
   point_color <- get_colors(theme_name, "funnel_plot")
   vline_color <- get_vline_color(theme_name)
-  plot_theme <- get_theme(theme_name, x_axis_tick_text = tick_info$tick_colors)
+  plot_theme <- get_theme(theme_name)
 
   plot_df <- df
   if (precision_to_log) {
@@ -331,6 +331,11 @@ create_funnel_plot <- function(df, tick_info, theme_name, precision_to_log, use_
 
   mean_effect <- tick_info$mean_effect
 
+  tick_labels <- format_colored_tick_labels(
+    tick_info$ticks,
+    tick_info$tick_colors
+  )
+
   p <- ggplot2::ggplot(
     data = plot_df,
     ggplot2::aes(x = .data$effect, y = .data$precision)
@@ -348,7 +353,7 @@ create_funnel_plot <- function(df, tick_info, theme_name, precision_to_log, use_
     ) +
     ggplot2::scale_x_continuous(
       breaks = tick_info$ticks,
-      labels = format_tick_labels
+      labels = tick_labels
     ) +
     plot_theme
 
@@ -374,6 +379,28 @@ format_tick_labels <- function(x) {
       format(round(val, 2), nsmall = 0, trim = TRUE)
     }
   })
+}
+
+
+#' Format tick labels with HTML color spans
+#'
+#' @description
+#' Wraps tick labels in HTML span elements with color styling for use with
+#' ggtext::element_markdown(). This enables per-tick coloring (e.g., highlighting
+#' the mean tick in a different color).
+#'
+#' @param ticks *\[numeric\]* Tick values
+#' @param colors *\[character\]* Color for each tick (same length as ticks)
+#'
+#' @return *\[character\]* HTML-formatted labels
+#' @keywords internal
+format_colored_tick_labels <- function(ticks, colors) {
+  labels <- format_tick_labels(ticks)
+
+  mapply(function(label, color) {
+    if (is.na(label)) return(NA_character_)
+    sprintf("<span style='color:%s'>%s</span>", color, label)
+  }, labels, colors, USE.NAMES = FALSE)
 }
 
 
