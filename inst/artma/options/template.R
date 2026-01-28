@@ -203,7 +203,7 @@ prompt_user_for_option_value <- function(opt) {
   hint_msg <- if (length(hints)) paste0(" (or ", paste(hints, collapse = ", "), ")") else ""
   input_val <- readline(prompt = cli::format_inline("Enter a value for {.strong {opt$name}}{hint_msg}: "))
 
-  if (input_val == "choose" || is.na(input_val)) {
+  if (input_val == "choose" || is.na(input_val) || (!nzchar(input_val) && prompt_type %in% c("file", "directory"))) {
     input_val <- switch(prompt_type,
       file = tcltk::tk_choose.files(default = "", caption = "Select file", multi = FALSE),
       directory = tcltk::tk_choose.dir(default = getwd(), caption = "Select directory"),
