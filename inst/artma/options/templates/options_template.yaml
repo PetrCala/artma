@@ -349,6 +349,77 @@ methods:
         Scaling factor for exported graphics.
         Values > 1 increase resolution; values < 1 decrease it.
 
+  funnel_plot:
+    effect_proximity:
+      type: "numeric"
+      default: 0.2
+      help: |
+        Outlier filtering threshold for effect values.
+        Values outside (mean +/- max_effect * effect_proximity) combined with
+        high precision are considered outliers. Range: 0 to 1.
+        Set to 1 to disable effect-based outlier filtering.
+
+    maximum_precision:
+      type: "numeric"
+      default: 0.2
+      help: |
+        Outlier filtering threshold for precision.
+        Only observations with precision >= (max_precision * maximum_precision)
+        are candidates for outlier removal. Range: 0 to 1.
+        Set to 1 to disable precision-based outlier filtering.
+
+    precision_to_log:
+      type: "logical"
+      default: false
+      help: |
+        If `TRUE`, apply log transformation to precision values on the y-axis.
+        Useful when precision values span several orders of magnitude.
+
+    use_study_medians:
+      type: "logical"
+      default: false
+      help: |
+        If `TRUE`, plot the median effect per study instead of all observations.
+        Reduces visual clutter when studies contribute many estimates.
+
+    add_zero:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, always include zero in the x-axis ticks when it falls
+        within the data range. Useful as a reference point.
+
+    theme:
+      type: "enum: blue|yellow|green|red|purple"
+      default: "blue"
+      help: |
+        Color theme for the funnel plot:
+          {cli::symbol$bullet} {.strong blue}: Default blue theme
+          {cli::symbol$bullet} {.strong yellow}: Yellow/gold theme
+          {cli::symbol$bullet} {.strong green}: Green theme
+          {cli::symbol$bullet} {.strong red}: Red theme
+          {cli::symbol$bullet} {.strong purple}: Purple theme
+
+    export_graphics:
+      type: "logical"
+      default: false
+      help: |
+        If `TRUE`, export funnel plot to a PNG file.
+
+    export_path:
+      type: "character"
+      default: "./results/graphic"
+      help: |
+        Directory path for exporting funnel plot graphics.
+        Only used if export_graphics is `TRUE`.
+
+    graph_scale:
+      type: "numeric"
+      default: 2
+      help: |
+        Scaling factor for exported graphics.
+        Values > 1 increase resolution; values < 1 decrease it.
+
   bma:
     burn:
       type: "integer"

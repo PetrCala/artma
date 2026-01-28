@@ -15,3 +15,21 @@ print.artma_box_plot <- function(x, ...) {
 
   invisible(x)
 }
+
+
+#' Print method for funnel_plot results
+#'
+#' @param x An artma_funnel_plot object
+#' @param ... Additional arguments (ignored)
+#' @return x invisibly
+#' @export
+print.artma_funnel_plot <- function(x, ...) {
+  median_info <- if (x$used_study_medians) " (study medians)" else ""
+
+  cli::cli_text(
+    "<funnel_plot result: {x$n_points} points{median_info}, {x$n_outliers_removed} outliers removed>"
+  )
+  cli::cli_text("Access plot via {.code $plot}")
+
+  invisible(x)
+}
