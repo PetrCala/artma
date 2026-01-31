@@ -182,5 +182,3 @@ test_that("funnel_plot returns empty result when all data filtered", {
   expect_null(result$plot)
   expect_equal(result$n_points, 0)
 })
-
-
