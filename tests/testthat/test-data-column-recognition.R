@@ -24,7 +24,7 @@ test_that("get_column_patterns returns valid structure", {
   expect_true(length(patterns) > 0)
 
   # Check required columns are present
-  required <- c("study", "effect", "se", "n_obs")
+  required <- c("study_id", "effect", "se", "n_obs")
   for (col in required) {
     expect_true(col %in% names(patterns))
     expect_true("patterns" %in% names(patterns[[col]]))
@@ -78,11 +78,11 @@ test_that("match_column_name recognizes exact se column", {
 })
 
 
-test_that("match_column_name recognizes study_name as study", {
+test_that("match_column_name recognizes study_name as study_id", {
   patterns <- get_column_patterns()
   result <- match_column_name("study_name", patterns)
 
-  expect_equal(result$match, "study")
+  expect_equal(result$match, "study_id")
   expect_equal(result$score, 1.0)
   expect_equal(result$method, "regex")
 })
@@ -127,9 +127,9 @@ test_that("match_column_name recognizes t_stat variants", {
 test_that("match_column_name handles exclude keywords correctly", {
   patterns <- get_column_patterns()
 
-  # "study_id" should not match "study" because "id" is in exclude_keywords
+  # "study_id" should match study_id pattern
   result <- match_column_name("study_id", patterns)
-  expect_equal(result$match, "study_id") # Should match study_id, not study
+  expect_equal(result$match, "study_id")
 })
 
 
@@ -171,7 +171,7 @@ test_that("recognize_columns correctly identifies standard meta-analysis columns
 
   mapping <- recognize_columns(df, min_confidence = 0.7)
 
-  expect_equal(mapping$study, "study_name")
+  expect_equal(mapping$study_id, "study_name")
   expect_equal(mapping$effect, "effect")
   expect_equal(mapping$se, "se")
   expect_equal(mapping$n_obs, "n_obs")
@@ -188,7 +188,7 @@ test_that("recognize_columns handles different naming conventions", {
 
   mapping <- recognize_columns(df, min_confidence = 0.7)
 
-  expect_equal(mapping$study, "author_name")
+  expect_equal(mapping$study_id, "author_name")
   expect_equal(mapping$effect, "estimate")
   expect_equal(mapping$se, "std_error")
   expect_equal(mapping$n_obs, "sample_size")
@@ -197,7 +197,7 @@ test_that("recognize_columns handles different naming conventions", {
 
 test_that("recognize_columns prioritizes required columns", {
   df <- data.frame(
-    study = c("A", "B"),
+    study_id = c(1L, 2L),
     study_name = c("Study A", "Study B"),
     effect = c(10.5, 8.2),
     se = c(2.3, 1.8),
@@ -206,9 +206,9 @@ test_that("recognize_columns prioritizes required columns", {
 
   mapping <- recognize_columns(df, min_confidence = 0.7)
 
-  # Should prefer "study_name" over "study" based on pattern specificity
-  expect_true("study" %in% names(mapping))
-  expect_false(mapping$study == "study_name" && mapping$study == "study")
+  # study_id should be mapped (to study_id or study_name)
+  expect_true("study_id" %in% names(mapping))
+  expect_true(mapping$study_id %in% c("study_id", "study_name"))
 })
 
 
@@ -217,7 +217,7 @@ test_that("recognize_columns does not reuse columns", {
     effect = c(10.5, 8.2),
     se = c(2.3, 1.8),
     n_obs = c(100, 150),
-    study = c("A", "B")
+    study_id = c(1L, 2L)
   )
 
   mapping <- recognize_columns(df, min_confidence = 0.7)
@@ -233,7 +233,7 @@ test_that("recognize_columns respects min_confidence threshold", {
     something_vaguely_like_effect = c(10.5, 8.2),
     maybe_error_ish = c(2.3, 1.8),
     n_obs = c(100, 150),
-    study = c("A", "B")
+    study_id = c(1L, 2L)
   )
 
   # With high threshold, should only match clear cases
@@ -241,7 +241,7 @@ test_that("recognize_columns respects min_confidence threshold", {
 
   # Should recognize the clear ones
   expect_equal(mapping_strict$n_obs, "n_obs")
-  expect_equal(mapping_strict$study, "study")
+  expect_equal(mapping_strict$study_id, "study_id")
 })
 
 
@@ -278,7 +278,7 @@ test_that("get_required_column_names returns expected columns", {
 
   expect_true(is.character(required))
   expect_true(length(required) >= 4)
-  expect_true("study" %in% required)
+  expect_true("study_id" %in% required)
   expect_true("effect" %in% required)
   expect_true("se" %in% required)
   expect_true("n_obs" %in% required)
@@ -287,7 +287,7 @@ test_that("get_required_column_names returns expected columns", {
 
 test_that("check_mapping_completeness identifies complete mapping", {
   mapping <- list(
-    study = "study_name",
+    study_id = "study_name",
     effect = "effect",
     se = "se",
     n_obs = "n_obs"
@@ -302,7 +302,7 @@ test_that("check_mapping_completeness identifies complete mapping", {
 
 test_that("check_mapping_completeness identifies missing required columns", {
   mapping <- list(
-    study = "study_name",
+    study_id = "study_name",
     effect = "effect"
     # Missing se and n_obs
   )
@@ -342,14 +342,13 @@ test_that("recognize_columns with realistic meta-analysis data", {
   withr::local_options(list("artma.verbose" = 1))
   mapping <- recognize_columns(df, min_confidence = 0.7)
 
-  # Verify key columns are recognized
-  expect_equal(mapping$study, "study_name")
+  # Verify key columns are recognized; study_id maps to one of the study columns
+  expect_true(mapping$study_id %in% c("study_id", "study_name"))
   expect_equal(mapping$effect, "effect")
   expect_equal(mapping$se, "se")
   # n_obs could be matched to either "obs_n" or "n_obs" - both are valid patterns
   expect_true(mapping$n_obs %in% c("n_obs", "obs_n"))
   expect_equal(mapping$t_stat, "t_stat")
-  expect_equal(mapping$study_id, "study_id")
 
   # Verify no false positives for obs_id
   if ("obs_id" %in% names(mapping)) {
@@ -371,6 +370,6 @@ test_that("column recognition handles case insensitivity", {
 
   expect_equal(mapping$effect, "EFFECT")
   expect_equal(mapping$se, "SE")
-  expect_equal(mapping$study, "Study")
+  expect_equal(mapping$study_id, "Study")
   expect_equal(mapping$n_obs, "N_OBS")
 })

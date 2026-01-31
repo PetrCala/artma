@@ -46,7 +46,7 @@ create_mock_data_config <- function(colnames) {
 # Helper to create a simple test dataframe
 create_test_df <- function() {
   data.frame(
-    study = c("A", "B", "C"),
+    study_id = c(1L, 2L, 3L),
     effect = c(1.0, 2.0, 3.0),
     se = c(0.1, 0.2, 0.3),
     n_obs = c(100, 200, 300),
@@ -62,7 +62,7 @@ test_that("remove_redundant_columns removes empty columns", {
   df$another_empty <- rep(NA, nrow(df))
 
   # Create config with only the original columns
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs"))
+  config <- create_mock_data_config(c("study_id", "effect", "se", "n_obs"))
 
   withr::local_options(list(
     "artma.data.config" = config,
@@ -74,7 +74,7 @@ test_that("remove_redundant_columns removes empty columns", {
 
   expect_false("empty_col" %in% colnames(result))
   expect_false("another_empty" %in% colnames(result))
-  expect_true("study" %in% colnames(result))
+  expect_true("study_id" %in% colnames(result))
   expect_true("effect" %in% colnames(result))
 })
 
@@ -85,7 +85,7 @@ test_that("remove_redundant_columns removes columns with data when strategy is '
   df$extra_col <- c(10, 20, 30)
 
   # Create config without extra_col
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs"))
+  config <- create_mock_data_config(c("study_id", "effect", "se", "n_obs"))
 
   withr::local_options(list(
     "artma.data.config" = config,
@@ -96,7 +96,7 @@ test_that("remove_redundant_columns removes columns with data when strategy is '
   result <- remove_redundant_columns(df)
 
   expect_false("extra_col" %in% colnames(result))
-  expect_true("study" %in% colnames(result))
+  expect_true("study_id" %in% colnames(result))
 })
 
 test_that("remove_redundant_columns aborts when strategy is 'abort'", {
@@ -106,7 +106,7 @@ test_that("remove_redundant_columns aborts when strategy is 'abort'", {
   df$extra_col <- c(10, 20, 30)
 
   # Create config without extra_col
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs"))
+  config <- create_mock_data_config(c("study_id", "effect", "se", "n_obs"))
 
   withr::local_options(list(
     "artma.data.config" = config,
@@ -126,7 +126,7 @@ test_that("remove_redundant_columns handles no redundant columns", {
   df <- create_test_df()
 
   # Create config with all columns
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs"))
+  config <- create_mock_data_config(c("study_id", "effect", "se", "n_obs"))
 
   withr::local_options(list(
     "artma.data.config" = config,
@@ -145,15 +145,15 @@ test_that("remove_redundant_columns uses name-based comparison, not position", {
   # Create df with columns in different order than config
   df <- data.frame(
     extra_col = c(1, 2, 3),
-    study = c("A", "B", "C"),
+    study_id = c(1L, 2L, 3L),
     effect = c(1.0, 2.0, 3.0),
     se = c(0.1, 0.2, 0.3),
     n_obs = c(100, 200, 300),
     stringsAsFactors = FALSE
   )
 
-  # Config expects study, effect, se, n_obs (no extra_col)
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs"))
+  # Config expects study_id, effect, se, n_obs (no extra_col)
+  config <- create_mock_data_config(c("study_id", "effect", "se", "n_obs"))
 
   withr::local_options(list(
     "artma.data.config" = config,
@@ -165,7 +165,7 @@ test_that("remove_redundant_columns uses name-based comparison, not position", {
 
   # Should remove extra_col even though it's first, not last
   expect_false("extra_col" %in% colnames(result))
-  expect_true("study" %in% colnames(result))
+  expect_true("study_id" %in% colnames(result))
   expect_true("effect" %in% colnames(result))
 })
 
@@ -177,7 +177,7 @@ test_that("remove_redundant_columns handles make.names standardization", {
 
   # Config uses make.names version in var_name, but comparison is done after make.names
   # So "Column With Spaces" should match "Column.With.Spaces" from config
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs", "Column.With.Spaces"))
+  config <- create_mock_data_config(c("study_id", "effect", "se", "n_obs", "Column.With.Spaces"))
 
   withr::local_options(list(
     "artma.data.config" = config,
@@ -199,12 +199,12 @@ test_that("verify_variable_names accepts columns in any order", {
     n_obs = c(100, 200, 300),
     se = c(0.1, 0.2, 0.3),
     effect = c(1.0, 2.0, 3.0),
-    study = c("A", "B", "C"),
+    study_id = c(1L, 2L, 3L),
     stringsAsFactors = FALSE
   )
 
-  # Config expects study, effect, se, n_obs (different order)
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs"))
+  # Config expects study_id, effect, se, n_obs (different order)
+  config <- create_mock_data_config(c("study_id", "effect", "se", "n_obs"))
 
   withr::local_options(list(
     "artma.data.config" = config,
@@ -215,7 +215,7 @@ test_that("verify_variable_names accepts columns in any order", {
   result <- verify_variable_names(df)
 
   expect_equal(ncol(result), ncol(df))
-  expect_setequal(colnames(result), c("study", "effect", "se", "n_obs"))
+  expect_setequal(colnames(result), c("study_id", "effect", "se", "n_obs"))
 })
 
 test_that("verify_variable_names catches missing columns", {
@@ -225,7 +225,7 @@ test_that("verify_variable_names catches missing columns", {
   # Remove one column
   df$se <- NULL
 
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs"))
+  config <- create_mock_data_config(c("study_id", "effect", "se", "n_obs"))
 
   withr::local_options(list(
     "artma.data.config" = config,
@@ -244,7 +244,7 @@ test_that("verify_variable_names catches extra columns", {
   df <- create_test_df()
   df$extra_col <- c(1, 2, 3)
 
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs"))
+  config <- create_mock_data_config(c("study_id", "effect", "se", "n_obs"))
 
   withr::local_options(list(
     "artma.data.config" = config,
@@ -263,7 +263,7 @@ test_that("verify_variable_names filters out NA values from config", {
   df <- create_test_df()
 
   # Create config with NA value
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs"))
+  config <- create_mock_data_config(c("study_id", "effect", "se", "n_obs"))
   # Add an entry with NA var_name
   config[["invalid"]] <- list(
     var_name = NA,
@@ -294,7 +294,7 @@ test_that("verify_variable_names filters out NA values from config", {
   result <- verify_variable_names(df)
 
   expect_equal(ncol(result), ncol(df))
-  expect_setequal(colnames(result), c("study", "effect", "se", "n_obs"))
+  expect_setequal(colnames(result), c("study_id", "effect", "se", "n_obs"))
 })
 
 test_that("verify_variable_names provides clear error messages", {
@@ -304,7 +304,7 @@ test_that("verify_variable_names provides clear error messages", {
   df$extra_col <- c(1, 2, 3)
   df$se <- NULL # Remove required column
 
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs"))
+  config <- create_mock_data_config(c("study_id", "effect", "se", "n_obs"))
 
   withr::local_options(list(
     "artma.data.config" = config,
@@ -334,7 +334,7 @@ test_that("verify_variable_names allows computed columns to be missing", {
   # df does NOT have t_stat, study_size, reg_dof, precision (computed columns)
 
   # Create config with both required and computed columns
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs", "t_stat", "study_size", "reg_dof", "precision"))
+  config <- create_mock_data_config(c("study_id", "effect", "se", "n_obs", "t_stat", "study_size", "reg_dof", "precision"))
 
   # Mark computed columns as computed
   config[["t_stat"]]$is_computed <- TRUE
@@ -351,7 +351,7 @@ test_that("verify_variable_names allows computed columns to be missing", {
   result <- verify_variable_names(df)
 
   expect_equal(ncol(result), ncol(df))
-  expect_setequal(colnames(result), c("study", "effect", "se", "n_obs"))
+  expect_setequal(colnames(result), c("study_id", "effect", "se", "n_obs"))
 })
 
 test_that("verify_variable_names still requires non-computed columns", {
@@ -361,7 +361,7 @@ test_that("verify_variable_names still requires non-computed columns", {
   df$se <- NULL # Remove required column
 
   # Create config with both required and computed columns
-  config <- create_mock_data_config(c("study", "effect", "se", "n_obs", "t_stat"))
+  config <- create_mock_data_config(c("study_id", "effect", "se", "n_obs", "t_stat"))
 
   # Mark t_stat as computed
   config[["t_stat"]]$is_computed <- TRUE

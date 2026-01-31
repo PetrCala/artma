@@ -65,17 +65,10 @@ data:
       standardize: true
       help: "Column containing observation IDs"
 
-    study:
-      type: "character"
-      standardize: true
-      help: "Column containing study names"
-
     study_id:
       type: "character"
-      allow_na: true
-      default: .na
       standardize: true
-      help: "Column containing study IDs"
+      help: "Column containing study identifiers (names or IDs)"
 
     effect:
       type: "character"

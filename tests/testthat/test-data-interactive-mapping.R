@@ -20,13 +20,13 @@ expect_no_error <- getFromNamespace("expect_no_error", "testthat")
 
 test_that("confirm_column_mapping returns mapping unchanged", {
   mapping <- list(
-    study = "study_name",
+    study_id = "study_name",
     effect = "effect",
     se = "se",
     n_obs = "n_obs"
   )
 
-  required_cols <- c("study", "effect", "se", "n_obs")
+  required_cols <- c("study_id", "effect", "se", "n_obs")
 
   withr::local_options(list("artma.verbose" = 1))
   result <- confirm_column_mapping(mapping, required_cols)
@@ -37,7 +37,7 @@ test_that("confirm_column_mapping returns mapping unchanged", {
 
 test_that("confirm_column_mapping handles empty mapping", {
   mapping <- list()
-  required_cols <- c("study", "effect", "se", "n_obs")
+  required_cols <- c("study_id", "effect", "se", "n_obs")
 
   withr::local_options(list("artma.verbose" = 1))
   result <- confirm_column_mapping(mapping, required_cols)
@@ -48,11 +48,11 @@ test_that("confirm_column_mapping handles empty mapping", {
 
 test_that("confirm_column_mapping handles partial mapping", {
   mapping <- list(
-    study = "study_name",
+    study_id = "study_name",
     effect = "effect"
   )
 
-  required_cols <- c("study", "effect", "se", "n_obs")
+  required_cols <- c("study_id", "effect", "se", "n_obs")
 
   withr::local_options(list("artma.verbose" = 1))
   result <- confirm_column_mapping(mapping, required_cols)
@@ -63,14 +63,14 @@ test_that("confirm_column_mapping handles partial mapping", {
 
 test_that("save_column_mapping_to_options sets session options correctly", {
   mapping <- list(
-    study = "study_name",
+    study_id = "study_name",
     effect = "effect_size",
     se = "std_error"
   )
 
   withr::local_options(list(
     "artma.verbose" = 1,
-    "artma.data.colnames.study" = NULL,
+    "artma.data.colnames.study_id" = NULL,
     "artma.data.colnames.effect" = NULL,
     "artma.data.colnames.se" = NULL
   ))
@@ -79,7 +79,7 @@ test_that("save_column_mapping_to_options sets session options correctly", {
   save_column_mapping_to_options(mapping, options_file_name = NULL)
 
   # Check that options were set
-  expect_equal(getOption("artma.data.colnames.study"), "study_name")
+  expect_equal(getOption("artma.data.colnames.study_id"), "study_name")
   expect_equal(getOption("artma.data.colnames.effect"), "effect_size")
   expect_equal(getOption("artma.data.colnames.se"), "std_error")
 })
@@ -98,43 +98,43 @@ test_that("save_column_mapping_to_options handles empty mapping", {
 
 test_that("save_column_mapping_to_options handles multiple columns", {
   mapping <- list(
-    study = "study_name",
+    study_id = "study_name",
     effect = "effect",
     se = "se",
     n_obs = "n_obs",
     t_stat = "t_statistic",
-    study_id = "sid"
+    obs_id = "sid"
   )
 
   withr::local_options(list(
     "artma.verbose" = 1,
-    "artma.data.colnames.study" = NULL,
+    "artma.data.colnames.study_id" = NULL,
     "artma.data.colnames.effect" = NULL,
     "artma.data.colnames.se" = NULL,
     "artma.data.colnames.n_obs" = NULL,
     "artma.data.colnames.t_stat" = NULL,
-    "artma.data.colnames.study_id" = NULL
+    "artma.data.colnames.obs_id" = NULL
   ))
 
   save_column_mapping_to_options(mapping, options_file_name = NULL)
 
   # Verify all were set
-  expect_equal(getOption("artma.data.colnames.study"), "study_name")
+  expect_equal(getOption("artma.data.colnames.study_id"), "study_name")
   expect_equal(getOption("artma.data.colnames.effect"), "effect")
   expect_equal(getOption("artma.data.colnames.se"), "se")
   expect_equal(getOption("artma.data.colnames.n_obs"), "n_obs")
   expect_equal(getOption("artma.data.colnames.t_stat"), "t_statistic")
-  expect_equal(getOption("artma.data.colnames.study_id"), "sid")
+  expect_equal(getOption("artma.data.colnames.obs_id"), "sid")
 })
 
 
 test_that("confirm_column_mapping works with verbose output", {
   mapping <- list(
-    study = "study_name",
+    study_id = "study_name",
     effect = "effect"
   )
 
-  required_cols <- c("study", "effect", "se", "n_obs")
+  required_cols <- c("study_id", "effect", "se", "n_obs")
 
   withr::local_options(list("artma.verbose" = 4))
 
@@ -147,12 +147,12 @@ test_that("confirm_column_mapping works with verbose output", {
 
 test_that("save_column_mapping_to_options works with verbose output", {
   mapping <- list(
-    study = "study_name"
+    study_id = "study_name"
   )
 
   withr::local_options(list(
     "artma.verbose" = 4,
-    "artma.data.colnames.study" = NULL
+    "artma.data.colnames.study_id" = NULL
   ))
 
   expect_no_error(
@@ -163,7 +163,7 @@ test_that("save_column_mapping_to_options works with verbose output", {
 
 test_that("format_mapping_display correctly separates required and optional", {
   mapping <- list(
-    study = "study_name",
+    study_id = "study_name",
     effect = "effect_size",
     se = "se",
     n_obs = "n_obs",
@@ -189,7 +189,7 @@ test_that("format_mapping_display correctly separates required and optional", {
 
 test_that("format_mapping_display handles empty optional columns", {
   mapping <- list(
-    study = "study_name",
+    study_id = "study_name",
     effect = "effect_size",
     se = "se",
     n_obs = "n_obs"

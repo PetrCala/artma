@@ -3,19 +3,6 @@
 #' @return *\[list\]* Named list of regex patterns and keywords for each standard column
 get_column_patterns <- function() {
   list(
-    study = list(
-      patterns = c(
-        "^study[_\\.]?name$",
-        "^study$",
-        "^author[_\\.]?name$",
-        "^paper$",
-        "^publication$",
-        "^source$"
-      ),
-      keywords = c("study", "name", "author", "paper", "publication"),
-      exclude_keywords = c("id", "size"),
-      priority = 1
-    ),
     effect = list(
       patterns = c(
         "^effect[_\\.]?(size)?$",
@@ -79,11 +66,17 @@ get_column_patterns <- function() {
       patterns = c(
         "^study[_\\.]?id$",
         "^studyid$",
-        "^sid$"
+        "^sid$",
+        "^study[_\\.]?name$",
+        "^study$",
+        "^author[_\\.]?name$",
+        "^paper$",
+        "^publication$",
+        "^source$"
       ),
-      keywords = c("studyid"),
-      exclude_keywords = c("name", "size"),
-      priority = 3
+      keywords = c("study", "studyid", "name", "author", "paper", "publication"),
+      exclude_keywords = c("size"),
+      priority = 1
     ),
     obs_id = list(
       patterns = c(
@@ -524,7 +517,7 @@ recognize_columns <- function(df, min_confidence = 0.7) {
 #' @description Returns the list of required column names for artma to function
 #' @return *\[character\]* Vector of required column names
 get_required_column_names <- function() {
-  c("study", "effect", "se", "n_obs")
+  c("study_id", "effect", "se", "n_obs")
 }
 
 

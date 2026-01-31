@@ -109,17 +109,17 @@ test_that("standardize_column_names standardizes non-standard column names", {
   non_standard_name <- make.names("non-standard-study-column-name")
   mock_colnames <- MOCKS$create_mock_options_colnames(
     colnames = list(
-      "study" = non_standard_name
+      "study_id" = non_standard_name
     )
   )
   FIXTURES$with_custom_colnames(mock_colnames)
   mock_df <- MOCKS$create_mock_df(colnames_map = mock_colnames)
   expect_true(non_standard_name %in% colnames(mock_df))
-  expect_true(!"study" %in% colnames(mock_df))
+  expect_true(!"study_id" %in% colnames(mock_df))
 
   standardized_df <- standardize_column_names(mock_df, auto_detect = FALSE)
   expect_true(!non_standard_name %in% colnames(standardized_df))
-  expect_true("study" %in% colnames(standardized_df))
+  expect_true("study_id" %in% colnames(standardized_df))
 })
 
 test_that("standardize_column_names passes when all required columns are present", {

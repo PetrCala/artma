@@ -54,7 +54,7 @@ prompt_na_handling <- function(opt, ...) {
 
   cli::cli_h1("Missing Value Handling")
   cli::cli_text("Choose how to handle missing values in non-required columns during preprocessing.")
-  cli::cli_alert_info("Note: Required columns (effect, se, study, n_obs) must always be complete.")
+  cli::cli_alert_info("Note: Required columns (effect, se, study_id, n_obs) must always be complete.")
   cli::cat_line()
 
   cli::cli_h3("Available strategies:")

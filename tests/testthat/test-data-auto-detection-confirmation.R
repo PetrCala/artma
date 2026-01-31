@@ -17,12 +17,12 @@ expect_is <- getFromNamespace("expect_is", "testthat")
 
 test_that("format_mapping_display groups required and optional correctly", {
   mapping <- list(
-    study = "study_name",
+    study_id = "study_name",
     effect = "effect_size",
     se = "std_error",
     n_obs = "sample_size",
     t_stat = "t_statistic",
-    study_id = "sid"
+    obs_id = "sid"
   )
 
   required_cols <- get_required_column_names()
@@ -34,14 +34,14 @@ test_that("format_mapping_display groups required and optional correctly", {
   expect_true("optional" %in% names(result))
 
   # Check required columns
-  expect_true("study" %in% names(result$required))
+  expect_true("study_id" %in% names(result$required))
   expect_true("effect" %in% names(result$required))
   expect_true("se" %in% names(result$required))
   expect_true("n_obs" %in% names(result$required))
 
   # Check optional columns
   expect_true("t_stat" %in% names(result$optional))
-  expect_true("study_id" %in% names(result$optional))
+  expect_true("obs_id" %in% names(result$optional))
 })
 
 
@@ -58,7 +58,7 @@ test_that("format_mapping_display handles empty mappings", {
 
 test_that("format_mapping_display handles only required columns", {
   mapping <- list(
-    study = "study_name",
+    study_id = "study_name",
     effect = "effect_size",
     se = "se",
     n_obs = "n_obs"
@@ -76,7 +76,7 @@ test_that("format_mapping_display handles only required columns", {
 test_that("format_mapping_display handles only optional columns", {
   mapping <- list(
     t_stat = "t_statistic",
-    study_id = "sid"
+    obs_id = "sid"
   )
 
   required_cols <- get_required_column_names()
@@ -90,12 +90,12 @@ test_that("format_mapping_display handles only optional columns", {
 
 test_that("format_mapping_display works with custom all_std_cols", {
   mapping <- list(
-    study = "study_name",
+    study_id = "study_name",
     effect = "effect_size"
   )
 
-  required_cols <- c("study", "effect", "se", "n_obs")
-  all_std_cols <- c("study", "effect", "se", "n_obs", "t_stat", "study_id")
+  required_cols <- c("study_id", "effect", "se", "n_obs")
+  all_std_cols <- c("study_id", "effect", "se", "n_obs", "t_stat", "obs_id")
 
   result <- format_mapping_display(mapping, required_cols, all_std_cols)
 
@@ -143,7 +143,7 @@ test_that("present_detected_mapping handles required columns only", {
   )
 
   auto_mapping <- list(
-    study = "study_name",
+    study_id = "study_name",
     effect = "effect_size",
     se = "std_error",
     n_obs = "sample_size"
@@ -185,12 +185,12 @@ test_that("present_detected_mapping handles mixed required and optional", {
   )
 
   auto_mapping <- list(
-    study = "study_name",
+    study_id = "study_name",
     effect = "effect_size",
     se = "std_error",
     n_obs = "sample_size",
     t_stat = "t_statistic",
-    study_id = "sid"
+    obs_id = "sid"
   )
 
   required_cols <- get_required_column_names()

@@ -42,7 +42,7 @@ re <- function(df, effect = NULL, se = NULL, method = "DL") {
         return(list(est = NA, t_value = NA))
       }
 
-      re_data_ <- data.frame(yi = effect, sei = se, study = df$study)
+      re_data_ <- data.frame(yi = effect, sei = se, study = df$study_id)
 
       # Sometimes the variances are large
       re_ <- suppressWarnings(
@@ -181,7 +181,7 @@ fishers_z <- function(df, method = "ML") {
   fishers_z_ <- suppressWarnings(0.5 * log((1 + df$effect) / (1 - df$effect)))
   se_ <- suppressWarnings(1 / sqrt(n_ - 3))
 
-  re_data <- data.frame(effect = fishers_z_, se = se_, meta = df$meta, study = df$study)
+  re_data <- data.frame(effect = fishers_z_, se = se_, meta = df$meta, study = df$study_id)
   re_data <- re_data[!is.na(fishers_z_) & !is.na(se_), ] # Drop NA rows
 
   if (nrow(re_data) == 0) {

@@ -67,7 +67,7 @@
 #' my_data <- data.frame(
 #'   effect = c(0.5, 0.3, 0.7),
 #'   se = c(0.1, 0.15, 0.12),
-#'   study = c("Study A", "Study B", "Study C")
+#'   study_id = c("Study A", "Study B", "Study C")
 #' )
 #' results <- artma(data = my_data, methods = "funnel_plot")
 #'

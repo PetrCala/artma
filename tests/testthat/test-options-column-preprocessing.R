@@ -22,7 +22,7 @@ create_mock_options_def <- function() {
       allow_na = FALSE
     ),
     list(
-      name = "data.colnames.study",
+      name = "data.colnames.study_id",
       type = "character",
       allow_na = FALSE
     ),
@@ -130,7 +130,7 @@ test_that("preprocess_column_mapping returns unchanged when config_setup is manu
   result <- preprocess_column_mapping(user_input, options_def)
 
   # Should not add column mappings when manual mode
-  expect_false("data.colnames.study" %in% names(result))
+  expect_false("data.colnames.study_id" %in% names(result))
   expect_false("data.colnames.effect" %in% names(result))
 })
 
@@ -141,7 +141,7 @@ test_that("preprocess_column_mapping returns unchanged when all columns already 
 
   user_input <- list(
     "data.source_path" = tmp_file,
-    "data.colnames.study" = "study",
+    "data.colnames.study_id" = "study_name",
     "data.colnames.effect" = "effect",
     "data.colnames.se" = "se",
     "data.colnames.n_obs" = "n_obs"
@@ -152,7 +152,7 @@ test_that("preprocess_column_mapping returns unchanged when all columns already 
   result <- preprocess_column_mapping(user_input, options_def)
 
   # Should keep existing mappings unchanged
-  expect_equal(result$data.colnames.study, "study")
+  expect_equal(result$data.colnames.study_id, "study_name")
   expect_equal(result$data.colnames.effect, "effect")
 })
 
@@ -171,13 +171,13 @@ test_that("preprocess_column_mapping adds auto-detected columns when missing", {
   result <- preprocess_column_mapping(user_input, options_def)
 
   # Should have added auto-detected columns
-  expect_true("data.colnames.study" %in% names(result))
+  expect_true("data.colnames.study_id" %in% names(result))
   expect_true("data.colnames.effect" %in% names(result))
   expect_true("data.colnames.se" %in% names(result))
   expect_true("data.colnames.n_obs" %in% names(result))
 
   # Check values are reasonable
-  expect_equal(result$data.colnames.study, "study_name")
+  expect_equal(result$data.colnames.study_id, "study_name")
   expect_equal(result$data.colnames.effect, "effect")
   expect_equal(result$data.colnames.se, "se")
   expect_equal(result$data.colnames.n_obs, "n_obs")
@@ -190,7 +190,7 @@ test_that("preprocess_column_mapping does not override existing column mappings"
 
   user_input <- list(
     "data.source_path" = tmp_file,
-    "data.colnames.study" = "my_custom_study_col"
+    "data.colnames.study_id" = "my_custom_study_col"
   )
   options_def <- create_mock_options_def()
 
@@ -198,7 +198,7 @@ test_that("preprocess_column_mapping does not override existing column mappings"
   result <- preprocess_column_mapping(user_input, options_def)
 
   # Should preserve user's custom mapping
-  expect_equal(result$data.colnames.study, "my_custom_study_col")
+  expect_equal(result$data.colnames.study_id, "my_custom_study_col")
 
   # Should add other detected columns
   expect_true("data.colnames.effect" %in% names(result))
@@ -230,7 +230,7 @@ test_that("preprocess_column_mapping handles tilde in path", {
   result <- preprocess_column_mapping(user_input, options_def)
 
   # Should have detected columns
-  expect_true("data.colnames.study" %in% names(result))
+  expect_true("data.colnames.study_id" %in% names(result))
 })
 
 
@@ -251,7 +251,7 @@ test_that("preprocess_column_mapping handles errors gracefully", {
   result <- preprocess_column_mapping(user_input, options_def)
 
   # Should not have added column mappings due to error
-  expect_false("data.colnames.study" %in% names(result))
+  expect_false("data.colnames.study_id" %in% names(result))
 })
 
 
@@ -275,8 +275,8 @@ test_that("preprocess_column_mapping works with comma-delimited files", {
   result <- preprocess_column_mapping(user_input, options_def)
 
   # Should detect columns regardless of delimiter
-  expect_true("data.colnames.study" %in% names(result))
-  expect_equal(result$data.colnames.study, "study_name")
+  expect_true("data.colnames.study_id" %in% names(result))
+  expect_equal(result$data.colnames.study_id, "study_name")
 })
 
 
@@ -299,5 +299,5 @@ test_that("preprocess_column_mapping respects verbosity settings", {
 
   # Both should produce the same result
   expect_equal(result1, result2)
-  expect_true("data.colnames.study" %in% names(result1))
+  expect_true("data.colnames.study_id" %in% names(result1))
 })

@@ -66,7 +66,7 @@ run_single_caliper <- function(t_stats, study_id, threshold = 1.96, width = 0.05
   df_subset <- data.frame(
     significant = as.numeric(significant_obs[in_interval]),
     t_stat = t_stats[in_interval],
-    study = study_id[in_interval]
+    study_id = study_id[in_interval]
   )
 
   # Run regression (suppress clubSandwich override messages)
@@ -74,7 +74,7 @@ run_single_caliper <- function(t_stats, study_id, threshold = 1.96, width = 0.05
   model_coefs <- suppressPackageStartupMessages(suppressMessages({
     tryCatch(
       {
-        lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const", cluster = df_subset$study))
+        lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const", cluster = df_subset$study_id))
       },
       error = function(e) {
         lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const"))

@@ -360,7 +360,7 @@ handle_na_mice <- function(df) {
 #' @description Main function to handle missing values according to the selected strategy.
 #'
 #' This function handles missing values differently for required vs optional columns:
-#' - Non-numeric required columns (e.g., study) must be complete and will cause an error if missing
+#' - Non-numeric required columns (e.g., study_id) must be complete and will cause an error if missing
 #' - Numeric required columns (e.g., effect, se, n_obs) can be imputed if a non-"stop" strategy is selected
 #' - Optional columns are handled according to the selected strategy
 #'
@@ -386,7 +386,7 @@ handle_missing_values <- function(df) {
     ]
     numeric_required_with_na <- setdiff(required_cols_with_na, non_numeric_required_with_na)
 
-    # Non-numeric required columns (like study) cannot be imputed - always error
+    # Non-numeric required columns (like study_id) cannot be imputed - always error
     if (length(non_numeric_required_with_na) > 0) {
       non_numeric_msg <- paste0(
         non_numeric_required_with_na,
@@ -395,7 +395,7 @@ handle_missing_values <- function(df) {
       )
       cli::cli_abort(c(
         "x" = "Missing values found in non-numeric required columns: {non_numeric_msg}",
-        "i" = "Non-numeric required columns (e.g., study) cannot be imputed and must be complete.",
+        "i" = "Non-numeric required columns (e.g., study_id) cannot be imputed and must be complete.",
         "i" = "Please clean your data or remove incomplete rows before analysis."
       ))
     }

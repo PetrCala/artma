@@ -33,20 +33,22 @@ add_obs_id_column <- function(df) {
 }
 
 #' @title Add study ID column
-#' @description Add a study ID column to the data frame.
-#' @param df *\[data.frame\]* The data frame to add the study ID column to.
-#' @return *\[data.frame\]* The data frame with the study ID column.
+#' @description Add or normalize the study ID column. Uses the existing
+#'   \code{study_id} column (character or integer) and overwrites it with
+#'   integer IDs derived from factorizing its values.
+#' @param df *\[data.frame\]* The data frame with a \code{study_id} column.
+#' @return *\[data.frame\]* The data frame with \code{study_id} as integer IDs.
 #' @keywords internal
 add_study_id_column <- function(df) {
   box::use(artma / libs / core / utils[get_verbosity])
 
-  study_names <- df$study
+  study_src <- df$study_id
 
-  if (!length(study_names) == nrow(df)) {
-    cli::cli_abort("The number of study names must be equal to the number of rows in the data frame.")
+  if (!length(study_src) == nrow(df)) {
+    cli::cli_abort("The number of study_id values must be equal to the number of rows in the data frame.")
   }
 
-  valid_ids <- as.integer(factor(study_names, levels = unique(study_names)))
+  valid_ids <- as.integer(factor(study_src, levels = unique(study_src)))
 
   if ("study_id" %in% colnames(df)) {
     invalid_or_missing_ids <- which(is.na(df$study_id) | df$study_id != valid_ids)

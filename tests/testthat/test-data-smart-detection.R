@@ -275,7 +275,7 @@ test_that("validate_df_structure errors on zero-column data frame", {
 test_that("smart_read_csv with auto-detection works end-to-end", {
   # Create a complex CSV with semicolons and special characters
   csv_content <- c(
-    '"study";"effect";"se";"n_obs"',
+    '"study_id";"effect";"se";"n_obs"',
     '"Study A";10.5;2.3;100',
     '"Study B";8.2;1.8;150',
     '"Study C";;0.9;200' # Missing effect
@@ -288,5 +288,5 @@ test_that("smart_read_csv with auto-detection works end-to-end", {
   expect_equal(nrow(df), 3)
   expect_equal(ncol(df), 4)
   expect_true(is.na(df$effect[3]))
-  expect_equal(df$study[1], "Study A")
+  expect_equal(df$study_id[1], "Study A")
 })

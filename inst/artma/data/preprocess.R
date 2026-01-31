@@ -252,7 +252,7 @@ verify_variable_names <- function(df) {
 #' @title Remove empty rows
 #' @description Remove rows that are empty or have missing critical required columns.
 #' A row is considered empty if all required columns are NA, or if the critical
-#' required columns (study, effect, se) are all missing, regardless of n_obs.
+#' required columns (study_id, effect, se) are all missing, regardless of n_obs.
 #' @param df *\[data.frame\]* The data frame to remove empty rows from
 #' @return *\[data.frame\]* The data frame with the empty rows removed
 #' @keywords internal
@@ -269,8 +269,8 @@ remove_empty_rows <- function(df) {
   required_colnames <- get_required_colnames()
 
   # Critical required columns that must be present for a row to be valid
-  # n_obs can be missing/imputed, but study, effect, and se are essential
-  critical_cols <- c("study", "effect", "se")
+  # n_obs can be missing/imputed, but study_id, effect, and se are essential
+  critical_cols <- c("study_id", "effect", "se")
   critical_cols <- critical_cols[critical_cols %in% colnames(df)]
 
   # Remove rows where all required columns are NA

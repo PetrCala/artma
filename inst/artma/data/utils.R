@@ -30,13 +30,12 @@ get_required_colnames <- function() {
 #' Get the number of studies in an analysis data frame.
 #'
 #' @param df *\[data.frame\]* The analysis data frame.
-#' @param study_colname [str] The column name holding names of all studies.
-#' `int` The number of studies.
+#' @return *\[integer\]* The number of studies.
 get_number_of_studies <- function(df) {
-  if (!"study" %in% colnames(df)) {
-    cli::cli_abort("The data frame does not have a 'study' column.", class = "missing_study_column")
+  if (!"study_id" %in% colnames(df)) {
+    cli::cli_abort("The data frame does not have a 'study_id' column.", class = "missing_study_column")
   }
-  length(table(df$study))
+  length(table(df$study_id))
 }
 
 #' @title Standardize column names

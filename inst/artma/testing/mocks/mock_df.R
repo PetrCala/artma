@@ -58,7 +58,6 @@ create_mock_df <- function(
 
   base_df <- list(
     obs_id = obs_id,
-    study = study_names,
     study_id = study_id,
     effect = effect,
     se = se,
