@@ -56,6 +56,7 @@ utils::globalVariables(c(
   "print.cached_artifact",
   "replay_log",
   "read_data",
+  "read_data_raw",
   "read_options_file",
   "read_template",
   "remove_options_with_prefix",

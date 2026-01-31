@@ -251,4 +251,90 @@ read_data <- function(path = NULL) {
   df
 }
 
-box::export(read_data)
+#' @title Read data from path without options-dependent standardization
+#' @description Reads a data file using the same type dispatch as read_data but does
+#'   not load options or call standardize_column_names. Used for raw preview when
+#'   preprocess = FALSE.
+#' @param path *\[character\]* Path to the data source (required).
+#' @return *\[data.frame\]* The data frame with validated structure, unchanged column names.
+#' @keywords internal
+read_data_raw <- function(path) {
+  box::use(
+    artma / data / utils[
+      determine_df_type,
+      raise_invalid_data_type_error
+    ],
+    artma / data / smart_detection[
+      smart_read_csv,
+      validate_df_structure
+    ],
+    artma / libs / core / utils[get_verbosity]
+  )
+
+  if (is.null(path) || !nzchar(path)) {
+    cli::cli_abort("No data source path provided.")
+  }
+
+  if (!file.exists(path)) {
+    cli::cli_abort("Data file not found: {.path {path}}")
+  }
+
+  if (get_verbosity() >= 3) {
+    cli::cli_alert_info("Reading data from {.path {path}} (raw, no standardization)")
+  }
+
+  df_type <- determine_df_type(path, should_validate = TRUE)
+
+  df <- tryCatch(
+    {
+      switch(df_type,
+        csv = smart_read_csv(path),
+        tsv = smart_read_csv(path, delim = "\t"),
+        xlsx = read_excel_file(path),
+        xls = read_excel_file(path),
+        xlsm = read_excel_file(path),
+        json = {
+          if (!requireNamespace("jsonlite", quietly = TRUE)) {
+            cli::cli_abort("Package {.pkg jsonlite} is required to read JSON files. Install with: install.packages('jsonlite')")
+          }
+          jsonlite::fromJSON(path)
+        },
+        dta = {
+          if (!requireNamespace("haven", quietly = TRUE)) {
+            cli::cli_abort("Package {.pkg haven} is required to read Stata files. Install with: install.packages('haven')")
+          }
+          as.data.frame(haven::read_dta(path))
+        },
+        rds = {
+          obj <- readRDS(path)
+          if (!is.data.frame(obj)) {
+            cli::cli_abort("RDS file does not contain a data frame. Found: {.type {class(obj)}}")
+          }
+          obj
+        },
+        raise_invalid_data_type_error(df_type)
+      )
+    },
+    error = function(e) {
+      cli::cli_abort(c(
+        "x" = "Failed to read data from {.path {path}}",
+        "i" = "File type: {.val {df_type}}",
+        "i" = "Error: {e$message}"
+      ))
+    }
+  )
+
+  if (!is.data.frame(df)) {
+    cli::cli_abort("Failed to read data from {.path {path}}. Expected a data frame but got {.type {class(df)}}.")
+  }
+
+  df <- validate_df_structure(df, path)
+
+  if (get_verbosity() >= 3) {
+    cli::cli_alert_success("Data read successfully: {nrow(df)} rows, {ncol(df)} columns")
+  }
+
+  df
+}
+
+box::export(read_data, read_data_raw)
