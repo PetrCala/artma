@@ -157,7 +157,6 @@ resolve_factor_by <- function(df, config, factor_by_option) {
 #' @return *\[character\]* Vector of candidate variable names
 #' @keywords internal
 detect_factor_candidates <- function(df, config) {
-
   # For box plots, we want to INCLUDE study_id as a candidate (unlike other methods)
   # but exclude numeric identifiers and computed columns
   excluded_names <- c(
@@ -173,12 +172,19 @@ detect_factor_candidates <- function(df, config) {
 
   candidates <- character(0)
 
+  # study_id is always a valid grouping variable; downstream splits by max_boxes
+  max_levels_default <- 200L
+  max_levels_numeric <- 30L
+  max_levels_study_id <- 10000L
+
   for (var in var_names) {
     col <- df[[var]]
+    is_study_id <- var == "study_id"
 
     if (is.factor(col)) {
       n_levels <- nlevels(col)
-      if (n_levels >= 2 && n_levels <= 200) {
+      cap <- if (is_study_id) max_levels_study_id else max_levels_default
+      if (n_levels >= 2 && n_levels <= cap) {
         candidates <- c(candidates, var)
       }
       next
@@ -186,7 +192,8 @@ detect_factor_candidates <- function(df, config) {
 
     if (is.character(col)) {
       n_unique <- length(unique(stats::na.omit(col)))
-      if (n_unique >= 2 && n_unique <= 200) {
+      cap <- if (is_study_id) max_levels_study_id else max_levels_default
+      if (n_unique >= 2 && n_unique <= cap) {
         candidates <- c(candidates, var)
       }
       next
@@ -195,7 +202,8 @@ detect_factor_candidates <- function(df, config) {
     if (is.numeric(col) || is.integer(col)) {
       unique_vals <- unique(stats::na.omit(col))
       n_unique <- length(unique_vals)
-      if (n_unique >= 2 && n_unique <= 30 && all(unique_vals == floor(unique_vals))) {
+      cap <- if (is_study_id) max_levels_study_id else max_levels_numeric
+      if (n_unique >= 2 && n_unique <= cap && all(unique_vals == floor(unique_vals))) {
         candidates <- c(candidates, var)
       }
     }
