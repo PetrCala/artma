@@ -8,8 +8,7 @@ funnel_plot <- function(df) {
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
     artma / options / index[get_option_group],
-    artma / visualization / colors[get_colors, get_vline_color, VALID_THEMES],
-    artma / visualization / theme[get_theme],
+    artma / visualization / options[get_visualization_options],
     artma / visualization / export[save_plot, build_export_filename, ensure_export_dir]
   )
 
@@ -21,27 +20,24 @@ funnel_plot <- function(df) {
   }
 
   opt <- get_option_group("artma.methods.funnel_plot")
+  vis <- get_visualization_options()
 
   effect_proximity <- opt$effect_proximity %||% 0.2
   maximum_precision <- opt$maximum_precision %||% 0.2
   precision_to_log <- opt$precision_to_log %||% FALSE
   use_study_medians <- opt$use_study_medians %||% FALSE
   add_zero <- opt$add_zero %||% TRUE
-  theme_name <- opt$theme %||% "blue"
-  export_graphics <- opt$export_graphics %||% FALSE
-  export_path <- opt$export_path %||% "./results/graphic"
-  graph_scale <- opt$graph_scale %||% 2
+  theme_name <- vis$theme
+  export_graphics <- vis$export_graphics
+  export_path <- vis$export_path
+  graph_scale <- vis$graph_scale
 
   validate(
     is.numeric(effect_proximity),
     is.numeric(maximum_precision),
     is.logical(precision_to_log),
     is.logical(use_study_medians),
-    is.logical(add_zero),
-    is.character(theme_name),
-    is.logical(export_graphics),
-    is.character(export_path),
-    is.numeric(graph_scale)
+    is.logical(add_zero)
   )
 
   assert(
@@ -51,11 +47,6 @@ funnel_plot <- function(df) {
   assert(
     maximum_precision >= 0 && maximum_precision <= 1,
     "maximum_precision must be between 0 and 1"
-  )
-  assert(graph_scale > 0, "graph_scale must be positive")
-  assert(
-    theme_name %in% VALID_THEMES,
-    paste0("theme must be one of: ", paste(VALID_THEMES, collapse = ", "))
   )
 
   if (use_study_medians) {

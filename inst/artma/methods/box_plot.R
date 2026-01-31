@@ -10,8 +10,7 @@ box_plot <- function(df) {
     artma / libs / core / validation[assert, validate, validate_columns],
     artma / libs / core / autonomy[should_prompt_user],
     artma / options / index[get_option_group],
-    artma / visualization / colors[get_colors, get_vline_color, VALID_THEMES],
-    artma / visualization / theme[get_theme],
+    artma / visualization / options[get_visualization_options],
     artma / visualization / export[save_plot, build_export_filename, ensure_export_dir]
   )
 
@@ -24,32 +23,24 @@ box_plot <- function(df) {
 
   config <- get_data_config()
   opt <- get_option_group("artma.methods.box_plot")
+  vis <- get_visualization_options()
 
   factor_by <- opt$factor_by %||% NA_character_
   max_boxes <- opt$max_boxes %||% 60L
-  theme_name <- opt$theme %||% "blue"
+  theme_name <- vis$theme
   show_mean_line <- opt$show_mean_line %||% TRUE
   effect_label <- opt$effect_label %||% "effect"
-  export_graphics <- opt$export_graphics %||% FALSE
-  export_path <- opt$export_path %||% "./results/graphic"
-  graph_scale <- opt$graph_scale %||% 2
+  export_graphics <- vis$export_graphics
+  export_path <- vis$export_path
+  graph_scale <- vis$graph_scale
 
   validate(
     is.numeric(max_boxes),
-    is.character(theme_name),
     is.logical(show_mean_line),
-    is.character(effect_label),
-    is.logical(export_graphics),
-    is.character(export_path),
-    is.numeric(graph_scale)
+    is.character(effect_label)
   )
 
   assert(max_boxes > 0, "max_boxes must be positive")
-  assert(graph_scale > 0, "graph_scale must be positive")
-  assert(
-    theme_name %in% VALID_THEMES,
-    paste0("theme must be one of: ", paste(VALID_THEMES, collapse = ", "))
-  )
 
   factor_by <- resolve_factor_by(df, config, factor_by)
 

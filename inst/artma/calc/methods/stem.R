@@ -163,17 +163,8 @@ se_rescale <- function(se) {
 
 #' Funnel plot helper for the STEM estimates
 stem_funnel <- function(beta_input, se_input, stem_estimates, theme, legend_pos = "topleft") {
-  colors <- list(
-    blue = c("#005CAB", "#e8e813", "#4a19bd"),
-    yellow = c("#AB9800", "#009B0F", "#4dacfa"),
-    green = c("#009B0F", "#AB0000", "#423091"),
-    red = c("#AB0000", "#6A0DAB", "#8cb1fa"),
-    purple = c("#6A0DAB", "#005CAB", "#fa8ce6")
-  )
-  palette <- colors[[theme]]
-  if (is.null(palette)) {
-    cli::cli_abort("Invalid theme type.")
-  }
+  box::use(artma / visualization / colors[get_colors])
+  palette <- get_colors(theme, "stem")
   b_stem <- stem_estimates[1]
   se_b_stem <- stem_estimates[2]
   sigma0 <- stem_estimates[3]

@@ -18,7 +18,8 @@ bma <- function(df) {
     ],
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
-    artma / options / index[get_option_group]
+    artma / options / index[get_option_group],
+    artma / visualization / options[get_visualization_options]
   )
 
   validate(is.data.frame(df))
@@ -30,6 +31,7 @@ bma <- function(df) {
 
   config <- get_data_config()
   opt <- get_option_group("artma.methods.bma")
+  vis <- get_visualization_options()
 
   burn <- opt$burn %||% 10000L
   iter <- opt$iter %||% 50000L
@@ -40,9 +42,9 @@ bma <- function(df) {
   use_vif_optimization <- opt$use_vif_optimization %||% FALSE
   max_groups_to_remove <- opt$max_groups_to_remove %||% 30L
   print_results <- opt$print_results %||% "fast"
-  export_graphics <- opt$export_graphics %||% FALSE
-  export_path <- opt$export_path %||% "./results/graphic"
-  graph_scale <- opt$graph_scale %||% 1
+  export_graphics <- vis$export_graphics
+  export_path <- vis$export_path
+  graph_scale <- vis$graph_scale
 
   validate(
     is.numeric(burn),
@@ -53,17 +55,13 @@ bma <- function(df) {
     is.character(mcmc),
     is.logical(use_vif_optimization),
     is.numeric(max_groups_to_remove),
-    is.character(print_results),
-    is.logical(export_graphics),
-    is.character(export_path),
-    is.numeric(graph_scale)
+    is.character(print_results)
   )
 
   assert(burn > 0, "burn must be positive")
   assert(iter > 0, "iter must be positive")
   assert(nmodel > 0, "nmodel must be positive")
   assert(max_groups_to_remove > 0, "max_groups_to_remove must be positive")
-  assert(graph_scale > 0, "graph_scale must be positive")
   assert(
     print_results %in% c("none", "fast", "verbose", "all", "table"),
     "print_results must be one of: none, fast, verbose, all, table"
@@ -318,8 +316,7 @@ bma <- function(df) {
       bma_data,
       bma_var_list,
       print_results = print_results,
-      adjustable_theme = FALSE,
-      theme = "blue",
+      theme = vis$theme,
       export_graphics = export_graphics,
       export_path = export_path,
       graph_scale = graph_scale

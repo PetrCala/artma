@@ -71,6 +71,13 @@ PALETTES <- list(
       purple = "Purples"
     )
   ),
+  stem = list(
+    blue = c("#005CAB", "#e8e813", "#4a19bd"),
+    yellow = c("#AB9800", "#009B0F", "#4dacfa"),
+    green = c("#009B0F", "#AB0000", "#423091"),
+    red = c("#AB0000", "#6A0DAB", "#8cb1fa"),
+    purple = c("#6A0DAB", "#005CAB", "#fa8ce6")
+  ),
   bpe = list(
     miracle = list(
       blue = "Paired",

@@ -487,8 +487,7 @@ rename_bma_model <- function(bma_model, input_var_list) {
 #' @param input_var_list *\[data.frame\]* A data frame with the variable information.
 #' @param print_results *\[character\]* A character value indicating the level of result printing desired.
 #' Can be one of: "none", "fast", "verbose", "all", "table"
-#' @param adjustable_theme *\[logical\]* If TRUE, modify the plot colors to fit the theme. Defaults to FALSE.
-#' @param theme *\[character\]* Theme for the two plots. Defaults to "blue".
+#' @param theme *\[character\]* Color theme name. Defaults to "blue".
 #' @param export_graphics *\[logical\]* If TRUE, export the graphs into the graphics folder. Defaults to TRUE.
 #' @param export_path *\[character\]* Path to the export folder. Defaults to "./results/graphic".
 #' @param graph_scale *\[numeric\]* Scale the corrplot graph by this number. Defaults to 1.
@@ -497,11 +496,12 @@ rename_bma_model <- function(bma_model, input_var_list) {
 #'
 #' @export
 extract_bma_results <- function(bma_model, bma_data, input_var_list, print_results = "fast",
-                                adjustable_theme = FALSE, theme = "blue", export_graphics = TRUE,
+                                theme = "blue", export_graphics = TRUE,
                                 export_path = "./results/graphic", graph_scale = 1) {
   box::use(
     artma / libs / core / validation[validate],
-    artma / libs / core / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity],
+    artma / visualization / colors[get_colors]
   )
 
   validate(
@@ -509,7 +509,6 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
     is.data.frame(bma_data),
     is.data.frame(input_var_list),
     is.character(print_results),
-    is.logical(adjustable_theme),
     is.character(theme),
     print_results %in% c("none", "fast", "verbose", "all", "table"),
     is.logical(export_graphics),
@@ -538,11 +537,7 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
   }
 
   if (any(print_results == "all", export_graphics)) {
-    color_spectrum <- if (adjustable_theme) {
-      c("red", "white", "blue")
-    } else {
-      c("red", "white", "blue")
-    }
+    color_spectrum <- get_colors(theme, "bma")
 
     main_plot_call <- bquote(
       graphics::image(bma_model,
@@ -579,12 +574,12 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
   }
 
   if (export_graphics) {
+    box::use(artma / visualization / export[ensure_export_dir])
+
     gprior <- bma_model$gprior.info$gtype
     mprior <- bma_model$mprior.info$origargs$mpmode
 
-    if (!dir.exists(export_path)) {
-      dir.create(export_path, recursive = TRUE)
-    }
+    ensure_export_dir(export_path)
 
     main_path <- file.path(export_path, paste0("bma_", gprior, "_", mprior, "_results.png"))
     dist_path <- file.path(export_path, paste0("bma_", gprior, "_", mprior, "_dist.png"))

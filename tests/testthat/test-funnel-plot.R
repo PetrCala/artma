@@ -36,8 +36,8 @@ test_that("funnel_plot creates a plot with required columns", {
     "artma.methods.funnel_plot.precision_to_log" = FALSE,
     "artma.methods.funnel_plot.use_study_medians" = FALSE,
     "artma.methods.funnel_plot.add_zero" = TRUE,
-    "artma.methods.funnel_plot.theme" = "blue",
-    "artma.methods.funnel_plot.export_graphics" = FALSE,
+    "artma.visualization.theme" = "blue",
+    "artma.visualization.export_graphics" = FALSE,
     "artma.verbose" = 1
   )
 
@@ -58,8 +58,8 @@ test_that("funnel_plot respects use_study_medians option", {
     "artma.methods.funnel_plot.precision_to_log" = FALSE,
     "artma.methods.funnel_plot.use_study_medians" = TRUE,
     "artma.methods.funnel_plot.add_zero" = TRUE,
-    "artma.methods.funnel_plot.theme" = "blue",
-    "artma.methods.funnel_plot.export_graphics" = FALSE,
+    "artma.visualization.theme" = "blue",
+    "artma.visualization.export_graphics" = FALSE,
     "artma.verbose" = 1
   )
 
@@ -78,8 +78,8 @@ test_that("funnel_plot filters outliers correctly", {
     "artma.methods.funnel_plot.precision_to_log" = FALSE,
     "artma.methods.funnel_plot.use_study_medians" = FALSE,
     "artma.methods.funnel_plot.add_zero" = TRUE,
-    "artma.methods.funnel_plot.theme" = "blue",
-    "artma.methods.funnel_plot.export_graphics" = FALSE,
+    "artma.visualization.theme" = "blue",
+    "artma.visualization.export_graphics" = FALSE,
     "artma.verbose" = 1
   )
 
@@ -103,8 +103,8 @@ test_that("funnel_plot with no outlier filtering keeps all points", {
     "artma.methods.funnel_plot.precision_to_log" = FALSE,
     "artma.methods.funnel_plot.use_study_medians" = FALSE,
     "artma.methods.funnel_plot.add_zero" = TRUE,
-    "artma.methods.funnel_plot.theme" = "blue",
-    "artma.methods.funnel_plot.export_graphics" = FALSE,
+    "artma.visualization.theme" = "blue",
+    "artma.visualization.export_graphics" = FALSE,
     "artma.verbose" = 1
   )
 
@@ -126,8 +126,8 @@ test_that("funnel_plot handles different themes", {
       "artma.methods.funnel_plot.precision_to_log" = FALSE,
       "artma.methods.funnel_plot.use_study_medians" = FALSE,
       "artma.methods.funnel_plot.add_zero" = TRUE,
-      "artma.methods.funnel_plot.theme" = theme,
-      "artma.methods.funnel_plot.export_graphics" = FALSE,
+      "artma.visualization.theme" = theme,
+      "artma.visualization.export_graphics" = FALSE,
       "artma.verbose" = 1
     )
 
@@ -146,8 +146,8 @@ test_that("funnel_plot handles precision_to_log option", {
     "artma.methods.funnel_plot.precision_to_log" = TRUE,
     "artma.methods.funnel_plot.use_study_medians" = FALSE,
     "artma.methods.funnel_plot.add_zero" = TRUE,
-    "artma.methods.funnel_plot.theme" = "blue",
-    "artma.methods.funnel_plot.export_graphics" = FALSE,
+    "artma.visualization.theme" = "blue",
+    "artma.visualization.export_graphics" = FALSE,
     "artma.verbose" = 1
   )
 
@@ -166,8 +166,8 @@ test_that("funnel_plot returns empty result when all data filtered", {
     "artma.methods.funnel_plot.precision_to_log" = FALSE,
     "artma.methods.funnel_plot.use_study_medians" = FALSE,
     "artma.methods.funnel_plot.add_zero" = TRUE,
-    "artma.methods.funnel_plot.theme" = "blue",
-    "artma.methods.funnel_plot.export_graphics" = FALSE,
+    "artma.visualization.theme" = "blue",
+    "artma.visualization.export_graphics" = FALSE,
     "artma.verbose" = 1
   )
 

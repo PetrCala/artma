@@ -172,6 +172,38 @@ calc:
         {cli::symbol$bullet} {.strong warn}: Warn if any zero standard errors are found
         {cli::symbol$bullet} {.strong ignore}: Ignore zero standard errors
 
+visualization:
+  theme:
+    type: "enum: blue|yellow|green|red|purple"
+    default: "blue"
+    help: |
+      Color theme for all visualizations:
+        {cli::symbol$bullet} {.strong blue}: Default blue theme
+        {cli::symbol$bullet} {.strong yellow}: Yellow/gold theme
+        {cli::symbol$bullet} {.strong green}: Green theme
+        {cli::symbol$bullet} {.strong red}: Red theme
+        {cli::symbol$bullet} {.strong purple}: Purple theme
+
+  export_graphics:
+    type: "logical"
+    default: false
+    help: |
+      If `TRUE`, export all generated plots to PNG files.
+
+  export_path:
+    type: "character"
+    default: "./results/graphic"
+    help: |
+      Directory path for exporting graphics.
+      Only used if export_graphics is `TRUE`.
+
+  graph_scale:
+    type: "numeric"
+    default: 2
+    help: |
+      Scaling factor for exported graphics.
+      Values > 1 increase resolution; values < 1 decrease it.
+
 methods:
   add_significance_marks:
     type: "logical"
@@ -299,17 +331,6 @@ methods:
         When the number of unique factor values exceeds this threshold,
         the data will be split across multiple plots.
 
-    theme:
-      type: "enum: blue|yellow|green|red|purple"
-      default: "blue"
-      help: |
-        Color theme for the box plot:
-          {cli::symbol$bullet} {.strong blue}: Default blue theme
-          {cli::symbol$bullet} {.strong yellow}: Yellow/gold theme
-          {cli::symbol$bullet} {.strong green}: Green theme
-          {cli::symbol$bullet} {.strong red}: Red theme
-          {cli::symbol$bullet} {.strong purple}: Purple theme
-
     show_mean_line:
       type: "logical"
       default: true
@@ -321,26 +342,6 @@ methods:
       default: "effect"
       help: |
         Verbose label for the effect axis (e.g., "Effect of Price Elasticity").
-
-    export_graphics:
-      type: "logical"
-      default: false
-      help: |
-        If `TRUE`, export box plots to PNG files.
-
-    export_path:
-      type: "character"
-      default: "./results/graphic"
-      help: |
-        Directory path for exporting box plot graphics.
-        Only used if export_graphics is `TRUE`.
-
-    graph_scale:
-      type: "numeric"
-      default: 2
-      help: |
-        Scaling factor for exported graphics.
-        Values > 1 increase resolution; values < 1 decrease it.
 
   funnel_plot:
     effect_proximity:
@@ -381,37 +382,6 @@ methods:
       help: |
         If `TRUE`, always include zero in the x-axis ticks when it falls
         within the data range. Useful as a reference point.
-
-    theme:
-      type: "enum: blue|yellow|green|red|purple"
-      default: "blue"
-      help: |
-        Color theme for the funnel plot:
-          {cli::symbol$bullet} {.strong blue}: Default blue theme
-          {cli::symbol$bullet} {.strong yellow}: Yellow/gold theme
-          {cli::symbol$bullet} {.strong green}: Green theme
-          {cli::symbol$bullet} {.strong red}: Red theme
-          {cli::symbol$bullet} {.strong purple}: Purple theme
-
-    export_graphics:
-      type: "logical"
-      default: false
-      help: |
-        If `TRUE`, export funnel plot to a PNG file.
-
-    export_path:
-      type: "character"
-      default: "./results/graphic"
-      help: |
-        Directory path for exporting funnel plot graphics.
-        Only used if export_graphics is `TRUE`.
-
-    graph_scale:
-      type: "numeric"
-      default: 2
-      help: |
-        Scaling factor for exported graphics.
-        Values > 1 increase resolution; values < 1 decrease it.
 
   bma:
     burn:
@@ -479,26 +449,6 @@ methods:
           {cli::symbol$bullet} {.strong fast}: Basic coefficients only
           {cli::symbol$bullet} {.strong verbose}: Detailed model information
           {cli::symbol$bullet} {.strong all}: All results including plots
-
-    export_graphics:
-      type: "logical"
-      default: false
-      help: |
-        If `TRUE`, export BMA diagnostic plots to files.
-
-    export_path:
-      type: "character"
-      default: "./results/graphic"
-      help: |
-        Directory path for exporting BMA graphics.
-        Only used if export_graphics is `TRUE`.
-
-    graph_scale:
-      type: "numeric"
-      default: 1
-      help: |
-        Scaling factor for exported graphics.
-        Values > 1 increase resolution; values < 1 decrease it.
 
   p_hacking_tests:
     include_caliper:
