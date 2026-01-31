@@ -93,7 +93,7 @@ test_that("standardize_column_names handles missing required columns in data cor
     mock_colnames <- MOCKS$create_mock_options_colnames()
     FIXTURES$with_custom_colnames(mock_colnames)
     mock_df <- MOCKS$create_mock_df(colnames_map = mock_colnames)
-    mock_df <- mock_df[, -which(names(mock_df) %in% scenario$missing_colnames)]
+    mock_df <- mock_df[, -which(names(mock_df) %in% scenario$missing_colnames), drop = FALSE]
 
     expect_error(
       standardize_column_names(mock_df, auto_detect = FALSE),

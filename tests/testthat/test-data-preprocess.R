@@ -318,7 +318,7 @@ test_that("verify_variable_names provides clear error messages", {
 
   expect_error(
     verify_variable_names(df),
-    "Missing required columns"
+    "Missing columns"
   )
 
   expect_error(
@@ -374,6 +374,6 @@ test_that("verify_variable_names still requires non-computed columns", {
   # Should fail - se is required but missing
   expect_error(
     verify_variable_names(df),
-    "Missing required columns"
+    "Missing columns"
   )
 })
