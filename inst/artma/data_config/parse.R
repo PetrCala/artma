@@ -5,74 +5,19 @@
 parse_df_into_data_config <- function(df) {
   box::use(
     artma / const[CONST],
-    artma / data / utils[determine_vector_type],
-    artma / libs / core / validation[validate, assert],
-    artma / libs / core / utils[get_verbosity],
-    artma / libs / core / string[make_verbose_name]
+    artma / libs / core / validation[assert],
+    artma / data_config / defaults[build_base_config]
   )
 
-  validate(is.data.frame(df))
+  config <- build_base_config(df)
 
-  if (nrow(df) == 0) {
-    cli::cli_abort("The dataframe is empty. Please provide a dataframe with at least one row.")
-  }
-
-  config <- list()
-
-  for (col in names(df)) {
-    col_name_clean <- make.names(col)
-    col_name_verbose <- make_verbose_name(col)
-    col_data <- df[[col]]
-
-    col_data_type <- tryCatch(
-      determine_vector_type(
-        data = col_data,
-        recognized_data_types = CONST$DATA_CONFIG$DATA_TYPES
-      ),
-      error = function(e) {
-        if (get_verbosity() >= 2) {
-          cli::cli_alert_warning("Failed to determine the data type of the column {.val {col}}.")
-        }
-        "unknown"
-      }
-    )
-
-    col_config <- list(
-      "var_name" = col,
-      "var_name_verbose" = col_name_verbose,
-      "var_name_description" = col_name_verbose,
-      "data_type" = col_data_type,
-      "group_category" = NA,
-      "na_handling" = getOption(
-        "artma.data.na_handling"
-      ),
-      "variable_summary" = is.numeric(col_data),
-      "effect_sum_stats" = NA,
-      "equal" = NA,
-      "gltl" = NA,
-      "bma" = NA,
-      "bma_reference_var" = NA,
-      "bma_to_log" = NA,
-      "bpe" = NA,
-      "bpe_sum_stats" = NA,
-      "bpe_equal" = NA,
-      "bpe_gltl" = NA
-    )
-
+  # Validate that all keys conform to the expected DATA_CONFIG keys
+  for (col_key in names(config)) {
     assert(
-      all(names(col_config) %in% CONST$DATA_CONFIG$KEYS),
-      msg = "The column {.val {col}} has an invalid data config key."
+      all(names(config[[col_key]]) %in% CONST$DATA_CONFIG$KEYS),
+      msg = "The column {.val {col_key}} has an invalid data config key."
     )
-
-    config[[col_name_clean]] <- col_config
   }
-
-  # column_configs <- lapply(names(df), process_column, df = df)
-
-  # config <- stats::setNames(
-  #   lapply(column_configs, function(x) x$config),
-  #   vapply(column_configs, function(x) x$name, character(1))
-  # )
 
   config
 }

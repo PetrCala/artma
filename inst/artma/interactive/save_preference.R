@@ -253,6 +253,7 @@ prompt_save_variable_selection <- function(var_names, var_configs = NULL, descri
 
 #' @title Save variables to data config in options file
 #' @description Internal function to update the data configuration with variable selections.
+#'   Delegates to `update_data_config()` for sparse-aware persistence.
 #' @param var_names *\[character\]* Vector of variable names
 #' @param var_configs *\[list\]* Named list of variable configurations (optional)
 #' @return *\[logical\]* TRUE if successfully saved, FALSE otherwise
@@ -263,47 +264,28 @@ save_variables_to_config <- function(var_names, var_configs = NULL) {
   tryCatch(
     {
       box::use(
-        artma / options / files[read_options_file, write_options_file, options_file_path],
-        artma / data_config / read[get_data_config]
+        artma / data_config / read[get_data_config],
+        artma / data_config / write[update_data_config]
       )
 
-      options_file_name <- getOption("artma.temp.file_name")
-      options_dir <- getOption("artma.temp.dir_name")
+      # Build changes list for update_data_config
+      config <- get_data_config()
+      changes <- list()
 
-      if (is.null(options_file_name) || is.null(options_dir)) {
-        if (get_verbosity() >= 2) {
-          cli::cli_warn("No options file found. Variable selection not saved.")
-        }
-        return(FALSE)
-      }
-
-      # Construct full path
-      options_file <- options_file_path(options_dir, options_file_name)
-
-      # Read current options
-      current_opts <- read_options_file(options_file)
-
-      # Get current config or initialize if missing
-      config <- if (!is.null(current_opts$data$config)) {
-        current_opts$data$config
-      } else {
-        get_data_config()
-      }
-
-      # Update config with variable selections
-      # Note: Computed columns (obs_id, precision, reg_dof, etc.) won't be in the config
-      # since they're added after config creation. This is expected behavior.
       for (var_name in var_names) {
         config_key <- make.names(var_name)
 
         if (!config_key %in% names(config)) {
-          # Silently skip variables not in config (likely computed columns)
-          # Only log at debug verbosity level
+          # Skip variables not in config (likely computed columns)
           if (get_verbosity() >= 4) {
-            cli::cli_inform("Skipping {.field {var_name}} - not in original data config (likely a computed column)")
+            cli::cli_inform(
+              "Skipping {.field {var_name}} - not in original data config (likely a computed column)"
+            )
           }
           next
         }
+
+        var_changes <- list()
 
         # If we have detailed configurations, apply them
         if (!is.null(var_configs) && var_name %in% names(var_configs)) {
@@ -312,26 +294,29 @@ save_variables_to_config <- function(var_names, var_configs = NULL) {
           # Update split method and value if provided
           if (!is.null(var_conf$split_method)) {
             if (var_conf$split_method == "equal") {
-              config[[config_key]]$equal <- var_conf$split_value
-              config[[config_key]]$gltl <- NA_character_
+              var_changes$equal <- var_conf$split_value
+              var_changes$gltl <- NA_character_
             } else if (var_conf$split_method == "gltl") {
-              config[[config_key]]$gltl <- var_conf$split_value
-              config[[config_key]]$equal <- NA_character_
+              var_changes$gltl <- var_conf$split_value
+              var_changes$equal <- NA_character_
             }
           }
 
           # Set effect_sum_stats flag if not already set
-          if (is.null(config[[config_key]]$effect_sum_stats)) {
-            config[[config_key]]$effect_sum_stats <- TRUE
+          if (is.null(config[[config_key]]$effect_sum_stats) ||
+            is.na(config[[config_key]]$effect_sum_stats)) {
+            var_changes$effect_sum_stats <- TRUE
           }
+        }
+
+        if (length(var_changes) > 0) {
+          changes[[config_key]] <- var_changes
         }
       }
 
-      # Update options with modified config
-      current_opts$data$config <- config
-
-      # Write back to file
-      write_options_file(options_file, current_opts)
+      if (length(changes) > 0) {
+        update_data_config(changes)
+      }
 
       return(TRUE)
     },

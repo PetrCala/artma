@@ -1,116 +1,193 @@
 #' @title Update Data Config
-#' @description Update the data config.
-#' @param changes *\[list\]* The changes to the data config.
-#' @return *\[list\]* The updated data config.
+#' @description Update the data config with new changes. Changes are applied to
+#'   the fully-resolved config, then diffed against the base defaults to produce
+#'   sparse overrides that are saved to the options file.
+#'   When the dataframe source is not available, changes are merged directly into
+#'   existing overrides without diffing.
+#' @param changes *\[list\]* The changes to the data config. A named list where
+#'   each key is a variable name and each value is a list of field overrides.
+#' @return *\[list\]* The updated fully-resolved data config (invisibly).
 update_data_config <- function(changes) {
-  current_config <- getOption("artma.data.config")
+  box::use(
+    artma / libs / core / validation[validate],
+    artma / libs / core / utils[get_verbosity],
+    artma / data_config / defaults[build_base_config, extract_overrides],
+    artma / data_config / read[get_data_config],
+    artma / data_config / resolve[read_df_for_config]
+  )
+
   options_file_name <- getOption("artma.temp.file_name")
   options_dir <- getOption("artma.temp.dir_name")
 
   if (is.null(options_file_name) || is.null(options_dir)) {
-    cli::cli_abort("There was an error loading the options file - the options file name and directory are not set.")
+    cli::cli_abort(
+      paste(
+        "There was an error loading the options file -",
+        "the options file name and directory are not set."
+      )
+    )
   }
 
-  box::use(artma / libs / core / validation[validate])
   validate(is.list(changes))
-
   if (is.null(changes)) changes <- list()
-  # The config can be not yet created or malformed. We want to reinstantiate it.
-  if (!is.list(current_config)) current_config <- list()
 
-  new_config <- utils::modifyList(current_config, changes)
+  # Get the current resolved config and apply changes
+  current_resolved <- get_data_config()
+  new_resolved <- utils::modifyList(current_resolved, changes)
 
+  # Try to build base config from df for sparse diffing
+  df <- tryCatch(
+    read_df_for_config(),
+    error = function(e) {
+      if (get_verbosity() >= 4) {
+        cli::cli_inform(
+          "No dataframe for sparse diffing: {e$message}"
+        )
+      }
+      NULL
+    }
+  )
+
+  if (!is.null(df)) {
+    base_config <- build_base_config(df)
+
+    # Compute sparse overrides: only non-default fields
+    sparse_overrides <- list()
+    for (var_key in names(new_resolved)) {
+      default_entry <- base_config[[var_key]]
+
+      if (is.null(default_entry)) {
+        # Variable not in dataframe (e.g., computed column)
+        sparse_overrides[[var_key]] <- new_resolved[[var_key]]
+      } else {
+        override <- extract_overrides(
+          new_resolved[[var_key]], default_entry
+        )
+        if (!is.null(override)) {
+          sparse_overrides[[var_key]] <- override
+        }
+      }
+    }
+  } else {
+    # No df available -- store changes as-is (no diff possible)
+    sparse_overrides <- new_resolved
+  }
+
+  # Save sparse overrides to options file
   suppressMessages(
     artma::options.modify(
       options_file_name = options_file_name,
       options_dir = options_dir,
       user_input = list(
-        "data.config" = new_config
+        "data.config" = sparse_overrides
       ),
       should_validate = TRUE
     )
   )
 
-  # Ensure any further calls to getOption("artma.data.config") will return the fixed config
-  # This option is reverted upon exiting from the namespace modified by runtime_setup()
-  options("artma.data.config" = new_config)
+  # Update in-memory state
+  options("artma.data.config" = sparse_overrides)
 
-  invisible(new_config)
+  invisible(new_resolved)
 }
 
 #' @title Fix Data Config
-#' @description Fix the data config.
-#' @param create_if_missing *\[logical\]* Whether to create the data config if it does not exist. Defaults to `TRUE`.
+#' @description Fix the data config by regenerating from the dataframe.
+#'   Since the base config IS the default, fixing means clearing all overrides.
+#' @param create_if_missing *\[logical\]* Whether to create the data config if
+#'   it does not exist. Defaults to `TRUE`.
 #' @return *\[list\]* The fixed data config.
 fix_data_config <- function(
     create_if_missing = TRUE) {
   box::use(
-    artma / data_config / utils[data_config_is_valid],
-    artma / libs / core / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity],
+    artma / data_config / defaults[build_base_config],
+    artma / data_config / resolve[read_df_for_config]
   )
-
-  current_config <- getOption("artma.data.config")
-
-  if (data_config_is_valid(current_config)) {
-    if (get_verbosity() >= 3) {
-      cli::cli_alert_success("The data config is valid.")
-    }
-    return(invisible(NULL))
-  }
-
-  if ((is.na(current_config) || is.null(current_config)) && !create_if_missing) {
-    cli::cli_abort("The data config has not been created yet.")
-  }
 
   if (get_verbosity() >= 4) {
-    cli::cli_inform("Creating a new data config…")
+    cli::cli_inform("Regenerating data config from dataframe...")
   }
 
-  box::use(
-    artma / const[CONST],
-    artma / libs / core / validation[assert],
-    artma / data / read[read_data],
-    artma / data_config / parse[parse_df_into_data_config],
-    artma / data_config / utils[data_config_is_valid]
-  )
+  df <- read_df_for_config()
+  base_config <- build_base_config(df)
 
-  if (!is.list(current_config)) current_config <- list()
+  # Clear all overrides -- the base config is the canonical default
+  options_file_name <- getOption("artma.temp.file_name")
+  options_dir <- getOption("artma.temp.dir_name")
 
-  # TODO this should be automatically detected - for now, overwrite the whole config
-  # invalid_config <- current_config
-
-  # TODO this should check the invalid setup and overwrite it
-
-  # For automatic options, overwrite the whole config (its invalid/missing values)
-  # onto values that are valid
-  # For manual options, only suggest these changes and ask for confirmation
-
-  df_path <- getOption("artma.data.source_path")
-  df <- read_data(df_path)
-
-  config_setup <- getOption("artma.data.config_setup")
-  if (!(config_setup %in% CONST$DATA_CONFIG$SETUP_TYPES)) {
-    cli::cli_abort("Invalid data config setup type. Must be one of: {.val {CONST$DATA_CONFIG$SETUP_TYPES}}")
+  if (!is.null(options_file_name) && !is.null(options_dir)) {
+    suppressMessages(
+      artma::options.modify(
+        options_file_name = options_file_name,
+        options_dir = options_dir,
+        user_input = list("data.config" = list()),
+        should_validate = TRUE
+      )
+    )
   }
-  base_config <- parse_df_into_data_config(df)
-  config <- switch(config_setup,
-    "auto" = base_config,
-    # In the manual case, stop in non-interactive mode and in interactive, prompt the user to select the data config file.
-    "manual" = cli::cli_abort("Manual data config is not implemented yet."), # read_data_config_from_file(),
-    cli::cli_abort(err_msg)
-  )
 
-  fixed_config <- suppressMessages(update_data_config(changes = config))
-  assert(data_config_is_valid(fixed_config), "The data config could not be fixed.")
+  options("artma.data.config" = list())
 
   if (get_verbosity() >= 3) {
-    cli::cli_alert_success("The data config has been fixed.")
+    cli::cli_alert_success(
+      "The data config has been regenerated from the dataframe."
+    )
   }
 
-  fixed_config
+  base_config
+}
+
+#' @title Reset Config Overrides
+#' @description Remove overrides for a specific variable or all variables,
+#'   resetting them to defaults.
+#' @param var_name *\[character|NULL\]* The variable name to reset. If NULL,
+#'   resets all overrides.
+#' @return *\[list\]* The updated fully-resolved data config (invisibly).
+reset_config_overrides <- function(var_name = NULL) {
+  options_file_name <- getOption("artma.temp.file_name")
+  options_dir <- getOption("artma.temp.dir_name")
+
+  if (is.null(options_file_name) || is.null(options_dir)) {
+    cli::cli_abort(
+      paste(
+        "There was an error loading the options file -",
+        "the options file name and directory are not set."
+      )
+    )
+  }
+
+  current_overrides <- getOption("artma.data.config")
+  if (!is.list(current_overrides)) current_overrides <- list()
+
+  if (is.null(var_name)) {
+    # Reset all overrides
+    new_overrides <- list()
+  } else {
+    # Reset specific variable
+    var_key <- make.names(var_name)
+    new_overrides <- current_overrides
+    new_overrides[[var_key]] <- NULL
+  }
+
+  suppressMessages(
+    artma::options.modify(
+      options_file_name = options_file_name,
+      options_dir = options_dir,
+      user_input = list("data.config" = new_overrides),
+      should_validate = TRUE
+    )
+  )
+
+  options("artma.data.config" = new_overrides)
+
+  # Return the resolved config
+  box::use(artma / data_config / read[get_data_config])
+  invisible(get_data_config())
 }
 
 box::export(
   fix_data_config,
-  update_data_config
+  update_data_config,
+  reset_config_overrides
 )
