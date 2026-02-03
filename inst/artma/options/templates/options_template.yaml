@@ -383,6 +383,85 @@ methods:
         If `TRUE`, always include zero in the x-axis ticks when it falls
         within the data range. Useful as a reference point.
 
+  t_stat_histogram:
+    lower_cutoff:
+      type: "numeric"
+      default: -120
+      help: |
+        Lower cutoff bound for the main (full-range) histogram.
+        T-statistic values below this threshold are excluded.
+
+    upper_cutoff:
+      type: "numeric"
+      default: 120
+      help: |
+        Upper cutoff bound for the main (full-range) histogram.
+        T-statistic values above this threshold are excluded.
+
+    critical_values:
+      type: "numeric"
+      default: [1.96]
+      help: |
+        Positive critical t-statistic values to highlight with vertical lines.
+        Symmetric lines are drawn at both +/- each value.
+        Common thresholds:
+          {cli::symbol$bullet} {.strong 1.645}: 10% significance level
+          {cli::symbol$bullet} {.strong 1.96}: 5% significance level (default)
+          {cli::symbol$bullet} {.strong 2.58}: 1% significance level
+
+    n_bins:
+      type: "integer"
+      default: 80
+      help: |
+        Number of bins for the histogram. Higher values show finer detail.
+
+    show_mean_line:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, display a dashed vertical line at the mean t-statistic value.
+
+    show_density_curve:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, overlay a kernel density curve on the histogram.
+
+    min_tick_distance:
+      type: "numeric"
+      default: 0.5
+      help: |
+        Minimum distance between regular x-axis ticks and critical value ticks.
+        Prevents tick label overlap near critical values.
+
+    close_up_enabled:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, generate a second close-up histogram with tighter bounds
+        in addition to the full-range histogram.
+
+    close_up_lower:
+      type: "numeric"
+      default: -10
+      help: |
+        Lower bound for the close-up histogram view.
+        Only used when close_up_enabled is `TRUE`.
+
+    close_up_upper:
+      type: "numeric"
+      default: 10
+      help: |
+        Upper bound for the close-up histogram view.
+        Only used when close_up_enabled is `TRUE`.
+
+    close_up_min_tick_distance:
+      type: "numeric"
+      default: 0.3
+      help: |
+        Minimum tick distance for the close-up view.
+        Smaller values allow tighter tick placement in the zoomed view.
+
   bma:
     burn:
       type: "integer"

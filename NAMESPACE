@@ -2,6 +2,7 @@
 
 S3method(print,artma_box_plot)
 S3method(print,artma_funnel_plot)
+S3method(print,artma_t_stat_histogram)
 export(artma)
 export(autonomy.describe)
 export(autonomy.get)

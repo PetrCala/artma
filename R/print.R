@@ -33,3 +33,25 @@ print.artma_funnel_plot <- function(x, ...) {
 
   invisible(x)
 }
+
+
+#' Print method for t_stat_histogram results
+#'
+#' @param x An artma_t_stat_histogram object
+#' @param ... Additional arguments (ignored)
+#' @return x invisibly
+#' @export
+print.artma_t_stat_histogram <- function(x, ...) {
+  close_up_info <- if (x$close_up_enabled) " + close-up" else ""
+  mean_info <- round(x$mean_t_stat, 3)
+
+  cli::cli_text(paste0(
+    "<t_stat_histogram result: {x$n_observations} observations, ",
+    "mean t = {mean_info}{close_up_info}>"
+  ))
+  cli::cli_text(
+    "Access plots via {.code $plot_main} and {.code $plot_close_up}"
+  )
+
+  invisible(x)
+}

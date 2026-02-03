@@ -99,6 +99,7 @@ CONST <- list(
       "effect_summary_stats",
       "box_plot",
       "funnel_plot",
+      "t_stat_histogram",
       "linear_tests",
       "nonlinear_tests",
       "exogeneity_tests",

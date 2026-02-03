@@ -46,6 +46,20 @@ PALETTES <- list(
       green = "#008000",
       red = "#b30000",
       purple = "#660066"
+    ),
+    critical = list(
+      blue = "#D10D0D",
+      yellow = "#0d4ed1",
+      green = "#D10D0D",
+      red = "#0d4ed1",
+      purple = "#0d4ed1"
+    ),
+    mean = list(
+      blue = "darkorange",
+      yellow = "darkgreen",
+      green = "darkorange",
+      red = "darkgreen",
+      purple = "darkgreen"
     )
   ),
   bma = list(
