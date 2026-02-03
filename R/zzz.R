@@ -46,6 +46,8 @@ get_valid_boxpath <- function(libname, pkgname) {
 #' @noRd
 register_runtime_dependencies <- function() {
   invisible(list(
+    ggplot2::ggplot,
+    ggtext::element_markdown,
     NlcOptim::solnl,
     lmtest::coeftest,
     plm::plm,

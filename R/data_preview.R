@@ -60,7 +60,7 @@
 #'
 #' @seealso
 #' - \code{\link{artma}} - Run meta-analysis methods
-#' - \code{\link{prepare_data}} - Prepare data manually
+#' - \code{prepare_data()} - Prepare data manually
 #' - \code{\link{options.load}} - Load options
 #'
 #' @export
