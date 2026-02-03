@@ -104,7 +104,8 @@ CONST <- list(
       "nonlinear_tests",
       "exogeneity_tests",
       "p_hacking_tests",
-      "bma"
+      "bma",
+      "fma"
     )
   ),
   URLS = list(

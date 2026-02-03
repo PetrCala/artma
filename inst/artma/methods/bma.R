@@ -9,12 +9,9 @@ bma <- function(df) {
     artma / const[CONST],
     artma / data_config / read[get_data_config],
     artma / econometric / bma[
-      get_bma_data,
-      get_bma_formula,
       handle_bma_params,
       run_bma,
-      extract_bma_results,
-      find_optimal_bma_formula
+      extract_bma_results
     ],
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
@@ -67,38 +64,16 @@ bma <- function(df) {
     "print_results must be one of: none, fast, verbose, all, table"
   )
 
-  # Get BMA variables from data config (bma=TRUE)
-  bma_vars <- names(config)[vapply(config, function(var_cfg) {
-    if (!is.list(var_cfg)) {
-      return(FALSE)
-    }
-    isTRUE(var_cfg$bma)
-  }, logical(1))]
+  prepared <- prepare_bma_inputs(
+    df = df,
+    config = config,
+    use_vif_optimization = use_vif_optimization,
+    max_groups_to_remove = max_groups_to_remove,
+    scale_data = TRUE,
+    verbosity = get_verbosity()
+  )
 
-  # If no variables configured, prompt the user
-  if (!length(bma_vars)) {
-    if (get_verbosity() >= 3) {
-      cli::cli_alert_info("No BMA variables configured. Please select variables for analysis.")
-    }
-
-    # Prompt for variable selection
-    bma_vars <- prompt_bma_variable_selection(df, config)
-
-    # Save the selected variables to data config for future runs
-    if (length(bma_vars) > 0) {
-      save_bma_variables_to_data_config(bma_vars, config)
-    }
-  }
-
-  missing_vars <- bma_vars[!bma_vars %in% names(df)]
-  if (length(missing_vars)) {
-    if (get_verbosity() >= 2) {
-      cli::cli_alert_warning("Missing BMA variables in data: {.val {missing_vars}}")
-    }
-    bma_vars <- bma_vars[bma_vars %in% names(df)]
-  }
-
-  if (!length(bma_vars)) {
+  if (!is.null(prepared$skipped)) {
     if (get_verbosity() >= 2) {
       cli::cli_alert_warning("No valid BMA variables available. Skipping BMA analysis.")
     }
@@ -112,181 +87,12 @@ bma <- function(df) {
         stringsAsFactors = FALSE
       ),
       model = NULL,
-      skipped = "No valid BMA variables available"
+      skipped = prepared$skipped
     ))
   }
 
-  # Only include 'effect' as required (dependent variable)
-  # All other variables (including 'se') must be explicitly selected by the user
-  all_vars <- c("effect", bma_vars)
-
-  bma_var_list <- data.frame(
-    var_name = all_vars,
-    var_name_verbose = vapply(all_vars, function(v) {
-      if (v %in% names(config) && !is.null(config[[v]]$var_name_verbose) && is.character(config[[v]]$var_name_verbose)) {
-        config[[v]]$var_name_verbose
-      } else {
-        v
-      }
-    }, character(1)),
-    bma = rep(TRUE, length(all_vars)),
-    group_category = vapply(all_vars, function(v) {
-      if (v %in% names(config) && !is.null(config[[v]]$group_category) && is.character(config[[v]]$group_category)) {
-        config[[v]]$group_category
-      } else {
-        "other"
-      }
-    }, character(1)),
-    to_log_for_bma = vapply(all_vars, function(v) {
-      if (v %in% names(config) && !is.null(config[[v]]$bma_to_log) && is.logical(config[[v]]$bma_to_log)) {
-        config[[v]]$bma_to_log
-      } else {
-        FALSE
-      }
-    }, logical(1)),
-    bma_reference_var = rep(FALSE, length(all_vars)),
-    stringsAsFactors = FALSE
-  )
-
-  if (use_vif_optimization) {
-    if (get_verbosity() >= 3) {
-      cli::cli_alert_info("Searching for optimal BMA formula using VIF optimization...")
-    }
-    formula_result <- find_optimal_bma_formula(
-      df,
-      bma_var_list,
-      max_groups_to_remove = max_groups_to_remove,
-      return_variable_vector_instead = FALSE,
-      verbose = get_verbosity() >= 3
-    )
-    bma_formula <- formula_result$formula
-    bma_var_names <- all.vars(bma_formula)
-  } else {
-    bma_var_names <- all_vars
-  }
-
-  bma_data <- get_bma_data(
-    df,
-    bma_var_list,
-    variable_info = bma_var_names,
-    scale_data = TRUE,
-    from_vector = TRUE,
-    include_reference_groups = FALSE
-  )
-
-  # Check for and handle missing values
-  if (any(is.na(bma_data))) {
-    na_count <- sum(is.na(bma_data))
-    row_count_before <- nrow(bma_data)
-
-    # Remove rows with any NA values
-    bma_data <- stats::na.omit(bma_data)
-
-    if (get_verbosity() >= 2) {
-      cli::cli_alert_warning("Removed {row_count_before - nrow(bma_data)} observation{?s} with missing values ({na_count} NA value{?s} total)")
-    }
-
-    if (nrow(bma_data) == 0) {
-      cli::cli_abort("No observations remaining after removing missing values. Cannot run BMA.")
-    }
-  }
-
-  # Check for constant variables and remove them
-  is_constant <- vapply(bma_data, function(x) length(unique(x)) <= 1, logical(1))
-  if (any(is_constant)) {
-    constant_vars <- names(bma_data)[is_constant]
-    if (get_verbosity() >= 2) {
-      cli::cli_alert_warning("Removing {length(constant_vars)} constant variable{?s}: {.val {constant_vars}}")
-    }
-    bma_data <- bma_data[, !is_constant, drop = FALSE]
-    bma_var_names <- bma_var_names[!bma_var_names %in% constant_vars]
-
-    if (ncol(bma_data) < 2) {
-      cli::cli_abort("Not enough variables remaining after removing constants. Need at least effect and one moderator.")
-    }
-  }
-
-  # Check for rank deficiency and multicollinearity, and remove aliased variables
-  if (ncol(bma_data) > 2) {
-    max_iterations <- 50  # Prevent infinite loop
-    iteration <- 0
-
-    repeat {
-      iteration <- iteration + 1
-      if (iteration > max_iterations) {
-        if (get_verbosity() >= 2) {
-          cli::cli_alert_warning("Reached maximum iterations for collinearity removal")
-        }
-        break
-      }
-
-      # Build a design matrix to check rank
-      formula_check <- stats::as.formula(paste("effect ~", paste(setdiff(names(bma_data), "effect"), collapse = " + ")))
-      aliased_vars <- character(0)
-
-      tryCatch(
-        {
-          lm_check <- stats::lm(formula_check, data = bma_data)
-          aliased <- stats::alias(lm_check)
-
-          if (!is.null(aliased$Complete) && length(aliased$Complete) > 0) {
-            # Get coefficients with NA (these are the aliased ones)
-            lm_coefs <- stats::coef(lm_check)
-            aliased_vars <- names(lm_coefs)[is.na(lm_coefs)]
-            aliased_vars <- aliased_vars[aliased_vars != "(Intercept)"]
-
-            if (length(aliased_vars) > 0) {
-              if (get_verbosity() >= 2 && iteration == 1) {
-                cli::cli_alert_warning("Detected {length(aliased_vars)} aliased coefficient{?s} (perfect collinearity)")
-                cli::cli_alert_info("Automatically removing collinear variables...")
-              }
-
-              # Get priority variables to preserve if possible
-              box::use(artma / variable / bma[get_bma_priority_variables])
-              priority_vars <- get_bma_priority_variables()
-
-              # Remove one aliased variable, preferring non-priority ones
-              non_priority_aliased <- setdiff(aliased_vars, priority_vars)
-              var_to_remove <- if (length(non_priority_aliased)) {
-                non_priority_aliased[1]
-              } else {
-                aliased_vars[1]
-              }
-
-              if (get_verbosity() >= 3) {
-                cli::cli_alert_info("Removing collinear variable: {.val {var_to_remove}}")
-              }
-
-              # Remove the variable from bma_data and bma_var_names
-              bma_data <- bma_data[, names(bma_data) != var_to_remove, drop = FALSE]
-              bma_var_names <- bma_var_names[bma_var_names != var_to_remove]
-
-              if (ncol(bma_data) < 2) {
-                cli::cli_abort("Not enough variables remaining after removing collinear variables. Need at least effect and one moderator.")
-              }
-
-              # Continue loop to check if more aliased variables remain
-              next
-            }
-          }
-        },
-        error = function(e) {
-          if (get_verbosity() >= 3) {
-            cli::cli_alert_info("Could not check for collinearity: {e$message}")
-          }
-        }
-      )
-
-      # No aliased variables found, exit loop
-      if (!length(aliased_vars)) {
-        break
-      }
-    }
-
-    if (iteration > 1 && get_verbosity() >= 2) {
-      cli::cli_alert_success("Removed {iteration - 1} collinear variable{?s}")
-    }
-  }
+  bma_data <- prepared$bma_data
+  bma_var_list <- prepared$bma_var_list
 
   bma_params_list <- list(
     burn = as.integer(burn),
@@ -370,7 +176,8 @@ bma <- function(df) {
       coefficients = coef_df,
       model = bma_model,
       data = bma_data,
-      params = bma_params[[i]]
+      params = bma_params[[i]],
+      var_list = bma_var_list
     )
   }
 
@@ -379,6 +186,243 @@ bma <- function(df) {
   } else {
     invisible(results)
   }
+}
+
+#' Prepare inputs for BMA and FMA workflows
+prepare_bma_inputs <- function(df, config, use_vif_optimization, max_groups_to_remove,
+                               scale_data = TRUE, verbosity = NULL) {
+  box::use(
+    artma / econometric / bma[get_bma_data, find_optimal_bma_formula],
+    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / utils[get_verbosity],
+    artma / variable / bma[get_bma_priority_variables]
+  )
+
+  if (is.null(verbosity)) {
+    verbosity <- get_verbosity()
+  }
+
+  validate(
+    is.data.frame(df),
+    is.list(config),
+    is.logical(use_vif_optimization),
+    is.numeric(max_groups_to_remove),
+    is.logical(scale_data),
+    is.numeric(verbosity)
+  )
+  validate_columns(df, c("effect", "se"))
+
+  max_groups_to_remove <- as.integer(max_groups_to_remove)
+
+  # Get BMA variables from data config (bma=TRUE)
+  bma_vars <- names(config)[vapply(config, function(var_cfg) {
+    if (!is.list(var_cfg)) {
+      return(FALSE)
+    }
+    isTRUE(var_cfg$bma)
+  }, logical(1))]
+
+  # If no variables configured, prompt the user
+  if (!length(bma_vars)) {
+    if (verbosity >= 3) {
+      cli::cli_alert_info("No BMA variables configured. Please select variables for analysis.")
+    }
+
+    bma_vars <- prompt_bma_variable_selection(df, config)
+
+    if (length(bma_vars) > 0) {
+      save_bma_variables_to_data_config(bma_vars, config)
+    }
+  }
+
+  missing_vars <- bma_vars[!bma_vars %in% names(df)]
+  if (length(missing_vars)) {
+    if (verbosity >= 2) {
+      cli::cli_alert_warning("Missing BMA variables in data: {.val {missing_vars}}")
+    }
+    bma_vars <- bma_vars[bma_vars %in% names(df)]
+  }
+
+  if (!length(bma_vars)) {
+    return(list(skipped = "No valid BMA variables available"))
+  }
+
+  # Only include 'effect' as required (dependent variable)
+  # All other variables (including 'se') must be explicitly selected by the user
+  all_vars <- c("effect", bma_vars)
+
+  bma_var_list <- data.frame(
+    var_name = all_vars,
+    var_name_verbose = vapply(all_vars, function(v) {
+      if (v %in% names(config) && !is.null(config[[v]]$var_name_verbose) && is.character(config[[v]]$var_name_verbose)) {
+        config[[v]]$var_name_verbose
+      } else {
+        v
+      }
+    }, character(1)),
+    bma = rep(TRUE, length(all_vars)),
+    group_category = vapply(all_vars, function(v) {
+      if (v %in% names(config) && !is.null(config[[v]]$group_category) && is.character(config[[v]]$group_category)) {
+        config[[v]]$group_category
+      } else {
+        "other"
+      }
+    }, character(1)),
+    to_log_for_bma = vapply(all_vars, function(v) {
+      if (v %in% names(config) && !is.null(config[[v]]$bma_to_log) && is.logical(config[[v]]$bma_to_log)) {
+        config[[v]]$bma_to_log
+      } else {
+        FALSE
+      }
+    }, logical(1)),
+    bma_reference_var = rep(FALSE, length(all_vars)),
+    stringsAsFactors = FALSE
+  )
+
+  if (use_vif_optimization) {
+    if (verbosity >= 3) {
+      cli::cli_alert_info("Searching for optimal BMA formula using VIF optimization...")
+    }
+    formula_result <- find_optimal_bma_formula(
+      df,
+      bma_var_list,
+      max_groups_to_remove = max_groups_to_remove,
+      return_variable_vector_instead = FALSE,
+      verbose = verbosity >= 3
+    )
+    bma_formula <- formula_result$formula
+    bma_var_names <- all.vars(bma_formula)
+  } else {
+    bma_var_names <- all_vars
+  }
+
+  bma_data <- get_bma_data(
+    df,
+    bma_var_list,
+    variable_info = bma_var_names,
+    scale_data = scale_data,
+    from_vector = TRUE,
+    include_reference_groups = FALSE
+  )
+
+  if (!"effect" %in% colnames(bma_data)) {
+    cli::cli_abort("BMA data must include an {.code effect} column.")
+  }
+  if (colnames(bma_data)[1] != "effect") {
+    ordered <- c("effect", setdiff(colnames(bma_data), "effect"))
+    bma_data <- bma_data[, ordered, drop = FALSE]
+  }
+
+  # Check for and handle missing values
+  if (any(is.na(bma_data))) {
+    na_count <- sum(is.na(bma_data))
+    row_count_before <- nrow(bma_data)
+
+    bma_data <- stats::na.omit(bma_data)
+
+    if (verbosity >= 2) {
+      cli::cli_alert_warning("Removed {row_count_before - nrow(bma_data)} observation{?s} with missing values ({na_count} NA value{?s} total)")
+    }
+
+    if (nrow(bma_data) == 0) {
+      cli::cli_abort("No observations remaining after removing missing values. Cannot run BMA.")
+    }
+  }
+
+  # Check for constant variables and remove them
+  is_constant <- vapply(bma_data, function(x) length(unique(x)) <= 1, logical(1))
+  if (any(is_constant)) {
+    constant_vars <- names(bma_data)[is_constant]
+    if (verbosity >= 2) {
+      cli::cli_alert_warning("Removing {length(constant_vars)} constant variable{?s}: {.val {constant_vars}}")
+    }
+    bma_data <- bma_data[, !is_constant, drop = FALSE]
+    bma_var_names <- bma_var_names[!bma_var_names %in% constant_vars]
+
+    if (ncol(bma_data) < 2) {
+      cli::cli_abort("Not enough variables remaining after removing constants. Need at least effect and one moderator.")
+    }
+  }
+
+  # Check for rank deficiency and multicollinearity, and remove aliased variables
+  if (ncol(bma_data) > 2) {
+    max_iterations <- 50  # Prevent infinite loop
+    iteration <- 0
+
+    repeat {
+      iteration <- iteration + 1
+      if (iteration > max_iterations) {
+        if (verbosity >= 2) {
+          cli::cli_alert_warning("Reached maximum iterations for collinearity removal")
+        }
+        break
+      }
+
+      formula_check <- stats::as.formula(paste("effect ~", paste(setdiff(names(bma_data), "effect"), collapse = " + ")))
+      aliased_vars <- character(0)
+
+      tryCatch(
+        {
+          lm_check <- stats::lm(formula_check, data = bma_data)
+          aliased <- stats::alias(lm_check)
+
+          if (!is.null(aliased$Complete) && length(aliased$Complete) > 0) {
+            lm_coefs <- stats::coef(lm_check)
+            aliased_vars <- names(lm_coefs)[is.na(lm_coefs)]
+            aliased_vars <- aliased_vars[aliased_vars != "(Intercept)"]
+
+            if (length(aliased_vars) > 0) {
+              if (verbosity >= 2 && iteration == 1) {
+                cli::cli_alert_warning("Detected {length(aliased_vars)} aliased coefficient{?s} (perfect collinearity)")
+                cli::cli_alert_info("Automatically removing collinear variables...")
+              }
+
+              priority_vars <- get_bma_priority_variables()
+
+              non_priority_aliased <- setdiff(aliased_vars, priority_vars)
+              var_to_remove <- if (length(non_priority_aliased)) {
+                non_priority_aliased[1]
+              } else {
+                aliased_vars[1]
+              }
+
+              if (verbosity >= 3) {
+                cli::cli_alert_info("Removing collinear variable: {.val {var_to_remove}}")
+              }
+
+              bma_data <- bma_data[, names(bma_data) != var_to_remove, drop = FALSE]
+              bma_var_names <- bma_var_names[bma_var_names != var_to_remove]
+
+              if (ncol(bma_data) < 2) {
+                cli::cli_abort("Not enough variables remaining after removing collinear variables. Need at least effect and one moderator.")
+              }
+
+              next
+            }
+          }
+        },
+        error = function(e) {
+          if (verbosity >= 3) {
+            cli::cli_alert_info("Could not check for collinearity: {e$message}")
+          }
+        }
+      )
+
+      if (!length(aliased_vars)) {
+        break
+      }
+    }
+
+    if (iteration > 1 && verbosity >= 2) {
+      cli::cli_alert_success("Removed {iteration - 1} collinear variable{?s}")
+    }
+  }
+
+  list(
+    bma_data = bma_data,
+    bma_var_list = bma_var_list,
+    bma_var_names = bma_var_names
+  )
 }
 
 #' Prompt user to select BMA variables at runtime
@@ -741,4 +785,4 @@ run <- cache_cli_runner(
   key_builder = function(...) build_data_cache_signature()
 )
 
-box::export(bma, run)
+box::export(bma, run, prepare_bma_inputs)

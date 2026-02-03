@@ -18,7 +18,7 @@ invoke_runtime_methods(methods, df, ...)
 
 Internal example:
 df <- data.frame(...)
-invoke_runtime_methods(c("funnel_plot", "bma"), df)
+invoke_runtime_methods(c("funnel_plot", "bma", "fma"), df)
 }
 \description{
 Pass a vector of runtime methods to invoke, together with a data frame to invoke these methods on, and invoke them.

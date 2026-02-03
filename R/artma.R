@@ -56,7 +56,7 @@
 #'
 #' # Run specific methods with an options file
 #' results <- artma(
-#'   methods = c("funnel_plot", "bma"),
+#'   methods = c("funnel_plot", "bma", "fma"),
 #'   options = "my_analysis.yaml"
 #' )
 #'
@@ -158,7 +158,7 @@ artma <- function(
 #'
 #' Internal example:
 #' df <- data.frame(...)
-#' invoke_runtime_methods(c("funnel_plot", "bma"), df)
+#' invoke_runtime_methods(c("funnel_plot", "bma", "fma"), df)
 #'
 #' @keywords internal
 invoke_runtime_methods <- function(methods, df, ...) {

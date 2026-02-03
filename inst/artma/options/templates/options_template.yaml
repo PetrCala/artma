@@ -519,6 +519,15 @@ methods:
         Maximum number of variable groups to remove during VIF optimization.
         Only relevant if use_vif_optimization is `TRUE`.
 
+  fma:
+    round_to:
+      type: "integer"
+      allow_na: true
+      default: .na
+      help: |
+        Override the default number of decimals shown in the FMA output.
+        Leave unset to use the global output option.
+
     print_results:
       type: "enum: none|fast|verbose|all|table"
       default: "fast"

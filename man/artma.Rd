@@ -72,7 +72,7 @@ results <- artma()
 
 # Run specific methods with an options file
 results <- artma(
-  methods = c("funnel_plot", "bma"),
+  methods = c("funnel_plot", "bma", "fma"),
   options = "my_analysis.yaml"
 )
 
