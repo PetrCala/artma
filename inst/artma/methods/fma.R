@@ -33,8 +33,8 @@ fma <- function(df, bma_result = NULL) {
   )
 
   assert(
-    print_results %in% c("none", "fast", "verbose", "all", "table"),
-    "print_results must be one of: none, fast, verbose, all, table"
+    print_results %in% c("none", "fast", "verbose", "all"),
+    "print_results must be one of: none, fast, verbose, all"
   )
 
   burn <- bma_opt$burn %||% 10000L

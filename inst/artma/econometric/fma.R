@@ -83,7 +83,7 @@ run_fma <- function(bma_data, bma_model, input_var_list, round_to = NULL, print_
     inherits(bma_model, "bma"),
     all(vapply(bma_data, is.numeric, logical(1))),
     colnames(bma_data)[1] == "effect",
-    print_results %in% c("none", "fast", "verbose", "all", "table")
+    print_results %in% c("none", "fast", "verbose", "all")
   )
 
   assert(ncol(bma_data) >= 2, "FMA requires at least one predictor variable.")
@@ -193,17 +193,11 @@ run_fma <- function(bma_data, bma_model, input_var_list, round_to = NULL, print_
 
     if (print_results == "fast") {
       cli::cat_print(printable[c("variable", "coefficient", "se")])
-    } else if (print_results == "verbose") {
+    } else if (print_results %in% c("verbose", "all")) {
       cli::cat_print(printable[c("variable", "coefficient", "se", "p_value")])
-    } else if (print_results == "all") {
-      cli::cat_print(printable)
-    } else if (print_results == "table") {
-      cli::cli_h2("Frequentist model averaging")
-      lines <- utils::capture.output(print(printable, row.names = FALSE)) # nolint: undesirable_function_linter.
-      cli::cli_verbatim(lines)
     }
 
-    if (print_results == "verbose") {
+    if (print_results %in% c("verbose", "all")) {
       weights_df <- data.frame(
         model = seq_along(weights),
         weight = round(weights, digits),

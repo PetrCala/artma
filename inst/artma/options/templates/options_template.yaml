@@ -529,14 +529,14 @@ methods:
         Leave unset to use the global output option.
 
     print_results:
-      type: "enum: none|fast|verbose|all|table"
+      type: "enum: none|fast|verbose|all"
       default: "fast"
       help: |
         Level of result output:
           {cli::symbol$bullet} {.strong none}: No output
-          {cli::symbol$bullet} {.strong fast}: Basic coefficients only
-          {cli::symbol$bullet} {.strong verbose}: Detailed model information
-          {cli::symbol$bullet} {.strong all}: All results including plots
+          {cli::symbol$bullet} {.strong fast}: Coefficients and standard errors only
+          {cli::symbol$bullet} {.strong verbose}: Coefficients, standard errors, p-values, and model weights
+          {cli::symbol$bullet} {.strong all}: Same as verbose (kept for consistency with BMA)
 
   p_hacking_tests:
     include_caliper:
