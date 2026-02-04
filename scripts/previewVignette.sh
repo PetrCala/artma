@@ -10,16 +10,25 @@ function print_help {
 Usage: ./previewVignette.sh [<options>] <vignette>
 
 Description: Render a vignette and open the HTML preview in your browser.
+If no vignette is provided, an interactive menu will be shown.
 
 Args:
-<vignette> : Vignette name or path. Accepts 'getting-started',
+<vignette> : Optional. Vignette name or path. Accepts 'getting-started',
              'getting-started.Rmd', or 'vignettes/getting-started.Rmd'.
 
 Options:
 --list      : Print available vignettes.
+--menu      : Always show the interactive menu.
 --help | -h : Print this help message.
 EOF
 }
+
+FORCE_MENU=false
+
+if [[ $1 == "--menu" ]]; then
+  FORCE_MENU=true
+  shift
+fi
 
 if [[ $1 == "--help" ]] || [[ $1 == "-h" ]] || [[ $1 == "help" ]]; then
   print_help
@@ -42,7 +51,7 @@ fi
 
 VIGNETTE_INPUT=""
 
-if [[ $# -eq 0 ]]; then
+if [[ $FORCE_MENU == true ]] || [[ $# -eq 0 ]]; then
   vignette_files=("$PROJECT_ROOT/vignettes"/*.Rmd)
 
   if [[ ${#vignette_files[@]} -eq 0 ]]; then
