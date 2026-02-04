@@ -27,8 +27,8 @@ get_visualization_options <- function() {
   opt <- get_option_group("artma.visualization")
 
   theme <- opt$theme %||% "blue"
-  export_graphics <- opt$export_graphics %||% FALSE
-  export_path <- opt$export_path %||% "./results/graphic"
+  export_graphics <- opt$export_graphics %||% TRUE
+  export_path <- opt$export_path %||% "graphics"
   graph_scale <- opt$graph_scale %||% 2
 
   assert(
@@ -38,6 +38,14 @@ get_visualization_options <- function() {
   assert(is.logical(export_graphics), "export_graphics must be logical")
   assert(is.character(export_path), "export_path must be a character string")
   assert(is.numeric(graph_scale) && graph_scale > 0, "graph_scale must be a positive number")
+
+  # Resolve export_path relative to the unified output directory
+  save_results <- getOption("artma.output.save_results", TRUE)
+  if (isTRUE(save_results)) {
+    box::use(artma / output / export[resolve_output_dir])
+    output_dir <- resolve_output_dir()
+    export_path <- file.path(output_dir, export_path)
+  }
 
   list(
     theme = theme,

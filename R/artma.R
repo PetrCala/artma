@@ -105,12 +105,24 @@ artma <- function(
     box::use(
       artma / data / index[prepare_data],
       artma / libs / core / utils[get_verbosity],
+      artma / output / export[
+        resolve_output_dir, ensure_output_dirs, export_results
+      ],
       artma / interactive / welcome[
         show_welcome_message,
         is_first_time_user,
         mark_welcome_as_shown
       ]
     )
+
+    # Ensure output directories exist before methods run (graphics export
+    # happens during method execution and needs the directories in place)
+    save_results <- getOption("artma.output.save_results", TRUE)
+    output_dir <- NULL
+    if (isTRUE(save_results)) {
+      output_dir <- resolve_output_dir()
+      ensure_output_dirs(output_dir)
+    }
 
     # Prepare data: use provided data or load from options
     if (is.null(data)) {
@@ -135,8 +147,16 @@ artma <- function(
     # Invoke methods
     results <- invoke_runtime_methods(methods = methods, df = df, ...)
 
+    # Export tabular results
+    if (isTRUE(save_results)) {
+      export_results(results, output_dir)
+    }
+
     if (get_verbosity() >= 3) {
       cli::cli_alert_success("Analysis complete.")
+      if (isTRUE(save_results)) {
+        cli::cli_alert_info("Results saved to {.path {output_dir}}")
+      }
     }
 
     invisible(results)
