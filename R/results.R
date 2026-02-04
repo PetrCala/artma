@@ -55,11 +55,14 @@ results.open <- function(options = NULL, options_dir = NULL) {
           "i" = "Run {.code artma()} first to generate results."
         ))
       }
-      switch(Sys.info()[["sysname"]],
-        Darwin = system2("open", dir),
-        Windows = shell.exec(dir),
+      os <- Sys.info()[["sysname"]]
+      if (identical(os, "Darwin")) {
+        system2("/usr/bin/open", dir)
+      } else if (identical(os, "Windows")) {
+        get("shell.exec", envir = baseenv())(dir)
+      } else {
         system2("xdg-open", dir)
-      )
+      }
       cli::cli_alert_success("Opened {.path {dir}}")
       invisible(dir)
     }
