@@ -489,7 +489,7 @@ rename_bma_model <- function(bma_model, input_var_list) {
 #' Can be one of: "none", "fast", "verbose", "all", "table"
 #' @param theme *\[character\]* Color theme name. Defaults to "blue".
 #' @param export_graphics *\[logical\]* If TRUE, export the graphs into the graphics folder. Defaults to TRUE.
-#' @param export_path *\[character\]* Path to the export folder. Defaults to "./results/graphic".
+#' @param export_path *\[character\]* Path to the export folder. Defaults to "graphics".
 #' @param graph_scale *\[numeric\]* Scale the corrplot graph by this number. Defaults to 1.
 #'
 #' @return A numeric vector containing only the BMA coefficients.
@@ -497,7 +497,7 @@ rename_bma_model <- function(bma_model, input_var_list) {
 #' @export
 extract_bma_results <- function(bma_model, bma_data, input_var_list, print_results = "fast",
                                 theme = "blue", export_graphics = TRUE,
-                                export_path = "./results/graphic", graph_scale = 1) {
+                                export_path = "graphics", graph_scale = 1) {
   box::use(
     artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity],

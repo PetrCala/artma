@@ -14,10 +14,10 @@
 #' @examples
 #' \dontrun{
 #' vis <- get_visualization_options()
-#' vis$theme          # "blue"
+#' vis$theme # "blue"
 #' vis$export_graphics # FALSE
-#' vis$export_path    # "./results/graphic"
-#' vis$graph_scale    # 2
+#' vis$export_path # "graphics"
+#' vis$graph_scale # 2
 #' }
 get_visualization_options <- function() {
   box::use(artma / options / index[get_option_group])
