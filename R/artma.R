@@ -156,6 +156,7 @@ artma <- function(
       cli::cli_alert_success("Analysis complete.")
       if (isTRUE(save_results)) {
         cli::cli_alert_info("Results saved to {.path {output_dir}}")
+        cli::cli_alert_info("Run {.code artma::results.open()} to open the results directory.")
       }
     }
 
