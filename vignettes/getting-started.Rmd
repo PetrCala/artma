@@ -28,6 +28,10 @@ When you run this in an interactive R session, artma will:
 4. **Let you choose methods** - Select which analyses you want to run
 5. **Run your analysis** - Execute everything and return results
 
+Results are saved to your output directory, and in interactive sessions the folder
+opens automatically. To skip auto-opening, use `open_results = FALSE`, and open later
+with `artma::results.open()`.
+
 That's it! The function handles all the complexity behind the scenes.
 
 ## Understanding the Core Concepts
@@ -372,53 +376,6 @@ artma::options.validate("my_analysis.yaml")
 
 This catches errors before you run the analysis.
 
-## Common Patterns
-
-### Pattern 1: Quick Analysis
-
-```r
-# Load data and run one method quickly
-results <- artma(
-  data = my_dataframe,
-  methods = "effect_summary_stats"
-)
-```
-
-### Pattern 2: Comprehensive Analysis
-
-```r
-# Run all methods with a saved options file
-results <- artma(
-  options = "comprehensive_analysis.yaml",
-  methods = "all"
-)
-```
-
-### Pattern 3: Sensitivity Analysis
-
-```r
-# Create baseline
-artma::options.create(options_file_name = "baseline")
-
-# Create sensitivity version
-artma::options.copy(
-  options_file_name_from = "baseline.yaml",
-  options_file_name_to = "sensitivity.yaml"
-)
-
-# Modify sensitivity version
-artma::options.modify(
-  options_file_name = "sensitivity.yaml",
-  options_to_modify = list(
-    "methods.bma.iter" = 100000  # More iterations
-  )
-)
-
-# Run both
-baseline_results <- artma(options = "baseline.yaml")
-sensitivity_results <- artma(options = "sensitivity.yaml")
-```
-
 ## Getting Help
 
 ### Documentation
@@ -457,22 +414,5 @@ str(df)
 
 ## Next Steps
 
-Now that you understand the basics:
-
-1. **Try it yourself** - Run `artma()` with your own data
-2. **Read the options vignette** - Learn about configuring analyses in detail
-3. **Explore methods** - Try different methods to see what they do
-4. **Customize** - Modify options files to suit your needs
-
-## Summary
-
-The artma package is designed to be intuitive:
-
-- **One main function**: `artma()` does everything
-- **Options files**: Store your analysis configuration
-- **Methods**: Choose what analyses to run
-- **Results**: Get structured output you can work with
-
-Start with `artma()` in interactive mode, and let the package guide you. As you become more comfortable, you can use options files for reproducibility and programmatic workflows for automation.
-
-Remember: artma is there to make meta-analysis easier. Don't hesitate to explore, experiment, and use the interactive features to learn as you go!
+Once you're comfortable with the basics, read the options vignette for deeper configuration
+and try a few methods on your own data.
