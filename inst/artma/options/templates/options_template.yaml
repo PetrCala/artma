@@ -705,6 +705,9 @@ output:
       Directory where analysis results (tables, graphics) are saved after each run.
       Set to {.val auto} to use a session-specific temporary directory, or provide
       an absolute path to save results to a fixed location on your computer.
+      When set to {.val auto}, the resolved temporary directory is persisted to
+      the options file after the first run so results remain discoverable; reset
+      this option to {.val auto} to rotate to a new temporary directory.
 
   save_results:
     type: "logical"

@@ -3,6 +3,52 @@
 #' Functions for exporting analysis results (tables and graphics) to
 #' a unified output directory.
 
+is_auto_output_dir <- function(output_dir) {
+  is.null(output_dir) || is.na(output_dir) || identical(output_dir, "auto")
+}
+
+persist_auto_output_dir <- function(output_dir) {
+  box::use(artma / libs / core / utils[get_verbosity])
+
+  options_file_name <- getOption("artma.temp.file_name")
+  options_dir <- getOption("artma.temp.dir_name")
+
+  if (is.null(options_file_name) || is.null(options_dir)) {
+    if (get_verbosity() >= 4) {
+      cli::cli_inform("No options file available to persist output directory.")
+    }
+    return(invisible(FALSE))
+  }
+
+  saved <- tryCatch(
+    {
+      suppressMessages(
+        artma::options.modify(
+          options_file_name = options_file_name,
+          options_dir = options_dir,
+          user_input = list("output.dir" = output_dir),
+          should_validate = TRUE
+        )
+      )
+      TRUE
+    },
+    error = function(e) {
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning(
+          "Failed to persist output directory: {e$message}"
+        )
+      }
+      FALSE
+    }
+  )
+
+  if (isTRUE(saved)) {
+    options("artma.output.dir" = output_dir)
+  }
+
+  invisible(saved)
+}
+
 #' Resolve the output directory path
 #'
 #' @description
@@ -14,7 +60,7 @@
 resolve_output_dir <- function() {
   output_dir <- getOption("artma.output.dir", "auto")
 
-  if (is.null(output_dir) || is.na(output_dir) || identical(output_dir, "auto")) {
+  if (is_auto_output_dir(output_dir)) {
     return(file.path(tempdir(), "artma-results"))
   }
 
@@ -44,6 +90,10 @@ resolve_graphics_dir <- function(output_dir) {
 ensure_output_dirs <- function(output_dir) {
   dir.create(file.path(output_dir, "tables"), recursive = TRUE, showWarnings = FALSE)
   dir.create(resolve_graphics_dir(output_dir), recursive = TRUE, showWarnings = FALSE)
+
+  if (is_auto_output_dir(getOption("artma.output.dir", "auto"))) {
+    persist_auto_output_dir(output_dir)
+  }
 }
 
 #' Save a data frame as CSV
