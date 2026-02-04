@@ -8,7 +8,7 @@
 #   make build      - Build package tarball
 #   make clean      - Clean build artifacts
 
-.PHONY: help install test test-file test-filter test-e2e check check-fast lint document build clean coverage coverage-report style desc-normalize all dev quick setup vignettes fix-options clear-cache stats
+.PHONY: help install test test-file test-filter test-e2e check check-fast lint document build clean coverage coverage-report style desc-normalize all dev quick setup vignettes preview-vignette fix-options clear-cache stats
 
 # Default target
 help:
@@ -27,6 +27,7 @@ help:
 	@echo "  make document         Generate documentation with roxygen2"
 	@echo "  make build            Build source package"
 	@echo "  make vignettes        Build vignettes"
+	@echo "  make preview-vignette Render and open a vignette (VIGNETTE=name)"
 	@echo "  make clean            Remove build artifacts"
 	@echo "  make coverage         Generate test coverage report"
 	@echo "  make coverage-report  Open interactive coverage report"
@@ -113,6 +114,14 @@ build: document
 vignettes:
 	@echo "Building vignettes..."
 	@Rscript -e "devtools::build_vignettes()"
+
+# Render a single vignette and open in browser
+preview-vignette:
+ifeq ($(strip $(VIGNETTE)),)
+	@bash scripts/previewVignette.sh
+else
+	@bash scripts/previewVignette.sh $(VIGNETTE)
+endif
 
 # Clean build artifacts
 clean:

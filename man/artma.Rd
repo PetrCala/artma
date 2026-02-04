@@ -4,7 +4,14 @@
 \alias{artma}
 \title{Run meta-analysis with artma}
 \usage{
-artma(data = NULL, methods = NULL, options = NULL, options_dir = NULL, ...)
+artma(
+  data = NULL,
+  methods = NULL,
+  options = NULL,
+  options_dir = NULL,
+  open_results = TRUE,
+  ...
+)
 }
 \arguments{
 \item{data}{\emph{[data.frame, optional]} Data frame to analyze. If \code{NULL}, data will
@@ -21,6 +28,9 @@ prompted to create or select an options file.}
 
 \item{options_dir}{\emph{[character, optional]} Directory containing the options file.
 If \code{NULL}, uses the default options directory.}
+
+\item{open_results}{\emph{[logical, optional]} Whether to open the results directory
+after exporting results. Defaults to \code{TRUE}.}
 
 \item{...}{Additional arguments passed to the runtime methods.}
 }
