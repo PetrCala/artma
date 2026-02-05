@@ -29,10 +29,13 @@ Imports:
     metafor (>= 4.8-0),
     NlcOptim (>= 0.6),
     plm (>= 2.6-3),
+    Rcpp (>= 1.0.12),
     rlang (>= 1.1.6),
     sandwich (>= 3.1-0),
     withr (>= 3.0.2),
     yaml (>= 2.3.10)
+LinkingTo:
+    Rcpp
 Remotes:
     PetrCala/climenu@0.1.2
 Suggests:

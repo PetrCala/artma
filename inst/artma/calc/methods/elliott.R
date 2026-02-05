@@ -4,13 +4,21 @@ format_decimal <- function(x, k) trimws(format(round(x, k), nsmall = k))
 #' Linearly spaced sequence between two bounds
 linspace <- function(start_, stop_, n) seq(from = start_, to = stop_, length.out = n)
 
+simulate_cdfs_cpp <- function(iterations, grid_points) {
+  .Call(`_artma_simulate_cdfs_cpp`, PACKAGE = "artma", iterations, grid_points)
+}
+
+simulate_cdfs_block_cpp <- function(eps_block) {
+  .Call(`_artma_simulate_cdfs_block_cpp`, PACKAGE = "artma", eps_block)
+}
+
 #' Simulate Brownian bridge suprema CDFs used by the LCM test
 #'
 #' @param iterations [integer] Number of simulations.
 #' @param grid_points [integer] Number of grid points per simulation.
 #' @param show_progress [logical] Whether to show progress bar.
 #' @return Numeric vector of simulated suprema.
-simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress = TRUE) {
+simulate_cdfs_r <- function(iterations = 10000, grid_points = 10000, show_progress = TRUE) {
   c_grid <- seq_len(grid_points) / grid_points
   c_values <- c(0, c_grid)
   n_values <- length(c_values)
@@ -68,6 +76,59 @@ simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress
   bb_sup
 }
 
+simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress = TRUE) {
+  use_cpp <- isTRUE(getOption("artma.simulate_cdfs.use_cpp", TRUE))
+  if (!use_cpp) {
+    return(simulate_cdfs_r(iterations, grid_points, show_progress))
+  }
+
+  verbosity <- getOption("artma.verbose", 3)
+  show_pb <- show_progress && verbosity >= 3 && iterations >= 1000
+
+  if (!show_pb) {
+    res <- tryCatch(
+      simulate_cdfs_cpp(iterations, grid_points),
+      error = function(e) NULL
+    )
+    if (!is.null(res)) {
+      return(res)
+    }
+    return(simulate_cdfs_r(iterations, grid_points, show_progress))
+  }
+
+  chunk_size <- as.integer(getOption("artma.simulate_cdfs.chunk_size", 512L))
+  chunk_size <- max(1L, chunk_size)
+  bb_sup <- numeric(iterations)
+  done <- 0L
+
+  cli::cli_inform("Pre-computing critical values for LCM test via Brownian bridge simulations")
+  Sys.sleep(0.1)
+  cli::cli_progress_bar(
+    "Simulating {iterations} iterations",
+    total = iterations,
+    format = "{cli::pb_spin} {cli::pb_current}/{cli::pb_total} | ETA: {cli::pb_eta}"
+  )
+
+  while (done < iterations) {
+    k <- min(chunk_size, iterations - done)
+    res <- tryCatch(
+      simulate_cdfs_cpp(k, grid_points),
+      error = function(e) NULL
+    )
+    if (is.null(res)) {
+      cli::cli_progress_done()
+      return(simulate_cdfs_r(iterations, grid_points, show_progress))
+    }
+    idx <- (done + 1L):(done + k)
+    bb_sup[idx] <- res
+    done <- done + k
+    cli::cli_progress_update(set = done)
+  }
+
+  cli::cli_progress_done()
+  bb_sup
+}
+
 #' Simulate Brownian bridge suprema CDFs used by the LCM test in parallel
 #' @param iterations [integer] Number of simulations.
 #' @param grid_points [integer] Number of grid points per simulation.
@@ -106,6 +167,47 @@ simulate_cdfs_parallel <- function(
       total = it,
       format = "{cli::pb_spin} {cli::pb_current}/{cli::pb_total} | ETA: {cli::pb_eta}"
     )
+  }
+
+  use_cpp <- isTRUE(getOption("artma.simulate_cdfs.use_cpp", TRUE))
+  if (use_cpp) {
+    use_fork <- (.Platform$OS.type != "windows")
+    if (!use_fork && workers > 1L) {
+      workers <- 1L
+    }
+
+    done <- 0L
+    while (done < it) {
+      k <- min(block_size, it - done)
+      start <- done + 1L
+      end <- done + k
+
+      eps_block <- matrix(stats::rnorm(gp * k), nrow = gp) * inv_sqrt_gp
+
+      if (workers == 1L || k == 1L) {
+        bb_sup[start:end] <- simulate_cdfs_block_cpp(eps_block)
+      } else {
+        cols_split <- split(seq_len(k), rep_len(seq_len(min(workers, k)), k))
+        res_list <- parallel::mclapply(
+          cols_split,
+          function(cols) {
+            list(
+              idx = (start - 1L) + cols,
+              val = simulate_cdfs_block_cpp(eps_block[, cols, drop = FALSE])
+            )
+          },
+          mc.cores = min(workers, length(cols_split)),
+          mc.preschedule = TRUE
+        )
+        for (r in res_list) bb_sup[r$idx] <- r$val
+      }
+
+      done <- end
+      if (show_pb) cli::cli_progress_update(set = done)
+    }
+
+    if (show_pb) cli::cli_progress_done()
+    return(bb_sup)
   }
 
   worker_chunk <- function(eps_sub, idx_sub, c_grid, c_values, gp, inv_gp, n_values) {

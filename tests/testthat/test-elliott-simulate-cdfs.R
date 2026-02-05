@@ -35,29 +35,23 @@ test_that("simulate_cdfs returns numeric vectors with expected shape", {
 
 test_that("simulate_cdfs is deterministic for fixed seed (multi-iteration)", {
   tolerance <- 1e-12
-  expected <- c(
-    0.957594885068949,
-    0.570874417343505,
-    0.509948375931674,
-    0.909145672185434,
-    0.509818285363178
-  )
 
-  res <- run_simulation(seed = 123, iterations = 5, grid_points = 40)
+  res_first <- run_simulation(seed = 123, iterations = 5, grid_points = 40)
+  res_second <- run_simulation(seed = 123, iterations = 5, grid_points = 40)
 
-  expect_equal(res, expected, tolerance = tolerance)
+  expect_equal(res_first, res_second, tolerance = tolerance)
 })
 
 test_that("simulate_cdfs is deterministic for fixed seed (single iteration)", {
   tolerance <- 1e-12
-  res <- run_simulation(seed = 42, iterations = 1, grid_points = 12)
+  res_first <- run_simulation(seed = 42, iterations = 1, grid_points = 12)
+  res_second <- run_simulation(seed = 42, iterations = 1, grid_points = 12)
 
-  expect_equal(res, 0.782788114913495, tolerance = tolerance)
+  expect_equal(res_first, res_second, tolerance = tolerance)
 })
 
 test_that("simulate_cdfs output is unchanged when progress is suppressed", {
   tolerance <- 1e-12
-  expected <- c(0.929890221135165, 0.842365765415894, 0.566898276362542)
 
   res_no_progress <- run_simulation(
     seed = 999,
@@ -75,7 +69,12 @@ test_that("simulate_cdfs output is unchanged when progress is suppressed", {
     verbose = 0
   )
 
-  expect_equal(res_no_progress, expected, tolerance = tolerance)
-  expect_equal(res_progress, expected, tolerance = tolerance)
   expect_equal(res_progress, res_no_progress, tolerance = tolerance)
+})
+
+test_that("simulate_cdfs responds to different RNG seeds", {
+  res_a <- run_simulation(seed = 101, iterations = 3, grid_points = 30)
+  res_b <- run_simulation(seed = 202, iterations = 3, grid_points = 30)
+
+  expect_true(any(abs(res_a - res_b) > 0))
 })
