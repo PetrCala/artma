@@ -7,7 +7,7 @@ box::use(
     test_that
   ],
   withr[local_options],
-  artma / calc / methods / elliott[simulate_cdfs]
+  artma / calc / methods / elliott[simulate_cdfs_parallel]
 )
 
 run_simulation <- function(seed, iterations, grid_points, show_progress = FALSE, verbose = 0) {
@@ -16,7 +16,7 @@ run_simulation <- function(seed, iterations, grid_points, show_progress = FALSE,
   RNGkind(kind = "Mersenne-Twister", normal.kind = "Inversion", sample.kind = "Rejection")
   local_options(list(artma.verbose = verbose))
   set.seed(seed)
-  simulate_cdfs(
+  simulate_cdfs_parallel(
     iterations = iterations,
     grid_points = grid_points,
     show_progress = show_progress

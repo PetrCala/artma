@@ -13,7 +13,7 @@ box::use(
     significance_mark
   ],
   artma / calc / methods / elliott[
-    simulate_cdfs,
+    simulate_cdfs_parallel,
     binomial_test,
     lcm_test,
     fisher_test,
@@ -305,7 +305,7 @@ format_maive_results <- function(maive_output, options) {
       "MAIVE SE",
       "F-test (1st stage IV)",
       "Hausman Test",
-      "Chi-squared Critical (α=0.05)"
+      "Chi-squared Critical (<U+03B1>=0.05)"
     ),
     Value = c(
       beta_formatted,
@@ -528,7 +528,7 @@ run_p_hacking_tests <- function(df, options) {
 
     # Pre-simulate CDFs for LCM test
     cdfs <- tryCatch(
-      simulate_cdfs(iterations = options$lcm_iterations, grid_points = options$lcm_grid_points),
+      simulate_cdfs_parallel(iterations = options$lcm_iterations, grid_points = options$lcm_grid_points),
       error = function(e) {
         cli::cli_warn("Failed to simulate CDFs for LCM test: {e$message}")
         numeric(0)

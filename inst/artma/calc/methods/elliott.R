@@ -68,6 +68,167 @@ simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress
   bb_sup
 }
 
+#' Simulate Brownian bridge suprema CDFs used by the LCM test in parallel
+#' @param iterations [integer] Number of simulations.
+#' @param grid_points [integer] Number of grid points per simulation.
+#' @param workers [integer] Number of workers to use.
+#' @param block_size [integer] Size of the block to process.
+#' @param show_progress [logical] Whether to show progress bar.
+#' @return Numeric vector of simulated suprema.
+simulate_cdfs_parallel <- function(
+    iterations = 10000,
+    grid_points = 10000,
+    workers = max(1L, parallel::detectCores(logical = FALSE) - 1L),
+    block_size = 256L,
+    show_progress = TRUE) {
+  gp <- as.integer(grid_points)
+  it <- as.integer(iterations)
+  workers <- as.integer(max(1L, workers))
+  block_size <- as.integer(max(1L, block_size))
+
+  inv_gp <- 1 / gp
+  inv_sqrt_gp <- 1 / sqrt(gp)
+
+  c_grid <- seq_len(gp) * inv_gp
+  c_values <- c(0, c_grid)
+  n_values <- gp + 1L
+
+  bb_sup <- numeric(it)
+
+  verbosity <- getOption("artma.verbose", 3L)
+  show_pb <- isTRUE(show_progress) && verbosity >= 3L && it >= 1000L
+
+  if (show_pb) {
+    cli::cli_inform("Pre-computing critical values for LCM test via Brownian bridge simulations (parallel)")
+    Sys.sleep(0.1)
+    cli::cli_progress_bar(
+      "Simulating {it} iterations",
+      total = it,
+      format = "{cli::pb_spin} {cli::pb_current}/{cli::pb_total} | ETA: {cli::pb_eta}"
+    )
+  }
+
+  worker_chunk <- function(eps_sub, idx_sub, c_grid, c_values, gp, inv_gp, n_values) {
+    out <- numeric(length(idx_sub))
+    b_values <- numeric(n_values)
+    y <- numeric(n_values)
+
+    for (jj in seq_along(idx_sub)) {
+      w <- cumsum(eps_sub[, jj])
+      w_end <- w[gp]
+
+      b_values[1L] <- 0
+      b_values[2L:n_values] <- w - c_grid * w_end
+
+      hull <- fdrtool::gcmlcm(c_values, b_values, type = "lcm")
+
+      y[] <- 0
+      y[1L] <- 0
+
+      hkx <- hull$x.knots
+      hky <- hull$y.knots
+      hks <- hull$slope.knots
+
+      # keep interpolation logic aligned with your original code
+      for (s in 2:length(hkx)) {
+        a <- hky[s] - hks[s - 1L] * hkx[s]
+        b_slope <- hks[s - 1L]
+        lower <- hkx[s - 1L] * gp + 1
+        upper <- hkx[s] * gp
+        idx <- lower:upper
+        y[idx] <- a + b_slope * (idx * inv_gp)
+      }
+
+      out[jj] <- max(abs(y - b_values))
+    }
+
+    list(idx = idx_sub, val = out)
+  }
+
+  use_fork <- (.Platform$OS.type != "windows")
+
+  cl <- NULL
+  if (!use_fork && workers > 1L) {
+    cl <- parallel::makeCluster(workers)
+    on.exit(parallel::stopCluster(cl), add = TRUE)
+    parallel::clusterExport(
+      cl,
+      varlist = c("worker_chunk", "c_grid", "c_values", "gp", "inv_gp", "n_values"),
+      envir = environment()
+    )
+  }
+
+  done <- 0L
+  while (done < it) {
+    k <- min(block_size, it - done)
+    start <- done + 1L
+    end <- done + k
+
+    # Critical: pre-generate RNG in master in serial order
+    # This preserves the same random stream as the non-parallel version.
+    eps_block <- matrix(stats::rnorm(gp * k), nrow = gp) * inv_sqrt_gp
+
+    if (workers == 1L || k == 1L) {
+      res <- worker_chunk(
+        eps_sub = eps_block,
+        idx_sub = start:end,
+        c_grid = c_grid, c_values = c_values,
+        gp = gp, inv_gp = inv_gp, n_values = n_values
+      )
+      bb_sup[res$idx] <- res$val
+    } else {
+      cols_split <- split(seq_len(k), rep_len(seq_len(min(workers, k)), k))
+
+      if (use_fork) {
+        # Unix/macOS: forked workers (fast, low overhead)
+        res_list <- parallel::mclapply(
+          cols_split,
+          function(cols) {
+            worker_chunk(
+              eps_sub = eps_block[, cols, drop = FALSE],
+              idx_sub = (start - 1L) + cols,
+              c_grid = c_grid, c_values = c_values,
+              gp = gp, inv_gp = inv_gp, n_values = n_values
+            )
+          },
+          mc.cores = min(workers, length(cols_split)),
+          mc.preschedule = TRUE
+        )
+      } else {
+        # Windows: PSOCK cluster
+        tasks <- lapply(cols_split, function(cols) {
+          list(
+            eps_sub = eps_block[, cols, drop = FALSE],
+            idx_sub = (start - 1L) + cols
+          )
+        })
+
+        res_list <- parallel::parLapply(
+          cl,
+          tasks,
+          function(task) {
+            worker_chunk(
+              eps_sub = task$eps_sub,
+              idx_sub = task$idx_sub,
+              c_grid = c_grid, c_values = c_values,
+              gp = gp, inv_gp = inv_gp, n_values = n_values
+            )
+          }
+        )
+      }
+
+      for (r in res_list) bb_sup[r$idx] <- r$val
+    }
+
+    done <- end
+    if (show_pb) cli::cli_progress_update(set = done)
+  }
+
+  if (show_pb) cli::cli_progress_done()
+  bb_sup
+}
+
+
 #' Binomial test for excess significant results
 binomial_test <- function(P, p_min, p_max, type) {
   filtered <- switch(type,
@@ -381,6 +542,7 @@ box::export(
   format_decimal,
   linspace,
   simulate_cdfs,
+  simulate_cdfs_parallel,
   binomial_test,
   lcm_test,
   fisher_test,
