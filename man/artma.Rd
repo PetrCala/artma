@@ -9,7 +9,7 @@ artma(
   methods = NULL,
   options = NULL,
   options_dir = NULL,
-  open_results = TRUE,
+  open_results = FALSE,
   ...
 )
 }
@@ -30,7 +30,7 @@ prompted to create or select an options file.}
 If \code{NULL}, uses the default options directory.}
 
 \item{open_results}{\emph{[logical, optional]} Whether to open the results directory
-after exporting results. Defaults to \code{TRUE}.}
+after exporting results. Defaults to \code{FALSE}.}
 
 \item{...}{Additional arguments passed to the runtime methods.}
 }

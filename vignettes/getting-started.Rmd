@@ -28,9 +28,7 @@ When you run this in an interactive R session, artma will:
 4. **Let you choose methods** - Select which analyses you want to run
 5. **Run your analysis** - Execute everything and return results
 
-Results are saved to your output directory, and in interactive sessions the folder
-opens automatically. To skip auto-opening, use `open_results = FALSE`, and open later
-with `artma::results.open()`.
+If you want artma to open the results folder for you at the end of a run, set `open_results = TRUE`. You can always access your results later manually using `artma::results.open()`.
 
 That's it! The function handles all the complexity behind the scenes.
 
