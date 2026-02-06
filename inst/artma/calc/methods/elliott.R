@@ -12,74 +12,10 @@ simulate_cdfs_block_cpp <- function(eps_block) {
   .Call(`_artma_simulate_cdfs_block_cpp`, PACKAGE = "artma", eps_block)
 }
 
-#' Simulate Brownian bridge suprema CDFs used by the LCM test
-#'
-#' @param iterations [integer] Number of simulations.
-#' @param grid_points [integer] Number of grid points per simulation.
-#' @param show_progress [logical] Whether to show progress bar.
-#' @return Numeric vector of simulated suprema.
-simulate_cdfs_r <- function(iterations = 10000, grid_points = 10000, show_progress = TRUE) {
-  c_grid <- seq_len(grid_points) / grid_points
-  c_values <- c(0, c_grid)
-  n_values <- length(c_values)
-  bb_sup <- numeric(iterations)
-  b_values <- numeric(n_values)
-  y <- numeric(n_values)
-
-  # Show progress bar if requested and verbosity allows
-  verbosity <- getOption("artma.verbose", 3)
-  show_pb <- show_progress && verbosity >= 3 && iterations >= 1000
-
-  if (show_pb) {
-    cli::cli_inform("Pre-computing critical values for LCM test via Brownian bridge simulations")
-    Sys.sleep(0.1) # Brief pause so message is visible
-    cli::cli_progress_bar(
-      "Simulating {iterations} iterations",
-      total = iterations,
-      format = "{cli::pb_spin} {cli::pb_current}/{cli::pb_total} | ETA: {cli::pb_eta}"
-    )
-  }
-
-  for (m in seq_len(iterations)) {
-    eps <- stats::rnorm(grid_points, mean = 0, sd = 1) / sqrt(grid_points)
-    w <- cumsum(eps)
-    w_end <- w[grid_points]
-    b <- w - c_grid * w_end
-    b_values[1] <- 0
-    b_values[2:n_values] <- b
-    hull <- fdrtool::gcmlcm(c_values, b_values, type = "lcm")
-    y[] <- 0
-    x_knots <- hull$x.knots
-    y_knots <- hull$y.knots
-    slope_knots <- hull$slope.knots
-    n_knots <- length(x_knots)
-    for (s in 2:n_knots) {
-      a <- y_knots[s] - slope_knots[s - 1] * x_knots[s]
-      b_slope <- slope_knots[s - 1]
-      lower <- x_knots[s - 1] * grid_points + 1
-      upper <- x_knots[s] * grid_points
-      idx <- lower:upper
-      y[idx] <- a + b_slope * (idx / grid_points)
-    }
-    bb_sup[m] <- max(abs(y - b_values))
-
-    # Update progress every 50 iterations for better feedback
-    if (show_pb && m %% 50 == 0) {
-      cli::cli_progress_update(set = m)
-    }
-  }
-
-  if (show_pb) {
-    cli::cli_progress_done()
-  }
-
-  bb_sup
-}
-
 simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress = TRUE) {
   use_cpp <- isTRUE(getOption("artma.methods.p_hacking_tests.simulate_cdfs.use_cpp", TRUE))
   if (!use_cpp) {
-    return(simulate_cdfs_r(iterations, grid_points, show_progress))
+    return(simulate_cdfs_parallel(iterations, grid_points, show_progress = show_progress))
   }
 
   verbosity <- getOption("artma.verbose", 3)
@@ -93,7 +29,7 @@ simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress
     if (!is.null(res)) {
       return(res)
     }
-    return(simulate_cdfs_r(iterations, grid_points, show_progress))
+    return(simulate_cdfs_parallel(iterations, grid_points, show_progress = show_progress))
   }
 
   chunk_size <- as.integer(getOption("artma.methods.p_hacking_tests.simulate_cdfs.chunk_size", 512L))
@@ -117,7 +53,7 @@ simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress
     )
     if (is.null(res)) {
       cli::cli_progress_done()
-      return(simulate_cdfs_r(iterations, grid_points, show_progress))
+      return(simulate_cdfs_parallel(iterations, grid_points, show_progress = show_progress))
     }
     idx <- (done + 1L):(done + k)
     bb_sup[idx] <- res
