@@ -33,6 +33,9 @@ scripts/R/test.R
 .Ruserdata
 .DS_Store
 *.tar.gz
+*.o
+*.so
+*.dll
 *.Rproj
 .vscode/
 ..Rcheck/
