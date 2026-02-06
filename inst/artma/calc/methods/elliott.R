@@ -77,7 +77,7 @@ simulate_cdfs_r <- function(iterations = 10000, grid_points = 10000, show_progre
 }
 
 simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress = TRUE) {
-  use_cpp <- isTRUE(getOption("artma.simulate_cdfs.use_cpp", TRUE))
+  use_cpp <- isTRUE(getOption("artma.methods.p_hacking_tests.simulate_cdfs.use_cpp", TRUE))
   if (!use_cpp) {
     return(simulate_cdfs_r(iterations, grid_points, show_progress))
   }
@@ -96,7 +96,7 @@ simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress
     return(simulate_cdfs_r(iterations, grid_points, show_progress))
   }
 
-  chunk_size <- as.integer(getOption("artma.simulate_cdfs.chunk_size", 512L))
+  chunk_size <- as.integer(getOption("artma.methods.p_hacking_tests.simulate_cdfs.chunk_size", 512L))
   chunk_size <- max(1L, chunk_size)
   bb_sup <- numeric(iterations)
   done <- 0L
@@ -137,11 +137,12 @@ simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress
 #' @param show_progress [logical] Whether to show progress bar.
 #' @return Numeric vector of simulated suprema.
 simulate_cdfs_parallel <- function(
-    iterations = 10000,
-    grid_points = 10000,
-    workers = max(1L, parallel::detectCores(logical = FALSE) - 1L),
-    block_size = 256L,
-    show_progress = TRUE) {
+  iterations = 10000,
+  grid_points = 10000,
+  workers = max(1L, parallel::detectCores(logical = FALSE) - 1L),
+  block_size = 256L,
+  show_progress = TRUE
+) {
   gp <- as.integer(grid_points)
   it <- as.integer(iterations)
   workers <- as.integer(max(1L, workers))
@@ -160,7 +161,7 @@ simulate_cdfs_parallel <- function(
   show_pb <- isTRUE(show_progress) && verbosity >= 3L && it >= 1000L
 
   if (show_pb) {
-    cli::cli_inform("Pre-computing critical values for LCM test via Brownian bridge simulations (parallel)")
+    cli::cli_inform("Pre-computing critical values for LCM test via Brownian bridge simulations")
     Sys.sleep(0.1)
     cli::cli_progress_bar(
       "Simulating {it} iterations",
@@ -169,7 +170,7 @@ simulate_cdfs_parallel <- function(
     )
   }
 
-  use_cpp <- isTRUE(getOption("artma.simulate_cdfs.use_cpp", TRUE))
+  use_cpp <- isTRUE(getOption("artma.methods.p_hacking_tests.simulate_cdfs.use_cpp", TRUE))
   if (use_cpp) {
     use_fork <- (.Platform$OS.type != "windows")
     if (!use_fork && workers > 1L) {

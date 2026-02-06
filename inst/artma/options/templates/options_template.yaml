@@ -573,6 +573,24 @@ methods:
       help: |
         If `TRUE`, include Elliott et al. (2022) p-hacking detection tests.
 
+    simulate_cdfs:
+      use_cpp:
+        type: "logical"
+        default: true
+        help: |
+          If `TRUE`, use the compiled C++ implementation for Brownian bridge
+          simulations in the LCM test. Falls back to pure R automatically
+          if the C++ code is unavailable. Set to `FALSE` to force the R
+          implementation.
+
+      chunk_size:
+        type: "integer"
+        default: 512
+        help: |
+          Number of iterations per C++ chunk when displaying a progress bar
+          during LCM critical-value simulation. Larger chunks reduce overhead
+          but make the progress bar less responsive.
+
     lcm_iterations:
       type: "integer"
       default: 3000
