@@ -14,7 +14,10 @@ run_simulation <- function(seed, iterations, grid_points, show_progress = FALSE,
   old_kind <- RNGkind()
   on.exit(do.call(RNGkind, as.list(old_kind)), add = TRUE)
   RNGkind(kind = "Mersenne-Twister", normal.kind = "Inversion", sample.kind = "Rejection")
-  local_options(list(artma.verbose = verbose))
+  local_options(list(
+    artma.verbose = verbose,
+    artma.methods.p_hacking_tests.simulate_cdfs.use_cpp = FALSE
+  ))
   set.seed(seed)
   simulate_cdfs_parallel(
     iterations = iterations,
