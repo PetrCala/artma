@@ -16,7 +16,7 @@
 #' @param options_dir *\[character, optional\]* Directory containing the options file.
 #'   If `NULL`, uses the default options directory.
 #' @param open_results *\[logical, optional\]* Whether to open the results directory
-#'   after exporting results. Defaults to `TRUE`.
+#'   after exporting results. Defaults to `FALSE`.
 #' @param ... Additional arguments passed to the runtime methods.
 #'
 #' @return *\[list\]* A named list containing results from each method, indexed by
@@ -84,12 +84,13 @@
 #'
 #' @export
 artma <- function(
-    data = NULL,
-    methods = NULL,
-    options = NULL,
-    options_dir = NULL,
-    open_results = TRUE,
-    ...) {
+  data = NULL,
+  methods = NULL,
+  options = NULL,
+  options_dir = NULL,
+  open_results = FALSE,
+  ...
+) {
   box::use(
     artma / interactive / welcome[
       show_welcome_message,
