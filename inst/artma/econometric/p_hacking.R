@@ -10,6 +10,8 @@ box::use(
   artma / libs / core / validation[validate, assert],
   artma / libs / formatting / results[
     format_number,
+    format_se,
+    format_ci,
     significance_mark
   ],
   artma / calc / methods / elliott[
@@ -289,35 +291,90 @@ format_maive_results <- function(maive_output, options) {
     ))
   }
 
-  beta_formatted <- format_number(maive_output$beta, options$round_to)
-  se_formatted <- format_number(maive_output$SE, options$round_to)
+  rd <- options$round_to
+  rows <- list()
+  add <- function(stat, val) rows[[length(rows) + 1L]] <<- list(stat = stat, val = val)
+  sep <- function() add("", "")
+
+  # --- Estimates ---
+  beta_p <- maive_p_from_coef(maive_output$beta, maive_output$SE)
+  add("MAIVE coefficient", paste0(format_number(maive_output$beta, rd), significance_mark(beta_p)))
+  add("  Std. error", format_se(maive_output$SE, rd))
+
+  add("Standard coefficient", format_number(maive_output$beta_standard, rd))
+  add("  Std. error", format_se(maive_output$SE_standard, rd))
+
+  selected <- maive_output$petpeese_selected
+  if (!is.null(selected) && !is.na(selected)) {
+    add("Model selected", selected)
+  }
+
+  # --- Publication bias ---
+  sep()
+  pub_p <- maive_output$`pub bias p-value`
+  if (is.numeric(pub_p) && is.finite(pub_p)) {
+    add("Pub. bias p-value", paste0(format_number(pub_p, rd), significance_mark(pub_p)))
+  } else {
+    add("Pub. bias p-value", "NA")
+  }
+
+  add("Egger coefficient", format_number(maive_output$egger_coef, rd))
+  add("  Std. error", format_se(maive_output$egger_se, rd))
+
+  boot_ci <- maive_output$egger_boot_ci
+  if (is.numeric(boot_ci) && length(boot_ci) == 2L && all(is.finite(boot_ci))) {
+    add("  95% CI (bootstrap)", format_ci(boot_ci[1L], boot_ci[2L], rd))
+  }
+
+  # PEESE SE^2 details (only when PEESE is the selected model)
+  peese_coef <- maive_output$peese_se2_coef
+  if (is.numeric(peese_coef) && is.finite(peese_coef)) {
+    add("PEESE SE^2 coefficient", format_number(peese_coef, rd))
+    peese_se <- maive_output$peese_se2_se
+    if (is.numeric(peese_se) && is.finite(peese_se)) {
+      add("  Std. error", format_se(peese_se, rd))
+    }
+  }
+
+  # --- Diagnostics ---
+  sep()
   ftest_raw <- maive_output$`F-test`
-  ftest_formatted <- if (!is.null(ftest_raw) && !is.na(ftest_raw) && !identical(ftest_raw, "NA")) {
-    format_number(as.numeric(ftest_raw), options$round_to)
+  ftest_val <- if (!is.null(ftest_raw) && !is.na(ftest_raw) && !identical(ftest_raw, "NA")) {
+    format_number(as.numeric(ftest_raw), rd)
   } else {
     "NA"
   }
-  hausman_formatted <- format_number(maive_output$Hausman, options$round_to)
-  chi2_formatted <- format_number(maive_output$Chi2, options$round_to)
+  add("F-test (1st stage IV)", ftest_val)
+
+  add("Hausman test", format_number(maive_output$Hausman, rd))
+  add("  Chi-sq. crit. (alpha=0.05)", format_number(maive_output$Chi2, rd))
+
+  ar_ci <- maive_output$AR_CI
+  if (is.numeric(ar_ci) && length(ar_ci) == 2L && all(is.finite(ar_ci))) {
+    add("AR 95% CI", format_ci(ar_ci[1L], ar_ci[2L], rd))
+  }
+
+  # Build data frame
+  stats <- vapply(rows, `[[`, "", "stat")
+  vals <- vapply(rows, `[[`, "", "val")
 
   data.frame(
-    Statistic = c(
-      "MAIVE Coefficient",
-      "MAIVE SE",
-      "F-test (1st stage IV)",
-      "Hausman Test",
-      "Chi-squared Critical (<U+03B1>=0.05)"
-    ),
-    Value = c(
-      beta_formatted,
-      se_formatted,
-      ftest_formatted,
-      hausman_formatted,
-      chi2_formatted
-    ),
+    Statistic = stats,
+    Value = vals,
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+}
+
+#' @title Compute two-sided p-value from coefficient and SE
+#' @param beta *[numeric]* Coefficient.
+#' @param se *[numeric]* Standard error.
+#' @return *[numeric]* P-value, or NA if inputs are not finite.
+maive_p_from_coef <- function(beta, se) {
+  if (!is.numeric(beta) || !is.numeric(se) || !is.finite(beta) || !is.finite(se) || se <= 0) {
+    return(NA_real_)
+  }
+  2 * stats::pnorm(-abs(beta / se))
 }
 
 # P-value utilities --------------------------------------------------------
