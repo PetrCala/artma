@@ -291,8 +291,9 @@ format_maive_results <- function(maive_output, options) {
 
   beta_formatted <- format_number(maive_output$beta, options$round_to)
   se_formatted <- format_number(maive_output$SE, options$round_to)
-  ftest_formatted <- if (!is.null(maive_output$`F-test`) && maive_output$`F-test` != "NA") {
-    format_number(as.numeric(maive_output$`F-test`), options$round_to)
+  ftest_raw <- maive_output$`F-test`
+  ftest_formatted <- if (!is.null(ftest_raw) && !is.na(ftest_raw) && !identical(ftest_raw, "NA")) {
+    format_number(as.numeric(ftest_raw), options$round_to)
   } else {
     "NA"
   }
