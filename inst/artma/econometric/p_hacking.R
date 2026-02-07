@@ -609,6 +609,11 @@ run_p_hacking_tests <- function(df, options) {
   if (options$include_maive) {
     if ("n_obs" %in% colnames(df)) {
       maive_data <- prepare_maive_data(df)
+
+      if (options$maive_se == 3L) {
+        cli::cli_alert_info("Running MAIVE with wild cluster bootstrap (this may take a moment)...")
+      }
+
       maive_results <- tryCatch(
         {
           maive(
@@ -627,7 +632,13 @@ run_p_hacking_tests <- function(df, options) {
           NULL
         }
       )
-      output$maive <- format_maive_results(maive_results, options)
+      output$maive <- tryCatch(
+        format_maive_results(maive_results, options),
+        error = function(e) {
+          cli::cli_warn("MAIVE result formatting failed: {e$message}")
+          NULL
+        }
+      )
     } else {
       cli::cli_warn("MAIVE requires 'n_obs' column - skipping MAIVE test")
       output$maive <- NULL
