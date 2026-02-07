@@ -5,11 +5,11 @@ format_decimal <- function(x, k) trimws(format(round(x, k), nsmall = k))
 linspace <- function(start_, stop_, n) seq(from = start_, to = stop_, length.out = n)
 
 simulate_cdfs_cpp <- function(iterations, grid_points) {
-  .Call(`_artma_simulate_cdfs_cpp`, PACKAGE = "artma", iterations, grid_points)
+  .Call("_artma_simulate_cdfs_cpp", PACKAGE = "artma", iterations, grid_points)
 }
 
 simulate_cdfs_block_cpp <- function(eps_block) {
-  .Call(`_artma_simulate_cdfs_block_cpp`, PACKAGE = "artma", eps_block)
+  .Call("_artma_simulate_cdfs_block_cpp", PACKAGE = "artma", eps_block)
 }
 
 simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress = TRUE) {
