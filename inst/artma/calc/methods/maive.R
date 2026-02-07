@@ -15,7 +15,7 @@
 #' @param first_stage *[integer]* First stage option (default 0).
 #' @return *[list]* MAIVE output with beta, SE, F-test, Hausman test, etc.
 maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2L,
-                  SE = 3L, AR = 1L, first_stage = 0L) {
+                  SE = 1L, AR = 0L, first_stage = 0L) {
   box::use(
     artma / libs / core / validation[validate, assert]
   )

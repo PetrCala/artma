@@ -692,22 +692,22 @@ methods:
 
     maive_se:
       type: "integer"
-      default: 3
+      default: 1
       help: |
         MAIVE standard error estimation method:
-          1 = Asymptotic
+          1 = Asymptotic (default)
           2 = Pairs cluster bootstrap
-          3 = Wild bootstrap (default)
+          3 = Wild bootstrap
           4 = Wild cluster bootstrap
           5 = Pairs bootstrap
 
     maive_ar:
       type: "integer"
-      default: 1
+      default: 0
       help: |
         MAIVE Anderson-Rubin confidence interval:
-          0 = Do not compute
-          1 = Compute (default)
+          0 = Do not compute (default)
+          1 = Compute
 
     maive_first_stage:
       type: "integer"

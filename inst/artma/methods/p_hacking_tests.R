@@ -42,8 +42,8 @@ p_hacking_tests <- function(df) {
   maive_weight <- opt$maive_weight %||% 0L
   maive_instrument <- opt$maive_instrument %||% 1L
   maive_studylevel <- opt$maive_studylevel %||% 2L
-  maive_se <- opt$maive_se %||% 3L
-  maive_ar <- opt$maive_ar %||% 1L
+  maive_se <- opt$maive_se %||% 1L
+  maive_ar <- opt$maive_ar %||% 0L
   maive_first_stage <- opt$maive_first_stage %||% 0L
 
   # General options
