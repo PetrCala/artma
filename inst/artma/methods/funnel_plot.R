@@ -100,7 +100,7 @@ funnel_plot <- function(df) {
     if (n_outliers > 0) {
       cli::cli_alert_info("{n_outliers} outlier{?s} removed")
     }
-    suppressWarnings(print(plot))
+    suppressWarnings(print(plot)) # nolint: undesirable_function_linter.
   }
 
   if (export_graphics) {
@@ -271,12 +271,22 @@ generate_funnel_ticks <- function(bounds, mean_effect, add_zero, theme_name) {
 #' @return *\[numeric\]* Appropriate tick interval
 #' @keywords internal
 determine_tick_interval <- function(range_size) {
-  if (range_size <= 1) return(0.2)
-  if (range_size <= 5) return(1)
-  if (range_size <= 20) return(5)
-  if (range_size <= 50) return(10)
-  if (range_size <= 100) return(20)
-  return(50)
+  if (range_size <= 1) {
+    return(0.2)
+  }
+  if (range_size <= 5) {
+    return(1)
+  }
+  if (range_size <= 20) {
+    return(5)
+  }
+  if (range_size <= 50) {
+    return(10)
+  }
+  if (range_size <= 100) {
+    return(20)
+  }
+  50
 }
 
 
@@ -362,8 +372,10 @@ create_funnel_plot <- function(df, tick_info, theme_name, precision_to_log, use_
 #' @return *\[character\]* Formatted labels
 #' @keywords internal
 format_tick_labels <- function(x) {
-  sapply(x, function(val) {
-    if (is.na(val)) return(NA_character_)
+  mapply(x, function(val) { # nolint: undesirable_function_linter.
+    if (is.na(val)) {
+      return(NA_character_)
+    }
     if (val == floor(val)) {
       as.character(as.integer(val))
     } else {
@@ -388,8 +400,10 @@ format_tick_labels <- function(x) {
 format_colored_tick_labels <- function(ticks, colors) {
   labels <- format_tick_labels(ticks)
 
-  mapply(function(label, color) {
-    if (is.na(label)) return(NA_character_)
+  mapply(function(label, color) { # nolint: undesirable_function_linter.
+    if (is.na(label)) {
+      return(NA_character_)
+    }
     sprintf("<span style='color:%s'>%s</span>", color, label)
   }, labels, colors, USE.NAMES = FALSE)
 }

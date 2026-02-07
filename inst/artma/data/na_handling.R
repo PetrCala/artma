@@ -229,7 +229,9 @@ handle_na_mice <- function(df) {
   numeric_cols <- colnames(df)[vapply(df, is.numeric, logical(1))]
   near_zero_var <- vapply(numeric_cols, function(col) {
     vals <- df[[col]][!is.na(df[[col]])]
-    if (length(vals) < 2) return(TRUE)
+    if (length(vals) < 2) {
+      return(TRUE)
+    }
     stats::var(vals) < 1e-10
   }, logical(1))
   zero_var_cols <- numeric_cols[near_zero_var]
@@ -299,7 +301,7 @@ handle_na_mice <- function(df) {
         }
         return(NULL)
       }
-      stop(e)
+      cli::cli_abort(e)
     }
   )
 

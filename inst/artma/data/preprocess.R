@@ -232,7 +232,7 @@ verify_variable_names <- function(df) {
 
   # Check for missing required (non-computed) columns
   missing_from_data <- setdiff(required_varnames, varnames)
-  
+
   # Check for unexpected extra columns (excluding computed columns that might be in config but not in data yet)
   extra_in_data <- setdiff(varnames, expected_varnames)
 

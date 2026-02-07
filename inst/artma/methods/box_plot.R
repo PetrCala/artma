@@ -75,7 +75,7 @@ box_plot <- function(df) {
       if (n_plots > 1) {
         cli::cli_alert_info("Displaying plot {i}/{n_plots}")
       }
-      suppressWarnings(print(result$plots[[i]]))
+      suppressWarnings(print(result$plots[[i]])) # nolint: undesirable_function_linter.
     }
   }
 
