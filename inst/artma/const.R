@@ -100,6 +100,7 @@ CONST <- list(
       "box_plot",
       "funnel_plot",
       "t_stat_histogram",
+      "prima_facie_graphs",
       "linear_tests",
       "nonlinear_tests",
       "exogeneity_tests",

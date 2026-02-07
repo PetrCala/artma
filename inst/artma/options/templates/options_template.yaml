@@ -462,6 +462,45 @@ methods:
         Minimum tick distance for the close-up view.
         Smaller values allow tighter tick placement in the zoomed view.
 
+  prima_facie_graphs:
+    type:
+      type: "enum: density|histogram|automatic"
+      default: "automatic"
+      help: |
+        Graph type for prima facie plots:
+          {cli::symbol$bullet} {.strong density}: Smooth density curves (better for >3 groups)
+          {cli::symbol$bullet} {.strong histogram}: Filled histogram bars (better for 2-3 groups)
+          {cli::symbol$bullet} {.strong automatic}: Chooses based on number of groups (default)
+
+    groups:
+      type: "character"
+      allow_na: true
+      default: .na
+      help: |
+        Variable group IDs to create prima facie graphs for.
+        If not specified, auto-detects dummy and categorical variable groups.
+        Provide a comma-separated list of group IDs (e.g., "dummy_country,categorical_age").
+
+    hide_outliers:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, trim the outermost bin-width of data from each side
+        to reduce visual impact of extreme values.
+
+    n_bins:
+      type: "integer"
+      default: 80
+      help: |
+        Number of bins for histogram calculation and outlier trimming.
+        Higher values show finer detail.
+
+    legend_font_size:
+      type: "numeric"
+      default: 14
+      help: |
+        Font size for legend text in prima facie graphs.
+
   bma:
     burn:
       type: "integer"

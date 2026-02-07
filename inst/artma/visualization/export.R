@@ -105,7 +105,7 @@ save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units =
     dpi = dpi
   )
 
-  if (get_verbosity() >= 3) {
+  if (get_verbosity() >= 4) {
     cli::cli_alert_success("Exported plot to {.file {path}}")
   }
 
