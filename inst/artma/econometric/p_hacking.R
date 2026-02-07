@@ -301,9 +301,6 @@ format_maive_results <- function(maive_output, options) {
   add("MAIVE coefficient", paste0(format_number(maive_output$beta, rd), significance_mark(beta_p)))
   add("  Std. error", format_se(maive_output$SE, rd))
 
-  add("Standard coefficient", format_number(maive_output$beta_standard, rd))
-  add("  Std. error", format_se(maive_output$SE_standard, rd))
-
   selected <- maive_output$petpeese_selected
   if (!is.null(selected) && !is.na(selected)) {
     add("Model selected", selected)
