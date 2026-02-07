@@ -11,15 +11,15 @@ solve_fma_weights <- function(G, a) {
   }
 
   M <- ncol(G)
-  Amat <- cbind(rep(1, M), diag(M))
+  amat <- cbind(rep(1, M), diag(M))
   bvec <- c(1, rep(0, M))
   attempts <- c(0, 1e-08, 1e-06, 1e-04)
 
   solution <- NULL
   for (jitter in attempts) {
-    Dmat <- G + diag(jitter, M)
+    dmat <- G + diag(jitter, M)
     res <- tryCatch(
-      quadprog::solve.QP(Dmat = Dmat, dvec = a, Amat = Amat, bvec = bvec, meq = 1),
+      quadprog::solve.QP(Dmat = dmat, dvec = a, Amat = amat, bvec = bvec, meq = 1),
       error = function(e) NULL
     )
     if (!is.null(res) && !is.null(res$solution)) {
@@ -114,7 +114,7 @@ run_fma <- function(bma_data, bma_model, input_var_list, round_to = NULL, print_
 
   beta <- matrix(0, nrow = k, ncol = M)
   e <- matrix(0, nrow = n, ncol = M)
-  K_vector <- matrix(seq_len(M), ncol = 1)
+  k_vector <- matrix(seq_len(M), ncol = 1)
   var.matrix <- matrix(0, nrow = k, ncol = M)
   bias.sq <- matrix(0, nrow = k, ncol = M)
   tol <- sqrt(.Machine$double.eps)
@@ -151,7 +151,7 @@ run_fma <- function(bma_data, bma_model, input_var_list, round_to = NULL, print_
   sigma_hat <- as.numeric(crossprod(e_k) / (n - M))
   G <- crossprod(e)
   G <- (G + t(G)) / 2
-  a <- as.numeric((sigma_hat^2) * K_vector)
+  a <- as.numeric((sigma_hat^2) * k_vector)
 
   weights <- solve_fma_weights(G, a)
 

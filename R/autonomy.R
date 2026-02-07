@@ -49,7 +49,7 @@ autonomy.set <- function(level) {
 #'   message("Autonomy level not configured")
 #' }
 #' }
-autonomy.is_set <- function() {
+autonomy.is_set <- function() { # nolint: object_name_linter.
   box::use(artma / libs / core / autonomy[is_autonomy_level_set])
   is_autonomy_level_set()
 }
@@ -99,7 +99,7 @@ autonomy.levels <- function() {
 #'   message("Running in fully autonomous mode")
 #' }
 #' }
-autonomy.is_full <- function() {
+autonomy.is_full <- function() { # nolint: object_name_linter.
   box::use(artma / libs / core / autonomy[is_fully_autonomous])
   is_fully_autonomous()
 }

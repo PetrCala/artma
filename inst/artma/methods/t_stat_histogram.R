@@ -106,7 +106,7 @@ t_stat_histogram <- function(df) {
         lower_cutoff, ", ", upper_cutoff, "] excluded"
       ))
     }
-    suppressWarnings(print(main_result$plot))
+    suppressWarnings(print(main_result$plot)) # nolint: undesirable_function_linter.
   }
 
   # Build the close-up plot (if enabled)
@@ -130,7 +130,7 @@ t_stat_histogram <- function(df) {
         "T-Statistic Distribution (Close-up: [",
         close_up_lower, ", ", close_up_upper, "])"
       ))
-      suppressWarnings(print(close_up_result$plot))
+      suppressWarnings(print(close_up_result$plot)) # nolint: undesirable_function_linter.
     }
   }
 
@@ -218,11 +218,21 @@ compute_data_bounds <- function(filtered_values,
 #' @return *\[numeric\]* Tick interval
 #' @keywords internal
 determine_histogram_tick_interval <- function(range_size) {
-  if (range_size <= 5) return(1)
-  if (range_size <= 20) return(2)
-  if (range_size <= 50) return(5)
-  if (range_size <= 100) return(10)
-  if (range_size <= 200) return(20)
+  if (range_size <= 5) {
+    return(1)
+  }
+  if (range_size <= 20) {
+    return(2)
+  }
+  if (range_size <= 50) {
+    return(5)
+  }
+  if (range_size <= 100) {
+    return(10)
+  }
+  if (range_size <= 200) {
+    return(20)
+  }
   50
 }
 
@@ -326,7 +336,9 @@ generate_histogram_ticks <- function(bounds,
 #' @keywords internal
 format_tick_labels <- function(x) {
   vapply(x, function(val) {
-    if (is.na(val)) return(NA_character_)
+    if (is.na(val)) {
+      return(NA_character_)
+    }
     if (val == floor(val)) {
       as.character(as.integer(val))
     } else {
@@ -351,7 +363,9 @@ format_colored_tick_labels <- function(ticks, colors) {
   labels <- format_tick_labels(ticks)
 
   vapply(seq_along(labels), function(i) {
-    if (is.na(labels[i])) return(NA_character_)
+    if (is.na(labels[i])) {
+      return(NA_character_)
+    }
     sprintf("<span style='color:%s'>%s</span>", colors[i], labels[i])
   }, FUN.VALUE = character(1))
 }
