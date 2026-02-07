@@ -319,31 +319,18 @@ refresh rules without manually clearing the cache.
 
 # Using `lintr` for Code Quality
 
-This project uses the `lintr` package to ensure code quality and adherence to style guidelines. Below are the steps to set up and use `lintr` in this project.
+This project uses the `lintr` package to ensure code quality and adherence to style guidelines. Linting rules are defined in `.lintr.R` at the project root, which uses `box.linters` defaults and adds custom rules (see `R/linters.R`).
 
 ## Installation
 
-First, install the `lintr` package:
+The `lintr`, `box.linters`, and `languageserver` packages are automatically installed through `make setup`. To install them manually:
 
 ```r
-install.packages("lintr")
+install.packages(c("lintr", "languageserver"))
+remotes::install_github("appsilon/box.linters")
 ```
-
-This package is also automatically installed through `make setup`.
 
 ## Usage
-
-To lint all R files in your project directory, run the following command in R:
-
-```r
-lintr::lint_dir("path/to/your/project")
-```
-
-To lint a specific file, run the following in R:
-
-```r
-lintr::lint("path/to/your/file.R")
-```
 
 To lint the whole package, run the following **in a shell terminal**:
 
@@ -351,15 +338,31 @@ To lint the whole package, run the following **in a shell terminal**:
 make lint
 ```
 
+To lint a specific file:
+
+```r
+lintr::lint("path/to/your/file.R")
+```
+
+## IDE setup (VS Code / Cursor)
+
+The R Language Server (`languageserver`) provides real-time linting in VS Code and Cursor via the [REditorSupport.r](https://marketplace.visualstudio.com/items?itemName=REditorSupport.r) extension.
+
+**Known issue**: The `languageserver` package calls `lintr::lint(path, text = content)`. When the `text` parameter is provided, lintr defaults `parse_settings = FALSE` and skips config file discovery entirely. This means `.lintr.R` is ignored and default linters are used instead.
+
+**Workaround**: The project `.Rprofile` pre-loads the lintr settings before the language server starts linting. This works because when `parse_settings = FALSE`, lintr also skips resetting the settings, so pre-loaded configuration persists. This file is committed to the repository so all developers benefit automatically.
+
+If IDE linting still shows incorrect rules after cloning, restart the R Language Server (`Cmd+Shift+P` > "R: Restart R Terminal" or reload the window).
+
 ## Set up box paths
 
-To make the lints valid for the `box.linters` package, R expects `box.path` to be set to the `inst` folder base. This makes the relative box imports work correctly. During runtime, this is handled by the `ensure_valid_boxpath`, but in development, you must set this path manually.
+To make the lints valid for the `box.linters` package, R expects `box.path` to be set to the `inst` folder base. This makes the relative box imports work correctly. During runtime, this is handled by `ensure_valid_boxpath`, but in development, you must set this path manually.
 
-To do so, put the following into your `.Rprofile`:
+To do so, put the following into your global `~/.Rprofile`:
 
-```.Rprofile
+```r
 # ~/.Rprofile
-option(box.path="<path-to-the-artma-package>/inst")
+options(box.path = "<path-to-the-artma-package>/inst")
 ```
 
 # Docstrings and documentation
@@ -452,4 +455,3 @@ For more information about writing and organizing tests, refer to the [testthat 
 # Code of Conduct
 
 Please note that the artma project is released with a [Contributor Code of Conduct](https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html). By contributing to this project, you agree to abide by its terms.
-istor Code of Conduct](<https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html>). By contributing to this project, yFor more information about writing and organizing tests, refer to
