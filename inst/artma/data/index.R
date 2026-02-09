@@ -12,11 +12,13 @@ prepare_data_impl <- function() {
 
   box::use(
     artma / data / read[read_data],
+    artma / data_config / resolve[prime_df_for_config_cache],
     artma / data / preprocess[preprocess_data],
     artma / data / compute[compute_optional_columns]
   )
 
   df <- read_data()
+  prime_df_for_config_cache(df)
   df <- preprocess_data(df)
   df <- compute_optional_columns(df)
 

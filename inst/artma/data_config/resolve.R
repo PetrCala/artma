@@ -7,6 +7,26 @@
 # Module-level cache for the dataframe only (keyed by source path)
 .cache_env <- new.env(parent = emptyenv())
 
+#' @title Prime Dataframe Cache for Config Resolution
+#' @description Stores a dataframe and source path in the module cache so
+#'   subsequent config resolution can reuse an already-read dataframe.
+#' @param df *\[data.frame\]* The dataframe to cache.
+#' @param df_path *\[character, optional\]* Source path associated with the
+#'   dataframe. Defaults to `getOption("artma.data.source_path")`.
+#' @return `NULL`
+prime_df_for_config_cache <- function(
+    df,
+    df_path = getOption("artma.data.source_path")) {
+  box::use(artma / libs / core / validation[validate])
+
+  validate(is.data.frame(df))
+
+  .cache_env$cached_df <- df
+  .cache_env$cached_path <- df_path
+
+  invisible(NULL)
+}
+
 #' @title Read Dataframe for Config Resolution
 #' @description Reads the dataframe from `artma.data.source_path`, caching it
 #'   in memory to avoid repeated disk reads within a session. The cache is
@@ -67,6 +87,7 @@ merge_config <- function(base, overrides) {
 }
 
 box::export(
+  prime_df_for_config_cache,
   read_df_for_config,
   invalidate_df_cache,
   merge_config

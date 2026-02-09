@@ -134,6 +134,45 @@ test_that("invalidate_df_cache: clears internal cache state", {
   invalidate_df_cache()
 })
 
+test_that("read_df_for_config uses a primed dataframe cache without re-reading data", {
+  box::use(
+    artma / data / read[read_data],
+    artma / data_config / resolve[
+      prime_df_for_config_cache,
+      read_df_for_config,
+      invalidate_df_cache
+    ],
+    artma / testing / mocks / index[MOCKS]
+  )
+
+  df <- MOCKS$create_mock_df(seed = 42)
+  tmp_file <- tempfile(fileext = ".csv")
+  utils::write.csv(df, tmp_file, row.names = FALSE)
+
+  withr::local_options(list(
+    "artma.data.source_path" = tmp_file,
+    "artma.data.colnames.study_id" = "study_id",
+    "artma.data.colnames.effect" = "effect",
+    "artma.data.colnames.se" = "se",
+    "artma.data.colnames.n_obs" = "n_obs",
+    "artma.verbose" = 3
+  ))
+
+  invalidate_df_cache()
+
+  loaded_df <- read_data(tmp_file)
+  prime_df_for_config_cache(loaded_df, tmp_file)
+
+  replay_msgs <- testthat::capture_messages(read_df_for_config())
+  read_msgs <- grep("Reading data from", replay_msgs, value = TRUE)
+
+  expect_equal(length(read_msgs), 0L)
+  expect_equal(nrow(read_df_for_config()), nrow(loaded_df))
+
+  unlink(tmp_file)
+  invalidate_df_cache()
+})
+
 # ── get_data_config (integration with resolve) ───────────────────────────────
 
 test_that("get_data_config: returns overrides when df not available", {

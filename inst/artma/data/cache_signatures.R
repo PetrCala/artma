@@ -1,5 +1,4 @@
 box::use(
-  artma / data_config / read[get_data_config],
   artma / options / utils[get_option_group]
 )
 
@@ -36,7 +35,12 @@ build_data_cache_signature <- function() {
 
   box::use(artma / libs / infrastructure / polyfills[digest])
 
-  config_hash <- digest(get_data_config(), algo = "xxhash64")
+  overrides <- getOption("artma.data.config")
+  if (!is.list(overrides)) {
+    overrides <- list()
+  }
+
+  config_hash <- digest(overrides, algo = "xxhash64")
   artma_options_hash <- digest(get_option_group("artma"), algo = "xxhash64")
 
   list(
