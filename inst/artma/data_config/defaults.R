@@ -34,7 +34,7 @@ build_default_config_entry <- function(col_name, col_data) {
     "var_name_description" = col_name_verbose,
     "data_type" = col_data_type,
     "group_category" = NA,
-    "na_handling" = getOption("artma.data.na_handling"),
+    "na_handling" = getOption("artma.data.na_handling", NA),
     "variable_summary" = is.numeric(col_data),
     "effect_sum_stats" = NA,
     "equal" = NA,

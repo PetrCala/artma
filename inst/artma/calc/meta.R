@@ -41,7 +41,7 @@ reg_dof <- function(n_obs, n_predictors) n_obs - n_predictors
 precision <- function(se = NULL, reg_dof = NULL) {
   box::use(artma / libs / core / utils[get_verbosity])
 
-  precision_type <- getOption("artma.calc.precision_type")
+  precision_type <- getOption("artma.calc.precision_type", "1/SE")
   if (precision_type == "1/SE") {
     zero_se_rows <- which(se == 0)
     if (length(zero_se_rows) > 0) {

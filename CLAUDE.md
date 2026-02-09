@@ -121,6 +121,29 @@ Template structure for each option node:
 - `prompt` — How to ask for value: "readline", "file", "directory"
 - `help` — Help text
 
+#### Options Access Convention
+
+When reading options with `getOption()`, always provide a sensible default that
+matches the template default:
+
+```r
+# CORRECT — always provide a default
+precision_type <- getOption("artma.calc.precision_type", "1/SE")
+round_to <- getOption("artma.output.number_of_decimals", 3)
+
+# CORRECT — when using get_option_group, use %||% for each field
+opt <- get_option_group("artma.methods.box_plot")
+max_boxes <- opt$max_boxes %||% 60L
+
+# WRONG — no default, will return NULL if option is not set
+precision_type <- getOption("artma.calc.precision_type")
+```
+
+This keeps the package functional even when a user's options file is outdated
+or missing newly added options. The only exceptions are runtime-populated
+options (`artma.temp.*`, `artma.data.config`, `artma.data.source_path`) where
+`NULL` is the expected "not yet set" sentinel.
+
 ### Caching System
 
 Use `cache_cli()` to memoize expensive functions while preserving CLI output:

@@ -58,6 +58,33 @@ collect_leaf_paths <- function(template_path) {
   vapply(defs, `[[`, character(1), "name")
 }
 
+#' @title Get template defaults
+#' @description Returns a named list of option defaults from a template, with an optional name prefix.
+#' @param template_path *\[character\]* Path to the template YAML file.
+#' @param prefix *\[character, optional\]* Optional prefix to prepend to each option name.
+#' @return A named list with default values keyed by option name.
+get_template_defaults <- function(template_path, prefix = NULL) {
+  template <- read_template(template_path)
+  defs <- flatten_template_options(template)
+  defaults <- list()
+
+  for (opt_def in defs) {
+    key <- if (is.null(prefix)) {
+      opt_def$name
+    } else {
+      paste0(prefix, ".", opt_def$name)
+    }
+
+    if (!is.null(opt_def$default)) {
+      defaults[[key]] <- opt_def$default
+    } else if (isTRUE(opt_def$allow_na)) {
+      defaults[[key]] <- NA
+    }
+  }
+
+  defaults
+}
+
 #' @title Flatten user options
 #' @description Flattens a nested user-supplied YAML object *but* stops at template leaves
 #' @param user_options *\[list\]* A nested list returned by yaml::read_yaml()
@@ -421,6 +448,7 @@ box::export(
   collect_leaf_paths,
   flatten_template_options,
   flatten_user_options,
+  get_template_defaults,
   get_option_defs,
   parse_options_from_template,
   read_template

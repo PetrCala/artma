@@ -106,7 +106,7 @@ handle_extra_columns_with_data <- function(df, data_cols) {
         "var_name_description" = make_verbose_name(col),
         "data_type" = col_data_type,
         "group_category" = NA,
-        "na_handling" = getOption("artma.data.na_handling"),
+        "na_handling" = getOption("artma.data.na_handling", NA),
         "variable_summary" = is.numeric(col_data),
         "effect_sum_stats" = NA,
         "equal" = NA,
@@ -394,7 +394,7 @@ enforce_correct_values <- function(df) {
 
   box::use(artma / libs / core / validation[assert])
 
-  se_zero_handling <- getOption("artma.calc.se_zero_handling")
+  se_zero_handling <- getOption("artma.calc.se_zero_handling", "stop")
 
   zero_se_rows <- which(df$se == 0)
 

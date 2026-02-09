@@ -306,7 +306,11 @@ options.load <- function(
       resolve_template_path
     ],
     artma / options / utils[remove_options_with_prefix],
-    artma / options / template[flatten_user_options, collect_leaf_paths],
+    artma / options / template[
+      flatten_user_options,
+      collect_leaf_paths,
+      get_template_defaults
+    ],
     artma / libs / core / validation[validate, assert],
     artma / libs / core / utils[get_verbosity]
   )
@@ -371,18 +375,112 @@ options.load <- function(
 
   parent_key <- if (load_with_prefix) CONST$PACKAGE_NAME else NULL
   leaf_set <- collect_leaf_paths(template_path)
-  prefixed_options <- flatten_user_options(user_options = nested_options, leaf_set = leaf_set, parent = parent_key)
+  prefixed_options <- flatten_user_options(
+    user_options = nested_options,
+    leaf_set = leaf_set,
+    parent = parent_key
+  )
 
   if (should_validate) {
-    withr::with_options(
-      list("artma.verbose" = min(get_verbosity(), 2)),
-      options.validate(
+    errors <- withr::with_options(
+      list("artma.verbose" = 1),
+      suppressMessages(options.validate(
         options_file_name = options_file_name,
         options_dir = options_dir,
         template_path = template_path,
-        failure_action = "abort_verbose"
-      )
+        failure_action = "return_errors_quiet"
+      ))
     )
+
+    if (length(errors) > 0) {
+      error_types <- vapply(errors, function(err) err$type, character(1))
+      n_missing <- sum(error_types == "missing_option")
+      n_type <- sum(error_types == "type_mismatch")
+
+      defaults <- get_template_defaults(template_path = template_path, prefix = parent_key)
+      apply_template_defaults <- function(current_options) {
+        unresolved <- character(0)
+
+        for (err in errors) {
+          if (!(err$type %in% c("missing_option", "type_mismatch"))) {
+            next
+          }
+
+          opt_name <- err$opt_def$name
+          key <- if (is.null(parent_key)) opt_name else paste0(parent_key, ".", opt_name)
+
+          if (key %in% names(defaults)) {
+            current_options[[key]] <- defaults[[key]]
+          } else {
+            unresolved <- c(unresolved, key)
+          }
+        }
+
+        list(
+          options = current_options,
+          unresolved = unique(unresolved)
+        )
+      }
+
+      if (interactive()) {
+        if (n_missing > 0) {
+          cli::cli_alert_warning(
+            "Your options file {.file {options_file_name}} is missing {n_missing} option{?s} added in the latest version."
+          )
+        }
+        if (n_type > 0) {
+          cli::cli_alert_warning(
+            "Your options file {.file {options_file_name}} has {n_type} option value type mismatch{?es}."
+          )
+        }
+
+        choice <- climenu::select(
+          choices = c("Fix now (recommended)", "Proceed with defaults"),
+          prompt = "How would you like to handle this?"
+        )
+
+        if (choice == "Fix now (recommended)") {
+          options.fix(
+            options_file_name = options_file_name,
+            options_dir = options_dir,
+            template_path = template_path,
+            force_default_overwrites = TRUE
+          )
+
+          nested_options <- read_options_file(options_path)
+          prefixed_options <- flatten_user_options(
+            user_options = nested_options,
+            leaf_set = leaf_set,
+            parent = parent_key
+          )
+        } else {
+          default_result <- apply_template_defaults(prefixed_options)
+          prefixed_options <- default_result$options
+
+          if (length(default_result$unresolved) > 0 && get_verbosity() >= 2) {
+            cli::cli_alert_warning(
+              "Could not auto-fill {length(default_result$unresolved)} option{?s} without defaults: {.val {default_result$unresolved}}."
+            )
+          }
+        }
+      } else {
+        if (get_verbosity() >= 2) {
+          cli::cli_alert_warning(paste(
+            "Options file {.file {options_file_name}} has {n_missing} missing option{?s}",
+            "and {n_type} type mismatch{?es}. Proceeding with template defaults where possible."
+          ))
+        }
+
+        default_result <- apply_template_defaults(prefixed_options)
+        prefixed_options <- default_result$options
+
+        if (length(default_result$unresolved) > 0 && get_verbosity() >= 2) {
+          cli::cli_alert_warning(
+            "Could not auto-fill {length(default_result$unresolved)} option{?s} without defaults: {.val {default_result$unresolved}}."
+          )
+        }
+      }
+    }
   }
 
   if (get_verbosity() >= 4) {
