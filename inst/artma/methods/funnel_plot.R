@@ -372,7 +372,7 @@ create_funnel_plot <- function(df, tick_info, theme_name, precision_to_log, use_
 #' @return *\[character\]* Formatted labels
 #' @keywords internal
 format_tick_labels <- function(x) {
-  mapply(x, function(val) { # nolint: undesirable_function_linter.
+  vapply(x, function(val) {
     if (is.na(val)) {
       return(NA_character_)
     }
@@ -381,7 +381,7 @@ format_tick_labels <- function(x) {
     } else {
       format(round(val, 2), nsmall = 0, trim = TRUE)
     }
-  })
+  }, character(1))
 }
 
 
