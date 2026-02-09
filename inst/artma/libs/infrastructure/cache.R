@@ -96,6 +96,37 @@ call_cli_default <- function(msg) {
 }
 
 
+sanitize_replay_message <- function(message_text) {
+  if (is.null(message_text) || length(message_text) == 0L) {
+    return(character())
+  }
+
+  message_text <- paste(message_text, collapse = "\n")
+  message_text <- gsub("\r", "", message_text, fixed = TRUE)
+
+  lines <- strsplit(message_text, "\n", fixed = TRUE)[[1]]
+  if (length(lines) == 0L) {
+    return(character())
+  }
+
+  lines <- sub("\\s+$", "", lines, perl = TRUE)
+  lines <- sub("^\\s{20,}", "", lines, perl = TRUE)
+  lines[nzchar(trimws(lines))]
+}
+
+
+sanitize_replay_args <- function(args) {
+  if (!is.list(args)) {
+    return(args)
+  }
+
+  args$id <- NULL
+  args$pid <- NULL
+  args$timestamp <- NULL
+  args
+}
+
+
 #' @title Evaluate an expression, trapping *every* cli call it makes
 #' @description Evaluate an expression, trapping *every* cli call it makes
 #' @param expr *\[expression\]* The expression to evaluate
@@ -247,7 +278,17 @@ replay_log <- function(log, ..., .envir = parent.frame()) {
 
   for (entry in log) {
     if (identical(entry$kind, "condition")) {
-      msg <- list(type = entry$cli_type, args = entry$args, message = entry$message)
+      msg_lines <- sanitize_replay_message(entry$message)
+      if (rlang::is_empty(msg_lines)) {
+        next
+      }
+
+      msg <- list(
+        type = entry$cli_type,
+        args = sanitize_replay_args(entry$args),
+        message = msg_lines
+      )
+
       tryCatch(
         call_cli_default(msg),
         error = function(err) {
@@ -260,7 +301,7 @@ replay_log <- function(log, ..., .envir = parent.frame()) {
               conditionMessage(err)
             )
           )
-          cli::cli_inform(paste(entry$message, collapse = "\n"))
+          cli::cli_inform(paste(msg_lines, collapse = "\n"))
         }
       )
       next

@@ -66,6 +66,33 @@ test_that("capture_cli captures cat helpers and replays them faithfully", {
   expect_identical(replayed, original)
 })
 
+test_that("replay_log skips whitespace-only condition entries", {
+  box::use(artma / libs / infrastructure / cache[capture_cli, replay_log])
+
+  FIXTURES$local_cli_silence()
+
+  res <- capture_cli({
+    cli::cli_alert_info("Hello")
+    "done"
+  }, emit = FALSE)
+
+  expect_length(res$log, 1L)
+
+  noisy_log <- c(
+    list(list(
+      kind = "condition",
+      cli_type = res$log[[1]]$cli_type,
+      args = res$log[[1]]$args,
+      message = "                                                            "
+    )),
+    res$log
+  )
+
+  out <- testthat::capture_messages(replay_log(noisy_log))
+  expect_length(out, 1L)
+  expect_match(out, "Hello", fixed = TRUE)
+})
+
 test_that("cache_cli memoises value + log and replays on hit", {
   box::use(artma / libs / infrastructure / cache[cache_cli, get_artifact])
 
