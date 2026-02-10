@@ -4,7 +4,7 @@
 \alias{results.open}
 \title{Open Results Directory}
 \usage{
-results.open(options = NULL, options_dir = NULL)
+results.open(options = NULL, options_dir = NULL, use_last = TRUE)
 }
 \arguments{
 \item{options}{\emph{[character, optional]} Name of the options file (with or
@@ -14,6 +14,10 @@ you will be prompted to select an options file.}
 
 \item{options_dir}{\emph{[character, optional]} Directory containing the options
 file. If \code{NULL}, uses the default options directory.}
+
+\item{use_last}{\emph{[logical]} If \code{TRUE} (default) and no \code{options}/\code{options_dir}
+are provided, automatically open the most recently exported results
+directory. Set to \code{FALSE} to always resolve via the options file.}
 }
 \value{
 \emph{[character]} The resolved output directory path (invisibly).
@@ -28,6 +32,9 @@ results directory without prompting for an options file.
 \dontrun{
 # Open the most recent results (no prompt if a recent export exists)
 results.open()
+
+# Force options-based resolution (will prompt if needed)
+results.open(use_last = FALSE)
 
 # Open results for a specific options file
 results.open(options = "my_analysis.yaml")

@@ -102,6 +102,9 @@ results.dir <- function(options = NULL, options_dir = NULL) {
 #'   you will be prompted to select an options file.
 #' @param options_dir *\[character, optional\]* Directory containing the options
 #'   file. If `NULL`, uses the default options directory.
+#' @param use_last *\[logical\]* If `TRUE` (default) and no `options`/`options_dir`
+#'   are provided, automatically open the most recently exported results
+#'   directory. Set to `FALSE` to always resolve via the options file.
 #' @return *\[character\]* The resolved output directory path (invisibly).
 #' @export
 #' @examples
@@ -109,11 +112,14 @@ results.dir <- function(options = NULL, options_dir = NULL) {
 #' # Open the most recent results (no prompt if a recent export exists)
 #' results.open()
 #'
+#' # Force options-based resolution (will prompt if needed)
+#' results.open(use_last = FALSE)
+#'
 #' # Open results for a specific options file
 #' results.open(options = "my_analysis.yaml")
 #' }
-results.open <- function(options = NULL, options_dir = NULL) {
-  if (is.null(options) && is.null(options_dir)) {
+results.open <- function(options = NULL, options_dir = NULL, use_last = TRUE) {
+  if (isTRUE(use_last) && is.null(options) && is.null(options_dir)) {
     last_dir <- read_last_export_dir()
     if (!is.null(last_dir)) {
       return(open_dir_in_browser(last_dir))
