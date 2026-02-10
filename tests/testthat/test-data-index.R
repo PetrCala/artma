@@ -12,6 +12,9 @@ test_that("prepare_data reads source data only once on a cache-miss execution", 
   # Seed computed-column entries so prepare_data() does not attempt to persist
   # data-config updates to a runtime options file in this unit test.
   precomputed_overrides <- list(
+    obs_id = list(var_name = "obs_id", is_computed = TRUE),
+    study_id = list(var_name = "study_id", is_computed = TRUE),
+    study_label = list(var_name = "study_label", is_computed = TRUE),
     t_stat = list(var_name = "t_stat", is_computed = TRUE),
     study_size = list(var_name = "study_size", is_computed = TRUE),
     reg_dof = list(var_name = "reg_dof", is_computed = TRUE),

@@ -34,10 +34,12 @@ add_obs_id_column <- function(df) {
 
 #' @title Add study ID column
 #' @description Add or normalize the study ID column. Uses the existing
-#'   \code{study_id} column (character or integer) and overwrites it with
+#'   \code{study_id} column (character or integer), preserves its original
+#'   labels in \code{study_label}, and overwrites \code{study_id} with
 #'   integer IDs derived from factorizing its values.
 #' @param df *\[data.frame\]* The data frame with a \code{study_id} column.
-#' @return *\[data.frame\]* The data frame with \code{study_id} as integer IDs.
+#' @return *\[data.frame\]* The data frame with \code{study_id} as integer IDs
+#'   and \code{study_label} as the original study key values.
 #' @keywords internal
 add_study_id_column <- function(df) {
   box::use(artma / libs / core / utils[get_verbosity])
@@ -49,6 +51,22 @@ add_study_id_column <- function(df) {
   }
 
   valid_ids <- as.integer(factor(study_src, levels = unique(study_src)))
+
+  study_labels <- as.character(study_src)
+  if (!"study_label" %in% colnames(df)) {
+    df$study_label <- study_labels
+    if (get_verbosity() >= 4) {
+      cli::cli_inform("Created {.field study_label} column from original study keys")
+    }
+  } else if (!identical(as.character(df$study_label), study_labels)) {
+    if (get_verbosity() >= 2) {
+      cli::cli_alert_warning(c(
+        "!" = "Existing {.val study_label} values differ from the source {.val study_id} column.",
+        "i" = "Overwriting {.val study_label} with the original study keys."
+      ))
+    }
+    df$study_label <- study_labels
+  }
 
   if ("study_id" %in% colnames(df)) {
     invalid_or_missing_ids <- which(is.na(df$study_id) | df$study_id != valid_ids)
@@ -243,7 +261,7 @@ update_config_with_computed_columns <- function(df) {
   config <- get_data_config()
 
   # List of computed columns to add
-  computed_columns <- c("obs_id", "study_id", "t_stat", "study_size", "reg_dof", "precision")
+  computed_columns <- c("obs_id", "study_id", "study_label", "t_stat", "study_size", "reg_dof", "precision")
 
   # Add each computed column to config if it exists in df and not in config
   changes <- list()
@@ -262,7 +280,7 @@ update_config_with_computed_columns <- function(df) {
           var_name = col_name,
           var_name_verbose = make_verbose_name(col_name),
           data_type = col_data_type,
-          variable_summary = TRUE,  # Include in variable summaries
+          variable_summary = !identical(col_name, "study_label"),  # Keep labels out of numeric summaries
           effect_sum_stats = FALSE,  # Don't split by computed columns
           is_computed = TRUE  # Mark as computed for clarity
         )
@@ -289,6 +307,7 @@ update_config_with_computed_columns <- function(df) {
 #'   This includes:
 #'   - obs_id: Sequential observation IDs (1 to nrow)
 #'   - study_id: Integer study IDs based on study names
+#'   - study_label: Original study key labels before integer normalization
 #'   - t_stat: T-statistics calculated from effect/se
 #'   - study_size: Number of estimates per study
 #'   - reg_dof: Regression degrees of freedom (n_obs - 2)

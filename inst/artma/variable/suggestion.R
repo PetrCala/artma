@@ -64,7 +64,7 @@ suggest_variables_for_effect_summary <- function(df, config = NULL,
   groups <- detect_variable_groups(df, config = config)
 
   # Reserved columns that should never be suggested
-  reserved <- c("effect", "se", "study_id", "study_size", "sample_size", "dof")
+  reserved <- c("effect", "se", "study_id", "study_label", "study_size", "sample_size", "dof")
 
   results <- list()
 

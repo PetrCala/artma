@@ -290,6 +290,77 @@ analyze_column_values <- function(values) {
 }
 
 
+#' @title Detect if a column is likely a numeric identifier
+#' @description Checks whether a candidate column behaves like numeric IDs (sequential or near-unique numerics)
+#' @param values *\[vector\]* Column values to analyze
+#' @return *\[logical\]* TRUE if the column likely contains numeric IDs
+is_likely_numeric_id <- function(values) {
+  values_clean <- values[!is.na(values)]
+  analysis <- analyze_column_values(values)
+
+  if (!analysis$is_numeric) {
+    return(FALSE)
+  }
+
+  if (analysis$is_sequential) {
+    return(TRUE)
+  }
+
+  if (analysis$uniqueness_ratio >= 0.95) {
+    return(TRUE)
+  }
+
+  numeric_values <- suppressWarnings(as.numeric(values_clean))
+  numeric_values <- numeric_values[!is.na(numeric_values)]
+
+  if (length(numeric_values) < 2) {
+    return(FALSE)
+  }
+
+  integer_like_ratio <- mean(abs(numeric_values - round(numeric_values)) < 1e-10)
+  n_unique <- length(unique(numeric_values))
+
+  integer_like_ratio >= 0.95 && n_unique >= 2
+}
+
+
+#' @title Detect if a column is likely a usable study key
+#' @description Checks whether a candidate column has label-like values suitable for study keys
+#' @param values *\[vector\]* Column values to analyze
+#' @return *\[logical\]* TRUE if the column likely contains usable study labels/keys
+is_likely_study_key <- function(values) {
+  values_clean <- values[!is.na(values)]
+
+  if (length(values_clean) < 2) {
+    return(FALSE)
+  }
+
+  analysis <- analyze_column_values(values_clean)
+  if (analysis$uniqueness_ratio < 0.05) {
+    return(FALSE)
+  }
+
+  values_chr <- trimws(as.character(values_clean))
+  values_chr <- values_chr[nzchar(values_chr)]
+
+  if (length(values_chr) < 2) {
+    return(FALSE)
+  }
+
+  # If values are purely numeric-like strings, treat as numeric IDs rather than label keys.
+  numeric_like_ratio <- mean(grepl("^[-+]?[0-9]+(\\.[0-9]+)?$", values_chr))
+  if (numeric_like_ratio > 0.8) {
+    return(FALSE)
+  }
+
+  # Require some textual structure (letters and/or punctuation common in citation-like keys).
+  has_letters <- mean(grepl("[A-Za-z]", values_chr)) >= 0.6
+  has_key_punct <- mean(grepl("[()_.,-]", values_chr)) >= 0.3
+
+  has_letters || has_key_punct
+}
+
+
 #' @title Score candidate column for a specific standard column type
 #' @description Uses value analysis to score how well a candidate matches expected properties
 #' @param df *\[data.frame\]* The data frame
@@ -421,6 +492,27 @@ resolve_multiple_matches <- function(df, candidates, std_col, matches) {
 
   best_candidate <- candidates[which.max(candidate_scores)]
 
+  if (std_col == "study_id") {
+    string_like_candidates <- candidates[vapply(candidates, function(cand) {
+      is_likely_study_key(df[[cand]])
+    }, logical(1))]
+
+    numeric_id_candidates <- candidates[vapply(candidates, function(cand) {
+      is_likely_numeric_id(df[[cand]])
+    }, logical(1))]
+
+    if (length(string_like_candidates) > 0 && length(numeric_id_candidates) > 0) {
+      best_string <- string_like_candidates[which.max(candidate_scores[string_like_candidates])]
+      best_numeric <- numeric_id_candidates[which.max(candidate_scores[numeric_id_candidates])]
+      score_gap <- candidate_scores[best_numeric] - candidate_scores[best_string]
+
+      # Conservative preference: use string keys if they are plausible and not meaningfully weaker.
+      if (score_gap <= 0.1) {
+        best_candidate <- best_string
+      }
+    }
+  }
+
   if (get_verbosity() >= 4) {
     cli::cli_inform("Resolved multiple matches for {.field {std_col}}:")
     for (cand in candidates) {
@@ -428,8 +520,17 @@ resolve_multiple_matches <- function(df, candidates, std_col, matches) {
       value_score <- candidate_scores[cand]
       analysis <- analyze_column_values(df[[cand]])
       marker <- if (cand == best_candidate) "\u2713" else " "
+      type_label <- if (std_col == "study_id") {
+        sprintf(
+          ", label_key=%s, numeric_id=%s",
+          is_likely_study_key(df[[cand]]),
+          is_likely_numeric_id(df[[cand]])
+        )
+      } else {
+        ""
+      }
       cli::cli_inform(
-        "  {marker} {.field {cand}}: name={round(name_score, 2)}, adjusted={round(value_score, 2)} (seq={analysis$is_sequential}, uniq={round(analysis$uniqueness_ratio, 2)})"
+        "  {marker} {.field {cand}}: name={round(name_score, 2)}, adjusted={round(value_score, 2)} (seq={analysis$is_sequential}, uniq={round(analysis$uniqueness_ratio, 2)}{type_label})"
       )
     }
   }
@@ -551,6 +652,8 @@ box::export(
   check_mapping_completeness,
   string_similarity,
   analyze_column_values,
+  is_likely_numeric_id,
+  is_likely_study_key,
   score_candidate_values,
   resolve_multiple_matches
 )

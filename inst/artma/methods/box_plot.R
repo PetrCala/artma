@@ -121,7 +121,7 @@ resolve_factor_by <- function(df, config, factor_by_option) {
     return(NA_character_)
   }
 
-  # For box plots, "study_id" is almost always the right choice, so we only prompt
+  # For box plots, study labels/IDs are almost always the right choice, so we only prompt
   # at low autonomy levels (1-2). At medium and above, auto-select.
   if (should_prompt_user(required_level = 3) && length(candidates) > 1) {
     box::use(artma / interactive / box_plot[prompt_factor_by_selection])
@@ -139,7 +139,8 @@ resolve_factor_by <- function(df, config, factor_by_option) {
 #'
 #' @description
 #' Identifies variables that would be good candidates for grouping box plots.
-#' Prioritizes "study_id" as the default grouping variable since box plots in
+#' Prioritizes "study_label" (or "study_id" fallback) as the default grouping
+#' variable since box plots in
 #' meta-analysis typically show effect distribution across studies.
 #'
 #' @param df *\[data.frame\]* The data frame
@@ -148,7 +149,7 @@ resolve_factor_by <- function(df, config, factor_by_option) {
 #' @return *\[character\]* Vector of candidate variable names
 #' @keywords internal
 detect_factor_candidates <- function(df, config) {
-  # For box plots, we want to INCLUDE study_id as a candidate (unlike other methods)
+  # For box plots, include study identifiers as candidates (unlike other methods),
   # but exclude numeric identifiers and computed columns
   excluded_names <- c(
     "effect", "se", "t_stat", "study_size",
@@ -163,18 +164,18 @@ detect_factor_candidates <- function(df, config) {
 
   candidates <- character(0)
 
-  # study_id is always a valid grouping variable; downstream splits by max_boxes
+  # Study identifier columns are always valid grouping variables; downstream splits by max_boxes
   max_levels_default <- 200L
   max_levels_numeric <- 30L
-  max_levels_study_id <- 10000L
+  max_levels_study <- 10000L
 
   for (var in var_names) {
     col <- df[[var]]
-    is_study_id <- var == "study_id"
+    is_study_var <- var %in% c("study_label", "study_id")
 
     if (is.factor(col)) {
       n_levels <- nlevels(col)
-      cap <- if (is_study_id) max_levels_study_id else max_levels_default
+      cap <- if (is_study_var) max_levels_study else max_levels_default
       if (n_levels >= 2 && n_levels <= cap) {
         candidates <- c(candidates, var)
       }
@@ -183,7 +184,7 @@ detect_factor_candidates <- function(df, config) {
 
     if (is.character(col)) {
       n_unique <- length(unique(stats::na.omit(col)))
-      cap <- if (is_study_id) max_levels_study_id else max_levels_default
+      cap <- if (is_study_var) max_levels_study else max_levels_default
       if (n_unique >= 2 && n_unique <= cap) {
         candidates <- c(candidates, var)
       }
@@ -193,16 +194,16 @@ detect_factor_candidates <- function(df, config) {
     if (is.numeric(col) || is.integer(col)) {
       unique_vals <- unique(stats::na.omit(col))
       n_unique <- length(unique_vals)
-      cap <- if (is_study_id) max_levels_study_id else max_levels_numeric
+      cap <- if (is_study_var) max_levels_study else max_levels_numeric
       if (n_unique >= 2 && n_unique <= cap && all(unique_vals == floor(unique_vals))) {
         candidates <- c(candidates, var)
       }
     }
   }
 
-  # Prioritize "study_id" as the default grouping variable
+  # Prioritize study labels as the default grouping variable
   # since box plots in meta-analysis typically show effect distribution across studies
-  study_vars <- intersect(c("study_id"), candidates)
+  study_vars <- intersect(c("study_label", "study_id"), candidates)
   if (length(study_vars) > 0) {
     other <- setdiff(candidates, study_vars)
     candidates <- c(study_vars, other)

@@ -340,8 +340,8 @@ test_that("value-based resolution works with realistic meta-analysis data", {
   withr::local_options(list("artma.verbose" = 1))
   mapping <- recognize_columns(df, min_confidence = 0.7)
 
-  # Verify correct mappings; study_id maps to one of the study columns
-  expect_true(mapping$study_id %in% c("study_id", "study_name"))
+  # Verify correct mappings; prefer string study keys when available
+  expect_equal(mapping$study_id, "study_name")
   expect_equal(mapping$effect, "effect")
   expect_equal(mapping$se, "se")
   expect_equal(mapping$n_obs, "n_obs") # Not obs_n

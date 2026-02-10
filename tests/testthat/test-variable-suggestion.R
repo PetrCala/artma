@@ -249,7 +249,7 @@ test_that("detect_variable_groups excludes reserved columns", {
 
   result <- detect_variable_groups(df)
 
-  reserved <- c("effect", "se", "study_id", "study_size", "sample_size", "dof")
+  reserved <- c("effect", "se", "study_id", "study_label", "study_size", "sample_size", "dof")
   expect_false(any(result$var_name %in% reserved))
 })
 

@@ -330,7 +330,7 @@ manual_select_effect_summary_vars <- function(df, config) {
   }
 
   # Get potential variables (exclude reserved columns)
-  reserved_vars <- c("effect", "se", "study_id", "study_size", "sample_size", "dof")
+  reserved_vars <- c("effect", "se", "study_id", "study_label", "study_size", "sample_size", "dof")
   potential_vars <- names(config)[!names(config) %in% reserved_vars]
 
   # Filter to numeric/integer variables that exist in the data

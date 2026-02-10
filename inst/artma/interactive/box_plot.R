@@ -38,8 +38,8 @@ prompt_factor_by_selection <- function(df, config, candidates) {
   cli::cli_text("Select a variable to group the box plots by:")
   cli::cat_line()
 
-  # Build display names, marking study_id as recommended
-  study_vars <- c("study_id")
+  # Build display names, marking study label/id as recommended
+  study_vars <- c("study_label", "study_id")
 
   display_names <- vapply(candidates, function(var) {
     n_unique <- length(unique(stats::na.omit(df[[var]])))

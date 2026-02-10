@@ -5,7 +5,12 @@ box::use(
     recognize_columns,
     get_required_column_names,
     check_mapping_completeness,
-    string_similarity
+    string_similarity,
+    analyze_column_values,
+    is_likely_numeric_id,
+    is_likely_study_key,
+    score_candidate_values,
+    resolve_multiple_matches
   ]
 )
 
@@ -206,9 +211,9 @@ test_that("recognize_columns prioritizes required columns", {
 
   mapping <- recognize_columns(df, min_confidence = 0.7)
 
-  # study_id should be mapped (to study_id or study_name)
+  # Prefer string keys when both numeric IDs and labels are available
   expect_true("study_id" %in% names(mapping))
-  expect_true(mapping$study_id %in% c("study_id", "study_name"))
+  expect_equal(mapping$study_id, "study_name")
 })
 
 
@@ -342,8 +347,8 @@ test_that("recognize_columns with realistic meta-analysis data", {
   withr::local_options(list("artma.verbose" = 1))
   mapping <- recognize_columns(df, min_confidence = 0.7)
 
-  # Verify key columns are recognized; study_id maps to one of the study columns
-  expect_true(mapping$study_id %in% c("study_id", "study_name"))
+  # Verify key columns are recognized; prefer string study key when available
+  expect_equal(mapping$study_id, "study_name")
   expect_equal(mapping$effect, "effect")
   expect_equal(mapping$se, "se")
   # n_obs could be matched to either "obs_n" or "n_obs" - both are valid patterns
@@ -355,6 +360,38 @@ test_that("recognize_columns with realistic meta-analysis data", {
     # If obs_id is mapped, it should be to obs_n, not to anything else
     expect_true(mapping$obs_id %in% c("obs_n", "obs_id"))
   }
+})
+
+
+test_that("is_likely_study_key detects citation-like string labels", {
+  values <- c("Albeigh (2008)", "Baker (2009)", "Chou 2010")
+  expect_true(is_likely_study_key(values))
+  expect_false(is_likely_numeric_id(values))
+})
+
+
+test_that("is_likely_numeric_id detects sequential numeric identifiers", {
+  values <- 1:20
+  expect_true(is_likely_numeric_id(values))
+  expect_false(is_likely_study_key(values))
+})
+
+
+test_that("recognize_columns prefers string study keys over sequential numeric IDs", {
+  df <- data.frame(
+    study = 1:8,
+    study_id = c(
+      "Albeigh (2008)", "Baker (2009)", "Chou (2010)", "Davis (2011)",
+      "Evans (2012)", "Frost (2013)", "Gale (2014)", "Holt (2015)"
+    ),
+    effect = rnorm(8),
+    se = runif(8, 0.1, 0.3),
+    n_obs = sample(100:300, 8)
+  )
+
+  mapping <- recognize_columns(df, min_confidence = 0.7)
+
+  expect_equal(mapping$study_id, "study_id")
 })
 
 

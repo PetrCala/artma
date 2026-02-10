@@ -36,7 +36,7 @@ detect_variable_groups <- function(df, var_names = NULL, config = NULL) {
   validate(is.data.frame(df))
 
   # Reserved column names that should not be grouped
-  reserved_names <- c("effect", "se", "study_id", "study_size", "sample_size", "dof")
+  reserved_names <- c("effect", "se", "study_id", "study_label", "study_size", "sample_size", "dof")
 
   if (is.null(var_names)) {
     var_names <- setdiff(names(df), reserved_names)
