@@ -8,8 +8,9 @@ results.open(options = NULL, options_dir = NULL)
 }
 \arguments{
 \item{options}{\emph{[character, optional]} Name of the options file (with or
-without \code{.yaml} extension). If \code{NULL} and running interactively, you will
-be prompted to select an options file.}
+without \code{.yaml} extension). If \code{NULL}, the function first checks for a
+recent export marker. If no marker is found and running interactively,
+you will be prompted to select an options file.}
 
 \item{options_dir}{\emph{[character, optional]} Directory containing the options
 file. If \code{NULL}, uses the default options directory.}
@@ -20,10 +21,15 @@ file. If \code{NULL}, uses the default options directory.}
 \description{
 Opens the output directory in the system file browser (Finder
 on macOS, Explorer on Windows, or the default file manager on Linux).
+When called without arguments, tries to open the most recently exported
+results directory without prompting for an options file.
 }
 \examples{
 \dontrun{
-# Open the results directory in your file browser
+# Open the most recent results (no prompt if a recent export exists)
+results.open()
+
+# Open results for a specific options file
 results.open(options = "my_analysis.yaml")
 }
 }

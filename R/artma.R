@@ -156,45 +156,24 @@ artma <- function(
       export_results(results, output_dir)
     }
 
-    opened_results <- FALSE
     if (isTRUE(save_results) && isTRUE(open_results) && interactive()) {
-      options_file_name <- if (is.null(options)) {
-        getOption("artma.temp.file_name")
-      } else {
-        options
-      }
-      options_dir_name <- if (is.null(options_dir)) {
-        getOption("artma.temp.dir_name")
-      } else {
-        options_dir
-      }
-
-      if (!is.null(options_file_name)) {
-        opened_results <- tryCatch(
-          {
-            results.open(
-              options = options_file_name,
-              options_dir = options_dir_name
+      tryCatch(
+        results.open(),
+        error = function(e) {
+          if (get_verbosity() >= 2) {
+            cli::cli_alert_warning(
+              "Unable to open results directory: {e$message}"
             )
-            TRUE
-          },
-          error = function(e) {
-            if (get_verbosity() >= 2) {
-              cli::cli_alert_warning(
-                "Unable to open results directory: {e$message}"
-              )
-            }
-            FALSE
           }
-        )
-      }
+        }
+      )
     }
 
     if (get_verbosity() >= 3) {
       cli::cli_alert_success("Analysis complete.")
       if (isTRUE(save_results)) {
         cli::cli_alert_info("Results saved to {.path {output_dir}}")
-        if (!isTRUE(opened_results)) {
+        if (!isTRUE(open_results)) {
           cli::cli_alert_info(
             "Run {.code artma::results.open()} to open the results directory."
           )

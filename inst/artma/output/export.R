@@ -130,6 +130,8 @@ export_results <- function(results, output_dir) {
       }
     )
   }
+
+  write_last_export_marker(output_dir)
 }
 
 #' Export a single method's result
@@ -170,6 +172,21 @@ export_method_result <- function(result, method_name, output_dir) {
   if (exported_any) return(invisible())
 
   invisible()
+}
+
+write_last_export_marker <- function(output_dir) {
+  box::use(artma / paths[PATHS])
+
+  marker_dir <- PATHS$DIR_USR_CACHE
+  dir.create(marker_dir, recursive = TRUE, showWarnings = FALSE)
+
+  marker_path <- file.path(marker_dir, "last_export_dir")
+  tryCatch(
+    writeLines(normalizePath(output_dir, mustWork = FALSE), marker_path),
+    error = function(e) NULL
+  )
+
+  invisible(marker_path)
 }
 
 box::export(
