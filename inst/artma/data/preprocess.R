@@ -218,7 +218,7 @@ verify_variable_names <- function(df) {
     config_entry <- config[[config_key]]
     if (isTRUE(config_entry$is_computed)) {
       var_name <- config_entry$var_name
-      if (!is.na(var_name)) {
+      if (length(var_name) == 1 && !is.na(var_name)) {
         computed_varnames <- c(computed_varnames, var_name)
       }
     }

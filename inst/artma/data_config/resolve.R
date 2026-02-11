@@ -78,7 +78,12 @@ merge_config <- function(base, overrides) {
       # Existing variable: overlay specific fields
       base[[var_key]] <- utils::modifyList(base[[var_key]], override_entry)
     } else {
-      # Variable not in base (e.g., removed from df or manually added)
+      # Variable not in base (e.g., removed from df or manually added).
+      # Ensure var_name is present — extract_overrides() strips it from
+      # sparse overrides, so override-only entries may lack the field.
+      if (is.null(override_entry$var_name)) {
+        override_entry$var_name <- var_key
+      }
       base[[var_key]] <- override_entry
     }
   }
