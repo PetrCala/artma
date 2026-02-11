@@ -75,12 +75,20 @@ simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress
 simulate_cdfs_parallel <- function(
   iterations = 10000,
   grid_points = 10000,
-  workers = max(1L, parallel::detectCores(logical = FALSE) - 1L),
+  workers = NULL,
   block_size = 256L,
   show_progress = TRUE
 ) {
   gp <- as.integer(grid_points)
   it <- as.integer(iterations)
+  if (is.null(workers)) {
+    chk <- tolower(Sys.getenv("_R_CHECK_LIMIT_CORES_", ""))
+    workers <- if (chk %in% c("true", "warn")) {
+      2L
+    } else {
+      max(1L, parallel::detectCores(logical = FALSE) - 1L)
+    }
+  }
   workers <- as.integer(max(1L, workers))
   block_size <- as.integer(max(1L, block_size))
 
