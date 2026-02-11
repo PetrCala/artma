@@ -26,7 +26,7 @@ box_plot <- function(df) {
   vis <- get_visualization_options()
 
   factor_by <- opt$factor_by %||% NA_character_
-  max_boxes <- opt$max_boxes %||% 60L
+  max_per_plot <- opt$max_boxes_per_plot %||% 60L
   theme_name <- vis$theme
   show_mean_line <- opt$show_mean_line %||% TRUE
   effect_label <- opt$effect_label %||% "effect"
@@ -35,12 +35,12 @@ box_plot <- function(df) {
   graph_scale <- vis$graph_scale
 
   validate(
-    is.numeric(max_boxes),
+    is.numeric(max_per_plot),
     is.logical(show_mean_line),
     is.character(effect_label)
   )
 
-  assert(max_boxes > 0, "max_boxes must be positive")
+  assert(max_per_plot > 0, "max_boxes_per_plot must be positive")
 
   factor_by <- resolve_factor_by(df, config, factor_by)
 
@@ -62,7 +62,7 @@ box_plot <- function(df) {
   result <- create_box_plots(
     df = df,
     factor_by = factor_by,
-    max_boxes = max_boxes,
+    max_per_plot = max_per_plot,
     theme_name = theme_name,
     show_mean_line = show_mean_line,
     effect_label = effect_label
@@ -164,7 +164,7 @@ detect_factor_candidates <- function(df, config) {
 
   candidates <- character(0)
 
-  # Study identifier columns are always valid grouping variables; downstream splits by max_boxes
+  # Study identifier columns are always valid grouping variables; downstream splits by max_boxes_per_plot
   max_levels_default <- 200L
   max_levels_numeric <- 30L
   max_levels_study <- 10000L
@@ -234,17 +234,18 @@ detect_factor_candidates <- function(df, config) {
 #'
 #' @description
 #' Creates one or more box plots, splitting data if there are too many unique factor values.
+#' When splitting is needed, plots are balanced so each has a similar number of boxes.
 #'
 #' @param df *\[data.frame\]* The data frame
 #' @param factor_by *\[character\]* Variable to group by
-#' @param max_boxes *\[integer\]* Maximum boxes per plot
+#' @param max_per_plot *\[integer\]* Maximum boxes per plot
 #' @param theme_name *\[character\]* Theme name
 #' @param show_mean_line *\[logical\]* Whether to show mean line
 #' @param effect_label *\[character\]* Label for effect axis
 #'
 #' @return *\[list\]* List with plots, factor_by, and n_groups
 #' @keywords internal
-create_box_plots <- function(df, factor_by, max_boxes, theme_name, show_mean_line, effect_label) {
+create_box_plots <- function(df, factor_by, max_per_plot, theme_name, show_mean_line, effect_label) {
   box::use(artma / libs / core / validation[validate])
 
   validate(
@@ -257,7 +258,7 @@ create_box_plots <- function(df, factor_by, max_boxes, theme_name, show_mean_lin
   unique_factors <- sort(unique(stats::na.omit(factor_values)))
   n_factors <- length(unique_factors)
 
-  if (n_factors <= max_boxes) {
+  if (n_factors <= max_per_plot) {
     plot <- create_single_box_plot(
       df = df,
       factor_by = factor_by,
@@ -272,15 +273,15 @@ create_box_plots <- function(df, factor_by, max_boxes, theme_name, show_mean_lin
     ))
   }
 
-  datasets <- list()
-  remaining_factors <- unique_factors
-  while (length(remaining_factors) > 0) {
-    upper_bound <- min(max_boxes, length(remaining_factors))
-    split_factors <- remaining_factors[seq_len(upper_bound)]
-    subset_mask <- factor_values %in% split_factors
-    datasets[[length(datasets) + 1]] <- df[subset_mask, , drop = FALSE]
-    remaining_factors <- remaining_factors[!remaining_factors %in% split_factors]
-  }
+  # Balance factors across plots so each plot has a similar number of boxes
+  n_plots <- ceiling(n_factors / max_per_plot)
+  chunk_size <- ceiling(n_factors / n_plots)
+  factor_chunks <- split(unique_factors, ceiling(seq_along(unique_factors) / chunk_size))
+
+  datasets <- lapply(factor_chunks, function(chunk_factors) {
+    subset_mask <- factor_values %in% chunk_factors
+    df[subset_mask, , drop = FALSE]
+  })
 
   plots <- lapply(datasets, function(subset_df) {
     create_single_box_plot(

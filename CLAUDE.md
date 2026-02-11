@@ -137,7 +137,7 @@ round_to <- getOption("artma.output.number_of_decimals", 3)
 
 # CORRECT — when using get_option_group, use %||% for each field
 opt <- get_option_group("artma.methods.box_plot")
-max_boxes <- opt$max_boxes %||% 60L
+max_per_plot <- opt$max_boxes_per_plot %||% 60L
 
 # WRONG — no default, will return NULL if option is not set
 precision_type <- getOption("artma.calc.precision_type")

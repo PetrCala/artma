@@ -323,13 +323,14 @@ methods:
         If not specified, the system will auto-detect suitable categorical variables
         or prompt for selection in interactive mode.
 
-    max_boxes:
+    max_boxes_per_plot:
       type: "integer"
       default: 60
       help: |
-        Maximum number of boxes to display in a single plot.
-        When the number of unique factor values exceeds this threshold,
-        the data will be split across multiple plots.
+        Maximum number of boxes allowed in a single plot.
+        When the number of unique factor values exceeds this limit,
+        the data is split into multiple balanced plots so that each
+        plot has a similar number of boxes and none exceeds this value.
 
     show_mean_line:
       type: "logical"
