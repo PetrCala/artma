@@ -8,7 +8,7 @@ SCRIPTS_DIR=$(get_abs_path "$SCRIPTS_DIR_REL")
 
 PKG_NAME="artma"
 
-# Direcotry names - _DIR_NAME
+# Direcotry names - _DIR_NAME 
 CACHE_DIR_NAME="_cache"
 R_DIR_NAME="R"
 OUTPUT_DIR_NAME="output"
