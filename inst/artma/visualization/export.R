@@ -82,7 +82,7 @@ save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units =
   )
 
   validate(
-    ggplot2::is.ggplot(plot),
+    ggplot2::is_ggplot(plot),
     is.character(path),
     is.numeric(width), width > 0,
     is.numeric(height), height > 0,

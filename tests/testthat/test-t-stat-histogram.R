@@ -52,8 +52,8 @@ test_that("t_stat_histogram creates both plots with defaults", {
     "n_outliers_main", "n_outliers_close_up",
     "mean_t_stat", "close_up_enabled"
   ))
-  expect_true(ggplot2::is.ggplot(result$plot_main))
-  expect_true(ggplot2::is.ggplot(result$plot_close_up))
+  expect_true(ggplot2::is_ggplot(result$plot_main))
+  expect_true(ggplot2::is_ggplot(result$plot_close_up))
   expect_identical(result$close_up_enabled, TRUE)
   expect_equal(result$n_observations, 200)
 })
@@ -77,7 +77,7 @@ test_that("t_stat_histogram works without close-up", {
   df <- create_test_data()
   result <- t_stat_histogram(df)
 
-  expect_true(ggplot2::is.ggplot(result$plot_main))
+  expect_true(ggplot2::is_ggplot(result$plot_main))
   expect_null(result$plot_close_up)
   expect_identical(result$close_up_enabled, FALSE)
 })
@@ -104,7 +104,7 @@ test_that("t_stat_histogram handles all themes", {
     df <- create_test_data(n = 50)
     result <- t_stat_histogram(df)
 
-    expect_true(ggplot2::is.ggplot(result$plot_main))
+    expect_true(ggplot2::is_ggplot(result$plot_main))
   }
 })
 
@@ -150,7 +150,7 @@ test_that("t_stat_histogram supports multiple critical values", {
   df <- create_test_data(n = 100)
   result <- t_stat_histogram(df)
 
-  expect_true(ggplot2::is.ggplot(result$plot_main))
+  expect_true(ggplot2::is_ggplot(result$plot_main))
 })
 
 
@@ -172,7 +172,7 @@ test_that("t_stat_histogram works without mean line and density", {
   df <- create_test_data(n = 50)
   result <- t_stat_histogram(df)
 
-  expect_true(ggplot2::is.ggplot(result$plot_main))
+  expect_true(ggplot2::is_ggplot(result$plot_main))
   expect_s3_class(result, "artma_t_stat_histogram")
 })
 

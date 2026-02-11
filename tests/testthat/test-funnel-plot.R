@@ -46,7 +46,7 @@ test_that("funnel_plot creates a plot with required columns", {
 
   expect_s3_class(result, "artma_funnel_plot")
   expect_named(result, c("plot", "n_points", "n_outliers_removed", "used_study_medians"))
-  expect_true(ggplot2::is.ggplot(result$plot))
+  expect_true(ggplot2::is_ggplot(result$plot))
   expect_identical(result$used_study_medians, FALSE)
 })
 
@@ -134,7 +134,7 @@ test_that("funnel_plot handles different themes", {
     df <- create_test_data(n = 20)
     result <- funnel_plot(df)
 
-    expect_true(ggplot2::is.ggplot(result$plot))
+    expect_true(ggplot2::is_ggplot(result$plot))
   }
 })
 
@@ -154,7 +154,7 @@ test_that("funnel_plot handles precision_to_log option", {
   df <- create_test_data(n = 20)
   result <- funnel_plot(df)
 
-  expect_true(ggplot2::is.ggplot(result$plot))
+  expect_true(ggplot2::is_ggplot(result$plot))
   expect_s3_class(result, "artma_funnel_plot")
 })
 
