@@ -71,6 +71,10 @@ box::use(
 
 Always reference external package functions explicitly: `pkg::function()` (never bare function names).
 
+#### Global Variables Declaration (`R/globals.R`)
+
+Because `box::use()` imports are invisible to R CMD check, every symbol imported via `box::use()` inside `R/` files must be declared in `R/globals.R` via `utils::globalVariables()`. When adding new `box::use()` imports in any `R/*.R` file — whether importing a module path segment (e.g., `core`, `output`) or a specific function (e.g., `resolve_output_dir`) — add the new symbol to `R/globals.R` in alphabetical order. Run `make check` periodically to catch any "no visible global function or variable" NOTEs caused by missing declarations.
+
 ### Runtime Methods System
 
 Runtime methods are the main analytical functions users invoke via `artma::artma(methods = c("method_name"))`.

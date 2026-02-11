@@ -40,6 +40,8 @@ Format R code with `styler::style_pkg()` or your IDE's styler integration before
 
 Always reference functions from external packages with the explicit `pkg::fun()` syntax so call sites remain unambiguous.
 
+Because `box::use()` imports are invisible to R CMD check, every symbol imported via `box::use()` inside `R/` files must also be declared in `R/globals.R` via `utils::globalVariables()`. When adding new `box::use()` imports in any `R/*.R` file, add the new symbols to `R/globals.R` in alphabetical order. Run `make check` to catch any missing declarations.
+
 ## Testing Guidelines
 
 Add unit tests beside the feature in `tests/testthat`, using `test-<feature>.R` filenames and helper fixtures. End-to-end flows belong in `tests/E2E` and should validate real installation behavior. Run `make test` for smoke checks, `make test-filter FILTER=<pattern>` when iterating, and `make coverage` before merging significant work. Aim to keep coverage stable and clean up any temporary artifacts your tests create.
