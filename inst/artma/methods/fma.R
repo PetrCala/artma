@@ -143,7 +143,7 @@ fma <- function(df, bma_result = NULL) {
     if (get_verbosity() >= 3) {
       cli::cli_alert_info("Running BMA to obtain predictor ordering for FMA...")
     }
-    bma_model <- run_bma(bma_data, bma_params)
+    bma_model <- run_bma(bma_data, bma_params, quiet = !verbose_output)
   }
 
   fma_results <- run_fma(

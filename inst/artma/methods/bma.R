@@ -117,7 +117,7 @@ bma <- function(df) {
       cli::cli_alert_info("Running BMA model {i} of {length(bma_params)}...")
     }
 
-    bma_model <- run_bma(bma_data, bma_params[[i]])
+    bma_model <- run_bma(bma_data, bma_params[[i]], quiet = !verbose_output)
 
     # Suppress individual BMA text output unless verbose_output is enabled
     effective_print <- if (verbose_output) print_results else "none"

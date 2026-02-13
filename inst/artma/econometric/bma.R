@@ -410,7 +410,7 @@ get_bma_data <- function(input_data, input_var_list, variable_info, scale_data =
 #' @return The bma model object
 #'
 #' @export
-run_bma <- function(bma_data, bma_params) {
+run_bma <- function(bma_data, bma_params, quiet = TRUE) {
   box::use(
     artma / libs / core / validation[validate]
   )
@@ -437,7 +437,13 @@ run_bma <- function(bma_data, bma_params) {
   )
 
   set.seed(123)
-  bma_model <- do.call(BMS::bms, all_bma_params)
+  if (quiet) {
+    invisible(utils::capture.output(
+      bma_model <- do.call(BMS::bms, all_bma_params)
+    ))
+  } else {
+    bma_model <- do.call(BMS::bms, all_bma_params)
+  }
 
   bma_model
 }
