@@ -38,6 +38,7 @@ bma <- function(df) {
   mcmc <- opt$mcmc %||% "bd"
   use_vif_optimization <- opt$use_vif_optimization %||% FALSE
   max_groups_to_remove <- opt$max_groups_to_remove %||% 30L
+  verbose_output <- opt$verbose_output %||% FALSE
   print_results <- opt$print_results %||% "fast"
   export_graphics <- vis$export_graphics
   export_path <- vis$export_path
@@ -52,6 +53,7 @@ bma <- function(df) {
     is.character(mcmc),
     is.logical(use_vif_optimization),
     is.numeric(max_groups_to_remove),
+    is.logical(verbose_output),
     is.character(print_results)
   )
 
@@ -117,59 +119,37 @@ bma <- function(df) {
 
     bma_model <- run_bma(bma_data, bma_params[[i]])
 
-    extract_bma_results(
+    # Suppress individual BMA text output unless verbose_output is enabled
+    effective_print <- if (verbose_output) print_results else "none"
+
+    bma_coefs_matrix <- extract_bma_results(
       bma_model,
       bma_data,
       bma_var_list,
-      print_results = print_results,
+      print_results = effective_print,
       theme = vis$theme,
       export_graphics = export_graphics,
       export_path = export_path,
       graph_scale = graph_scale
     )
 
-    pip_values <- BMS::pmp.bma(bma_model)
-    var_names <- bma_model$reg.names
-
-    # Extract coefficient matrix and get "Post Mean" column
-    bma_coefs_all <- stats::coef(bma_model, order.by.pip = FALSE, exact = TRUE, include.constant = TRUE)
-
-    if (is.matrix(bma_coefs_all) || length(dim(bma_coefs_all)) > 1) {
-      post_means <- bma_coefs_all[, "Post Mean"]
-
-      # Remove intercept row if present
-      rnames <- rownames(bma_coefs_all)
-      if (!is.null(rnames) && length(rnames) > 0) {
-        intercept_idx <- which(rnames == "(Intercept)")
-        if (length(intercept_idx) > 0) {
-          post_means <- post_means[-intercept_idx]
-        }
-      }
-
-      if (length(post_means) == length(var_names)) {
-        coef_values <- as.numeric(post_means)
-      } else {
-        if (get_verbosity() >= 2) {
-          cli::cli_alert_warning("Coefficient count mismatch: got {length(post_means)}, expected {length(var_names)}")
-        }
-        coef_values <- rep(NA, length(var_names))
-      }
-    } else {
-      if (get_verbosity() >= 2) {
-        cli::cli_alert_warning("Unexpected coefficient structure")
-      }
-      coef_values <- rep(NA, length(var_names))
-    }
-
+    # Build coefficients from the full matrix returned by extract_bma_results
+    # (includes verbose names from rename_bma_model and intercept)
     coef_df <- data.frame(
-      variable = var_names,
-      pip = as.numeric(pip_values[var_names]),
-      post_mean = coef_values,
-      post_sd = as.numeric(NA),
-      cond_pos_sign = as.numeric(NA),
+      variable = rownames(bma_coefs_matrix),
+      pip = as.numeric(bma_coefs_matrix[, "PIP"]),
+      post_mean = as.numeric(bma_coefs_matrix[, "Post Mean"]),
+      post_sd = as.numeric(bma_coefs_matrix[, "Post SD"]),
+      cond_pos_sign = if ("Cond.Pos.Sign" %in% colnames(bma_coefs_matrix)) {
+        as.numeric(bma_coefs_matrix[, "Cond.Pos.Sign"])
+      } else {
+        NA_real_
+      },
       stringsAsFactors = FALSE
     )
 
+    # Normalize intercept naming to match FMA convention
+    coef_df$variable <- gsub("^\\(Intercept\\)$", "Intercept", coef_df$variable)
     rownames(coef_df) <- NULL
 
     results[[i]] <- list(

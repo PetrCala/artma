@@ -559,6 +559,14 @@ methods:
         Maximum number of variable groups to remove during VIF optimization.
         Only relevant if use_vif_optimization is `TRUE`.
 
+    verbose_output:
+      type: "logical"
+      default: false
+      help: |
+        If `TRUE`, print the individual BMA coefficient table and model summary
+        alongside the unified Model Averaging table. When `FALSE` (default),
+        only the combined MA table is displayed.
+
   fma:
     round_to:
       type: "integer"
@@ -568,15 +576,13 @@ methods:
         Override the default number of decimals shown in the FMA output.
         Leave unset to use the global output option.
 
-    print_results:
-      type: "enum: none|fast|verbose|all"
-      default: "fast"
+    verbose_output:
+      type: "logical"
+      default: false
       help: |
-        Level of result output:
-          {cli::symbol$bullet} {.strong none}: No output
-          {cli::symbol$bullet} {.strong fast}: Coefficients and standard errors only
-          {cli::symbol$bullet} {.strong verbose}: Coefficients, standard errors, p-values, and model weights
-          {cli::symbol$bullet} {.strong all}: Same as verbose (kept for consistency with BMA)
+        If `TRUE`, print the individual FMA coefficient table and model weights
+        alongside the unified Model Averaging table. When `FALSE` (default),
+        only the combined MA table is displayed.
 
   p_hacking_tests:
     include_caliper:

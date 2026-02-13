@@ -24,10 +24,12 @@ fma <- function(df, bma_result = NULL) {
   fma_opt <- get_option_group("artma.methods.fma")
   bma_opt <- get_option_group("artma.methods.bma")
 
+  verbose_output <- fma_opt$verbose_output %||% FALSE
   print_results <- fma_opt$print_results %||% "fast"
   round_to <- fma_opt$round_to %||% NA_integer_
 
   validate(
+    is.logical(verbose_output),
     is.character(print_results),
     is.numeric(round_to) || is.na(round_to)
   )
@@ -36,6 +38,9 @@ fma <- function(df, bma_result = NULL) {
     print_results %in% c("none", "fast", "verbose", "all"),
     "print_results must be one of: none, fast, verbose, all"
   )
+
+  # Suppress individual FMA text output unless verbose_output is enabled
+  effective_print <- if (verbose_output) print_results else "none"
 
   burn <- bma_opt$burn %||% 10000L
   iter <- bma_opt$iter %||% 50000L
@@ -146,7 +151,7 @@ fma <- function(df, bma_result = NULL) {
     bma_model = bma_model,
     input_var_list = bma_var_list,
     round_to = round_to,
-    print_results = print_results
+    print_results = effective_print
   )
 
   list(
