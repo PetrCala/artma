@@ -306,7 +306,7 @@ invoke_runtime_methods <- function(methods, df, ...) {
     extra_args <- list(...)
     method_args <- c(list(df = df), extra_args)
 
-    needs_bma_result <- method_name %in% c("fma", "best_practice_estimate")
+    needs_bma_result <- method_name == "best_practice_estimate"
     if (needs_bma_result && !("bma_result" %in% names(extra_args)) && !is.null(results[["bma"]])) {
       method_args$bma_result <- results[["bma"]]
     }
