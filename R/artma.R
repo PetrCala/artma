@@ -302,7 +302,16 @@ invoke_runtime_methods <- function(methods, df, ...) {
     if (get_verbosity() >= 3) {
       cli::cli_inform("{cli::symbol$bullet} Running the {.code {method_name}} method...")
     }
-    results[[method_name]] <- RUNTIME_METHOD_MODULES[[method_name]]$run(df = df, ...)
+
+    extra_args <- list(...)
+    method_args <- c(list(df = df), extra_args)
+
+    needs_bma_result <- method_name %in% c("fma", "best_practice_estimate")
+    if (needs_bma_result && !("bma_result" %in% names(extra_args)) && !is.null(results[["bma"]])) {
+      method_args$bma_result <- results[["bma"]]
+    }
+
+    results[[method_name]] <- do.call(RUNTIME_METHOD_MODULES[[method_name]]$run, method_args)
   }
 
   # Build unified MA table when BMA and/or FMA have produced results

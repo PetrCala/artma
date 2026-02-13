@@ -567,6 +567,38 @@ methods:
         alongside the unified Model Averaging table. When `FALSE` (default),
         only the combined MA table is displayed.
 
+  best_practice_estimate:
+    conf_level:
+      type: "numeric"
+      default: 0.95
+      help: |
+        Confidence level for best-practice estimate intervals.
+
+    include_intercept:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, include the BMA intercept in the best-practice estimate.
+
+    include_author_row:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, include the "Author" best-practice estimate row.
+
+    include_study_rows:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, include study-level best-practice estimate rows.
+
+    run_bma_if_missing:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, run BMA when best-practice estimation has no BMA result to
+        reuse. In interactive mode, you will still be prompted for confirmation.
+
   fma:
     round_to:
       type: "integer"

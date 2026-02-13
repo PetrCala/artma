@@ -106,6 +106,7 @@ CONST <- list(
       "exogeneity_tests",
       "p_hacking_tests",
       "bma",
+      "best_practice_estimate",
       "fma"
     )
   ),

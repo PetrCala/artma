@@ -1,4 +1,4 @@
-box::use(testthat[test_that, expect_equal, expect_error, expect_setequal])
+box::use(testthat[test_that, expect_equal, expect_error, expect_setequal, expect_named])
 
 mock_methods <- function() {
   list(
@@ -101,4 +101,30 @@ test_that("invoke_runtime_methods surfaces invalid inputs early", {
     artma:::invoke_runtime_methods(methods = numeric(), df = df),
     "Runtime methods must be supplied as a character vector"
   )
+})
+
+test_that("invoke_runtime_methods forwards BMA result to dependent methods", {
+  fake_methods <- list(
+    bma = list(run = function(df, ...) list(token = "bma-ready")),
+    best_practice_estimate = list(
+      run = function(df, bma_result = NULL, ...) {
+        if (is.null(bma_result)) {
+          return("missing")
+        }
+        bma_result$token
+      }
+    )
+  )
+
+  withr::local_options(list(artma.verbose = 0))
+  mock_runtime_method_registry(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  results <- artma:::invoke_runtime_methods(
+    methods = c("best_practice_estimate", "bma"),
+    df = df
+  )
+
+  expect_named(results, c("bma", "best_practice_estimate"))
+  expect_equal(results$best_practice_estimate, "bma-ready")
 })
