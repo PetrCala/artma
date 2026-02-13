@@ -833,13 +833,18 @@ parse_bpe_override <- function(value, allow_na = TRUE, var_name = NULL) {
     fail("value cannot be empty")
   }
 
-  if (is.numeric(value) && length(value) == 1) {
-    if (is.na(value) && allow_na) {
+  if (length(value) == 1 && is.na(value)) {
+    if (allow_na) {
       return(NA)
     }
-    if (is.na(value)) {
-      fail("numeric value cannot be NA")
-    }
+    fail("value cannot be NA")
+  }
+
+  if (is.logical(value) && length(value) == 1) {
+    return(as.numeric(value))
+  }
+
+  if (is.numeric(value) && length(value) == 1) {
     return(as.numeric(value))
   }
 

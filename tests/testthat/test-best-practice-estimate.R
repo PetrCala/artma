@@ -3,6 +3,7 @@ box::use(
     expect_equal,
     expect_error,
     expect_named,
+    expect_false,
     expect_true,
     skip_if_not_installed,
     test_that
@@ -114,4 +115,35 @@ test_that("best_practice_estimate fails early when BMA is missing and auto-run i
     best_practice_estimate(df, bma_result = NULL),
     "requires a BMA result"
   )
+})
+
+test_that("best_practice_estimate accepts logical BPE overrides from config", {
+  skip_if_not_installed("BMS")
+
+  df <- make_bpe_demo_data()
+  config <- make_bpe_demo_config()
+  config$top_journal$bpe <- TRUE
+  config$first_lag_instrument$bpe <- FALSE
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = 1L,
+    artma.data.config = config,
+    artma.visualization.export_graphics = FALSE,
+    artma.methods.bma.burn = 50L,
+    artma.methods.bma.iter = 300L,
+    artma.methods.bma.nmodel = 20L,
+    artma.methods.bma.g = "UIP",
+    artma.methods.bma.mprior = "uniform",
+    artma.methods.bma.mcmc = "bd",
+    artma.methods.best_practice_estimate.include_study_rows = FALSE
+  ))
+
+  bma_result <- bma(df)
+  result <- best_practice_estimate(df, bma_result = bma_result)
+
+  overrides <- stats::setNames(result$overrides$override, result$overrides$variable)
+  expect_equal(overrides[["top_journal"]], "1")
+  expect_equal(overrides[["first_lag_instrument"]], "0")
+  expect_false(is.na(overrides[["se"]]))
 })
