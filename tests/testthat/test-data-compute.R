@@ -67,4 +67,3 @@ test_that("compute_optional_columns overwrites conflicting existing study_label"
   expect_equal(result$study_label, c("Study A", "Study B", "Study A"))
   expect_equal(result$study_id, c(1L, 2L, 1L))
 })
-

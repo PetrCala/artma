@@ -29,4 +29,3 @@ test_that("box_plot auto-selects study_label over study_id for grouping", {
   expect_true(is.list(result))
   expect_equal(result$factor_by, "study_label")
 })
-

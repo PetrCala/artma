@@ -3,7 +3,7 @@
 #'   configuration, then guides the user through resolving those changes before
 #'   the analysis pipeline runs.
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpe---
 
 #' @title Format confidence as percentage string
 #' @keywords internal
@@ -11,7 +11,7 @@ fmt_pct <- function(score) {
   paste0(round(score * 100), "%")
 }
 
-# ── Core detection ─────────────────────────────────────────────────────────────
+# -- Core detecti--
 
 #' @title Detect schema drift
 #' @description Compares the current dataframe columns against the stored
@@ -36,19 +36,32 @@ detect_schema_drift <- function(raw_df, colnames_map, config_overrides) {
   # --- Moderator columns (config override keys) ---
   standard_names <- names(map_clean)
   config_keys <- names(config_overrides)
-  moderator_keys <- setdiff(config_keys, standard_names)
+
+  # Exclude computed columns - they are added by the pipeline, not by the user's
+  # data, so they will never be present in the raw df and should not be flagged
+  # as missing moderators.
+  is_computed <- vapply(
+    config_overrides,
+    function(entry) isTRUE(entry[["is_computed"]]),
+    logical(1)
+  )
+  user_config_keys <- config_keys[!is_computed]
+  moderator_keys <- setdiff(user_config_keys, standard_names)
   moderator_keys_norm <- stats::setNames(make.names(moderator_keys), moderator_keys)
 
   missing_moderators <- names(moderator_keys_norm)[!moderator_keys_norm %in% df_cols]
 
   # --- Added columns (in df but not referenced by anything) ---
-  all_referenced <- unique(c(unlist(map_values), unlist(moderator_keys_norm)))
+  # Use all config keys (including computed) for this check so that columns
+  # the system already knows about (even as computed) don't appear as "new".
+  all_config_keys_norm <- make.names(config_keys)
+  all_referenced <- unique(c(unlist(map_values), all_config_keys_norm))
   added <- df_cols[!df_cols %in% all_referenced]
 
   list(
     colnames_drift = list(
-      missing_std  = missing_required_std,  # standard names (effect, se, …)
-      missing_raw  = missing_required_raw   # the actual stored col names that vanished
+      missing_std  = missing_required_std, # standard names (effect, se, ...)
+      missing_raw  = missing_required_raw # the actual stored col names that vanished
     ),
     config_drift = list(
       missing_moderators = missing_moderators,
@@ -56,13 +69,13 @@ detect_schema_drift <- function(raw_df, colnames_map, config_overrides) {
     ),
     has_drift = (
       length(missing_required_std) > 0 ||
-      length(missing_moderators) > 0 ||
-      length(added) > 0
+        length(missing_moderators) > 0 ||
+        length(added) > 0
     )
   )
 }
 
-# ── Fuzzy matching ─────────────────────────────────────────────────────────────
+# -- Fuzzy matchi--
 
 #' @title Propose renames via fuzzy matching
 #' @description For each missing column name, finds the best candidate from the
@@ -82,9 +95,9 @@ propose_renames <- function(missing_raw, available_cols) {
 
   for (i in seq_along(missing_raw)) {
     stored_name <- missing_raw[[i]]
-    std_name    <- names(missing_raw)[[i]]
+    std_name <- names(missing_raw)[[i]]
 
-    best_score     <- 0
+    best_score <- 0
     best_candidate <- NA_character_
 
     for (cand in available_cols) {
@@ -92,7 +105,7 @@ propose_renames <- function(missing_raw, available_cols) {
       if (max_len == 0L) next
       score <- 1 - utils::adist(stored_name, cand)[1L, 1L] / max_len
       if (score > best_score) {
-        best_score     <- score
+        best_score <- score
         best_candidate <- cand
       }
     }
@@ -107,7 +120,7 @@ propose_renames <- function(missing_raw, available_cols) {
   proposals
 }
 
-# ── Display ────────────────────────────────────────────────────────────────────
+# -- Displ---
 
 #' @title Show drift summary
 #' @description Prints a unified diff of detected changes to the console.
@@ -159,7 +172,7 @@ show_drift_summary <- function(drift, proposals_required, proposals_moderators,
   cli::cli_rule()
 }
 
-# ── Decision collection ────────────────────────────────────────────────────────
+# -- Decision collecti--
 
 #' @title Auto-resolve decisions
 #' @description Applies defaults without prompting (for auto mode).
@@ -167,15 +180,15 @@ show_drift_summary <- function(drift, proposals_required, proposals_moderators,
 auto_decisions <- function(drift, proposals_required, proposals_moderators) {
   box::use(artma / libs / core / utils[get_verbosity])
 
-  colnames_updates  <- list()
-  config_drops      <- character(0)
-  config_remaps     <- list()
+  colnames_updates <- list()
+  config_drops <- character(0)
+  config_remaps <- list()
 
   # Required columns: accept high-confidence proposals, abort if unresolvable
   for (std in drift$colnames_drift$missing_std) {
     raw_val <- drift$colnames_drift$missing_raw[[std]]
-    stored  <- make.names(raw_val)
-    prop    <- proposals_required[[stored]]
+    stored <- make.names(raw_val)
+    prop <- proposals_required[[stored]]
 
     if (!is.null(prop) && !is.na(prop$candidate) && prop$score >= 0.75) {
       colnames_updates[[std]] <- prop$candidate
@@ -201,7 +214,7 @@ auto_decisions <- function(drift, proposals_required, proposals_moderators) {
   # Moderators: drop missing, remap if high confidence
   for (mod in drift$config_drift$missing_moderators) {
     stored <- make.names(mod)
-    prop   <- proposals_moderators[[stored]]
+    prop <- proposals_moderators[[stored]]
 
     if (!is.null(prop) && !is.na(prop$candidate) && prop$score >= 0.75) {
       config_remaps[[mod]] <- prop$candidate
@@ -230,16 +243,16 @@ auto_decisions <- function(drift, proposals_required, proposals_moderators) {
 #' @keywords internal
 ask_decisions <- function(drift, proposals_required, proposals_moderators, raw_df) {
   colnames_updates <- list()
-  config_drops     <- character(0)
-  config_remaps    <- list()
+  config_drops <- character(0)
+  config_remaps <- list()
 
   all_df_cols <- make.names(colnames(raw_df))
 
   # --- Required columns ---
   for (std in drift$colnames_drift$missing_std) {
     raw_val <- drift$colnames_drift$missing_raw[[std]]
-    stored  <- make.names(raw_val)
-    prop    <- proposals_required[[stored]]
+    stored <- make.names(raw_val)
+    prop <- proposals_required[[stored]]
 
     has_proposal <- !is.null(prop) && !is.na(prop$candidate)
 
@@ -284,7 +297,7 @@ ask_decisions <- function(drift, proposals_required, proposals_moderators, raw_d
   # --- Moderator columns ---
   for (mod in drift$config_drift$missing_moderators) {
     stored <- make.names(mod)
-    prop   <- proposals_moderators[[stored]]
+    prop <- proposals_moderators[[stored]]
 
     has_proposal <- !is.null(prop) && !is.na(prop$candidate)
 
@@ -340,7 +353,7 @@ ask_decisions <- function(drift, proposals_required, proposals_moderators, raw_d
   )
 }
 
-# ── Confirmation and summary ───────────────────────────────────────────────────
+# -- Confirmation and summa-y
 
 #' @title Show reconciliation outcome summary and ask for confirmation
 #' @keywords internal
@@ -396,7 +409,7 @@ confirm_decisions <- function(decisions, drift, colnames_map) {
   invisible(NULL)
 }
 
-# ── Application ────────────────────────────────────────────────────────────────
+# -- Applicati--
 
 #' @title Apply reconciliation decisions
 #' @description Persists the reconciliation decisions to the options file and
@@ -410,76 +423,111 @@ apply_reconciliation <- function(decisions) {
   )
 
   options_file_name <- getOption("artma.temp.file_name")
-  options_dir       <- getOption("artma.temp.dir_name")
+  options_dir <- getOption("artma.temp.dir_name")
 
   has_options_file <- !is.null(options_file_name) && !is.null(options_dir)
 
-  # 1. Update colnames map entries
-  if (length(decisions$colnames_updates) > 0 && has_options_file) {
-    colnames_input <- stats::setNames(
-      as.list(unlist(decisions$colnames_updates)),
-      paste0("data.colnames.", names(decisions$colnames_updates))
-    )
-    suppressMessages(
-      artma::options.modify(
-        options_file_name = options_file_name,
-        options_dir       = options_dir,
-        user_input        = colnames_input,
-        should_validate   = FALSE
-      )
-    )
-    # Update in-memory options too
+  # 1. Update colnames map entries - always in-memory, persist to file if available
+  if (length(decisions$colnames_updates) > 0) {
     for (std in names(decisions$colnames_updates)) {
       opt_key <- paste0("artma.data.colnames.", std)
       options(stats::setNames(list(decisions$colnames_updates[[std]]), opt_key))
     }
+    if (has_options_file) {
+      colnames_input <- stats::setNames(
+        as.list(unlist(decisions$colnames_updates)),
+        paste0("data.colnames.", names(decisions$colnames_updates))
+      )
+      suppressMessages(
+        artma::options.modify(
+          options_file_name = options_file_name,
+          options_dir       = options_dir,
+          user_input        = colnames_input,
+          should_validate   = FALSE
+        )
+      )
+    }
   }
 
-  # 2. Drop missing moderators from config overrides
-  for (mod in decisions$config_drops) {
-    tryCatch(
-      reset_config_overrides(var_name = mod),
-      error = function(e) {
-        if (get_verbosity() >= 2) {
-          cli::cli_alert_warning("Could not drop {.val {mod}} from config: {e$message}")
-        }
+  # 2. Drop missing moderators - always update in-memory config, persist if file available
+  if (length(decisions$config_drops) > 0) {
+    current_overrides <- getOption("artma.data.config", list())
+    if (!is.list(current_overrides)) current_overrides <- list()
+    for (mod in decisions$config_drops) {
+      current_overrides[[make.names(mod)]] <- NULL
+    }
+    options("artma.data.config" = current_overrides)
+
+    if (has_options_file) {
+      for (mod in decisions$config_drops) {
+        tryCatch(
+          reset_config_overrides(var_name = mod),
+          error = function(e) {
+            if (get_verbosity() >= 2) {
+              cli::cli_alert_warning("Could not drop {.val {mod}} from options file: {e$message}")
+            }
+          }
+        )
       }
-    )
+    }
   }
 
-  # 3. Remap moderators: copy old overrides to new key, drop old
+  # 3. Remap moderators - always update in-memory config (sparse overrides), persist if file available
   if (length(decisions$config_remaps) > 0) {
-    current_config <- get_data_config()
+    current_overrides <- getOption("artma.data.config", list())
+    if (!is.list(current_overrides)) current_overrides <- list()
 
     for (old_mod in names(decisions$config_remaps)) {
-      new_mod      <- decisions$config_remaps[[old_mod]]
-      old_key      <- make.names(old_mod)
-      new_key      <- make.names(new_mod)
-      old_entry    <- current_config[[old_key]]
+      new_mod <- decisions$config_remaps[[old_mod]]
+      old_key <- make.names(old_mod)
+      new_key <- make.names(new_mod)
+      old_entry <- current_overrides[[old_key]]
 
+      # Move override entry to new key (keep verbose name, update var_name)
       if (!is.null(old_entry)) {
-        # Add new entry with old settings (update var_name to new name)
-        old_entry$var_name         <- new_mod
-        old_entry$var_name_verbose <- old_entry$var_name_verbose  # keep verbose name
-        update_data_config(stats::setNames(list(old_entry), new_key))
+        old_entry$var_name <- new_mod
+        current_overrides[[new_key]] <- old_entry
       }
+      current_overrides[[old_key]] <- NULL
+    }
+    options("artma.data.config" = current_overrides)
 
-      # Drop old entry
-      tryCatch(
-        reset_config_overrides(var_name = old_key),
-        error = function(e) {
-          if (get_verbosity() >= 2) {
-            cli::cli_alert_warning("Could not remove old moderator {.val {old_mod}}: {e$message}")
-          }
+    if (has_options_file) {
+      full_config <- tryCatch(get_data_config(), error = function(e) list())
+
+      for (old_mod in names(decisions$config_remaps)) {
+        new_mod <- decisions$config_remaps[[old_mod]]
+        old_key <- make.names(old_mod)
+        new_key <- make.names(new_mod)
+        old_entry <- full_config[[old_key]]
+
+        if (!is.null(old_entry)) {
+          old_entry$var_name <- new_mod
+          tryCatch(
+            update_data_config(stats::setNames(list(old_entry), new_key)),
+            error = function(e) {
+              if (get_verbosity() >= 2) {
+                cli::cli_alert_warning("Could not remap moderator {.val {old_mod}}: {e$message}")
+              }
+            }
+          )
         }
-      )
+        tryCatch(
+          reset_config_overrides(var_name = old_key),
+          error = function(e) {
+            if (get_verbosity() >= 2) {
+              cli::cli_alert_warning("Could not remove old moderator {.val {old_mod}}: {e$message}")
+            }
+          }
+        )
+      }
     }
   }
 
   invisible(NULL)
 }
 
-# ── Main entry point ───────────────────────────────────────────────────────────
+# -- Main entry poi--
 
 #' @title Reconcile schema drift
 #' @description Detects changes between the current dataset columns and the
@@ -511,6 +559,18 @@ reconcile_schema <- function(raw_df, mode = NULL) {
 
   config_overrides <- getOption("artma.data.config", list())
   if (!is.list(config_overrides)) config_overrides <- list()
+
+  # Early exit if no prior configuration exists yet (first-time user).
+  # An empty colnames_map means every df column would appear as "added", which
+  # is not drift - the user simply hasn't mapped their columns yet.
+  map_clean_early <- colnames_map[!vapply(
+    colnames_map,
+    function(x) is.null(x) || (length(x) == 1L && is.na(x)),
+    logical(1)
+  )]
+  if (length(map_clean_early) == 0L && length(config_overrides) == 0L) {
+    return(invisible(NULL))
+  }
 
   # Detect drift
   drift <- detect_schema_drift(raw_df, colnames_map, config_overrides)
@@ -564,7 +624,7 @@ reconcile_schema <- function(raw_df, mode = NULL) {
   available_cols <- setdiff(make.names(colnames(raw_df)), matched_cols)
 
   # Fuzzy proposals for required and moderator columns
-  proposals_required   <- propose_renames(drift$colnames_drift$missing_raw, available_cols)
+  proposals_required <- propose_renames(drift$colnames_drift$missing_raw, available_cols)
   proposals_moderators <- propose_renames(
     stats::setNames(
       make.names(drift$config_drift$missing_moderators),
