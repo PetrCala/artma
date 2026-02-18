@@ -125,8 +125,6 @@ data:
         {cli::symbol$bullet} {.strong auto}: Accept high-confidence renames automatically, drop missing moderators, log all actions
         {cli::symbol$bullet} {.strong strict}: Abort with a structured error if any drift is detected
 
-      This setting can be overridden per-call: {.code artma::artma(reconcile = "auto")}
-
   config_setup:
     type: "enum: auto|manual"
     default: "auto"
