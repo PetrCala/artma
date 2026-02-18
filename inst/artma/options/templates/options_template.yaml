@@ -27,148 +27,6 @@ autonomy:
       In non-interactive mode (e.g., R scripts, batch jobs), level 5 is always used regardless of this setting,
       as user prompts are not possible in such environments.
 
-data:
-  source_path:
-    type: "character"
-    prompt: "file"
-    prompt_hint: "or type {.emph {'mock'}} to generate mock data"
-    help: "Full path to your dataset source"
-
-  na_handling:
-    type: "enum: stop|remove|median|mean|interpolate|mice"
-    default: .na
-    allow_na: true
-    prompt: "function"
-    prompt_function: "prompt_na_handling"
-    suppress_help_in_prompt: true
-    help: |
-      How to handle missing values:
-        {cli::symbol$bullet} {.strong stop}: Abort if any missing values are found (safest, default)
-        {cli::symbol$bullet} {.strong remove}: Remove entire rows with any missing values (listwise deletion)
-        {cli::symbol$bullet} {.strong median}: Replace missing values with the variable's median (robust to outliers)
-        {cli::symbol$bullet} {.strong mean}: Replace missing values with the variable's mean (assumes normality)
-        {cli::symbol$bullet} {.strong interpolate}: Use linear interpolation based on neighboring values (best for sequential data)
-        {cli::symbol$bullet} {.strong mice}: Multiple Imputation by Chained Equations (advanced, requires mice package)
-
-      Imputation strategies (median, mean, interpolate, mice) can be applied to numeric required columns
-      (effect, se, n_obs) as well as optional columns. Non-numeric required columns (study) must always be
-      complete and cannot be imputed. The "remove" strategy will remove rows with any missing values,
-      including in required columns.
-
-      If this option is not set (NA), you will be prompted interactively when missing values are detected.
-
-  colnames:
-    obs_id:
-      type: "character"
-      allow_na: true
-      default: .na
-      standardize: true
-      help: "Column containing observation IDs"
-
-    study_id:
-      type: "character"
-      standardize: true
-      help: "Column containing study identifiers (names or IDs)"
-
-    effect:
-      type: "character"
-      standardize: true
-      help: "Column containing effect estimates"
-
-    se:
-      type: "character"
-      standardize: true
-      help: "Column containing standard errors"
-
-    t_stat:
-      type: "character"
-      standardize: true
-      allow_na: true
-      default: .na
-      help: "Column containing t-statistics"
-
-    n_obs:
-      type: "character"
-      standardize: true
-      help: "Column containing the number of observations"
-
-    study_size:
-      type: "character"
-      standardize: true
-      allow_na: true
-      default: .na
-      help: "Column containing the study sizes, i.e. the number of estimates per study"
-
-    reg_dof:
-      type: "character"
-      standardize: true
-      allow_na: true
-      default: .na
-      help: "Column containing the degrees of freedom for the regression"
-
-    precision:
-      type: "character"
-      standardize: true
-      allow_na: true
-      default: .na
-      help: "Column containing the precision of the effect estimates"
-
-  expected_schema_columns:
-    type: "character"
-    allow_na: true
-    default: .na
-    help: "Baseline dataset columns used to detect true schema changes across runs"
-
-  reconcile_mode:
-    type: "enum: ask|auto|strict"
-    default: "ask"
-    confirm_default: false
-    prompt: "readline"
-    help: |
-      How to handle schema drift — changes to your dataset columns (renames, additions,
-      removals) detected since the options file was last configured:
-        {cli::symbol$bullet} {.strong ask}: Show a diff and prompt you to confirm each change (default)
-        {cli::symbol$bullet} {.strong auto}: Accept high-confidence renames automatically, drop missing moderators, log all actions
-        {cli::symbol$bullet} {.strong strict}: Abort with a structured error if any drift is detected
-
-  config_setup:
-    type: "enum: auto|manual"
-    default: "auto"
-    confirm_default: false # Changed from true as the manual setup is just less flexible overall
-    prompt: "readline"
-    help: |
-      How should the system identify which columns in your data file contain which variables?
-        {cli::symbol$bullet} {.strong auto}: Automatically detect column names (e.g., recognizes "effect", "se", "study_name") and ask you to confirm the mapping
-        {cli::symbol$bullet} {.strong manual}: Skip automatic detection and manually specify which columns map to which variables (interactive mode only)
-
-  config:
-    type: "list"
-    default: .na
-    allow_na: true
-    prompt: "function"
-    prompt_function: "prompt_data_config"
-    help: |
-      A list of configuration options for the data.
-      Each variable in the dataset requires a list of configuration options.
-      For more details, read the 'data_config' vignette.
-
-  winsorization_level:
-    type: "numeric"
-    default: 0.01
-    confirm_default: true
-    prompt: "function"
-    prompt_function: "prompt_winsorization_level"
-    suppress_help_in_prompt: true
-    help: |
-      Winsorization level for effect and standard error variables.
-      Values will be capped at the specified quantile from both tails.
-      Options:
-        {cli::symbol$bullet} {.strong 0}: No winsorization (keep all original values)
-        {cli::symbol$bullet} {.strong 0.01}: Winsorize at 1% level (default)
-        {cli::symbol$bullet} {.strong 0.05}: Winsorize at 5% level
-        {cli::symbol$bullet} {.strong 0.10}: Winsorize at 10% level
-      Higher values provide stronger outlier protection but may distort the data more.
-
 calc:
   precision_type:
     type: "enum: '1/SE'|'DoF'"
@@ -810,6 +668,149 @@ methods:
       default: 0
       help: |
         MAIVE first stage option (default: 0).
+
+data:
+  source_path:
+    type: "character"
+    prompt: "file"
+    prompt_hint: "or type {.emph {'mock'}} to generate mock data"
+    help: "Full path to your dataset source"
+
+  na_handling:
+    type: "enum: stop|remove|median|mean|interpolate|mice"
+    default: .na
+    allow_na: true
+    prompt: "function"
+    prompt_function: "prompt_na_handling"
+    suppress_help_in_prompt: true
+    help: |
+      How to handle missing values:
+        {cli::symbol$bullet} {.strong stop}: Abort if any missing values are found (safest, default)
+        {cli::symbol$bullet} {.strong remove}: Remove entire rows with any missing values (listwise deletion)
+        {cli::symbol$bullet} {.strong median}: Replace missing values with the variable's median (robust to outliers)
+        {cli::symbol$bullet} {.strong mean}: Replace missing values with the variable's mean (assumes normality)
+        {cli::symbol$bullet} {.strong interpolate}: Use linear interpolation based on neighboring values (best for sequential data)
+        {cli::symbol$bullet} {.strong mice}: Multiple Imputation by Chained Equations (advanced, requires mice package)
+
+      Imputation strategies (median, mean, interpolate, mice) can be applied to numeric required columns
+      (effect, se, n_obs) as well as optional columns. Non-numeric required columns (study) must always be
+      complete and cannot be imputed. The "remove" strategy will remove rows with any missing values,
+      including in required columns.
+
+      If this option is not set (NA), you will be prompted interactively when missing values are detected.
+
+  colnames:
+    obs_id:
+      type: "character"
+      allow_na: true
+      default: .na
+      standardize: true
+      help: "Column containing observation IDs"
+
+    study_id:
+      type: "character"
+      standardize: true
+      help: "Column containing study identifiers (names or IDs)"
+
+    effect:
+      type: "character"
+      standardize: true
+      help: "Column containing effect estimates"
+
+    se:
+      type: "character"
+      standardize: true
+      help: "Column containing standard errors"
+
+    t_stat:
+      type: "character"
+      standardize: true
+      allow_na: true
+      default: .na
+      help: "Column containing t-statistics"
+
+    n_obs:
+      type: "character"
+      standardize: true
+      help: "Column containing the number of observations"
+
+    study_size:
+      type: "character"
+      standardize: true
+      allow_na: true
+      default: .na
+      help: "Column containing the study sizes, i.e. the number of estimates per study"
+
+    reg_dof:
+      type: "character"
+      standardize: true
+      allow_na: true
+      default: .na
+      help: "Column containing the degrees of freedom for the regression"
+
+    precision:
+      type: "character"
+      standardize: true
+      allow_na: true
+      default: .na
+      help: "Column containing the precision of the effect estimates"
+
+  expected_schema_columns:
+    type: "character"
+    allow_na: true
+    default: .na
+    help: "Baseline dataset columns used to detect true schema changes across runs"
+
+  reconcile_mode:
+    type: "enum: ask|auto|strict"
+    default: "ask"
+    confirm_default: false
+    prompt: "readline"
+    help: |
+      How to handle schema drift — changes to your dataset columns (renames, additions,
+      removals) detected since the options file was last configured:
+        {cli::symbol$bullet} {.strong ask}: Show a diff and prompt you to confirm each change (default)
+        {cli::symbol$bullet} {.strong auto}: Accept high-confidence renames automatically, drop missing moderators, log all actions
+        {cli::symbol$bullet} {.strong strict}: Abort with a structured error if any drift is detected
+
+  config_setup:
+    type: "enum: auto|manual"
+    default: "auto"
+    confirm_default: false # Changed from true as the manual setup is just less flexible overall
+    prompt: "readline"
+    help: |
+      How should the system identify which columns in your data file contain which variables?
+        {cli::symbol$bullet} {.strong auto}: Automatically detect column names (e.g., recognizes "effect", "se", "study_name") and ask you to confirm the mapping
+        {cli::symbol$bullet} {.strong manual}: Skip automatic detection and manually specify which columns map to which variables (interactive mode only)
+
+  config:
+    type: "list"
+    default: .na
+    allow_na: true
+    prompt: "function"
+    prompt_function: "prompt_data_config"
+    help: |
+      A list of configuration options for the data.
+      Each variable in the dataset requires a list of configuration options.
+      For more details, read the 'data_config' vignette.
+
+  winsorization_level:
+    type: "numeric"
+    default: 0.01
+    confirm_default: true
+    prompt: "function"
+    prompt_function: "prompt_winsorization_level"
+    suppress_help_in_prompt: true
+    help: |
+      Winsorization level for effect and standard error variables.
+      Values will be capped at the specified quantile from both tails.
+      Options:
+        {cli::symbol$bullet} {.strong 0}: No winsorization (keep all original values)
+        {cli::symbol$bullet} {.strong 0.01}: Winsorize at 1% level (default)
+        {cli::symbol$bullet} {.strong 0.05}: Winsorize at 5% level
+        {cli::symbol$bullet} {.strong 0.10}: Winsorize at 10% level
+      Higher values provide stronger outlier protection but may distort the data more.
+
 
 output:
   dir:
