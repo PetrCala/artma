@@ -9,9 +9,15 @@ expect_false <- getFromNamespace("expect_false", "testthat")
 base_opts <- function(extra = list()) {
   utils::modifyList(
     list(
+      "artma.data.colnames.obs_id"   = NA_character_,
       "artma.data.colnames.effect"   = "effect_size",
+      "artma.data.colnames.n_obs"    = NA_character_,
+      "artma.data.colnames.precision" = NA_character_,
+      "artma.data.colnames.reg_dof"  = NA_character_,
       "artma.data.colnames.se"       = "se_col",
       "artma.data.colnames.study_id" = "study",
+      "artma.data.colnames.study_size" = NA_character_,
+      "artma.data.colnames.t_stat"   = NA_character_,
       "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study"),
       "artma.data.config"            = list(),
       "artma.temp.file_name"         = NULL,
@@ -94,16 +100,12 @@ test_that("reconcile_schema auto: skips without error when no colnames are confi
   df <- data.frame(effect_size = 1:3, se_col = 0.1, study = "A")
 
   withr::with_options(
-    list(
-      "artma.data.colnames.effect"   = NA,
-      "artma.data.colnames.se"       = NA,
-      "artma.data.colnames.study_id" = NA,
-      "artma.data.expected_schema_columns" = NA_character_,
-      "artma.data.config"            = list(),
-      "artma.temp.file_name"         = NULL,
-      "artma.temp.dir_name"          = NULL,
-      "artma.verbose"                = 1L
-    ),
+    base_opts(list(
+      "artma.data.colnames.effect"   = NA_character_,
+      "artma.data.colnames.se"       = NA_character_,
+      "artma.data.colnames.study_id" = NA_character_,
+      "artma.data.expected_schema_columns" = NA_character_
+    )),
     expect_null(reconcile_schema(df, mode = "auto"))
   )
 })

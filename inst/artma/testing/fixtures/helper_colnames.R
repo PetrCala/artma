@@ -9,12 +9,16 @@ with_custom_colnames <- function(colnames_map) {
   if (length(colnames_map) == 0) {
     cli::cli_abort("The provided colnames map must not be empty.")
   }
+
+  option_keys <- paste0("artma.data.colnames.", names(colnames_map))
   opt_list <- stats::setNames(
     lapply(names(colnames_map), function(name) colnames_map[[name]]),
-    paste0("artma.data.colnames.", names(colnames_map))
+    option_keys
   )
+  old_options <- stats::setNames(lapply(option_keys, getOption), option_keys)
+
   options(opt_list)
-  withr::defer(options(opt_list), envir = parent.frame())
+  withr::defer(options(old_options), envir = parent.frame())
   invisible(NULL)
 }
 

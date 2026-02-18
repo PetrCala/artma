@@ -6,6 +6,25 @@ expect_error <- getFromNamespace("expect_error", "testthat")
 expect_null <- getFromNamespace("expect_null", "testthat")
 expect_named <- getFromNamespace("expect_named", "testthat")
 
+base_reconcile_opts <- function(extra = list()) {
+  utils::modifyList(
+    list(
+      "artma.data.colnames.obs_id"   = NA_character_,
+      "artma.data.colnames.effect"   = "effect_size",
+      "artma.data.colnames.n_obs"    = NA_character_,
+      "artma.data.colnames.precision" = NA_character_,
+      "artma.data.colnames.reg_dof"  = NA_character_,
+      "artma.data.colnames.se"       = "se_col",
+      "artma.data.colnames.study_id" = "study",
+      "artma.data.colnames.study_size" = NA_character_,
+      "artma.data.colnames.t_stat"   = NA_character_,
+      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study"),
+      "artma.data.config"            = list()
+    ),
+    extra
+  )
+}
+
 # detect_schema_drift
 
 test_that("detect_schema_drift reports no drift when all columns match", {
@@ -123,13 +142,7 @@ test_that("reconcile_schema in strict mode aborts when required column is missin
   raw_df <- data.frame(es = 1:3, se_col = 0.1, study = "A")
 
   withr::with_options(
-    list(
-      "artma.data.colnames.effect"   = "effect_size",
-      "artma.data.colnames.se"       = "se_col",
-      "artma.data.colnames.study_id" = "study",
-      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study"),
-      "artma.data.config"            = list()
-    ),
+    base_reconcile_opts(),
     expect_error(
       reconcile_schema(raw_df, mode = "strict"),
       class = "rlang_error"
@@ -143,13 +156,7 @@ test_that("reconcile_schema in strict mode passes when no drift exists", {
   raw_df <- data.frame(effect_size = 1:3, se_col = 0.1, study = "A")
 
   result <- withr::with_options(
-    list(
-      "artma.data.colnames.effect"   = "effect_size",
-      "artma.data.colnames.se"       = "se_col",
-      "artma.data.colnames.study_id" = "study",
-      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study"),
-      "artma.data.config"            = list()
-    ),
+    base_reconcile_opts(),
     reconcile_schema(raw_df, mode = "strict")
   )
 
@@ -162,13 +169,7 @@ test_that("reconcile_schema in strict mode aborts on missing moderator", {
   raw_df <- data.frame(effect_size = 1:3, se_col = 0.1, study = "A")
 
   withr::with_options(
-    list(
-      "artma.data.colnames.effect"   = "effect_size",
-      "artma.data.colnames.se"       = "se_col",
-      "artma.data.colnames.study_id" = "study",
-      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study"),
-      "artma.data.config"            = list(method_iv = list(bma = TRUE))
-    ),
+    base_reconcile_opts(list("artma.data.config" = list(method_iv = list(bma = TRUE)))),
     expect_error(
       reconcile_schema(raw_df, mode = "strict"),
       class = "rlang_error"
@@ -182,13 +183,7 @@ test_that("reconcile_schema in strict mode aborts on added column", {
   raw_df <- data.frame(effect_size = 1:3, se_col = 0.1, study = "A", region = "EU")
 
   withr::with_options(
-    list(
-      "artma.data.colnames.effect"   = "effect_size",
-      "artma.data.colnames.se"       = "se_col",
-      "artma.data.colnames.study_id" = "study",
-      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study"),
-      "artma.data.config"            = list()
-    ),
+    base_reconcile_opts(),
     expect_error(
       reconcile_schema(raw_df, mode = "strict"),
       class = "rlang_error"
