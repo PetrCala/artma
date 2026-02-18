@@ -12,12 +12,23 @@ prepare_data_impl <- function() {
 
   box::use(
     artma / data / read[read_data],
+    artma / data / utils[standardize_column_names],
+    artma / data / schema_reconcile[reconcile_schema],
     artma / data_config / resolve[prime_df_for_config_cache],
     artma / data / preprocess[preprocess_data],
     artma / data / compute[compute_optional_columns]
   )
 
-  df <- read_data()
+  # Read raw data (original column names, no standardization yet)
+  df_raw <- read_data()
+
+  # Detect and resolve any schema drift before column standardization
+  mode <- getOption("artma.data.reconcile_mode", "ask")
+  reconcile_schema(df_raw, mode = mode)
+
+  # Apply colnames map (now updated if drift was reconciled)
+  df <- standardize_column_names(df_raw, auto_detect = FALSE)
+
   prime_df_for_config_cache(df)
   df <- preprocess_data(df)
   df <- compute_optional_columns(df)

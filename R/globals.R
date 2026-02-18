@@ -75,6 +75,8 @@ utils::globalVariables(c(
   "preprocess",
   "preprocess_data",
   "print_options_help_text",
+  "reconcile_schema",
+  "detect_schema_drift",
   "print.artma_box_plot",
   "print.artma_funnel_plot",
   "print.cached_artifact",

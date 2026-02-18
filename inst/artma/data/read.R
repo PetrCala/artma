@@ -161,15 +161,16 @@ read_excel_file <- function(path) {
 }
 
 #' @title Read data
-#' @description Read data from a path. Returns a data frame with smart handling of various formats.
+#' @description Read data from a path. Returns a raw data frame with the
+#'   original column names, validated but not standardized. Column name
+#'   standardization is applied downstream (after schema reconciliation).
 #' @param path *\[str, optional\]* The path to the data source. If NULL, the options data source path is used.
-#' @return *\[data.frame\]* The data frame.
+#' @return *\[data.frame\]* The data frame with original column names.
 read_data <- function(path = NULL) {
   box::use(
     artma / data / utils[
       determine_df_type,
-      raise_invalid_data_type_error,
-      standardize_column_names
+      raise_invalid_data_type_error
     ],
     artma / data / smart_detection[
       smart_read_csv,
@@ -240,9 +241,6 @@ read_data <- function(path = NULL) {
 
   # Validate and clean structure
   df <- validate_df_structure(df, path)
-
-  # Standardize column names based on user options
-  df <- standardize_column_names(df)
 
   if (get_verbosity() >= 3) {
     cli::cli_alert_success("Data read successfully: {nrow(df)} rows, {ncol(df)} columns")

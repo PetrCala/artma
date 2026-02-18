@@ -113,6 +113,20 @@ data:
       default: .na
       help: "Column containing the precision of the effect estimates"
 
+  reconcile_mode:
+    type: "enum: ask|auto|strict"
+    default: "ask"
+    confirm_default: false
+    prompt: "readline"
+    help: |
+      How to handle schema drift — changes to your dataset columns (renames, additions,
+      removals) detected since the options file was last configured:
+        {cli::symbol$bullet} {.strong ask}: Show a diff and prompt you to confirm each change (default)
+        {cli::symbol$bullet} {.strong auto}: Accept high-confidence renames automatically, drop missing moderators, log all actions
+        {cli::symbol$bullet} {.strong strict}: Abort with a structured error if any drift is detected
+
+      This setting can be overridden per-call: {.code artma::artma(reconcile = "auto")}
+
   config_setup:
     type: "enum: auto|manual"
     default: "auto"
