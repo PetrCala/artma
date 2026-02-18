@@ -82,12 +82,6 @@
 #' - `artma::options.create()` - Create a new options file
 #' - `artma::prepare_data()` - Prepare data manually
 #'
-#' @param reconcile *\[character, optional\]* How to handle schema drift (changes
-#'   to your dataset columns since initial setup). One of:
-#'   - `"ask"` *(default)*: Show a diff and prompt for each decision.
-#'   - `"auto"`: Accept high-confidence renames, drop missing moderators, log all actions.
-#'   - `"strict"`: Abort with an error if any drift is detected.
-#'   If `NULL`, reads from `artma.data.reconcile_mode` option.
 #' @export
 artma <- function(
   data = NULL,
@@ -95,7 +89,6 @@ artma <- function(
   options = NULL,
   options_dir = NULL,
   open_results = FALSE,
-  reconcile = NULL,
   ...
 ) {
   box::use(
@@ -133,11 +126,6 @@ artma <- function(
     if (isTRUE(save_results)) {
       output_dir <- resolve_output_dir()
       ensure_output_dirs(output_dir)
-    }
-
-    # Set reconcile mode from parameter (overrides options file setting)
-    if (!is.null(reconcile)) {
-      options("artma.data.reconcile_mode" = reconcile)
     }
 
     # Prepare data: use provided data or load from options
