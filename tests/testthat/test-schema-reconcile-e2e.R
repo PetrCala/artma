@@ -12,6 +12,7 @@ base_opts <- function(extra = list()) {
       "artma.data.colnames.effect"   = "effect_size",
       "artma.data.colnames.se"       = "se_col",
       "artma.data.colnames.study_id" = "study",
+      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study"),
       "artma.data.config"            = list(),
       "artma.temp.file_name"         = NULL,
       "artma.temp.dir_name"          = NULL,
@@ -97,12 +98,45 @@ test_that("reconcile_schema auto: skips without error when no colnames are confi
       "artma.data.colnames.effect"   = NA,
       "artma.data.colnames.se"       = NA,
       "artma.data.colnames.study_id" = NA,
+      "artma.data.expected_schema_columns" = NA_character_,
       "artma.data.config"            = list(),
       "artma.temp.file_name"         = NULL,
       "artma.temp.dir_name"          = NULL,
       "artma.verbose"                = 1L
     ),
     expect_null(reconcile_schema(df, mode = "auto"))
+  )
+})
+
+test_that("reconcile_schema auto: initializes schema baseline on first run", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  df <- data.frame(effect_size = 1:3, se_col = 0.1, study = "A", obs_n = 1:3)
+
+  withr::with_options(
+    base_opts(list("artma.data.expected_schema_columns" = NA_character_)),
+    {
+      expect_null(reconcile_schema(df, mode = "auto"))
+      expect_equal(
+        sort(getOption("artma.data.expected_schema_columns")),
+        sort(make.names(colnames(df)))
+      )
+    }
+  )
+})
+
+test_that("reconcile_schema logs only completion when schema is unchanged", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  df <- data.frame(effect_size = 1:3, se_col = 0.1, study = "A")
+
+  withr::with_options(
+    base_opts(list("artma.verbose" = 3L)),
+    {
+      logs <- testthat::capture_messages(reconcile_schema(df, mode = "auto"))
+      expect_true(any(grepl("Schema reconciliation complete\\.", logs)))
+      expect_false(any(grepl("artma detected dataset changes", logs)))
+    }
   )
 })
 
@@ -233,6 +267,7 @@ test_that("reconcile then standardize: produces df with standard column names", 
     "artma.data.colnames.se"       = "se_col",
     "artma.data.colnames.study_id" = "study",
     "artma.data.colnames.n_obs"    = "n_obs",
+    "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study", "n_obs"),
     "artma.data.config"            = list(),
     "artma.temp.file_name"         = NULL,
     "artma.temp.dir_name"          = NULL,

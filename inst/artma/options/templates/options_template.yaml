@@ -113,6 +113,12 @@ data:
       default: .na
       help: "Column containing the precision of the effect estimates"
 
+  expected_schema_columns:
+    type: "character"
+    allow_na: true
+    default: .na
+    help: "Baseline dataset columns used to detect true schema changes across runs"
+
   reconcile_mode:
     type: "enum: ask|auto|strict"
     default: "ask"

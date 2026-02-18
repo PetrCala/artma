@@ -6,7 +6,7 @@ expect_error <- getFromNamespace("expect_error", "testthat")
 expect_null <- getFromNamespace("expect_null", "testthat")
 expect_named <- getFromNamespace("expect_named", "testthat")
 
-# ── detect_schema_drift ────────────────────────────────────────────────────────
+# detect_schema_drift
 
 test_that("detect_schema_drift reports no drift when all columns match", {
   box::use(artma / data / schema_reconcile[detect_schema_drift])
@@ -73,7 +73,7 @@ test_that("detect_schema_drift handles NA values in colnames_map", {
   box::use(artma / data / schema_reconcile[detect_schema_drift])
 
   raw_df <- data.frame(effect_size = 1:3, se_col = 0.1, study = "A")
-  # dof is optional (NA) — should not be considered as missing
+  # dof is optional (NA) <U+2014> should not be considered as missing
   colnames_map <- list(
     effect = "effect_size", se = "se_col", study_id = "study", dof = NA
   )
@@ -99,7 +99,7 @@ test_that("detect_schema_drift handles multiple simultaneous drifts", {
   expect_true("region" %in% result$config_drift$added)
 })
 
-# ── propose_renames ────────────────────────────────────────────────────────────
+# propose_renames
 
 test_that("propose_renames: adist-based similarity finds obvious renames", {
   # Direct test using the logic: effect_size vs es should be lower confidence
@@ -115,7 +115,7 @@ test_that("propose_renames: adist-based similarity finds obvious renames", {
   expect_true(score_pub >= 0.5)
 })
 
-# ── reconcile_schema (strict mode) ────────────────────────────────────────────
+# reconcile_schema (strict mode)
 
 test_that("reconcile_schema in strict mode aborts when required column is missing", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
@@ -127,6 +127,7 @@ test_that("reconcile_schema in strict mode aborts when required column is missin
       "artma.data.colnames.effect"   = "effect_size",
       "artma.data.colnames.se"       = "se_col",
       "artma.data.colnames.study_id" = "study",
+      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study"),
       "artma.data.config"            = list()
     ),
     expect_error(
@@ -146,6 +147,7 @@ test_that("reconcile_schema in strict mode passes when no drift exists", {
       "artma.data.colnames.effect"   = "effect_size",
       "artma.data.colnames.se"       = "se_col",
       "artma.data.colnames.study_id" = "study",
+      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study"),
       "artma.data.config"            = list()
     ),
     reconcile_schema(raw_df, mode = "strict")
@@ -164,6 +166,7 @@ test_that("reconcile_schema in strict mode aborts on missing moderator", {
       "artma.data.colnames.effect"   = "effect_size",
       "artma.data.colnames.se"       = "se_col",
       "artma.data.colnames.study_id" = "study",
+      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study"),
       "artma.data.config"            = list(method_iv = list(bma = TRUE))
     ),
     expect_error(
@@ -183,6 +186,7 @@ test_that("reconcile_schema in strict mode aborts on added column", {
       "artma.data.colnames.effect"   = "effect_size",
       "artma.data.colnames.se"       = "se_col",
       "artma.data.colnames.study_id" = "study",
+      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study"),
       "artma.data.config"            = list()
     ),
     expect_error(

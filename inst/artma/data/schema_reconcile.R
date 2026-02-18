@@ -11,6 +11,78 @@ fmt_pct <- function(score) {
   paste0(round(score * 100), "%")
 }
 
+#' @title Normalize expected schema columns
+#' @keywords internal
+normalize_expected_schema_cols <- function(cols) {
+  if (is.null(cols)) {
+    return(character(0))
+  }
+
+  if (is.list(cols)) {
+    cols <- unlist(cols, use.names = FALSE)
+  }
+
+  cols <- as.character(cols)
+  cols <- cols[!is.na(cols)]
+  cols <- trimws(cols)
+  cols <- cols[nzchar(cols)]
+
+  if (length(cols) == 0L) {
+    return(character(0))
+  }
+
+  unique(make.names(cols))
+}
+
+#' @title Persist expected schema columns
+#' @keywords internal
+persist_expected_schema_cols <- function(cols) {
+  box::use(artma / libs / core / utils[get_verbosity])
+
+  normalized <- normalize_expected_schema_cols(cols)
+  options("artma.data.expected_schema_columns" = normalized)
+
+  options_file_name <- getOption("artma.temp.file_name")
+  options_dir <- getOption("artma.temp.dir_name")
+  has_options_file <- !is.null(options_file_name) && !is.null(options_dir)
+
+  if (!has_options_file) {
+    return(invisible(normalized))
+  }
+
+  tryCatch(
+    {
+      suppressMessages(
+        artma::options.modify(
+          options_file_name = options_file_name,
+          options_dir = options_dir,
+          user_input = list("data.expected_schema_columns" = normalized),
+          should_validate = FALSE
+        )
+      )
+    },
+    error = function(e) {
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning(
+          "Could not persist expected schema columns to options file: {e$message}"
+        )
+      }
+    }
+  )
+
+  invisible(normalized)
+}
+
+#' @title Emit schema reconciliation completion message
+#' @keywords internal
+emit_reconcile_complete <- function() {
+  box::use(artma / libs / core / utils[get_verbosity])
+
+  if (get_verbosity() >= 3) {
+    cli::cli_alert_success("Schema reconciliation complete.")
+  }
+}
+
 # -- Core detecti--
 
 #' @title Detect schema drift
@@ -547,6 +619,18 @@ reconcile_schema <- function(raw_df, mode = NULL) {
   )
 
   mode <- mode %||% getOption("artma.data.reconcile_mode", "ask")
+  current_schema_cols <- unique(make.names(colnames(raw_df)))
+  expected_schema_cols <- normalize_expected_schema_cols(
+    getOption("artma.data.expected_schema_columns", NA_character_)
+  )
+
+  # Initialize baseline schema on first run. Until this baseline exists, drift
+  # details are suppressed regardless of reconcile mode.
+  if (length(expected_schema_cols) == 0L) {
+    persist_expected_schema_cols(current_schema_cols)
+    emit_reconcile_complete()
+    return(invisible(NULL))
+  }
 
   # Get current colnames map and config overrides
   colnames_map <- tryCatch(
@@ -560,25 +644,21 @@ reconcile_schema <- function(raw_df, mode = NULL) {
   config_overrides <- getOption("artma.data.config", list())
   if (!is.list(config_overrides)) config_overrides <- list()
 
-  # Early exit if no prior configuration exists yet (first-time user).
-  # An empty colnames_map means every df column would appear as "added", which
-  # is not drift - the user simply hasn't mapped their columns yet.
-  map_clean_early <- colnames_map[!vapply(
-    colnames_map,
-    function(x) is.null(x) || (length(x) == 1L && is.na(x)),
-    logical(1)
-  )]
-  if (length(map_clean_early) == 0L && length(config_overrides) == 0L) {
-    return(invisible(NULL))
-  }
-
   # Detect drift
   drift <- detect_schema_drift(raw_df, colnames_map, config_overrides)
 
+  # "Added" columns should only include columns that are new relative to the
+  # stored baseline schema. Baseline columns that are simply not mapped should
+  # not be treated as drift on every run.
+  drift$config_drift$added <- setdiff(drift$config_drift$added, expected_schema_cols)
+  drift$has_drift <- (
+    length(drift$colnames_drift$missing_std) > 0 ||
+      length(drift$config_drift$missing_moderators) > 0 ||
+      length(drift$config_drift$added) > 0
+  )
+
   if (!drift$has_drift) {
-    if (get_verbosity() >= 4) {
-      cli::cli_alert_success("No schema drift detected.")
-    }
+    emit_reconcile_complete()
     return(invisible(NULL))
   }
 
@@ -648,10 +728,9 @@ reconcile_schema <- function(raw_df, mode = NULL) {
 
   # Apply
   apply_reconciliation(decisions)
+  persist_expected_schema_cols(current_schema_cols)
 
-  if (get_verbosity() >= 3) {
-    cli::cli_alert_success("Schema reconciliation complete. Continuing analysis...")
-  }
+  emit_reconcile_complete()
 
   invisible(NULL)
 }
