@@ -9,13 +9,7 @@ box::use(
   withr[local_options]
 )
 
-test_that <- getFromNamespace("test_that", "testthat")
-expect_equal <- getFromNamespace("expect_equal", "testthat")
-expect_null <- getFromNamespace("expect_null", "testthat")
-expect_true <- getFromNamespace("expect_true", "testthat")
-expect_length <- getFromNamespace("expect_length", "testthat")
-
-# <U+2500><U+2500> merge_config <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# ── merge_config ──────────────────────────────────────────────────────────────
 
 test_that("merge_config: returns base when overrides are empty", {
   box::use(artma / data_config / resolve[merge_config])
@@ -125,7 +119,7 @@ test_that("merge_config: skips non-list override entries", {
   expect_true(is.na(result$x$bma))
 })
 
-# <U+2500><U+2500> read_df_for_config caching <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# ── read_df_for_config caching ────────────────────────────────────────────────
 
 test_that("read_df_for_config uses a primed dataframe cache without re-reading data", {
   box::use(
@@ -226,7 +220,7 @@ test_that("get_data_config picks up file changes at the same source path", {
   expect_true("new_moderator" %in% names(config_after))
 })
 
-# <U+2500><U+2500> canonical config keys <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# ── canonical config keys ─────────────────────────────────────────────────────
 
 test_that("config keys are standardized regardless of which entry point resolves first", {
   box::use(
@@ -272,7 +266,7 @@ test_that("config keys are standardized regardless of which entry point resolves
   expect_equal(sort(names(cold_config)), sort(names(primed_config)))
 })
 
-# <U+2500><U+2500> get_data_config (integration with resolve) <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# ── get_data_config (integration with resolve) ───────────────────────────────
 
 test_that("get_data_config: returns overrides when df not available", {
   box::use(artma / data_config / read[get_data_config])

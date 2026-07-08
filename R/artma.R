@@ -213,6 +213,7 @@ artma <- function(
 #' is printed at the end, and a final warning is emitted if every method failed.
 #' @param methods *\[character\]* A character vector of the methods to invoke.
 #' @param df *\[data.frame\]* The data frame to invoke the methods on.
+#' @param modules_dir *\[character, optional\]* Directory to discover runtime method modules in. Defaults to `NULL`, in which case the standard package methods directory is used. Used mainly for dependency injection in tests.
 #' @param ... *\[any\]* Additional arguments to pass to the methods.
 #' @return *\[list\]* Results of the invocations, indexed by method names.
 #'   Failed methods are omitted; their names and error messages are attached
@@ -223,7 +224,7 @@ artma <- function(
 #' invoke_runtime_methods(c("funnel_plot", "bma", "fma"), df)
 #'
 #' @keywords internal
-invoke_runtime_methods <- function(methods, df, ...) {
+invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
   box::use(
     artma / const[CONST],
     artma / libs / core / string[pluralize],
@@ -250,7 +251,11 @@ invoke_runtime_methods <- function(methods, df, ...) {
     c(ordered, remaining)
   }
 
-  RUNTIME_METHOD_MODULES <- get_runtime_method_modules() # nolint: box_usage_linter.
+  RUNTIME_METHOD_MODULES <- if (is.null(modules_dir)) { # nolint: box_usage_linter.
+    get_runtime_method_modules()
+  } else {
+    get_runtime_method_modules(modules_dir = modules_dir)
+  }
   supported_methods <- arrange_methods(names(RUNTIME_METHOD_MODULES))
 
   if (is.null(methods)) {

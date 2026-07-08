@@ -10,13 +10,14 @@
 #' @return A data frame object
 #' @export
 create_mock_df <- function(
-    effect_type = NULL,
-    nrow = NULL,
-    n_studies = NULL,
-    with_file_creation = FALSE,
-    file_path = NULL,
-    colnames_map = NULL,
-    seed = NULL) {
+  effect_type = NULL,
+  nrow = NULL,
+  n_studies = NULL,
+  with_file_creation = FALSE,
+  file_path = NULL,
+  colnames_map = NULL,
+  seed = NULL
+) {
   box::use(
     artma / const[CONST],
     artma / libs / core / number[generate_random_vector],
@@ -26,7 +27,9 @@ create_mock_df <- function(
     artma / testing / mocks / mock_utils[create_mock_study_names]
   )
 
-  if (!is.null(seed)) set.seed(seed) else set.seed(CONST$MOCKS$MOCK_DF_SEED)
+  if (is.null(seed)) {
+    seed <- CONST$MOCKS$MOCK_DF_SEED
+  }
 
   colnames_map <- if (is.null(colnames_map)) list() else colnames_map
   assert(is.list(colnames_map), "Column names must be a named list")
@@ -48,13 +51,25 @@ create_mock_df <- function(
   if (is.null(n_studies)) {
     n_studies <- CONST$MOCKS$MOCK_DF_NSTUDIES
   }
-  study_names <- create_mock_study_names(n_studies = n_studies, total_occurrences = nrow)
+  # Run all random generation under a local seed so the caller's RNG stream
+  # is left untouched. withr::with_seed restores .Random.seed afterwards.
+  random_columns <- withr::with_seed(seed, {
+    study_names <- create_mock_study_names(n_studies = n_studies, total_occurrences = nrow)
+    list(
+      study_names = study_names,
+      effect = generate_random_vector(from = -1, to = 1, length.out = nrow),
+      se = generate_random_vector(from = -1, to = 1, length.out = nrow),
+      n_obs = generate_random_vector(from = 10, to = 1000, length.out = nrow, integer = TRUE)
+    )
+  })
+
+  study_names <- random_columns$study_names
   study_id <- as.integer(factor(study_names, levels = unique(study_names)))
   obs_id <- base::seq.int(from = 1, to = nrow, by = 1)
 
-  effect <- generate_random_vector(from = -1, to = 1, length.out = nrow)
-  se <- generate_random_vector(from = -1, to = 1, length.out = nrow)
-  n_obs <- generate_random_vector(from = 10, to = 1000, length.out = nrow, integer = TRUE)
+  effect <- random_columns$effect
+  se <- random_columns$se
+  n_obs <- random_columns$n_obs
 
   base_df <- list(
     obs_id = obs_id,

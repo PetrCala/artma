@@ -10,15 +10,7 @@ box::use(
   ]
 )
 
-test_that <- getFromNamespace("test_that", "testthat")
-expect_equal <- getFromNamespace("expect_equal", "testthat")
-expect_null <- getFromNamespace("expect_null", "testthat")
-expect_true <- getFromNamespace("expect_true", "testthat")
-expect_false <- getFromNamespace("expect_false", "testthat")
-expect_error <- getFromNamespace("expect_error", "testthat")
-expect_length <- getFromNamespace("expect_length", "testthat")
-
-# <U+2500><U+2500> identical_or_both_na <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# ── identical_or_both_na ─────────────────────────────────────────────────────
 
 test_that("identical_or_both_na: both NA returns TRUE", {
   box::use(artma / data_config / defaults[identical_or_both_na])
@@ -64,7 +56,7 @@ test_that("identical_or_both_na: NULL vs NA returns FALSE", {
   expect_false(identical_or_both_na(NA, NULL))
 })
 
-# <U+2500><U+2500> build_default_config_entry <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# ── build_default_config_entry ────────────────────────────────────────────────
 
 test_that("build_default_config_entry: numeric column", {
   box::use(artma / data_config / defaults[build_default_config_entry])
@@ -105,7 +97,7 @@ test_that("build_default_config_entry: entry has all 16 expected fields", {
   expect_equal(sort(names(entry)), sort(expected_fields))
 })
 
-# <U+2500><U+2500> build_base_config <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# ── build_base_config ─────────────────────────────────────────────────────────
 
 test_that("build_base_config: creates entry for each column", {
   box::use(artma / data_config / defaults[build_base_config])
@@ -151,7 +143,7 @@ test_that("build_base_config: errors on empty dataframe", {
   expect_error(build_base_config(df), "empty")
 })
 
-# <U+2500><U+2500> extract_overrides <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# ── extract_overrides ─────────────────────────────────────────────────────────
 
 test_that("extract_overrides: returns NULL when entry matches defaults", {
   box::use(artma / data_config / defaults[extract_overrides])

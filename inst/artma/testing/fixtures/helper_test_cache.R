@@ -4,11 +4,21 @@ local_cli_silence <- function(env = parent.frame()) {
   withr::defer(options(old), envir = env)
 }
 
-# Synthetic "expensive" function used in several tests -----------------------
-fake_modeller <- function(x) {
-  cli::cli_alert("Running model on {.val {x}}")
-  Sys.sleep(0.01) # mimic cost
-  x * 2
+# Synthetic "expensive" function used in cache tests --------------------------
+# Returns a fresh modeller together with a call counter so tests can assert on
+# how many times the underlying implementation actually ran, instead of
+# relying on wall-clock sleeps to simulate cost.
+make_fake_modeller <- function() {
+  calls <- 0L
+  modeller <- function(x) {
+    calls <<- calls + 1L
+    cli::cli_alert("Running model on {.val {x}}")
+    x * 2
+  }
+  list(
+    modeller = modeller,
+    calls = function() calls
+  )
 }
 
-box::export(local_cli_silence, fake_modeller)
+box::export(local_cli_silence, make_fake_modeller)

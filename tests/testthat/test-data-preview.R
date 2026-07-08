@@ -1,16 +1,14 @@
 box::use(
   testthat[
+    expect_equal,
     expect_error,
     expect_invisible,
     expect_null,
+    expect_true,
     test_that
   ],
   withr[local_options]
 )
-
-test_that <- getFromNamespace("test_that", "testthat")
-expect_error <- getFromNamespace("expect_error", "testthat")
-expect_invisible <- getFromNamespace("expect_invisible", "testthat")
 
 test_that("data.preview with data frame and preprocess FALSE returns invisibly", {
   withr::local_options(list(artma.verbose = 0))

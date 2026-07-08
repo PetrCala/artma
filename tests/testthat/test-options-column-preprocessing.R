@@ -1,11 +1,10 @@
 box::use(
-  artma / options / column_preprocessing[preprocess_column_mapping]
+  testthat[expect_equal, expect_false, expect_true, test_that]
 )
 
-test_that <- getFromNamespace("test_that", "testthat")
-expect_equal <- getFromNamespace("expect_equal", "testthat")
-expect_true <- getFromNamespace("expect_true", "testthat")
-expect_false <- getFromNamespace("expect_false", "testthat")
+box::use(
+  artma / options / column_preprocessing[preprocess_column_mapping]
+)
 
 
 # Helper to create a mock options_def structure

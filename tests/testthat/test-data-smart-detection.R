@@ -1,4 +1,14 @@
 box::use(
+  testthat[
+    expect_equal,
+    expect_error,
+    expect_no_error,
+    expect_true,
+    test_that
+  ]
+)
+
+box::use(
   artma / data / smart_detection[
     detect_delimiter,
     detect_encoding,
@@ -6,12 +16,6 @@ box::use(
     validate_df_structure
   ]
 )
-
-test_that <- getFromNamespace("test_that", "testthat")
-expect_equal <- getFromNamespace("expect_equal", "testthat")
-expect_true <- getFromNamespace("expect_true", "testthat")
-expect_error <- getFromNamespace("expect_error", "testthat")
-expect_no_error <- getFromNamespace("expect_no_error", "testthat")
 
 
 # Helper function to create temp CSV files for testing

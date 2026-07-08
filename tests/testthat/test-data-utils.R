@@ -1,11 +1,11 @@
 box::use(
+  testthat[expect_error, expect_true, test_that]
+)
+
+box::use(
   artma / testing / mocks / index[MOCKS],
   artma / testing / fixtures / index[FIXTURES]
 )
-
-test_that <- getFromNamespace("test_that", "testthat")
-expect_true <- getFromNamespace("expect_true", "testthat")
-expect_error <- getFromNamespace("expect_error", "testthat")
 
 # Note: These tests use auto_detect = FALSE to test core logic without interaction.
 # When auto_detect = TRUE, the new confirmation flow is triggered which requires
@@ -13,7 +13,6 @@ expect_error <- getFromNamespace("expect_error", "testthat")
 
 test_that("standardize_column_names handles missing required columns in options correctly", {
   box::use(
-    artma / libs / core / validation[assert],
     artma / data / utils[get_required_colnames, standardize_column_names]
   )
 
@@ -21,46 +20,55 @@ test_that("standardize_column_names handles missing required columns in options 
 
   all_colnames <- names(mock_colnames)
   required_colnames <- get_required_colnames()
-  arbitrary_required_colname <- sample(required_colnames, 1)
-  arbitrary_non_required_colname <- sample(setdiff(all_colnames, required_colnames), 1)
+  non_required_colnames <- setdiff(all_colnames, required_colnames)
 
-  assert(arbitrary_required_colname %in% required_colnames)
-  assert(!arbitrary_non_required_colname %in% required_colnames)
+  # Build the full option list for a scenario, clearing (NULL) every colnames
+  # option that the scenario omits so that state set by a previous scenario
+  # cannot leak into the next one.
+  build_scenario_options <- function(scenario_colnames) {
+    opts <- lapply(stats::setNames(all_colnames, all_colnames), function(col) {
+      scenario_colnames[[col]]
+    })
+    stats::setNames(opts, paste0("artma.data.colnames.", all_colnames))
+  }
 
-  colnames_with_one_required_missing <- mock_colnames[-which(names(mock_colnames) == arbitrary_required_colname)]
-  colnames_with_one_non_required_missing <- mock_colnames[-which(names(mock_colnames) == arbitrary_non_required_colname)]
-
-  scenarios <- list(
-    list(
-      name = "one missing required column",
-      mock_colnames = colnames_with_one_required_missing,
+  # Enumerate every required and non-required column explicitly instead of
+  # sampling an arbitrary one, so each run covers the full space.
+  scenarios <- list()
+  for (required_colname in required_colnames) {
+    scenarios[[length(scenarios) + 1]] <- list(
+      name = paste("missing required column:", required_colname),
+      mock_colnames = mock_colnames[names(mock_colnames) != required_colname],
       expected_error = "Missing mapping for required columns:"
-    ),
-    list(
-      name = "one missing non-required column",
-      mock_colnames = colnames_with_one_non_required_missing,
-      expected_error = NA
-    ),
-    list(
-      name = "all missing columns",
-      mock_colnames = lapply(mock_colnames, function(x) NULL),
-      expected_error = "Missing mapping for required columns:"
-    ),
-    list(
-      name = "all columns present",
-      mock_colnames = mock_colnames,
+    )
+  }
+  for (non_required_colname in non_required_colnames) {
+    scenarios[[length(scenarios) + 1]] <- list(
+      name = paste("missing non-required column:", non_required_colname),
+      mock_colnames = mock_colnames[names(mock_colnames) != non_required_colname],
       expected_error = NA
     )
+  }
+  scenarios[[length(scenarios) + 1]] <- list(
+    name = "all missing columns",
+    mock_colnames = lapply(mock_colnames, function(x) NULL),
+    expected_error = "Missing mapping for required columns:"
+  )
+  scenarios[[length(scenarios) + 1]] <- list(
+    name = "all columns present",
+    mock_colnames = mock_colnames,
+    expected_error = NA
   )
 
   for (scenario in scenarios) {
     mock_df <- MOCKS$create_mock_df(colnames_map = scenario$mock_colnames)
-    FIXTURES$with_custom_colnames(scenario$mock_colnames)
-    expect_error(
-      standardize_column_names(df = mock_df, auto_detect = FALSE),
-      scenario$expected_error,
-      info = paste("Scenario:", scenario$name)
-    )
+    withr::with_options(build_scenario_options(scenario$mock_colnames), {
+      expect_error(
+        standardize_column_names(df = mock_df, auto_detect = FALSE),
+        scenario$expected_error,
+        info = paste("Scenario:", scenario$name)
+      )
+    })
   }
 })
 
@@ -71,22 +79,20 @@ test_that("standardize_column_names handles missing required columns in data cor
 
   required_colnames <- get_required_colnames()
 
-  scenarios <- list(
-    list(
-      name = "one missing required column",
-      missing_colnames = setdiff(required_colnames, sample(required_colnames, 1)),
-      expected_error = "These required columns are absent in the data frame"
-    ),
-    list(
-      name = "more missing non-required columns",
-      missing_colnames = setdiff(required_colnames, sample(required_colnames, 2)),
-      expected_error = "These required columns are absent in the data frame"
-    ),
-    list(
-      name = "all missing columns",
-      missing_colnames = required_colnames,
+  # Enumerate every required column explicitly instead of sampling one, so
+  # each run covers the full space.
+  scenarios <- list()
+  for (required_colname in required_colnames) {
+    scenarios[[length(scenarios) + 1]] <- list(
+      name = paste("missing required column:", required_colname),
+      missing_colnames = required_colname,
       expected_error = "These required columns are absent in the data frame"
     )
+  }
+  scenarios[[length(scenarios) + 1]] <- list(
+    name = "all required columns missing",
+    missing_colnames = required_colnames,
+    expected_error = "These required columns are absent in the data frame"
   )
 
   for (scenario in scenarios) {
