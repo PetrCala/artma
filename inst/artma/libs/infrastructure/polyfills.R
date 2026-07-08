@@ -5,7 +5,6 @@
 #' - stringr (string manipulation)
 #' - purrr (functional programming)
 #' - glue (string interpolation)
-#' - digest (hashing for cache keys)
 #' - usethis (file editing)
 #'
 #' All functions maintain API compatibility with the original packages.
@@ -201,41 +200,6 @@ glue_collapse <- function(x, sep = "", width = Inf, last = "") {
   } else {
     paste(x, collapse = sep)
   }
-}
-
-# Hashing (digest replacement) ----
-
-#' Create hash for caching
-#' @description Replacement for digest::digest()
-#' Uses serialize + base R hashing for cache keys
-#' @param object Object to hash
-#' @param algo Algorithm (ignored, always uses same method)
-#' @param ... Additional arguments (for compatibility)
-#' @return Hash string
-#' @export
-digest <- function(object, algo = "xxhash64", ...) {
-  # Serialize the object to raw bytes
-  raw_bytes <- serialize(object, connection = NULL, ascii = FALSE)
-
-  # Create a simple hash using base R
-  # We'll use a combination of length and checksum for speed
-  # Use modulo arithmetic throughout to avoid integer overflow
-  hash_high <- 0
-  hash_low <- 0
-
-  # Process bytes in chunks to avoid overflow
-  for (i in seq_along(raw_bytes)) {
-    val <- as.numeric(raw_bytes[i])
-    # Update hash_low
-    hash_low <- (hash_low + val * (i %% 1000)) %% (2^31 - 1)
-    # Update hash_high
-    hash_high <- (hash_high + val * (i %% 997)) %% (2^31 - 1)
-  }
-
-  # Convert to hex string (16 characters for consistency with xxhash64)
-  hex_hash <- sprintf("%08x%08x", as.integer(hash_high), as.integer(hash_low))
-
-  hex_hash
 }
 
 # File utilities (usethis replacement) ----

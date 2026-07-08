@@ -65,6 +65,7 @@ box::use(
 
 box::export(
   prepare_data,
+  prepare_data_impl, # exported so tests can wrap it with an isolated cache
   read_data,
   recognize_columns,
   get_required_column_names,
