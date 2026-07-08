@@ -1,10 +1,3 @@
-general:
-  artma_version:
-    type: "character"
-    default: "0.3.3"
-    fixed: true
-    help: "Version of the artma package under which these options were generated"
-
 autonomy:
   level:
     type: "integer"
@@ -767,7 +760,7 @@ data:
     confirm_default: false
     prompt: "readline"
     help: |
-      How to handle schema drift — changes to your dataset columns (renames, additions,
+      How to handle schema drift, meaning changes to your dataset columns (renames, additions,
       removals) detected since the options file was last configured:
         {cli::symbol$bullet} {.strong ask}: Show a diff and prompt you to confirm each change (default)
         {cli::symbol$bullet} {.strong auto}: Accept high-confidence renames automatically, drop missing moderators, log all actions
@@ -787,8 +780,6 @@ data:
     type: "list"
     default: .na
     allow_na: true
-    prompt: "function"
-    prompt_function: "prompt_data_config"
     help: |
       A list of configuration options for the data.
       Each variable in the dataset requires a list of configuration options.

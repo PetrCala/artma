@@ -140,37 +140,6 @@ get_option_defs <- function(template_path = NULL, opt_path = NULL) {
 }
 
 
-#' @title Resolve a fixed option
-#' @description Resolve a fixed option, either using a default value or throwing an error if no default is provided.
-#' @param opt [list] Option definition.
-#' @param user_input [list] A named list of user-provided values.
-#' `any` The resolved value for the fixed option.
-#' @keywords internal
-resolve_fixed_option <- function(opt, user_input) {
-  box::use(
-    artma / const[CONST],
-    artma / libs / core / utils[get_verbosity]
-  )
-
-  if (!is.null(user_input[[opt$name]])) {
-    if (user_input[[opt$opt_name]] == opt$default) {
-      return(opt$default)
-    }
-    # User tried to set a value for a fixed option to a non-default value
-    if (get_verbosity() >= 2) {
-      cli::cli_alert_warning("Ignoring user-provided value for fixed option {CONST$STYLES$OPTIONS$NAME(opt$name)}.")
-    }
-  }
-  if (!is.null(opt$default)) {
-    return(opt$default)
-  }
-  if (is.null(opt$default)) {
-    cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} is fixed, but no default is provided.")
-  } else {
-    NULL # Not required, no default
-  }
-}
-
 #' @title Prompt user for a required value with no default
 #' @description Prompt the user for a value, displaying the option name, type, and help.
 #' @param opt [list] Option definition.
@@ -289,10 +258,6 @@ resolve_option_value <- function(
     opt,
     user_input) {
   is_interactive <- interactive()
-
-  if (isTRUE(opt$fixed)) {
-    return(resolve_fixed_option(opt, user_input))
-  }
 
   if (opt$name %in% names(user_input)) {
     return(user_input[[opt$name]])

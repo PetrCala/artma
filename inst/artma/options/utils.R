@@ -136,11 +136,9 @@ parse_options_file_name <- function(input_string) {
 #' A helper function to map the expected type from an option definition.
 get_expected_type <- function(opt_def) {
   # If an explicit type is given, use that.
-  if (!is.null(opt_def$type))
+  if (!is.null(opt_def$type)) {
     return(opt_def$type)
-  # If action is store_true, assume logical.
-  if (!is.null(opt_def$action) && opt_def$action == "store_true")
-    return("logical")
+  }
   cli::cli_abort("Invalid template definition for the option '{opt_def}'. Could not determine the expected value type.")
 }
 

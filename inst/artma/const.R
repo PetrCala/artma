@@ -53,8 +53,7 @@ CONST <- list(
     TEMPLATE_NAMES = c("template.yaml", "template.yml", "options_template.yaml", "options_template.yml"),
     # These are the names of the keywords that are recognized in the options template.
     RECOGNIZED_KEYWORDS = c("default", "help", "prompt", "allow_na", "confirm_default"),
-    DEFAULT_PROMPT_TYPE = "readline",
-    SPECIAL_KEYS = c("description", "details", "type", "optional", "default", "values")
+    DEFAULT_PROMPT_TYPE = "readline"
   ),
   VARIABLE_SUMMARY_STATS = list(
     NAMES = c(
@@ -80,7 +79,7 @@ CONST <- list(
   PATTERNS = list(
     YAML_FILES = list(
       PLAIN = c(".yaml"),
-      REGEX = "\\.ya(ml|yml)$"
+      REGEX = "\\.ya?ml$"
     )
   ),
   DEFAULT_VERBOSITY = 3,

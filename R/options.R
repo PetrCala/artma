@@ -50,7 +50,7 @@ options.validate <- function(
 
   options_dir <- resolve_options_dir(options_dir)
 
-  options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the user options file you wish to delete: ")
+  options_file_name <- options_file_name %||% ask_for_existing_options_file_name(options_dir = options_dir, prompt = "Please select the user options file you wish to validate: ")
   options_path <- options_file_path(options_dir, options_file_name)
 
   assert(file.exists(options_path), sprintf("Options file '%s' does not exist.", options_path))
@@ -236,25 +236,6 @@ options.delete <- function(
   }))
 }
 
-#' @title Remove user options
-#' @description Provide a name of a user options file to remove, and remove that file.
-#' @details This function is an alias for \code{\link{options.delete}} and behaves identically.
-#' @param options_file_name *\[character, optional\]* Name of the options file to remove. If not provided, the user will be prompted. Defaults to `NULL`.
-#' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
-#' @param skip_confirmation *\[boolean, optional\]* If passed as TRUE, the user will not be prompted for deletion confirmation. Defaults to FALSE.
-#' @return `NULL`
-#' @export
-options.remove <- function(
-    options_file_name = NULL,
-    options_dir = NULL,
-    skip_confirmation = FALSE) {
-  options.delete(
-    options_file_name = options_file_name,
-    options_dir = options_dir,
-    skip_confirmation = skip_confirmation
-  )
-}
-
 #' @title List available user options
 #' @description Retrieves the list of the existing options files and returns their names as a character vector. By default, this retrieves the names of the files including the yaml suffix, but can be modified to retrieve options verbose names instead.
 #' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
@@ -282,7 +263,6 @@ options.list <- function(options_dir = NULL, should_return_verbose_names = FALSE
 #' @param load_with_prefix *\[logical, optional\]* Whether the options should be loaded with the package prefix. Defaults to TRUE.
 #' @param template_path *\[character, optional\]* Path to the template YAML file. Defaults to `NULL`.
 #' @param should_validate *\[logical, optional\]* Whether the options should be validated after loading. Defaults to TRUE.
-#' @param should_set_to_namespace *\[logical, optional\]* Whether the options should be set in the options() namespace. Defaults to TRUE.
 #' @param should_add_temp_options *\[logical, optional\]* Whether the options should be added to the temporary options. Defaults to FALSE.
 #' @param should_return *\[logical, optional\]* Whether the function should return the list of options. Defaults to FALSE.
 #' @return *\[list|NULL\]* The loaded options as a list or `NULL`.
@@ -294,7 +274,6 @@ options.load <- function(
     load_with_prefix = TRUE,
     template_path = NULL,
     should_validate = TRUE,
-    should_set_to_namespace = FALSE, # Be careful when setting this to TRUE - consider using withr::with_options instead
     should_add_temp_options = FALSE,
     should_return = TRUE) {
   box::use(
@@ -305,7 +284,6 @@ options.load <- function(
       resolve_options_dir,
       resolve_template_path
     ],
-    artma / options / utils[remove_options_with_prefix],
     artma / options / template[
       flatten_user_options,
       collect_leaf_paths,
@@ -323,7 +301,6 @@ options.load <- function(
     is.logical(create_options_if_null),
     is.logical(load_with_prefix),
     is.logical(should_validate),
-    is.logical(should_set_to_namespace),
     is.logical(should_return)
   )
 
@@ -492,33 +469,6 @@ options.load <- function(
     prefixed_options[["artma.temp.dir_name"]] <- options_dir
   }
 
-  if (should_set_to_namespace) {
-    remove_options_with_prefix(CONST$PACKAGE_NAME) # Remove all existing package options
-    options(prefixed_options)
-
-    # Set autonomy level if present in loaded options
-    autonomy_key <- paste0(CONST$PACKAGE_NAME, ".autonomy.level")
-    if (autonomy_key %in% names(prefixed_options)) {
-      box::use(artma / libs / core / autonomy[set_autonomy_level])
-      tryCatch({
-        level <- as.integer(prefixed_options[[autonomy_key]])
-        if (!is.na(level) && level >= 1 && level <= 5) {
-          set_autonomy_level(level)
-        }
-      }, error = function(e) {
-        if (get_verbosity() >= 2) {
-          cli::cli_alert_warning("Failed to set autonomy level: {e$message}")
-        }
-      })
-    }
-
-    # In non-interactive mode, enforce level 5 regardless of setting
-    if (!interactive()) {
-      box::use(artma / libs / core / autonomy[set_autonomy_level])
-      set_autonomy_level(5L)
-    }
-  }
-
   if (should_return) {
     return(prefixed_options)
   }
@@ -564,7 +514,6 @@ options.modify <- function(
     create_options_if_null = FALSE,
     load_with_prefix = FALSE,
     should_validate = TRUE,
-    should_set_to_namespace = FALSE,
     should_return = TRUE
   )
 
@@ -1001,9 +950,3 @@ options.create <- function(
 
   invisible(options_file_name)
 }
-
-# Copy an existing folder of options into another place
-# options.migrate
-
-# Inspect an existing user options file
-# options.inspect

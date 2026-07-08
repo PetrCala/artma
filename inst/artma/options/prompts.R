@@ -1,13 +1,6 @@
 # Each function in this module should take a single argument, `opt`, which is the option to prompt the user for.
 # These functions are imported into the `template.R` file, which is used to prompt the user for options.
 
-prompt_data_config <- function(opt, ...) {
-  box::use(artma / libs / core / utils[get_verbosity])
-  if (get_verbosity() >= 2) {
-    cli::cli_alert_warning("This option is not yet implemented.")
-  }
-}
-
 prompt_winsorization_level <- function(opt, ...) {
   box::use(artma / const[CONST])
 
@@ -147,7 +140,6 @@ prompt_autonomy_level <- function(opt, ...) {
 
 box::export(
   prompt_autonomy_level,
-  prompt_data_config,
   prompt_winsorization_level,
   prompt_na_handling
 )
