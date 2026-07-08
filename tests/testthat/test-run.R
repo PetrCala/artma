@@ -1,4 +1,15 @@
-box::use(testthat[test_that, expect_equal, expect_error, expect_setequal, expect_named])
+box::use(
+  testthat[
+    capture_warnings,
+    expect_equal,
+    expect_error,
+    expect_match,
+    expect_named,
+    expect_setequal,
+    expect_true,
+    test_that
+  ]
+)
 
 mock_methods <- function() {
   list(
@@ -101,6 +112,85 @@ test_that("invoke_runtime_methods surfaces invalid inputs early", {
     artma:::invoke_runtime_methods(methods = numeric(), df = df),
     "Runtime methods must be supplied as a character vector"
   )
+})
+
+test_that("invoke_runtime_methods isolates a failing method and keeps the rest", {
+  fake_methods <- list(
+    method_a = list(run = function(df, ...) "a-ok"),
+    method_b = list(run = function(df, ...) cli::cli_abort("boom")),
+    method_c = list(run = function(df, ...) "c-ok")
+  )
+  withr::local_options(list(artma.verbose = 0))
+  mock_runtime_method_registry(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  results <- artma:::invoke_runtime_methods(methods = "all", df = df)
+
+  expect_setequal(names(results), c("method_a", "method_c"))
+  expect_equal(results$method_a, "a-ok")
+  expect_equal(results$method_c, "c-ok")
+
+  failed <- attr(results, "failed_methods")
+  expect_named(failed, "method_b")
+  expect_match(unname(failed[["method_b"]]), "boom")
+})
+
+test_that("invoke_runtime_methods warns about failed methods when verbosity allows", {
+  fake_methods <- list(
+    method_a = list(run = function(df, ...) "a-ok"),
+    method_b = list(run = function(df, ...) cli::cli_abort("boom"))
+  )
+  withr::local_options(list(artma.verbose = 2))
+  mock_runtime_method_registry(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  warnings <- capture_warnings(
+    results <- artma:::invoke_runtime_methods(methods = "all", df = df)
+  )
+
+  expect_true(any(grepl("method_b", warnings)))
+  expect_equal(results$method_a, "a-ok")
+})
+
+test_that("invoke_runtime_methods emits a final warning when every method fails", {
+  fake_methods <- list(
+    method_a = list(run = function(df, ...) cli::cli_abort("first failure")),
+    method_b = list(run = function(df, ...) cli::cli_abort("second failure"))
+  )
+  withr::local_options(list(artma.verbose = 2))
+  mock_runtime_method_registry(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  warnings <- capture_warnings(
+    results <- artma:::invoke_runtime_methods(methods = "all", df = df)
+  )
+
+  expect_equal(length(results), 0L)
+  expect_setequal(names(attr(results, "failed_methods")), c("method_a", "method_b"))
+  expect_true(any(grepl("All 2 requested methods failed", warnings)))
+})
+
+test_that("partial results from a run with a failing method are exported", {
+  box::use(artma / output / export[export_results])
+
+  fake_methods <- list(
+    method_a = list(run = function(df, ...) data.frame(estimate = 1)),
+    method_b = list(run = function(df, ...) cli::cli_abort("boom")),
+    method_c = list(run = function(df, ...) data.frame(estimate = 3))
+  )
+  withr::local_options(list(artma.verbose = 0))
+  mock_runtime_method_registry(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  results <- artma:::invoke_runtime_methods(methods = "all", df = df)
+
+  output_dir <- withr::local_tempdir()
+  fs::dir_create(file.path(output_dir, "tables"))
+  export_results(results, output_dir)
+
+  expect_true(file.exists(file.path(output_dir, "tables", "method_a.csv")))
+  expect_true(file.exists(file.path(output_dir, "tables", "method_c.csv")))
+  expect_equal(length(list.files(file.path(output_dir, "tables"))), 2L)
 })
 
 test_that("invoke_runtime_methods forwards BMA result to dependent methods", {

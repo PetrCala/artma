@@ -37,6 +37,8 @@ after exporting results. Defaults to \code{FALSE}.}
 \value{
 \emph{[list]} A named list containing results from each method, indexed by
 method name. The structure of each result depends on the specific method.
+Methods that fail are omitted from the list; their names and error messages
+are attached as the \code{failed_methods} attribute.
 }
 \description{
 Main entry point for the artma package. This function orchestrates the complete
@@ -73,6 +75,17 @@ When \code{data} is provided, it bypasses the data reading step and uses your da
 directly. The data will still be preprocessed and validated according to your
 options configuration. This is useful when you already have data loaded in R or
 want to analyze data programmatically.
+}
+
+\subsection{Method Failures}{
+
+A method that throws an error does not abort the run. The failing method is
+skipped with a warning, the remaining methods still execute, and results from
+the methods that succeeded are exported as usual. A summary of successes and
+failures is printed at the end of the run. The run itself never signals an
+error because of a method failure; when every requested method fails, a final
+warning is emitted instead. Failed method names and their error messages are
+available in the \code{failed_methods} attribute of the returned list.
 }
 }
 \examples{

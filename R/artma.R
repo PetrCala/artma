@@ -21,6 +21,8 @@
 #'
 #' @return *\[list\]* A named list containing results from each method, indexed by
 #'   method name. The structure of each result depends on the specific method.
+#'   Methods that fail are omitted from the list; their names and error messages
+#'   are attached as the `failed_methods` attribute.
 #'
 #' @details
 #' The `artma()` function is the primary way to interact with the artma package.
@@ -50,6 +52,16 @@
 #' directly. The data will still be preprocessed and validated according to your
 #' options configuration. This is useful when you already have data loaded in R or
 #' want to analyze data programmatically.
+#'
+#' ## Method Failures
+#'
+#' A method that throws an error does not abort the run. The failing method is
+#' skipped with a warning, the remaining methods still execute, and results from
+#' the methods that succeeded are exported as usual. A summary of successes and
+#' failures is printed at the end of the run. The run itself never signals an
+#' error because of a method failure; when every requested method fails, a final
+#' warning is emitted instead. Failed method names and their error messages are
+#' available in the `failed_methods` attribute of the returned list.
 #'
 #' @examples
 #' \dontrun{
@@ -193,10 +205,18 @@ artma <- function(
 
 #' @title Invoke methods
 #' @description Pass a vector of runtime methods to invoke, together with a data frame to invoke these methods on, and invoke them.
+#'
+#' Method failures are isolated: a method that throws an error is skipped with
+#' a warning and the remaining methods still run. The run only aborts for
+#' invalid input (for example, unknown method names), never because a method
+#' failed. When at least one method fails, a summary of successes and failures
+#' is printed at the end, and a final warning is emitted if every method failed.
 #' @param methods *\[character\]* A character vector of the methods to invoke.
 #' @param df *\[data.frame\]* The data frame to invoke the methods on.
 #' @param ... *\[any\]* Additional arguments to pass to the methods.
 #' @return *\[list\]* Results of the invocations, indexed by method names.
+#'   Failed methods are omitted; their names and error messages are attached
+#'   as the `failed_methods` attribute (a named character vector).
 #'
 #' Internal example:
 #' df <- data.frame(...)
@@ -298,6 +318,9 @@ invoke_runtime_methods <- function(methods, df, ...) {
   }
 
   results <- list()
+  succeeded_methods <- character()
+  failed_methods <- character()
+
   for (method_name in methods) {
     if (get_verbosity() >= 3) {
       cli::cli_inform("{cli::symbol$bullet} Running the {.code {method_name}} method...")
@@ -311,7 +334,25 @@ invoke_runtime_methods <- function(methods, df, ...) {
       method_args$bma_result <- results[["bma"]]
     }
 
-    results[[method_name]] <- do.call(RUNTIME_METHOD_MODULES[[method_name]]$run, method_args)
+    method_failed <- FALSE
+    method_result <- tryCatch(
+      do.call(RUNTIME_METHOD_MODULES[[method_name]]$run, method_args),
+      error = function(e) {
+        method_failed <<- TRUE
+        failed_methods[[method_name]] <<- conditionMessage(e)
+        if (get_verbosity() >= 2) {
+          cli::cli_warn(
+            "Method {.code {method_name}} failed and was skipped: {conditionMessage(e)}"
+          )
+        }
+        NULL
+      }
+    )
+
+    if (!method_failed) {
+      succeeded_methods <- c(succeeded_methods, method_name)
+      results[[method_name]] <- method_result
+    }
   }
 
   # Build unified MA table when BMA and/or FMA have produced results
@@ -339,6 +380,30 @@ invoke_runtime_methods <- function(methods, df, ...) {
     if (!is.null(ma_table)) {
       display_ma_table(ma_table, verbosity = get_verbosity())
       results[["ma_table"]] <- list(summary = ma_table)
+    }
+  }
+
+  if (length(failed_methods) > 0L) {
+    attr(results, "failed_methods") <- failed_methods
+
+    if (get_verbosity() >= 3) {
+      cli::cli_h3("Method run summary")
+      if (length(succeeded_methods) > 0L) {
+        cli::cli_inform(c(
+          "v" = "Succeeded: {.code {succeeded_methods}}"
+        ))
+      }
+      for (failed_name in names(failed_methods)) {
+        cli::cli_inform(c(
+          "x" = "Failed: {.code {failed_name}} ({failed_methods[[failed_name]]})"
+        ))
+      }
+    }
+
+    if (length(succeeded_methods) == 0L && get_verbosity() >= 2) {
+      cli::cli_warn(
+        "All {length(methods)} requested {pluralize('method', length(methods))} failed. No method results were produced."
+      )
     }
   }
 
