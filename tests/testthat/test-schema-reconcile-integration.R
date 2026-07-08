@@ -9,7 +9,7 @@ box::use(
   ]
 )
 
-# Shared option set for reconcile tests <U+2014> no file persistence, minimal verbosity
+# Shared option set for reconcile tests: no file persistence, minimal verbosity
 base_opts <- function(extra = list()) {
   utils::modifyList(
     list(
@@ -32,9 +32,9 @@ base_opts <- function(extra = list()) {
   )
 }
 
-# <U+2500><U+2500> Group 1: Baseline / strict mode <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# -- Group 1: Baseline / strict mode -------------------------------------------
 
-# T1 <U+2014> columns match exactly <U+2192> silent NULL
+# T1: columns match exactly -> silent NULL
 test_that("reconcile_schema auto: returns NULL when columns match stored map", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
 
@@ -46,7 +46,7 @@ test_that("reconcile_schema auto: returns NULL when columns match stored map", {
   )
 })
 
-# T2 <U+2014> strict + missing required column <U+2192> structured error
+# T2: strict + missing required column -> structured error
 test_that("reconcile_schema strict: structured error when required column is missing", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
 
@@ -63,7 +63,7 @@ test_that("reconcile_schema strict: structured error when required column is mis
   )
 })
 
-# T3 <U+2014> strict + missing moderator column <U+2192> structured error
+# T3: strict + missing moderator column -> structured error
 test_that("reconcile_schema strict: structured error when moderator column is missing", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
 
@@ -79,7 +79,7 @@ test_that("reconcile_schema strict: structured error when moderator column is mi
   )
 })
 
-# T4 <U+2014> strict + added column <U+2192> structured error
+# T4: strict + added column -> structured error
 test_that("reconcile_schema strict: structured error when new column exists in data", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
 
@@ -95,9 +95,9 @@ test_that("reconcile_schema strict: structured error when new column exists in d
   )
 })
 
-# <U+2500><U+2500> Group 2: First-time user gap (Bug 1) <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# -- Group 2: First-time user gap (Bug 1) --------------------------------------
 
-# T5 <U+2014> empty colnames map <U+2192> should return NULL, not trigger false drift
+# T5: empty colnames map -> should return NULL, not trigger false drift
 test_that("reconcile_schema auto: skips without error when no colnames are configured yet", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
 
@@ -146,13 +146,13 @@ test_that("reconcile_schema logs only completion when schema is unchanged", {
   )
 })
 
-# <U+2500><U+2500> Group 3: Auto mode <U+2014> required column renames <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# -- Group 3: Auto mode, required column renames ------------------------------
 
-# T6 <U+2014> high-confidence rename (<U+2265>0.75) <U+2192> accepted, in-memory colnames updated
+# T6: high-confidence rename (>=0.75) -> accepted, in-memory colnames updated
 test_that("reconcile_schema auto: accepts high-confidence rename and updates colnames in memory", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
 
-  # "effect_sise" vs "effect_size": 1-char typo, score <U+2248> 0.91
+  # "effect_sise" vs "effect_size": 1-char typo, score ~ 0.91
   df <- data.frame(effect_sise = 1:3, se_col = 0.1, study = "A")
 
   withr::with_options(
@@ -164,11 +164,11 @@ test_that("reconcile_schema auto: accepts high-confidence rename and updates col
   )
 })
 
-# T7 <U+2014> low-confidence rename (<0.75) <U+2192> abort with hint to use "ask"
+# T7: low-confidence rename (<0.75) -> abort with hint to use "ask"
 test_that("reconcile_schema auto: aborts with hint when rename confidence is too low", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
 
-  # "es" vs "effect_size": score <U+2248> 0.27
+  # "es" vs "effect_size": score ~ 0.27
   df <- data.frame(es = 1:3, se_col = 0.1, study = "A")
 
   withr::with_options(
@@ -181,9 +181,9 @@ test_that("reconcile_schema auto: aborts with hint when rename confidence is too
   )
 })
 
-# <U+2500><U+2500> Group 4: Auto mode <U+2014> moderator columns (Bug 2) <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# -- Group 4: Auto mode, moderator columns (Bug 2) ----------------------------
 
-# T8 <U+2014> missing moderator with no close match <U+2192> dropped from in-memory config
+# T8: missing moderator with no close match -> dropped from in-memory config
 test_that("reconcile_schema auto: drops unmatched moderator from in-memory config", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
 
@@ -199,11 +199,11 @@ test_that("reconcile_schema auto: drops unmatched moderator from in-memory confi
   )
 })
 
-# T9 <U+2014> missing moderator with high-confidence match <U+2192> remapped in in-memory config
+# T9: missing moderator with high-confidence match -> remapped in in-memory config
 test_that("reconcile_schema auto: remaps high-confidence moderator rename in in-memory config", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
 
-  # "method_ib" vs "method_iv": 1-char diff (b<U+2194>v), score <U+2248> 0.89
+  # "method_ib" vs "method_iv": 1-char diff (b<->v), score ~ 0.89
   df <- data.frame(effect_size = 1:3, se_col = 0.1, study = "A", method_ib = c(1, 0, 1))
 
   withr::with_options(
@@ -216,9 +216,9 @@ test_that("reconcile_schema auto: remaps high-confidence moderator rename in in-
   )
 })
 
-# <U+2500><U+2500> Group 5: Auto mode <U+2014> added columns <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# -- Group 5: Auto mode, added columns ----------------------------------------
 
-# T10 <U+2014> added column is informational only, analysis is not blocked
+# T10: added column is informational only, analysis is not blocked
 test_that("reconcile_schema auto: added column is informational only, returns NULL", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
 
@@ -230,13 +230,13 @@ test_that("reconcile_schema auto: added column is informational only, returns NU
   )
 })
 
-# <U+2500><U+2500> Group 6: Multiple simultaneous changes <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# -- Group 6: Multiple simultaneous changes ------------------------------------
 
-# T11 <U+2014> required rename + moderator drop + added column <U+2192> all handled atomically
+# T11: required rename + moderator drop + added column -> all handled atomically
 test_that("reconcile_schema auto: handles simultaneous rename, moderator drop, and added column", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
 
-  # effect_size <U+2192> effect_sise (high confidence), method_iv gone, region is new
+  # effect_size -> effect_sise (high confidence), method_iv gone, region is new
   df <- data.frame(effect_sise = 1:3, se_col = 0.1, study = "A", region = "EU")
 
   withr::with_options(
@@ -249,9 +249,9 @@ test_that("reconcile_schema auto: handles simultaneous rename, moderator drop, a
   )
 })
 
-# <U+2500><U+2500> Group 7: Full pipeline integration <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# -- Group 7: Full pipeline integration ----------------------------------------
 
-# T12 <U+2014> reconcile + standardize produces df with correct standard column names
+# T12: reconcile + standardize produces df with correct standard column names
 test_that("reconcile then standardize: produces df with standard column names", {
   box::use(
     artma / data / schema_reconcile[reconcile_schema],
