@@ -615,7 +615,7 @@ reconcile_schema <- function(raw_df, mode = NULL) {
   box::use(
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / autonomy[should_prompt_user],
-    artma / options / utils[get_option_group]
+    artma / options / index[get_option_group]
   )
 
   mode <- mode %||% getOption("artma.data.reconcile_mode", "ask")

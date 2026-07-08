@@ -1,7 +1,7 @@
-box::use(testthat[test_that, expect_equal, expect_true, expect_false, expect_setequal, expect_length, expect_no_error])
+box::use(testthat[test_that, expect_equal, expect_true, expect_false, expect_null, expect_setequal, expect_length, expect_no_error])
 
 test_that("options lifecycle helpers operate on user files", {
-  box::use(artma[options.create, options.copy, options.delete, options.fix, options.list, options.load, options.remove, options.validate])
+  box::use(artma[options.create, options.copy, options.delete, options.fix, options.list, options.load, options.validate])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -78,19 +78,23 @@ test_that("options lifecycle helpers operate on user files", {
   )
   expect_true("Primary" %in% verbose_names)
 
-  withr::local_options()
   loaded <- options.load(
     options_file_name = "valid.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
     should_validate = TRUE,
-    should_set_to_namespace = TRUE,
     should_add_temp_options = TRUE,
     should_return = TRUE
   )
   expect_equal(loaded$`artma.general.name`, "Primary")
-  expect_equal(getOption("artma.general.name"), "Primary")
-  expect_equal(getOption("artma.temp.file_name"), "valid.yaml")
+  expect_equal(loaded$`artma.temp.file_name`, "valid.yaml")
+
+  # The runtime path applies loaded options via withr, with automatic restoration
+  withr::with_options(loaded, {
+    expect_equal(getOption("artma.general.name"), "Primary")
+    expect_equal(getOption("artma.temp.file_name"), "valid.yaml")
+  })
+  expect_null(getOption("artma.general.name"))
 
   options.create(
     options_file_name = "new.yaml",
@@ -123,23 +127,6 @@ test_that("options lifecycle helpers operate on user files", {
     skip_confirmation = TRUE
   )
   expect_false(file.exists(file.path(tmp_dir, "copied.yaml")))
-
-  # Test that options.remove is an alias for options.delete
-  options.create(
-    options_file_name = "to_remove.yaml",
-    options_dir = tmp_dir,
-    template_path = template_path,
-    user_input = list(),
-    should_validate = TRUE,
-    should_overwrite = TRUE
-  )
-  expect_true(file.exists(file.path(tmp_dir, "to_remove.yaml")))
-  options.remove(
-    options_file_name = "to_remove.yaml",
-    options_dir = tmp_dir,
-    skip_confirmation = TRUE
-  )
-  expect_false(file.exists(file.path(tmp_dir, "to_remove.yaml")))
 })
 
 test_that("options.load backfills missing and invalid values with template defaults", {
@@ -188,7 +175,6 @@ test_that("options.load backfills missing and invalid values with template defau
       options_dir = tmp_dir,
       template_path = template_path,
       should_validate = TRUE,
-      should_set_to_namespace = FALSE,
       should_return = TRUE
     )
   })
@@ -233,10 +219,98 @@ test_that("options.load backfills defaults when loading without prefix", {
     template_path = template_path,
     load_with_prefix = FALSE,
     should_validate = TRUE,
-    should_set_to_namespace = FALSE,
     should_return = TRUE
   )
 
   expect_equal(loaded$data.na_handling, "stop")
   expect_equal(loaded$data.winsorization_level, 0)
+})
+
+test_that("options.list includes files with the .yml suffix", {
+  box::use(artma[options.list])
+
+  tmp_dir <- withr::local_tempdir()
+
+  yaml::write_yaml(
+    list(general = list(name = "Short Suffix")),
+    file.path(tmp_dir, "short.yml")
+  )
+  yaml::write_yaml(
+    list(general = list(name = "Long Suffix")),
+    file.path(tmp_dir, "long.yaml")
+  )
+
+  expect_setequal(
+    options.list(options_dir = tmp_dir),
+    c("long.yaml", "short.yml")
+  )
+})
+
+test_that("options files are stamped with the package version on write", {
+  box::use(artma[options.create])
+
+  tmp_dir <- withr::local_tempdir()
+  template_path <- file.path(tmp_dir, "template.yaml")
+
+  template <- list(
+    data = list(
+      threshold = list(
+        type = "integer",
+        default = 10L,
+        help = "Numeric threshold"
+      )
+    )
+  )
+  yaml::write_yaml(template, template_path)
+
+  options.create(
+    options_file_name = "stamped.yaml",
+    options_dir = tmp_dir,
+    template_path = template_path,
+    user_input = list(),
+    should_validate = TRUE,
+    should_overwrite = TRUE
+  )
+
+  written <- yaml::read_yaml(file.path(tmp_dir, "stamped.yaml"))
+  expect_equal(
+    written$general$artma_version,
+    as.character(utils::packageVersion("artma"))
+  )
+})
+
+test_that("autonomy level from an options file is honored via the withr runtime path", {
+  box::use(artma[options.load])
+  box::use(artma / libs / core / autonomy[get_autonomy_level])
+
+  tmp_dir <- withr::local_tempdir()
+  template_path <- file.path(tmp_dir, "template.yaml")
+
+  template <- list(
+    autonomy = list(
+      level = list(
+        type = "integer",
+        default = 4L,
+        help = "Autonomy level"
+      )
+    )
+  )
+  yaml::write_yaml(template, template_path)
+  yaml::write_yaml(
+    list(autonomy = list(level = 2L)),
+    file.path(tmp_dir, "auto.yaml")
+  )
+
+  runtime_options <- options.load(
+    options_file_name = "auto.yaml",
+    options_dir = tmp_dir,
+    template_path = template_path,
+    should_validate = TRUE,
+    should_return = TRUE
+  )
+
+  # Mirrors runtime_setup() in R/aaa.R, which applies loaded options via withr
+  withr::with_options(runtime_options, {
+    expect_equal(get_autonomy_level(), 2L)
+  })
 })

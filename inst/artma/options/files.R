@@ -65,13 +65,19 @@ read_options_file <- function(path) {
 
 #' @title Write a YAML options file
 #' @description Ensures the destination directory exists before writing the
-#'   supplied options list.
+#'   supplied options list. Every written file is stamped with the current
+#'   package version under `general.artma_version`.
 #' @param path *[character]* Path to the YAML file to create.
 #' @param options *[list]* Options to write.
 write_options_file <- function(path, options) {
   box::use(artma / libs / core / file[ensure_folder_existence])
 
   ensure_folder_existence(dirname(path))
+
+  # Stamp the version from DESCRIPTION so options files record the package
+  # version under which they were written.
+  options[["general"]][["artma_version"]] <- as.character(utils::packageVersion("artma"))
+
   yaml::write_yaml(options, path)
 }
 

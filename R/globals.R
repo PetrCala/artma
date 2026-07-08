@@ -86,7 +86,6 @@ utils::globalVariables(c(
   "read_data_raw",
   "read_options_file",
   "read_template",
-  "remove_options_with_prefix",
   "replay_log",
   "reset_config_overrides",
   "resolve_cli_editor",

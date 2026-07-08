@@ -46,7 +46,7 @@ get_number_of_studies <- function(df) {
 standardize_column_names <- function(df, auto_detect = TRUE) {
   box::use(
     artma / libs / core / validation[validate],
-    artma / options / utils[get_option_group],
+    artma / options / index[get_option_group],
     artma / libs / core / utils[get_verbosity]
   )
 
