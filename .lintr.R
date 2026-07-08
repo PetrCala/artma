@@ -2,7 +2,19 @@
 
 custom_linters_env <- new.env()
 
-source(here::here("R", "linters.R"), local = custom_linters_env, chdir = TRUE)
+# Locate the repository root without the here package, which is not a
+# package dependency and may not be installed in the linting session.
+source(
+    local({
+        path <- getwd()
+        while (!file.exists(file.path(path, "DESCRIPTION")) && dirname(path) != path) {
+            path <- dirname(path)
+        }
+        file.path(path, "R", "linters.R")
+    }),
+    local = custom_linters_env,
+    chdir = TRUE
+)
 
 linters <- c(
     lintr::linters_with_defaults(
