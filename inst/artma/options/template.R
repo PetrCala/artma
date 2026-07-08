@@ -32,9 +32,9 @@ flatten_template_options <- function(x, parent = NULL) {
     path <- if (is.null(parent)) nm else paste(parent, nm, sep = ".")
     node <- x[[nm]]
 
-    # <U+2500><U+2500><U+25BA> A leaf?  (= list that has a 'type' field)
+    # --> A leaf?  (= list that has a 'type' field)
     if (is_option_def(node)) {
-      node$name <- path # <<U+2500><U+2500> add the synthetic name
+      node$name <- path # <-- add the synthetic name
       flattened[[length(flattened) + 1L]] <- node
       next
     }
@@ -96,7 +96,7 @@ flatten_user_options <- function(user_options, leaf_set, parent = NULL) {
   for (nm in names(user_options)) {
     path <- if (is.null(parent)) nm else paste(parent, nm, sep = ".")
 
-    # <U+2500><U+2500><U+25BA> If we've reached a declared template leaf, take the whole value as-is
+    # --> If we've reached a declared template leaf, take the whole value as-is
     if (path %in% leaf_set || !is.list(user_options[[nm]])) {
       flat[[path]] <- user_options[[nm]]
       next

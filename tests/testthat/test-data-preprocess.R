@@ -20,7 +20,7 @@ expect_false <- getFromNamespace("expect_false", "testthat")
 # deleted and their responsibilities moved to inst/artma/data/schema_reconcile.R.
 # See tests/testthat/test-data-schema-reconcile.R for the replacement tests.
 
-# <U+2500><U+2500> enforce_data_types <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
+# -- enforce_data_types --------------------------------------------------------
 
 test_that("enforce_data_types coerces columns according to the config", {
   box::use(artma / data / preprocess[enforce_data_types])

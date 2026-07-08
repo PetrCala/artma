@@ -95,7 +95,7 @@ test_that("detect_schema_drift handles NA values in colnames_map", {
   box::use(artma / data / schema_reconcile[detect_schema_drift])
 
   raw_df <- data.frame(effect_size = 1:3, se_col = 0.1, study = "A")
-  # dof is optional (NA) <U+2014> should not be considered as missing
+  # dof is optional (NA): should not be considered as missing
   colnames_map <- list(
     effect = "effect_size", se = "se_col", study_id = "study", dof = NA
   )
