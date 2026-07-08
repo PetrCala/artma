@@ -15,6 +15,8 @@ invoke_runtime_methods(methods, df, ...)
 }
 \value{
 \emph{[list]} Results of the invocations, indexed by method names.
+Failed methods are omitted; their names and error messages are attached
+as the \code{failed_methods} attribute (a named character vector).
 
 Internal example:
 df <- data.frame(...)
@@ -22,5 +24,11 @@ invoke_runtime_methods(c("funnel_plot", "bma", "fma"), df)
 }
 \description{
 Pass a vector of runtime methods to invoke, together with a data frame to invoke these methods on, and invoke them.
+
+Method failures are isolated: a method that throws an error is skipped with
+a warning and the remaining methods still run. The run only aborts for
+invalid input (for example, unknown method names), never because a method
+failed. When at least one method fails, a summary of successes and failures
+is printed at the end, and a final warning is emitted if every method failed.
 }
 \keyword{internal}
