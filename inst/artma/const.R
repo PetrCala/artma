@@ -21,7 +21,6 @@ CONST <- list(
       VAR_NAME_DESCRIPTION = "var_name_description",
       DATA_TYPE = "data_type",
       GROUP_CATEGORY = "group_category",
-      NA_HANDLING = "na_handling",
       VARIABLE_SUMMARY = "variable_summary",
       EFFECT_SUM_STATS = "effect_sum_stats",
       EQUAL = "equal",

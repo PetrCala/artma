@@ -34,7 +34,6 @@ build_default_config_entry <- function(col_name, col_data) {
     "var_name_description" = col_name_verbose,
     "data_type" = col_data_type,
     "group_category" = NA,
-    "na_handling" = getOption("artma.data.na_handling", NA),
     "variable_summary" = is.numeric(col_data),
     "effect_sum_stats" = NA,
     "equal" = NA,
@@ -82,9 +81,15 @@ build_base_config <- function(df) {
 #' @param b *\[any\]* Second value
 #' @return *\[logical\]* TRUE if values are identical (including both-NA case)
 identical_or_both_na <- function(a, b) {
-  if (is.null(a) && is.null(b)) return(TRUE)
-  if (is.null(a) || is.null(b)) return(FALSE)
-  if (length(a) == 1 && length(b) == 1 && is.na(a) && is.na(b)) return(TRUE)
+  if (is.null(a) && is.null(b)) {
+    return(TRUE)
+  }
+  if (is.null(a) || is.null(b)) {
+    return(FALSE)
+  }
+  if (length(a) == 1 && length(b) == 1 && is.na(a) && is.na(b)) {
+    return(TRUE)
+  }
   identical(a, b)
 }
 
@@ -110,7 +115,9 @@ extract_overrides <- function(entry, default_entry) {
     }
   }
 
-  if (length(overrides) == 0) return(NULL)
+  if (length(overrides) == 0) {
+    return(NULL)
+  }
   overrides
 }
 
