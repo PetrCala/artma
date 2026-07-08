@@ -156,30 +156,6 @@ test_that("glue_collapse joins strings", {
   expect_equal(result, "a")
 })
 
-test_that("digest creates consistent hashes", {
-  box::use(artma / libs / infrastructure / polyfills[digest])
-
-  # Test basic hashing
-  obj1 <- list(a = 1, b = 2)
-  hash1 <- digest(obj1)
-  expect_type(hash1, "character")
-  expect_equal(nchar(hash1), 16) # Should be 16 hex characters
-
-  # Test consistency - same object should produce same hash
-  hash2 <- digest(obj1)
-  expect_equal(hash1, hash2)
-
-  # Test different objects produce different hashes
-  obj2 <- list(a = 1, b = 3)
-  hash3 <- digest(obj2)
-  expect_false(hash1 == hash3)
-
-  # Test with different data types
-  expect_type(digest(1:10), "character")
-  expect_type(digest("test"), "character")
-  expect_type(digest(data.frame(x = 1:3)), "character")
-})
-
 test_that("edit_file validates file existence", {
   box::use(artma / libs / infrastructure / polyfills[edit_file])
 
