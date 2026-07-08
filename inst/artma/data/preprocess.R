@@ -110,9 +110,10 @@ handle_missing_values_with_prompt <- function(df) {
 }
 
 
-
 #' @title Enforce correct data types
-#' @description Enforce correct data types.
+#' @description Enforce correct data types. Every column of the data frame
+#'   must have a corresponding data config entry; a missing entry means the
+#'   config is out of sync with the data and raises an error.
 #' @param df *\[data.frame\]* The data frame to enforce correct data types for
 #' @return *\[data.frame\]* The data frame with the correct data types enforced
 #' @keywords internal
@@ -124,8 +125,26 @@ enforce_data_types <- function(df) {
   }
 
   config <- get_data_config()
-  for (col_name in make.names(colnames(df))) {
-    dtype <- config[[col_name]]$data_type
+  col_names <- colnames(df)
+  col_keys <- make.names(col_names)
+
+  missing_cols <- col_names[!col_keys %in% names(config)]
+  if (length(missing_cols) > 0) {
+    cli::cli_abort(c(
+      "x" = "No data config entry found for column{?s} {.val {missing_cols}}.",
+      "i" = "The data config is out of sync with the data frame.",
+      "i" = "Run {.code artma::config.fix()} to regenerate the config from the data."
+    ))
+  }
+
+  for (i in seq_along(col_names)) {
+    col_name <- col_names[i]
+    dtype <- config[[col_keys[i]]]$data_type
+    if (is.null(dtype) || length(dtype) != 1 || is.na(dtype)) {
+      # Entries merged from sparse overrides may carry no type information;
+      # there is nothing to coerce to in that case.
+      next
+    }
     if (dtype %in% c("int", "dummy")) {
       df[[col_name]] <- as.integer(df[[col_name]])
     } else if (dtype %in% c("float", "perc")) {
@@ -224,7 +243,6 @@ winsorize_data <- function(df) {
 }
 
 
-
 #' @title Preprocess data
 #' @description Preprocess a standardized data frame: removes empty rows, handles
 #'   missing values, enforces data types, winsorizes, and validates values.
@@ -244,4 +262,4 @@ preprocess_data <- function(df) {
     enforce_correct_values()
 }
 
-box::export(preprocess_data)
+box::export(enforce_data_types, preprocess_data)

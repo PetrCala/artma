@@ -7,8 +7,7 @@ box::use(
     expect_error,
     test_that,
     expect_length
-  ],
-  withr[local_options]
+  ]
 )
 
 test_that <- getFromNamespace("test_that", "testthat")
@@ -19,7 +18,7 @@ expect_false <- getFromNamespace("expect_false", "testthat")
 expect_error <- getFromNamespace("expect_error", "testthat")
 expect_length <- getFromNamespace("expect_length", "testthat")
 
-# ── identical_or_both_na ─────────────────────────────────────────────────────
+# <U+2500><U+2500> identical_or_both_na <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
 
 test_that("identical_or_both_na: both NA returns TRUE", {
   box::use(artma / data_config / defaults[identical_or_both_na])
@@ -65,14 +64,10 @@ test_that("identical_or_both_na: NULL vs NA returns FALSE", {
   expect_false(identical_or_both_na(NA, NULL))
 })
 
-# ── build_default_config_entry ────────────────────────────────────────────────
+# <U+2500><U+2500> build_default_config_entry <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
 
 test_that("build_default_config_entry: numeric column", {
   box::use(artma / data_config / defaults[build_default_config_entry])
-
-  withr::local_options(list(
-    "artma.data.na_handling" = "remove"
-  ))
 
   col_data <- c(1.5, 2.3, 3.7)
   entry <- build_default_config_entry("my_var", col_data)
@@ -80,7 +75,6 @@ test_that("build_default_config_entry: numeric column", {
   expect_equal(entry$var_name, "my_var")
   expect_equal(entry$var_name_verbose, entry$var_name_description)
   expect_true(entry$variable_summary)
-  expect_equal(entry$na_handling, "remove")
   expect_true(is.na(entry$bma))
   expect_true(is.na(entry$effect_sum_stats))
   expect_true(is.na(entry$equal))
@@ -91,10 +85,6 @@ test_that("build_default_config_entry: numeric column", {
 test_that("build_default_config_entry: character column sets variable_summary FALSE", {
   box::use(artma / data_config / defaults[build_default_config_entry])
 
-  withr::local_options(list(
-    "artma.data.na_handling" = "remove"
-  ))
-
   col_data <- c("a", "b", "c")
   entry <- build_default_config_entry("category", col_data)
 
@@ -102,31 +92,23 @@ test_that("build_default_config_entry: character column sets variable_summary FA
   expect_false(entry$variable_summary)
 })
 
-test_that("build_default_config_entry: entry has all 17 expected fields", {
+test_that("build_default_config_entry: entry has all 16 expected fields", {
   box::use(artma / data_config / defaults[build_default_config_entry])
-
-  withr::local_options(list(
-    "artma.data.na_handling" = "remove"
-  ))
 
   entry <- build_default_config_entry("x", c(1, 2, 3))
   expected_fields <- c(
     "var_name", "var_name_verbose", "var_name_description",
-    "data_type", "group_category", "na_handling", "variable_summary",
+    "data_type", "group_category", "variable_summary",
     "effect_sum_stats", "equal", "gltl", "bma", "bma_reference_var",
     "bma_to_log", "bpe", "bpe_sum_stats", "bpe_equal", "bpe_gltl"
   )
   expect_equal(sort(names(entry)), sort(expected_fields))
 })
 
-# ── build_base_config ─────────────────────────────────────────────────────────
+# <U+2500><U+2500> build_base_config <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
 
 test_that("build_base_config: creates entry for each column", {
   box::use(artma / data_config / defaults[build_base_config])
-
-  withr::local_options(list(
-    "artma.data.na_handling" = "remove"
-  ))
 
   df <- data.frame(
     age = c(25, 30, 35),
@@ -147,10 +129,6 @@ test_that("build_base_config: creates entry for each column", {
 
 test_that("build_base_config: keys are make.names of column names", {
   box::use(artma / data_config / defaults[build_base_config])
-
-  withr::local_options(list(
-    "artma.data.na_handling" = "remove"
-  ))
 
   df <- data.frame(
     a = 1,
@@ -173,7 +151,7 @@ test_that("build_base_config: errors on empty dataframe", {
   expect_error(build_base_config(df), "empty")
 })
 
-# ── extract_overrides ─────────────────────────────────────────────────────────
+# <U+2500><U+2500> extract_overrides <U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500><U+2500>
 
 test_that("extract_overrides: returns NULL when entry matches defaults", {
   box::use(artma / data_config / defaults[extract_overrides])
@@ -222,9 +200,9 @@ test_that("extract_overrides: detects change from NA to value", {
 test_that("extract_overrides: detects change from value to different value", {
   box::use(artma / data_config / defaults[extract_overrides])
 
-  default <- list(var_name = "x", na_handling = "remove")
-  entry <- list(var_name = "x", na_handling = "impute")
+  default <- list(var_name = "x", gltl = "mean")
+  entry <- list(var_name = "x", gltl = "median")
 
   result <- extract_overrides(entry, default)
-  expect_equal(result$na_handling, "impute")
+  expect_equal(result$gltl, "median")
 })

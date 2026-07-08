@@ -36,16 +36,11 @@ test_that("prepare_data reads source data only once on a cache-miss execution", 
   ))
 
   box::use(
-    artma / data / index[prepare_data],
-    artma / data_config / resolve[invalidate_df_cache]
+    artma / data / index[prepare_data]
   )
-
-  invalidate_df_cache()
 
   msgs <- testthat::capture_messages(prepare_data())
   read_msgs <- grep("Reading data from", msgs, value = TRUE)
 
   expect_equal(length(read_msgs), 1L)
-
-  invalidate_df_cache()
 })
