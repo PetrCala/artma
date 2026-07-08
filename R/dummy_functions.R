@@ -3,9 +3,6 @@
 # nolint start: box_usage_linter.
 
 #' @keywords internal
-.dummy_use_here <- function() here::here("R", "dummy_functions.R")
-
-#' @keywords internal
 .dummy_use_rlang <- function() rlang::is_true(TRUE)
 
 #' @keywords internal
