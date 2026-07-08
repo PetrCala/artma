@@ -155,6 +155,10 @@ run_vif_test <- function(input_var, input_data, print_all_coefs = FALSE, verbose
     is.logical(verbose)
   )
 
+  if (!requireNamespace("car", quietly = TRUE)) {
+    cli::cli_abort("Package {.pkg car} is required for BMA collinearity checks. Install with: install.packages('car')")
+  }
+
   if (is.vector(input_var)) {
     bma_formula <- get_bma_formula(input_var, input_data)
   } else {
@@ -233,6 +237,10 @@ find_optimal_bma_formula <- function(input_data, input_var_list, max_groups_to_r
     is.logical(verbose),
     all(c("bma", "var_name", "group_category") %in% colnames(input_var_list))
   )
+
+  if (!requireNamespace("car", quietly = TRUE)) {
+    cli::cli_abort("Package {.pkg car} is required for BMA collinearity checks. Install with: install.packages('car')")
+  }
 
   input_data <- input_data[, colnames(input_data) %in% input_var_list$var_name, drop = FALSE]
 
@@ -422,6 +430,10 @@ run_bma <- function(bma_data, bma_params, quiet = TRUE) {
     colnames(bma_data)[1] == "effect"
   )
 
+  if (!requireNamespace("BMS", quietly = TRUE)) {
+    cli::cli_abort("Package {.pkg BMS} is required for Bayesian model averaging. Install with: install.packages('BMS')")
+  }
+
   all_bma_params <- c(
     list(bma_data),
     bma_params
@@ -557,6 +569,11 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
       base::plot(bma_model, col = .(dist_color_spectrum))
     )
 
+    has_corrplot <- requireNamespace("corrplot", quietly = TRUE)
+    if (!has_corrplot) {
+      cli::cli_warn("Package {.pkg corrplot} is not installed; skipping the BMA correlation plot. Install with: install.packages('corrplot')")
+    }
+
     bma_matrix <- stats::cor(bma_data)
     dimnames(bma_matrix) <- lapply(dimnames(bma_matrix), function(x) {
       bma_matrix_names
@@ -576,7 +593,9 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
     cli::cli_alert_info("Printing BMA plots...")
     eval(main_plot_call, envir = environment())
     eval(bma_dist_call, envir = environment())
-    eval(corrplot_mixed_call, envir = environment())
+    if (has_corrplot) {
+      eval(corrplot_mixed_call, envir = environment())
+    }
   }
 
   if (export_graphics) {
@@ -611,12 +630,14 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
     eval(bma_dist_call, envir = environment())
     grDevices::dev.off()
 
-    grDevices::png(corrplot_path,
-      width = 700 * graph_scale, height = 669 * graph_scale, units = "px",
-      res = 90 * graph_scale
-    )
-    eval(corrplot_mixed_call, envir = environment())
-    grDevices::dev.off()
+    if (has_corrplot) {
+      grDevices::png(corrplot_path,
+        width = 700 * graph_scale, height = 669 * graph_scale, units = "px",
+        res = 90 * graph_scale
+      )
+      eval(corrplot_mixed_call, envir = environment())
+      grDevices::dev.off()
+    }
   }
 
   bma_coefs
