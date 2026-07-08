@@ -13,7 +13,8 @@ box::use(
         base::read.dcf(desc, fields = "Package"),
         error = function(...) NULL
       )
-      if (!is.null(pkg_record) && identical(pkg_record[1, 1], package_name)) {
+      # [[ drops the "Package" dimname that [1, 1] keeps; a named value never passes identical()
+      if (!is.null(pkg_record) && nrow(pkg_record) >= 1 && identical(pkg_record[[1, 1]], package_name)) {
         return(current)
       }
     }
