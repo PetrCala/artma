@@ -112,10 +112,10 @@ test_that("invoke_runtime_methods isolates a failing method and keeps the rest",
     method_c = list(run = function(df, ...) "c-ok")
   )
   withr::local_options(list(artma.verbose = 0))
-  mock_runtime_method_registry(fake_methods)
+  methods_dir <- local_mock_methods_dir(fake_methods)
 
   df <- data.frame(x = 1:3)
-  results <- artma:::invoke_runtime_methods(methods = "all", df = df)
+  results <- artma:::invoke_runtime_methods(methods = "all", df = df, modules_dir = methods_dir)
 
   expect_setequal(names(results), c("method_a", "method_c"))
   expect_equal(results$method_a, "a-ok")
@@ -132,11 +132,11 @@ test_that("invoke_runtime_methods warns about failed methods when verbosity allo
     method_b = list(run = function(df, ...) cli::cli_abort("boom"))
   )
   withr::local_options(list(artma.verbose = 2))
-  mock_runtime_method_registry(fake_methods)
+  methods_dir <- local_mock_methods_dir(fake_methods)
 
   df <- data.frame(x = 1:3)
   warnings <- capture_warnings(
-    results <- artma:::invoke_runtime_methods(methods = "all", df = df)
+    results <- artma:::invoke_runtime_methods(methods = "all", df = df, modules_dir = methods_dir)
   )
 
   expect_true(any(grepl("method_b", warnings)))
@@ -149,11 +149,11 @@ test_that("invoke_runtime_methods emits a final warning when every method fails"
     method_b = list(run = function(df, ...) cli::cli_abort("second failure"))
   )
   withr::local_options(list(artma.verbose = 2))
-  mock_runtime_method_registry(fake_methods)
+  methods_dir <- local_mock_methods_dir(fake_methods)
 
   df <- data.frame(x = 1:3)
   warnings <- capture_warnings(
-    results <- artma:::invoke_runtime_methods(methods = "all", df = df)
+    results <- artma:::invoke_runtime_methods(methods = "all", df = df, modules_dir = methods_dir)
   )
 
   expect_equal(length(results), 0L)
@@ -170,10 +170,10 @@ test_that("partial results from a run with a failing method are exported", {
     method_c = list(run = function(df, ...) data.frame(estimate = 3))
   )
   withr::local_options(list(artma.verbose = 0))
-  mock_runtime_method_registry(fake_methods)
+  methods_dir <- local_mock_methods_dir(fake_methods)
 
   df <- data.frame(x = 1:3)
-  results <- artma:::invoke_runtime_methods(methods = "all", df = df)
+  results <- artma:::invoke_runtime_methods(methods = "all", df = df, modules_dir = methods_dir)
 
   output_dir <- withr::local_tempdir()
   fs::dir_create(file.path(output_dir, "tables"))
