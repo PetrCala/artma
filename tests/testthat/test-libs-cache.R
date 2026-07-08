@@ -20,10 +20,13 @@ test_that("capture_cli traps cli conditions and replay_log re-emits them", {
 
   FIXTURES$local_cli_silence()
 
-  res <- capture_cli({
-    cli::cli_alert_info("Hello")
-    42
-  }, emit = FALSE)
+  res <- capture_cli(
+    {
+      cli::cli_alert_info("Hello")
+      42
+    },
+    emit = FALSE
+  )
 
   # ----- value --------------------------------------------------------------
   expect_equal(res$value, 42)
@@ -47,10 +50,13 @@ test_that("capture_cli captures cat helpers and replays them faithfully", {
 
   FIXTURES$local_cli_silence()
 
-  res <- capture_cli({
-    cli::cat_rule("demo")
-    "done"
-  }, emit = FALSE)
+  res <- capture_cli(
+    {
+      cli::cat_rule("demo")
+      "done"
+    },
+    emit = FALSE
+  )
 
   expect_equal(res$value, "done")
   expect_length(res$log, 1L)
@@ -71,10 +77,13 @@ test_that("replay_log skips whitespace-only condition entries", {
 
   FIXTURES$local_cli_silence()
 
-  res <- capture_cli({
-    cli::cli_alert_info("Hello")
-    "done"
-  }, emit = FALSE)
+  res <- capture_cli(
+    {
+      cli::cli_alert_info("Hello")
+      "done"
+    },
+    emit = FALSE
+  )
 
   expect_length(res$log, 1L)
 
@@ -101,13 +110,15 @@ test_that("cache_cli memoises value + log and replays on hit", {
   # use an *ephemeral* cache so tests are self-contained
   tmp_cache <- memoise::cache_filesystem(withr::local_tempdir())
 
-  cached_modeller <- cache_cli(FIXTURES$fake_modeller, cache = tmp_cache)
+  fake_modeller <- FIXTURES$make_fake_modeller()
+  cached_modeller <- cache_cli(fake_modeller$modeller, cache = tmp_cache)
 
   ## --- 1st call: cold ------------------------------------------------------
   first_console <- testthat::capture_messages(
     v1 <- cached_modeller(10)
   )
   expect_equal(v1, 20)
+  expect_equal(fake_modeller$calls(), 1L)
 
   # cache should now contain exactly one key
   expect_length(tmp_cache$keys(), 1L)
@@ -117,6 +128,9 @@ test_that("cache_cli memoises value + log and replays on hit", {
     v2 <- cached_modeller(10)
   )
   expect_equal(v2, 20)
+
+  # the implementation must not run again on a cache hit
+  expect_equal(fake_modeller$calls(), 1L)
 
   # console chatter must be *identical* because we replayed
   expect_identical(first_console, second_console)

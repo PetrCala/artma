@@ -1,4 +1,13 @@
 box::use(
+  testthat[
+    expect_equal,
+    expect_no_error,
+    expect_true,
+    test_that
+  ]
+)
+
+box::use(
   artma / data / interactive_mapping[
     present_detected_mapping,
     format_mapping_display
@@ -7,12 +16,6 @@ box::use(
     get_required_column_names
   ]
 )
-
-test_that <- getFromNamespace("test_that", "testthat")
-expect_equal <- getFromNamespace("expect_equal", "testthat")
-expect_true <- getFromNamespace("expect_true", "testthat")
-expect_false <- getFromNamespace("expect_false", "testthat")
-expect_is <- getFromNamespace("expect_is", "testthat")
 
 
 test_that("format_mapping_display groups required and optional correctly", {
@@ -154,7 +157,6 @@ test_that("present_detected_mapping handles required columns only", {
   withr::local_options(list("artma.verbose" = 1))
 
   # Test that function doesn't error with required columns only
-  expect_no_error <- getFromNamespace("expect_no_error", "testthat")
   expect_no_error(
     tryCatch(
       {
@@ -197,7 +199,6 @@ test_that("present_detected_mapping handles mixed required and optional", {
 
   withr::local_options(list("artma.verbose" = 1))
 
-  expect_no_error <- getFromNamespace("expect_no_error", "testthat")
   expect_no_error(
     tryCatch(
       {

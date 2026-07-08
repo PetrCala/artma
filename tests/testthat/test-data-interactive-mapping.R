@@ -1,4 +1,14 @@
 box::use(
+  testthat[
+    expect_equal,
+    expect_false,
+    expect_no_error,
+    expect_true,
+    test_that
+  ]
+)
+
+box::use(
   artma / data / interactive_mapping[
     confirm_column_mapping,
     save_column_mapping_to_options,
@@ -6,11 +16,6 @@ box::use(
   ],
   artma / data / column_recognition[get_required_column_names]
 )
-
-test_that <- getFromNamespace("test_that", "testthat")
-expect_equal <- getFromNamespace("expect_equal", "testthat")
-expect_true <- getFromNamespace("expect_true", "testthat")
-expect_no_error <- getFromNamespace("expect_no_error", "testthat")
 
 
 # Note: interactive_column_mapping and column_mapping_workflow require

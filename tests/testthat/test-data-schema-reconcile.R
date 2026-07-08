@@ -1,25 +1,28 @@
-test_that <- getFromNamespace("test_that", "testthat")
-expect_equal <- getFromNamespace("expect_equal", "testthat")
-expect_true <- getFromNamespace("expect_true", "testthat")
-expect_false <- getFromNamespace("expect_false", "testthat")
-expect_error <- getFromNamespace("expect_error", "testthat")
-expect_null <- getFromNamespace("expect_null", "testthat")
-expect_named <- getFromNamespace("expect_named", "testthat")
+box::use(
+  testthat[
+    expect_equal,
+    expect_error,
+    expect_false,
+    expect_null,
+    expect_true,
+    test_that
+  ]
+)
 
 base_reconcile_opts <- function(extra = list()) {
   utils::modifyList(
     list(
-      "artma.data.colnames.obs_id"   = NA_character_,
-      "artma.data.colnames.effect"   = "effect_size",
-      "artma.data.colnames.n_obs"    = NA_character_,
+      "artma.data.colnames.obs_id" = NA_character_,
+      "artma.data.colnames.effect" = "effect_size",
+      "artma.data.colnames.n_obs" = NA_character_,
       "artma.data.colnames.precision" = NA_character_,
-      "artma.data.colnames.reg_dof"  = NA_character_,
-      "artma.data.colnames.se"       = "se_col",
+      "artma.data.colnames.reg_dof" = NA_character_,
+      "artma.data.colnames.se" = "se_col",
       "artma.data.colnames.study_id" = "study",
       "artma.data.colnames.study_size" = NA_character_,
-      "artma.data.colnames.t_stat"   = NA_character_,
+      "artma.data.colnames.t_stat" = NA_character_,
       "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study"),
-      "artma.data.config"            = list()
+      "artma.data.config" = list()
     ),
     extra
   )

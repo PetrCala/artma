@@ -1,10 +1,10 @@
 box::use(
-  artma / methods / box_plot[box_plot]
+  testthat[expect_equal, expect_true, test_that]
 )
 
-test_that <- getFromNamespace("test_that", "testthat")
-expect_equal <- getFromNamespace("expect_equal", "testthat")
-expect_true <- getFromNamespace("expect_true", "testthat")
+box::use(
+  artma / methods / box_plot[box_plot]
+)
 
 
 test_that("box_plot auto-selects study_label over study_id for grouping", {

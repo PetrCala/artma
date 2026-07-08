@@ -1,28 +1,32 @@
-test_that <- getFromNamespace("test_that", "testthat")
-expect_null <- getFromNamespace("expect_null", "testthat")
-expect_equal <- getFromNamespace("expect_equal", "testthat")
-expect_error <- getFromNamespace("expect_error", "testthat")
-expect_true <- getFromNamespace("expect_true", "testthat")
-expect_false <- getFromNamespace("expect_false", "testthat")
+box::use(
+  testthat[
+    expect_equal,
+    expect_error,
+    expect_false,
+    expect_null,
+    expect_true,
+    test_that
+  ]
+)
 
 # Shared option set for reconcile tests <U+2014> no file persistence, minimal verbosity
 base_opts <- function(extra = list()) {
   utils::modifyList(
     list(
-      "artma.data.colnames.obs_id"   = NA_character_,
-      "artma.data.colnames.effect"   = "effect_size",
-      "artma.data.colnames.n_obs"    = NA_character_,
+      "artma.data.colnames.obs_id" = NA_character_,
+      "artma.data.colnames.effect" = "effect_size",
+      "artma.data.colnames.n_obs" = NA_character_,
       "artma.data.colnames.precision" = NA_character_,
-      "artma.data.colnames.reg_dof"  = NA_character_,
-      "artma.data.colnames.se"       = "se_col",
+      "artma.data.colnames.reg_dof" = NA_character_,
+      "artma.data.colnames.se" = "se_col",
       "artma.data.colnames.study_id" = "study",
       "artma.data.colnames.study_size" = NA_character_,
-      "artma.data.colnames.t_stat"   = NA_character_,
+      "artma.data.colnames.t_stat" = NA_character_,
       "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study"),
-      "artma.data.config"            = list(),
-      "artma.temp.file_name"         = NULL,
-      "artma.temp.dir_name"          = NULL,
-      "artma.verbose"                = 1L
+      "artma.data.config" = list(),
+      "artma.temp.file_name" = NULL,
+      "artma.temp.dir_name" = NULL,
+      "artma.verbose" = 1L
     ),
     extra
   )
@@ -101,8 +105,8 @@ test_that("reconcile_schema auto: skips without error when no colnames are confi
 
   withr::with_options(
     base_opts(list(
-      "artma.data.colnames.effect"   = NA_character_,
-      "artma.data.colnames.se"       = NA_character_,
+      "artma.data.colnames.effect" = NA_character_,
+      "artma.data.colnames.se" = NA_character_,
       "artma.data.colnames.study_id" = NA_character_,
       "artma.data.expected_schema_columns" = NA_character_
     )),
@@ -265,15 +269,15 @@ test_that("reconcile then standardize: produces df with standard column names", 
 
   # Full colnames map covering all required columns
   full_opts <- list(
-    "artma.data.colnames.effect"   = "effect_size",
-    "artma.data.colnames.se"       = "se_col",
+    "artma.data.colnames.effect" = "effect_size",
+    "artma.data.colnames.se" = "se_col",
     "artma.data.colnames.study_id" = "study",
-    "artma.data.colnames.n_obs"    = "n_obs",
+    "artma.data.colnames.n_obs" = "n_obs",
     "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study", "n_obs"),
-    "artma.data.config"            = list(),
-    "artma.temp.file_name"         = NULL,
-    "artma.temp.dir_name"          = NULL,
-    "artma.verbose"                = 1L
+    "artma.data.config" = list(),
+    "artma.temp.file_name" = NULL,
+    "artma.temp.dir_name" = NULL,
+    "artma.verbose" = 1L
   )
 
   withr::with_options(

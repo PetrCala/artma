@@ -22,6 +22,10 @@ box::use(
   ]
 )
 
+# Deterministic RNG so assertions on matrix rank and collinearity detection
+# do not depend on whatever consumed the RNG stream earlier on this worker.
+set.seed(42)
+
 # Test data setup
 make_test_df <- function() {
   data.frame(
