@@ -73,6 +73,59 @@ indentation_guard_clause_linter <- function(indent = 2L, ...) {
   )
 }
 
+#' Disallow Literal `<U+XXXX>` Escape Text
+#'
+#' Flags literal `<U+XXXX>` sequences in source files. These appear when a file containing
+#' real UTF-8 characters is rewritten under the C locale (e.g. by styler or an R session
+#' without a UTF-8 locale), mangling the characters into escape text. Restore the intended
+#' character or use an ASCII equivalent instead.
+#'
+#' @importFrom lintr Linter Lint
+#' @keywords internal
+unicode_escape_linter <- function() {
+  lintr::Linter(
+    function(source_expression) {
+      file_lines <- source_expression$file_lines
+      pattern <- "<U\\+[0-9A-Fa-f]{4,6}>"
+
+      lints <- list()
+
+      for (idx in seq_along(file_lines)) {
+        line <- file_lines[[idx]]
+
+        if (is.na(line)) {
+          next
+        }
+
+        match_start <- regexpr(pattern, line)
+
+        if (is.na(match_start) || match_start == -1L) {
+          next
+        }
+
+        line_number <- names(file_lines)[[idx]]
+        line_number <- if (is.null(line_number) || !nzchar(line_number)) idx else as.integer(line_number)
+
+        lints[[length(lints) + 1L]] <- lintr::Lint(
+          filename = source_expression$filename,
+          line_number = line_number,
+          column_number = as.integer(match_start),
+          type = "error",
+          message = paste(
+            "Literal '<U+XXXX>' escape text found, likely from a rewrite under the C locale.",
+            "Restore the intended character or replace it with an ASCII equivalent."
+          ),
+          line = line
+        )
+      }
+
+      lints
+    },
+    name = "unicode_escape_linter",
+    linter_level = "file"
+  )
+}
+
 #' Disallow `dir.create()` Function Calls
 #'
 #' This linter flags any usage of the [dir.create()] function, which is not permitted in the codebase.
