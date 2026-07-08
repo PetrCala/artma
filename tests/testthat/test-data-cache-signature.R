@@ -113,8 +113,7 @@ test_that("prepare_data hits the cache on a second identical run", {
   box::use(
     artma / data / index[prepare_data_impl],
     artma / data / cache_signatures[build_data_cache_signature],
-    artma / libs / infrastructure / cache[cache_cli_runner],
-    artma / data_config / resolve[invalidate_df_cache]
+    artma / libs / infrastructure / cache[cache_cli_runner]
   )
 
   FIXTURES$local_cli_silence()
@@ -125,9 +124,8 @@ test_that("prepare_data hits the cache on a second identical run", {
 
   withr::local_options(pipeline_options(tmp_file))
 
-  invalidate_df_cache()
-  withr::defer(invalidate_df_cache())
-
+  # The config df cache keys on path + mtime, so entries left behind by other
+  # tests cannot collide with this test's temp file.
   runs <- 0L
   counted_impl <- function() {
     runs <<- runs + 1L
@@ -149,13 +147,11 @@ test_that("prepare_data hits the cache on a second identical run", {
   expect_equal(runs, 1L)
 
   # Run 2 with identical inputs must be a cache hit, not a recomputation.
-  invalidate_df_cache()
   second <- testthat::capture_messages(df_second <- runner())
   expect_equal(runs, 1L)
   expect_identical(df_first, df_second)
 
   # Changing a user-authored preprocessing option must cause a cache miss.
-  invalidate_df_cache()
   withr::local_options(list("artma.data.na_handling" = "median"))
   testthat::capture_messages(runner())
   expect_equal(runs, 2L)
