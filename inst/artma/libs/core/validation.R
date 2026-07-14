@@ -21,14 +21,16 @@ parse_condition <- function(cond_expr, env = parent.frame()) {
   # Note: 'cond_expr' might already be a call if using e.g. substitute(...)
   if (is.character(cond_expr)) {
     cond_call <- tryCatch(rlang::parse_expr(cond_expr), error = function(e) NULL)
-    if (is.null(cond_call))
+    if (is.null(cond_call)) {
       return(paste0("Condition did not hold: ", cond_expr))
+    }
   } else {
     cond_call <- cond_expr
   }
 
-  if (!rlang::is_call(cond_call))
+  if (!rlang::is_call(cond_call)) {
     return(paste0("Condition did not hold: ", deparse(cond_expr)))
+  }
 
   # Extract the function name and argument
   fn_name <- as.character(cond_call[[1]]) # e.g. "is.character"
@@ -134,23 +136,6 @@ validate_columns <- function(df, columns) {
   }
 }
 
-#' @title Validate value type
-#' @description A helper function that checks if a value matches the expected type. Returns TRUE if it does, and FALSE otherwise.
-#' @param value [any] The value to check
-#' @param expected_type *\[character\]* The expected type.
-#'  *\[logical\]* TRUE if the value matches the expected type, FALSE otherwise.
-#' @export
-validate_value_type <- function(value, expected_type) {
-  switch(expected_type,
-    character = is.character(value),
-    numeric   = is.numeric(value),
-    integer   = is.numeric(value) && (floor(value) == value),
-    logical   = is.logical(value),
-    # Otherwise, we default to TRUE (or you can flag as unvalidated)
-    TRUE
-  )
-}
-
 #' @title Assert Conditions
 #' @description This function asserts that a condition is TRUE. If the condition is FALSE,
 #' the function aborts with an appropriate error message including the failed
@@ -184,20 +169,6 @@ assert_options_template_exists <- function(path) {
   invisible(NULL)
 }
 
-#' Check if x is a vector and either empty or all characters
-#'
-#' @param x [any] The object to check
-#' @param throw_error *\[logical\]* Whether to throw an error if the check fails
-#' @return *\[boolean\]* A boolean indicating whether or not x is a character vector or empty
-#' @export
-is_char_vector_or_empty <- function(x, throw_error = FALSE) {
-  is_empty <- rlang::is_empty(x)
-  if (throw_error && !is_empty) {
-    cli::cli_abort("The object is not a character vector or empty")
-  }
-  is_empty
-}
-
 #' @title Check if an option path is valid
 #' @description Check if an option path is valid
 #' @param opt_path *\[character\]* The option path to check.
@@ -209,8 +180,9 @@ is_char_vector_or_empty <- function(x, throw_error = FALSE) {
 #' validate_opt_path(NULL) # passes
 #' @export
 validate_opt_path <- function(opt_path) {
-  if (is.null(opt_path))
+  if (is.null(opt_path)) {
     return(invisible(NULL))
+  }
   if (!is.character(opt_path)) {
     cli::cli_abort("The option path must be a character string.")
   }

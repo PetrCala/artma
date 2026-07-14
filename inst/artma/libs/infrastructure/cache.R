@@ -42,35 +42,6 @@ print.cached_artifact <- function(x, ...) {
 #' @method print cached_artifact
 NULL
 
-#' @title Find the most-recent console-printing call from the cli package
-#' @description Find the most-recent console-printing call from the cli package
-#' @param calls *\[list\]* The calls to inspect
-#' @param add_pkg_prefix *\[logical\]* Whether to add the package prefix
-#' @return *\[character\]* A character scalar like "cli::inform", or NA_character_ if no such call is on the stack.
-last_cli_print <- function(calls = sys.calls(), add_pkg_prefix = FALSE) {
-  box::use(artma / modules / utils[get_pkg_exports])
-
-  funs <- get_pkg_exports("cli")
-
-  ## Examine the stack from the innermost frame outward
-  for (call in rev(calls)) {
-    head <- call[[1L]] # the function part of the call
-
-    ## Detect namespaced calls of the form cli::something()
-    if (is.call(head) && identical(head[[1L]], quote(`::`))) {
-      pkg <- as.character(head[[2L]])
-      fun <- as.character(head[[3L]])
-
-      if (identical(pkg, "cli") && fun %in% funs) {
-        out <- if (add_pkg_prefix) paste0(pkg, "::", fun) else fun
-        return(out)
-      }
-    }
-  }
-
-  NA_character_
-}
-
 
 call_cli_default <- function(msg) {
   fallback <- base::get0("cli_server_default", envir = asNamespace("cli"), inherits = FALSE)
@@ -416,7 +387,6 @@ cache_cli <- function(fun,
     meta <- list(
       timestamp = Sys.time(),
       extra     = extra_keys,
-      session   = utils::sessionInfo(),
       cache     = list(max_age = max_age)
     )
     new_artifact(res$value, res$log, meta)
@@ -560,7 +530,10 @@ cache_cli <- function(fun,
 #'   memoises results through `cache_cli()`.
 #' @examples
 #' build_signature <- function(data) list(rows = nrow(data))
-#' slow_identity <- function(data) { Sys.sleep(0.1); data }
+#' slow_identity <- function(data) {
+#'   Sys.sleep(0.1)
+#'   data
+#' }
 #'
 #' cached <- cache_cli_runner(
 #'   slow_identity,
@@ -668,7 +641,6 @@ box::export(
   cache_cli_runner,
   capture_cli,
   get_artifact,
-  last_cli_print,
   new_artifact,
   print.cached_artifact,
   replay_log
