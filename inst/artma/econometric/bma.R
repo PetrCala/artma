@@ -113,94 +113,6 @@ get_bma_formula <- function(input_var, input_data, get_var_vector_instead = FALS
 }
 
 
-#' Test the Variance Inflation Factor of a Linear Regression Model
-#'
-#' @description
-#' Tests the Variance Inflation Factor (VIF) of a linear regression model.
-#' It takes three arguments: input_var, input_data, and print_all_coefs. The function tests
-#' whether the input_var is either a vector or a formula. If it is a vector of variables, it
-#' transforms it into a formula. Then, it calculates the VIF coefficients using the vif function
-#' from the car package. If print_all_coefs is set to TRUE, the function prints all the VIF
-#' coefficients. If any of the VIF coefficients is larger than 10, the function prints a message
-#' indicating the variables with a high VIF. Otherwise, it prints a message indicating that all
-#' variables have a VIF lower than 10. Finally, the function returns the VIF coefficients as a
-#' numeric vector.
-#'
-#' @note If you input the formula, all data for these variables must be a vector with at least some variation.
-#' Otherwise the function will return an error.
-#'
-#' @param input_var *\[character | formula\]* One of - vector of variable names, formula. If it is a vector,
-#' the function transforms the input into a formula.
-#' @param input_data *\[data.frame\]* Data to run the test on.
-#' @param print_all_coefs *\[logical\]* A logical value indicating whether to print all the VIF coefficients
-#' into the console. Defaults to FALSE.
-#' @param verbose *\[logical\]* If TRUE, print out the information about the output. Defaults to TRUE.
-#'
-#' @return A numeric vector with the VIF coefficients.
-#'
-#' @export
-run_vif_test <- function(input_var, input_data, print_all_coefs = FALSE, verbose = TRUE) {
-  box::use(
-    artma / libs / core / validation[validate],
-    artma / libs / core / utils[get_verbosity]
-  )
-
-  validate(
-    any(
-      inherits(input_var, "formula"),
-      is.vector(input_var)
-    ),
-    is.data.frame(input_data),
-    is.logical(print_all_coefs),
-    is.logical(verbose)
-  )
-
-  if (!requireNamespace("car", quietly = TRUE)) {
-    cli::cli_abort("Package {.pkg car} is required for BMA collinearity checks. Install with: install.packages('car')")
-  }
-
-  if (is.vector(input_var)) {
-    bma_formula <- get_bma_formula(input_var, input_data)
-  } else {
-    const_cols <- vapply(input_data, function(col) length(unique(col)) > 1, logical(1))
-    if (!all(const_cols)) {
-      cli::cli_abort("All data must have at least some variation.")
-    }
-    bma_formula <- input_var
-  }
-
-  bma_reg_test <- stats::lm(formula = bma_formula, data = input_data)
-
-  if (any(is.na(stats::coef(bma_reg_test)))) {
-    problematic_vars <- names(stats::coef(bma_reg_test))[which(is.na(stats::coef(bma_reg_test)))]
-    cli::cli_abort(c(
-      "Aliased coefficients in a suggested BMA model.",
-      "i" = "There are some aliased coefficients in one of the suggested BMA model configurations.",
-      "i" = "Check colinearity in the data, remove the correlated variables, or try changing the model.",
-      "i" = "These are the problematic variables for the model: {.val {problematic_vars}}",
-      "i" = "Note that the problem may lie elsewhere too, so removing these variables may not necessarily help."
-    ))
-  }
-
-  vif_coefs <- car::vif(bma_reg_test)
-
-  if (verbose && get_verbosity() >= 3) {
-    if (print_all_coefs) {
-      cli::cli_alert_info("Variance Inflation Coefficients:")
-      cli::cat_print(vif_coefs)
-    }
-    if (any(vif_coefs > 10)) {
-      coefs_above_10_vif <- names(vif_coefs)[vif_coefs > 10]
-      cli::cli_alert_warning("These variables have a VIF larger than 10: {.val {coefs_above_10_vif}}")
-    } else {
-      cli::cli_alert_success("All BMA variables have a VIF lower than 10.")
-    }
-  }
-
-  vif_coefs
-}
-
-
 #' Search for an optimal Bayesian Model Averaging formula
 #'
 #' @description
@@ -647,7 +559,6 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
 box::export(
   handle_bma_params,
   get_bma_formula,
-  run_vif_test,
   find_optimal_bma_formula,
   get_bma_data,
   run_bma,

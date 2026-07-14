@@ -6,9 +6,6 @@
 .dummy_use_rlang <- function() rlang::is_true(TRUE)
 
 #' @keywords internal
-.dummy_use_metafor <- function() metafor::rma(yi = 1:10, vi = 1:10)
-
-#' @keywords internal
 .dummy_use_memoise <- function() memoise::memoise(identity)
 
 

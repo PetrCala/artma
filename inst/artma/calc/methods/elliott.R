@@ -12,59 +12,6 @@ simulate_cdfs_block_cpp <- function(eps_block) {
   .Call("_artma_simulate_cdfs_block_cpp", PACKAGE = "artma", eps_block)
 }
 
-simulate_cdfs <- function(iterations = 10000, grid_points = 10000, show_progress = TRUE) {
-  use_cpp <- isTRUE(getOption("artma.methods.p_hacking_tests.simulate_cdfs.use_cpp", TRUE))
-  if (!use_cpp) {
-    return(simulate_cdfs_parallel(iterations, grid_points, show_progress = show_progress))
-  }
-
-  verbosity <- getOption("artma.verbose", 3)
-  show_pb <- show_progress && verbosity >= 3 && iterations >= 1000
-
-  if (!show_pb) {
-    res <- tryCatch(
-      simulate_cdfs_cpp(iterations, grid_points),
-      error = function(e) NULL
-    )
-    if (!is.null(res)) {
-      return(res)
-    }
-    return(simulate_cdfs_parallel(iterations, grid_points, show_progress = show_progress))
-  }
-
-  chunk_size <- as.integer(getOption("artma.methods.p_hacking_tests.simulate_cdfs.chunk_size", 512L))
-  chunk_size <- max(1L, chunk_size)
-  bb_sup <- numeric(iterations)
-  done <- 0L
-
-  cli::cli_inform("Pre-computing critical values for LCM test via Brownian bridge simulations")
-  Sys.sleep(0.1)
-  cli::cli_progress_bar(
-    "Simulating {iterations} iterations",
-    total = iterations,
-    format = "{cli::pb_spin} {cli::pb_current}/{cli::pb_total} | ETA: {cli::pb_eta}"
-  )
-
-  while (done < iterations) {
-    k <- min(chunk_size, iterations - done)
-    res <- tryCatch(
-      simulate_cdfs_cpp(k, grid_points),
-      error = function(e) NULL
-    )
-    if (is.null(res)) {
-      cli::cli_progress_done()
-      return(simulate_cdfs_parallel(iterations, grid_points, show_progress = show_progress))
-    }
-    idx <- (done + 1L):(done + k)
-    bb_sup[idx] <- res
-    done <- done + k
-    cli::cli_progress_update(set = done)
-  }
-
-  cli::cli_progress_done()
-  bb_sup
-}
-
 #' Simulate Brownian bridge suprema CDFs used by the LCM test in parallel
 #' @param iterations [integer] Number of simulations.
 #' @param grid_points [integer] Number of grid points per simulation.
@@ -588,7 +535,6 @@ cox_shi_test <- function(Q, ind, p_min, p_max, J, K, use_bounds) {
 box::export(
   format_decimal,
   linspace,
-  simulate_cdfs,
   simulate_cdfs_parallel,
   binomial_test,
   lcm_test,
