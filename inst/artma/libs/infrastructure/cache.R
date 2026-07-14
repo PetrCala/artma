@@ -1,351 +1,161 @@
-#' @title Create a new artifact
-#' @description Create a new artifact
-#' @param value *\[any\]* The value to cache
-#' @param log *\[list\]* The log to cache
-#' @param meta *\[list\]* The meta data to cache
-#' @return `NULL`
-new_artifact <- function(value, log, meta) {
+# Filesystem-backed memoisation for expensive, data-dependent workflows.
+#
+# `cache_cli()` wraps a function so its result is memoised on disk via
+# `memoise`. `cache_cli_runner()` layers stage naming and cache-signature
+# injection on top so callers stay free of caching boilerplate. On a cache
+# hit a single notice is printed; the wrapped function's own CLI output is
+# not replayed.
+
+#' @title Construct a cached artifact
+#' @description Bundle a computed value with the metadata required to reason
+#'   about cache freshness. The artifact is what `memoise` stores; callers only
+#'   ever see `artifact$value`.
+#' @param value *\[any\]* The value to cache.
+#' @param meta *\[list\]* Metadata describing the cached value (timestamp,
+#'   extra key material, and the TTL used when it was produced).
+#' @return *\[cached_artifact\]* An S3 object of class `cached_artifact`.
+new_artifact <- function(value, meta = list()) {
   base::structure( # nolint: undesirable_function_linter.
-    list(value = value, log = log, meta = meta),
+    list(value = value, meta = meta),
     class = "cached_artifact"
   )
 }
 
-#' @title Print cached artifact
-#' @description Print cached artifact
-#' @param x *\[cached_artifact\]* The cached artifact to print
-#' @param ... *\[any\]* Additional arguments
-#' @return `NULL`
+#' @title Print a cached artifact
+#' @description Human-readable summary of a cached artifact, useful when
+#'   inspecting the on-disk cache during debugging.
+#' @param x *\[cached_artifact\]* The cached artifact to print.
+#' @param ... *\[any\]* Ignored.
+#' @return The artifact, invisibly.
 print.cached_artifact <- function(x, ...) {
   cli::cli_h3("Artifact")
-
   cli::cli_text("{.bold Value:} {.val {x$value}}")
-  cli::cli_text("{.bold Log:} ({length(x$log)} entries)")
-
-  if (length(x$log) > 0) {
-    msgs <- vapply(x$log, `[[`, "", "message")
-    cli::cli_bullets(msgs)
-  }
-
   cli::cli_text("{.bold Meta:}")
   for (line in utils::capture.output(utils::str(x$meta, give.attr = FALSE, comp.str = ""))) {
     cli::cli_text(line)
   }
-
   invisible(x)
 }
 
-# -------------------------------------------------------------------------
-# explicitly register the S3 method (needed when pkg not attached)
-# -------------------------------------------------------------------------
-#' @export
-#' @method print cached_artifact
-NULL
+#' @title Resolve the effective cache TTL
+#' @description Normalise the `max_age` argument, sourcing the default from the
+#'   `artma.cache.max_age` option when it is `NULL`. Invalid values fall back to
+#'   `Inf` (no time-based invalidation); negative values collapse to `0`.
+#' @param max_age *\[numeric|NULL\]* The requested maximum age in seconds.
+#' @return *\[numeric\]* A single, sanitised TTL in seconds.
+#' @keywords internal
+resolve_max_age <- function(max_age) {
+  if (is.null(max_age)) {
+    max_age <- getOption("artma.cache.max_age", 3600)
+  }
+  if (!is.numeric(max_age) || length(max_age) != 1L || is.na(max_age)) {
+    return(Inf)
+  }
+  if (max_age < 0) {
+    return(0)
+  }
+  max_age
+}
 
+#' @title Create the default on-disk cache
+#' @description Build a filesystem cache rooted at `PATHS$DIR_USR_CACHE`,
+#'   creating the directory if necessary.
+#' @return *\[memoise::cache_filesystem\]* A filesystem-backed cache.
+#' @keywords internal
+default_cache <- function() {
+  box::use(artma / paths[PATHS])
+  cache_dir <- PATHS$DIR_USR_CACHE
+  if (!dir.exists(cache_dir)) {
+    dir.create(cache_dir, recursive = TRUE)
+  }
+  memoise::cache_filesystem(cache_dir)
+}
 
-call_cli_default <- function(msg) {
-  fallback <- base::get0("cli_server_default", envir = asNamespace("cli"), inherits = FALSE)
+#' @title Evaluate a cache invalidation predicate
+#' @description Run `invalidate_fun` against the call arguments, treating any
+#'   error as "do not invalidate" so a faulty predicate can never crash a call.
+#' @param invalidate_fun *\[function\]* The predicate to evaluate.
+#' @param dots *\[list\]* The arguments captured from the current call.
+#' @return *\[logical\]* `TRUE` when the cache should be bypassed.
+#' @keywords internal
+should_invalidate <- function(invalidate_fun, dots) {
+  tryCatch(
+    isTRUE(rlang::exec(invalidate_fun, !!!dots)),
+    error = function(err) {
+      cli::cli_warn(
+        sprintf("cache invalidator failed and was ignored: %s", conditionMessage(err))
+      )
+      FALSE
+    }
+  )
+}
 
-  if (is.function(fallback)) {
-    fallback(msg)
+#' @title Test whether a cached artifact has expired
+#' @description Compare an artifact's timestamp against a TTL.
+#' @param art *\[cached_artifact\]* The artifact to test.
+#' @param max_age *\[numeric\]* The TTL in seconds.
+#' @return *\[logical\]* `TRUE` when the artifact is older than `max_age`.
+#' @keywords internal
+artifact_expired <- function(art, max_age) {
+  age <- tryCatch(
+    as.numeric(difftime(Sys.time(), art$meta$timestamp, units = "secs")),
+    error = function(err) NA_real_
+  )
+  !is.na(age) && age > max_age
+}
+
+#' @title Announce a cache hit
+#' @description Print a single short notice when cached results are reused,
+#'   respecting the configured verbosity level.
+#' @param extra_keys *\[list\]* Key material; a `stage` entry names the workflow
+#'   in the notice.
+#' @return `NULL`, invisibly.
+#' @keywords internal
+notify_cache_hit <- function(extra_keys) {
+  box::use(artma / libs / core / utils[get_verbosity])
+  if (get_verbosity() < 3) {
     return(invisible(NULL))
   }
-
-  message_text <- NULL
-
-  if (is.list(msg) && !is.null(msg$message)) {
-    message_text <- msg$message
+  stage <- if (is.list(extra_keys)) extra_keys$stage else NULL
+  if (is.character(stage) && length(stage) == 1L && nzchar(stage)) {
+    cli::cli_alert_info("Using cached results for {stage}")
   } else {
-    message_text <- tryCatch(conditionMessage(msg), error = function(err) NULL)
+    cli::cli_alert_info("Using cached results")
   }
-
-  if (!is.null(message_text) && length(message_text) > 0L) {
-    cli::cli_inform(paste(message_text, collapse = "\n"))
-  }
-
   invisible(NULL)
 }
 
-
-sanitize_replay_message <- function(message_text) {
-  if (is.null(message_text) || length(message_text) == 0L) {
-    return(character())
-  }
-
-  message_text <- paste(message_text, collapse = "\n")
-  message_text <- gsub("\r", "", message_text, fixed = TRUE)
-
-  lines <- strsplit(message_text, "\n", fixed = TRUE)[[1]]
-  if (length(lines) == 0L) {
-    return(character())
-  }
-
-  lines <- sub("\\s+$", "", lines, perl = TRUE)
-  lines <- sub("^\\s{20,}", "", lines, perl = TRUE)
-  lines[nzchar(trimws(lines))]
-}
-
-
-sanitize_replay_args <- function(args) {
-  if (!is.list(args)) {
-    return(args)
-  }
-
-  args$id <- NULL
-  args$pid <- NULL
-  args$timestamp <- NULL
-  args
-}
-
-
-#' @title Evaluate an expression, trapping *every* cli call it makes
-#' @description Evaluate an expression, trapping *every* cli call it makes
-#' @param expr *\[expression\]* The expression to evaluate
-#' @param emit *\[logical\]* Should captured CLI output be emitted to the
-#'   console while recording? Defaults to `TRUE`. When `FALSE`, messages are
-#'   logged silently for later replay.
-#' @return *\[list\]* A list with the following elements:
-#'   * **value**: the value of the evaluated expression
-#'   * **log**: a list of replayable entries. Each entry contains a
-#'     `kind` describing how it should be replayed (currently either the
-#'     string "condition" for `cli_message` signals or "call" for direct
-#'     `cli::cat_*()` helpers) alongside the metadata required to replay it.
-#'
-#' The expression's own value is returned unchanged in `value`, while CLI
-#' output continues to be emitted to the console during the initial run.
-#'
-capture_cli <- function(expr, emit = TRUE) {
-  box::use(artma / modules / utils[get_pkg_exports])
-
-  expr <- substitute(expr) # preserve NSE
-  emit <- isTRUE(emit)
-  logs <- list()
-
-  pkg_funs <- get_pkg_exports("cli")
-  cat_helpers <- pkg_funs[grepl("^cat_", pkg_funs)]
-  ns_cli <- asNamespace("cli") # cli’s namespace environment
-  originals <- list() # to keep the real helpers
-
-  inside_default_handler <- FALSE
-  cat_depth <- 0L
-
-  ## ------------------------------------------------------------------
-  ## 1. Monkey-patch every requested cat_*() helper
-  ## ------------------------------------------------------------------
-  make_wrapper <- function(orig_fun, fun_name) {
-    force(orig_fun)
-    force(fun_name)
-
-    function(...) {
-      args <- rlang::list2(...)
-
-      if (inside_default_handler || cat_depth > 0L) {
-        return(rlang::exec(orig_fun, !!!args))
-      }
-
-      cat_depth <<- cat_depth + 1L
-      on.exit(cat_depth <<- cat_depth - 1L, add = TRUE)
-
-      res <- if (emit) {
-        rlang::exec(orig_fun, !!!args)
-      } else {
-        utils::capture.output(res <- rlang::exec(orig_fun, !!!args))
-        res
-      }
-
-      logs <<- append(logs, list(list(
-        kind = "call",
-        namespace = "cli",
-        fun = fun_name,
-        args = args
-      )))
-
-      res
-    }
-  }
-
-  for (fn in cat_helpers) {
-    if (exists(fn, envir = ns_cli, inherits = FALSE)) {
-      originals[[fn]] <- get(fn, envir = ns_cli)
-      unlockBinding(fn, ns_cli)
-      assign(fn, make_wrapper(originals[[fn]], fn), envir = ns_cli)
-      lockBinding(fn, ns_cli)
-    }
-  }
-
-  ## Always restore originals
-  on.exit(
-    {
-      for (fn in names(originals)) {
-        unlockBinding(fn, ns_cli)
-        assign(fn, originals[[fn]], envir = ns_cli)
-        lockBinding(fn, ns_cli)
-      }
-    },
-    add = TRUE
-  )
-
-  ## -----------------------------------------------------------
-  ##  2. Custom default handler: record + emit the message
-  ## -----------------------------------------------------------
-  previous_handler <- getOption("cli.default_handler")
-  options(cli.default_handler = function(msg) {
-    old_flag <- inside_default_handler
-    inside_default_handler <<- TRUE
-    on.exit(inside_default_handler <<- old_flag, add = TRUE)
-
-    rendered <- tryCatch(
-      cli:::cli__fmt(list(msg), collapse = TRUE, strip_newline = TRUE),
-      error = function(err) NULL
-    )
-    fallback_message <- tryCatch(conditionMessage(msg), error = function(err) "")
-
-    logs <<- append(logs, list(list(
-      kind = "condition",
-      namespace = "cli",
-      cli_type = as.character(msg$type)[1],
-      args = rlang::duplicate(msg$args, shallow = FALSE),
-      message = if (is.null(rendered)) fallback_message else rendered
-    )))
-
-    if (emit) {
-      if (is.function(previous_handler)) {
-        previous_handler(msg)
-      } else {
-        call_cli_default(msg)
-      }
-    }
-  })
-
-  on.exit(options(cli.default_handler = previous_handler), add = TRUE)
-
-  value <- eval(expr, parent.frame())
-
-  list(value = value, log = logs)
-}
-
-#' @title Replay log
-#' @description Replay log
-#' @param log *\[list\]* The log produced by [capture_cli()].
-#' @param ... Additional arguments forwarded to replayed CLI helper calls
-#'   (i.e. entries created from `cli::cat_*()` helpers).
-#' @return `NULL`
-#' @examples
-#' \dontrun{
-#' # Run this in a regular R session _after_ you've used any cache_cli wrapper
-#' cache <- memoise::cache_filesystem(rappdirs::user_cache_dir("artma"))
-#' keys <- cache$keys() # hashes of all artifacts
-#' art <- cache$get(keys[[1]]) # read the first one
-#'
-#' art$value # <- model, plot, etc.
-#' art$log # <- list of stored cli messages and helper calls
-#'
-#' # To watch the console story again
-#' replay_log(art$log)
-#' }
-replay_log <- function(log, ..., .envir = parent.frame()) {
-  ns_cli <- asNamespace("cli")
-  extra_args <- rlang::list2(...)
-
-  for (entry in log) {
-    if (identical(entry$kind, "condition")) {
-      msg_lines <- sanitize_replay_message(entry$message)
-      if (rlang::is_empty(msg_lines)) {
-        next
-      }
-
-      msg <- list(
-        type = entry$cli_type,
-        args = sanitize_replay_args(entry$args),
-        message = msg_lines
-      )
-
-      tryCatch(
-        call_cli_default(msg),
-        error = function(err) {
-          kind <- entry$cli_type
-          if (is.null(kind) || length(kind) == 0L) kind <- "unknown"
-          cli::cli_warn(
-            sprintf(
-              "Failed to replay CLI condition of type '%s': %s",
-              kind,
-              conditionMessage(err)
-            )
-          )
-          cli::cli_inform(paste(msg_lines, collapse = "\n"))
-        }
-      )
-      next
-    }
-
-    if (identical(entry$kind, "call")) {
-      if (!exists(entry$fun, envir = ns_cli, inherits = FALSE)) {
-        cli::cli_warn(
-          sprintf("Cannot replay CLI helper '%s' because it is not available.", entry$fun),
-        )
-        next
-      }
-
-      fn <- get(entry$fun, envir = ns_cli)
-      args <- c(entry$args, extra_args)
-      rlang::exec(fn, !!!args)
-      next
-    }
-
-    cli::cli_warn("Unrecognised cache log entry; skipping.")
-  }
-
-  invisible(NULL)
-}
-
-#' @title Cache cli
-#' @description Wrap a function so that its results (including the CLI story it
-#'   produces) are cached and replayed on subsequent calls.
+#' @title Cache a function on disk
+#' @description Wrap a function so its results are memoised via `memoise`. On a
+#'   cache hit a short notice is printed instead of rerunning the function.
 #' @param fun *\[function\]* The function to cache.
-#' @param extra_keys *\[list\]* Additional key material appended to the memoise
-#'   cache key.
-#' @param cache *\[memoise::cache_filesystem\]* The cache to use. Defaults to
-#'   the user cache directory.
+#' @param extra_keys *\[list\]* Additional key material stored in the artifact
+#'   metadata. A `stage` entry, when present, names the workflow in the cache
+#'   hit notice.
+#' @param cache *\[memoise::cache_filesystem\]* The cache to use. Defaults to a
+#'   filesystem cache under `PATHS$DIR_USR_CACHE`.
 #' @param invalidate_fun *\[function\]* Optional predicate evaluated on each
-#'   call to decide whether the cached value should be bypassed and recomputed.
-#' @param max_age *\[numeric\]* Maximum age of cached artifacts in seconds.
-#'   Use `Inf` to disable time-based invalidation. When `NULL` (the default) the
-#'   value is sourced from the `artma.cache.max_age` option (template key
-#'   `cache.max_age`), falling back to 3600 seconds (1 hour). The fallback is
-#'   deliberately finite: cache keys include the package version but not the
-#'   source code, so two development builds sharing a version would otherwise
-#'   serve each other's stale artifacts indefinitely.
-#' @return The wrapped function.
+#'   call to decide whether the cached value should be dropped and recomputed.
+#' @param max_age *\[numeric\]* Maximum age of cached artifacts in seconds. Use
+#'   `Inf` to disable time-based invalidation. When `NULL` (the default) the
+#'   value is sourced from the `artma.cache.max_age` option, falling back to
+#'   3600 seconds (1 hour). The fallback is deliberately finite: cache keys
+#'   include the package version but not the source code, so two development
+#'   builds sharing a version would otherwise serve each other's stale
+#'   artifacts indefinitely.
+#' @return *\[function\]* The wrapped function. When caching is disabled via the
+#'   `artma.cache.use_cache` option, `fun` is returned unchanged.
 #' @examples
 #' \dontrun{
-#' # real work here: bookended by cli alerts but not memoised itself
 #' .run_models_impl <- function(df, formula, seed = 123) {
-#'   cli::cli_alert("Starting model fit...")
-#'
 #'   set.seed(seed)
-#'   mod <- stats::lm(formula, data = df)
-#'
-#'   cli::cli_alert_success("Done.")
-#'   list(
-#'     model = mod,
-#'     tidy = broom::tidy(mod),
-#'     glance = broom::glance(mod)
-#'   )
+#'   stats::lm(formula, data = df)
 #' }
 #'
-#' # memoised, log-aware version exported to users
 #' run_models <- cache_cli(
 #'   .run_models_impl,
-#'   extra_keys = list(pkg_ver = utils::packageVersion("yourpkg"))
+#'   extra_keys = list(pkg_ver = utils::packageVersion("artma"))
 #' )
-#'
-#' # get the artifact
-#' art <- get_artifact(cache, key)
-#' art$value # <- model, plot, etc.
-#' art$log # <- list of stored cli conditions
-#'
-#' # To watch the console story again
-#' replay_log(art$log)
 #' }
 cache_cli <- function(fun,
                       extra_keys = list(),
@@ -354,158 +164,68 @@ cache_cli <- function(fun,
                       max_age = NULL) {
   base::force(fun) # lock the original function inside the closure
 
-  if (is.null(max_age)) {
-    max_age <- getOption("artma.cache.max_age", 3600)
-  }
-
-  if (!is.numeric(max_age) || length(max_age) != 1L || is.na(max_age)) {
-    max_age <- Inf
-  }
-
-  if (max_age < 0) {
-    max_age <- 0
-  }
+  max_age <- resolve_max_age(max_age)
 
   if (!getOption("artma.cache.use_cache", TRUE)) {
     return(fun)
   }
 
-  # pick / create the cache --------------------------------------------------
   if (is.null(cache)) {
-    box::use(artma / paths[PATHS])
-    cache_dir <- PATHS$DIR_USR_CACHE
-    if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
-    cache <- memoise::cache_filesystem(cache_dir)
+    cache <- default_cache()
   }
 
+  # Tracks whether the worker actually ran, so the wrapper can tell a genuine
+  # cache hit (worker skipped by memoise) from a cold computation.
   worker_state <- new.env(parent = emptyenv())
 
-  ## The worker that actually does the heavy lifting --------------------------
   worker <- function(...) {
     worker_state$executed <- TRUE
-    on.exit(worker_state$quiet <- FALSE, add = TRUE)
-
-    emit_cli <- !isTRUE(worker_state$quiet)
-    res <- capture_cli(fun(...), emit = emit_cli)
+    value <- fun(...)
     meta <- list(
       timestamp = Sys.time(),
-      extra     = extra_keys,
-      cache     = list(max_age = max_age)
+      extra = extra_keys,
+      cache = list(max_age = max_age)
     )
-    new_artifact(res$value, res$log, meta)
+    new_artifact(value, meta)
   }
 
-  ## Memoise that worker ------------------------------------------------------
   worker_memoised <- memoise::memoise(worker, cache = cache)
   drop_worker_cache <- memoise::drop_cache(worker_memoised)
 
-  ## The *public* wrapper that callers will see ------------------------------
   function(...) {
     dots <- rlang::list2(...)
     worker_state$executed <- FALSE
 
-    if (!is.null(invalidate_fun)) {
-      should_invalidate <- FALSE
-      if (is.function(invalidate_fun)) {
-        should_invalidate <- tryCatch(
-          isTRUE(rlang::exec(invalidate_fun, !!!dots)),
-          error = function(err) {
-            cli::cli_warn(
-              sprintf(
-                "cache invalidator failed and was ignored: %s",
-                conditionMessage(err)
-              )
-            )
-            FALSE
-          }
-        )
-      }
-
-      if (isTRUE(should_invalidate)) {
-        ## Ensure the predicate truly bypasses the cache by clearing all
-        ## memoised entries; callers can re-populate whatever keys they need.
-        tryCatch(
-          memoise::forget(worker_memoised),
-          error = function(err) {
-            cli::cli_warn(
-              sprintf(
-                "cache invalidator failed to reset memoised state: %s",
-                conditionMessage(err)
-              )
-            )
-          }
-        )
-      }
+    if (is.function(invalidate_fun) && should_invalidate(invalidate_fun, dots)) {
+      tryCatch(
+        memoise::forget(worker_memoised),
+        error = function(err) {
+          cli::cli_warn(
+            sprintf("cache invalidator failed to reset memoised state: %s", conditionMessage(err))
+          )
+        }
+      )
     }
-
-    log_to_replay <- NULL
 
     art <- rlang::exec(worker_memoised, !!!dots)
     cache_hit <- !isTRUE(worker_state$executed)
 
-    if (cache_hit) {
-      log_to_replay <- art$log
-    }
-
-    if (cache_hit && is.finite(max_age)) {
-      art_ts <- art$meta$timestamp
-      age <- tryCatch(
-        as.numeric(difftime(Sys.time(), art_ts, units = "secs")),
-        error = function(err) NA_real_
-      )
-
-      if (!is.na(age) && age > max_age) {
-        old_art <- art
-        log_to_replay <- old_art$log
-        tryCatch(
-          rlang::exec(drop_worker_cache, !!!dots),
-          error = function(err) {
-            cli::cli_warn(
-              sprintf(
-                "Failed to evict stale cache entry: %s",
-                conditionMessage(err)
-              )
-            )
-            FALSE
-          }
-        )
-
-        tryCatch(
-          {
-            worker_state$executed <- FALSE
-            worker_state$quiet <- TRUE
-            art <- rlang::exec(worker_memoised, !!!dots)
-          },
-          error = function(err) {
-            cli::cli_warn(
-              sprintf(
-                "Failed to refresh stale cache entry: %s",
-                conditionMessage(err)
-              )
-            )
-            art <- old_art
-          },
-          finally = {
-            worker_state$quiet <- FALSE
-          }
-        )
-
-        cache_hit <- TRUE
-      }
-    }
-
-    if (cache_hit && length(log_to_replay) > 0L) {
+    if (cache_hit && is.finite(max_age) && artifact_expired(art, max_age)) {
       tryCatch(
-        replay_log(log_to_replay),
+        rlang::exec(drop_worker_cache, !!!dots),
         error = function(err) {
           cli::cli_warn(
-            sprintf(
-              "Failed to replay cached CLI output: %s",
-              conditionMessage(err)
-            )
+            sprintf("Failed to evict stale cache entry: %s", conditionMessage(err))
           )
         }
       )
+      worker_state$executed <- FALSE
+      art <- rlang::exec(worker_memoised, !!!dots)
+      cache_hit <- !isTRUE(worker_state$executed)
+    }
+
+    if (cache_hit) {
+      notify_cache_hit(extra_keys)
     }
 
     art$value
@@ -514,15 +234,15 @@ cache_cli <- function(fun,
 
 #' @title Create a reusable cache_cli-backed runner
 #' @description
-#' Build a memoised wrapper around an implementation function while keeping
-#' the calling surface free from cache-related boilerplate. The helper
-#' introduces a `cache_signature` argument in the memoised layer so additional
-#' cache key components can be injected via `key_builder()` without requiring
-#' the underlying implementation to manage that parameter.
+#' Build a memoised wrapper around an implementation function while keeping the
+#' calling surface free from cache-related boilerplate. The helper introduces a
+#' `cache_signature` argument in the memoised layer so additional cache key
+#' components can be injected via `key_builder()` without requiring the
+#' underlying implementation to manage that parameter.
 #' @param fun *\[function\]* The function to wrap. It may optionally accept a
 #'   `cache_signature` argument.
 #' @param stage *\[character\]* Optional stage label appended to the cached
-#'   artifact metadata.
+#'   artifact metadata and used in the cache hit notice.
 #' @param key_builder *\[function\]* Optional function invoked on every call
 #'   with the same arguments passed to the runner. Its return value is provided
 #'   to `cache_cli()` as the `cache_signature` argument.
@@ -533,10 +253,7 @@ cache_cli <- function(fun,
 #'   memoises results through `cache_cli()`.
 #' @examples
 #' build_signature <- function(data) list(rows = nrow(data))
-#' slow_identity <- function(data) {
-#'   Sys.sleep(0.1)
-#'   data
-#' }
+#' slow_identity <- function(data) data
 #'
 #' cached <- cache_cli_runner(
 #'   slow_identity,
@@ -546,7 +263,7 @@ cache_cli <- function(fun,
 #' )
 #'
 #' cached(iris) # <- first call computes
-#' cached(iris) # <- subsequent call replays cached CLI output
+#' cached(iris) # <- subsequent call reuses the cached result
 cache_cli_runner <- function(fun,
                              stage = NULL,
                              key_builder = NULL,
@@ -622,18 +339,16 @@ cache_cli_runner <- function(fun,
 }
 
 #' @title Get artifact
-#' @description Get artifact
-#' @param cache *\[memoise::cache_filesystem\]* The cache to use
-#' @param key *\[character\]* The key to get
-#' @return *\[cached_artifact\]* The artifact
+#' @description Read the value stored under a cache key. Intended for
+#'   inspecting the on-disk cache during debugging.
+#' @param cache *\[memoise::cache_filesystem\]* The cache to read from.
+#' @param key *\[character\]* The key to read.
+#' @return *\[any\]* The cached value.
 #' @examples
 #' \dontrun{
 #' cache <- memoise::cache_filesystem(rappdirs::user_cache_dir("artma"))
-#' keys <- cache$keys() # hashes of all artifacts
-#' art <- get_artifact(cache, keys[[1]]) # read the first one
-#'
-#' art$value # <- model, plot, etc.
-#' art$log # <- list of stored cli conditions
+#' keys <- cache$keys()
+#' get_artifact(cache, keys[[1]])
 #' }
 get_artifact <- function(cache, key) {
   cache$get(key)$value
@@ -642,9 +357,7 @@ get_artifact <- function(cache, key) {
 box::export(
   cache_cli,
   cache_cli_runner,
-  capture_cli,
   get_artifact,
   new_artifact,
-  print.cached_artifact,
-  replay_log
+  print.cached_artifact
 )
