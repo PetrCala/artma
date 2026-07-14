@@ -105,8 +105,8 @@ sanitize_replay_args <- function(args) {
 #'   console while recording? Defaults to `TRUE`. When `FALSE`, messages are
 #'   logged silently for later replay.
 #' @return *\[list\]* A list with the following elements:
-#'   * **value** – the value of the evaluated expression
-#'   * **log** – a list of replayable entries. Each entry contains a
+#'   * **value**: the value of the evaluated expression
+#'   * **log**: a list of replayable entries. Each entry contains a
 #'     `kind` describing how it should be replayed (currently either the
 #'     string "condition" for `cli_message` signals or "call" for direct
 #'     `cli::cat_*()` helpers) alongside the metadata required to replay it.
@@ -299,8 +299,8 @@ replay_log <- function(log, ..., .envir = parent.frame()) {
 }
 
 #' @title Cache cli
-#' @description Wrap a function so that its results – including the CLI story it
-#'   produces – are cached and replayed on subsequent calls.
+#' @description Wrap a function so that its results (including the CLI story it
+#'   produces) are cached and replayed on subsequent calls.
 #' @param fun *\[function\]* The function to cache.
 #' @param extra_keys *\[list\]* Additional key material appended to the memoise
 #'   cache key.
@@ -310,14 +310,17 @@ replay_log <- function(log, ..., .envir = parent.frame()) {
 #'   call to decide whether the cached value should be bypassed and recomputed.
 #' @param max_age *\[numeric\]* Maximum age of cached artifacts in seconds.
 #'   Use `Inf` to disable time-based invalidation. When `NULL` (the default) the
-#'   value is sourced from the `artma.cache.max_age` option, falling back to
-#'   `Inf`.
+#'   value is sourced from the `artma.cache.max_age` option (template key
+#'   `cache.max_age`), falling back to 3600 seconds (1 hour). The fallback is
+#'   deliberately finite: cache keys include the package version but not the
+#'   source code, so two development builds sharing a version would otherwise
+#'   serve each other's stale artifacts indefinitely.
 #' @return The wrapped function.
 #' @examples
 #' \dontrun{
-#' # real work here — bookended by cli alerts but not memoised itself
+#' # real work here: bookended by cli alerts but not memoised itself
 #' .run_models_impl <- function(df, formula, seed = 123) {
-#'   cli::cli_alert("Starting model fit…")
+#'   cli::cli_alert("Starting model fit...")
 #'
 #'   set.seed(seed)
 #'   mod <- stats::lm(formula, data = df)
@@ -352,7 +355,7 @@ cache_cli <- function(fun,
   base::force(fun) # lock the original function inside the closure
 
   if (is.null(max_age)) {
-    max_age <- getOption("artma.cache.max_age", Inf)
+    max_age <- getOption("artma.cache.max_age", 3600)
   }
 
   if (!is.numeric(max_age) || length(max_age) != 1L || is.na(max_age)) {
@@ -367,7 +370,7 @@ cache_cli <- function(fun,
     return(fun)
   }
 
-  # — pick / create the cache ------------------------------------------------
+  # pick / create the cache --------------------------------------------------
   if (is.null(cache)) {
     box::use(artma / paths[PATHS])
     cache_dir <- PATHS$DIR_USR_CACHE

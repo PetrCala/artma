@@ -107,6 +107,9 @@ test_that("cache_cli memoises value + log and replays on hit", {
 
   FIXTURES$local_cli_silence()
 
+  # unset the TTL option so the artifact records the sourced default (3600)
+  withr::local_options(list(artma.cache.max_age = NULL))
+
   # use an *ephemeral* cache so tests are self-contained
   tmp_cache <- memoise::cache_filesystem(withr::local_tempdir())
 
@@ -145,7 +148,7 @@ test_that("cache_cli memoises value + log and replays on hit", {
   expect_length(art$log, 1L)
   expect_identical(art$log[[1]]$kind, "condition")
   expect_match(art$log[[1]]$message, "Running model", fixed = TRUE)
-  expect_equal(art$meta$cache$max_age, Inf)
+  expect_equal(art$meta$cache$max_age, 3600)
 })
 
 test_that("invalidate_fun forces recomputation for selected arguments", {
@@ -217,6 +220,53 @@ test_that("cache_cli honours max_age to refresh stale artifacts", {
   second <- testthat::capture_messages(cached(5))
   expect_equal(hits, 2L)
   expect_identical(first, second) # recomputation produces the same console story
+})
+
+test_that("cache_cli sources max_age from the artma.cache.max_age option", {
+  box::use(artma / libs / infrastructure / cache[cache_cli, get_artifact])
+
+  FIXTURES$local_cli_silence()
+
+  # an expired TTL from the options namespace forces recomputation
+  withr::local_options(list(artma.cache.max_age = 0))
+
+  tmp_cache <- memoise::cache_filesystem(withr::local_tempdir())
+
+  hits <- 0L
+  tracked <- function(x) {
+    hits <<- hits + 1L
+    cli::cli_alert_success("call {hits}")
+    x
+  }
+
+  cached <- cache_cli(tracked, cache = tmp_cache)
+
+  testthat::capture_messages(cached(1))
+  expect_equal(hits, 1L)
+
+  testthat::capture_messages(cached(1))
+  expect_equal(hits, 2L)
+
+  key <- tmp_cache$keys()[[1]]
+  art <- get_artifact(tmp_cache, key)
+  expect_equal(art$meta$cache$max_age, 0)
+
+  # a generous TTL from the options namespace keeps the cached value
+  withr::local_options(list(artma.cache.max_age = 3600))
+
+  fresh_cache <- memoise::cache_filesystem(withr::local_tempdir())
+  fresh_hits <- 0L
+  fresh_tracked <- function(x) {
+    fresh_hits <<- fresh_hits + 1L
+    cli::cli_alert_success("fresh call {fresh_hits}")
+    x
+  }
+
+  fresh_cached <- cache_cli(fresh_tracked, cache = fresh_cache)
+
+  testthat::capture_messages(fresh_cached(1))
+  testthat::capture_messages(fresh_cached(1))
+  expect_equal(fresh_hits, 1L)
 })
 
 test_that("cache_cli bypasses caching when disabled via option", {
