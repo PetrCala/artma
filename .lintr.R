@@ -4,13 +4,15 @@ custom_linters_env <- new.env()
 
 # Locate the repository root without the here package, which is not a
 # package dependency and may not be installed in the linting session.
+# The custom linters live under scripts/ so that the installed package does
+# not carry lintr as a runtime dependency.
 source(
     local({
         path <- getwd()
         while (!file.exists(file.path(path, "DESCRIPTION")) && dirname(path) != path) {
             path <- dirname(path)
         }
-        file.path(path, "R", "linters.R")
+        file.path(path, "scripts", "linters.R")
     }),
     local = custom_linters_env,
     chdir = TRUE

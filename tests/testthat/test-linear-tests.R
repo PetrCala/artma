@@ -5,12 +5,16 @@ box::use(
     expect_gt,
     expect_named,
     expect_true,
+    skip_if_not_installed,
     test_that
   ],
   withr[local_options]
 )
 
-box::use(artma / methods / linear_tests[linear_tests])
+box::use(
+  artma / econometric / linear[run_linear_models],
+  artma / methods / linear_tests[linear_tests]
+)
 
 make_demo_data <- function() {
   set.seed(42)
@@ -29,6 +33,8 @@ make_demo_data <- function() {
 }
 
 test_that("linear tests return tidy coefficients and summary", {
+  skip_if_not_installed("plm")
+
   df <- make_demo_data()
 
   local_options(
@@ -96,4 +102,30 @@ test_that("linear tests gracefully skip models with missing columns", {
   expect_false("ols_precision_weighted" %in% res$coefficients$model)
   expect_true("ols_precision_weighted" %in% names(res$skipped))
   expect_true(grepl("Missing required columns", res$skipped$ols_precision_weighted$reason))
+})
+
+test_that("panel models are skipped with a clear message when plm is unavailable", {
+  df <- make_demo_data()
+
+  res <- run_linear_models(
+    df,
+    options = list(
+      add_significance_marks = FALSE,
+      bootstrap_replications = 0L,
+      conf_level = 0.95,
+      round_to = 3L
+    ),
+    is_pkg_available = function(pkg) pkg != "plm"
+  )
+
+  panel_models <- c("fe", "be", "re")
+
+  expect_false(any(panel_models %in% res$coefficients$model))
+  expect_true(all(panel_models %in% names(res$skipped)))
+
+  reasons <- vapply(res$skipped[panel_models], function(item) item$reason, character(1))
+  expect_true(all(grepl("plm", reasons, fixed = TRUE)))
+  expect_true(all(grepl("install.packages", reasons, fixed = TRUE)))
+
+  expect_true("ols" %in% res$coefficients$model)
 })

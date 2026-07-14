@@ -264,6 +264,7 @@ linear_model_specs <- function() {
       numeric_columns = c("effect", "se"),
       cluster_column = "study_id",
       terms = c("effect", "publication_bias"),
+      required_packages = "plm",
       fit = function(df) plm::plm(effect ~ se, data = df, model = "within", index = "study_id"),
       tidy = tidy_plm_within,
       supports_bootstrap = TRUE
@@ -275,6 +276,7 @@ linear_model_specs <- function() {
       numeric_columns = c("effect", "se"),
       cluster_column = "study_id",
       terms = c("effect", "publication_bias"),
+      required_packages = "plm",
       fit = function(df) plm::plm(effect ~ se, data = df, model = "between", index = "study_id"),
       tidy = tidy_plm_generic,
       supports_bootstrap = FALSE
@@ -286,6 +288,7 @@ linear_model_specs <- function() {
       numeric_columns = c("effect", "se"),
       cluster_column = "study_id",
       terms = c("effect", "publication_bias"),
+      required_packages = "plm",
       fit = function(df) plm::plm(effect ~ se, data = df, model = "random", index = "study_id"),
       tidy = tidy_plm_generic,
       supports_bootstrap = TRUE
@@ -320,13 +323,33 @@ linear_model_specs <- function() {
 #' @title Run linear model specifications
 #' @param df *[data.frame]* Input dataset.
 #' @param options *[list]* Options controlling formatting and bootstrap.
+#' @param is_pkg_available *[function, optional]* Predicate that reports whether
+#'   a package namespace is available. Defaults to `requireNamespace`; injectable
+#'   so tests can simulate a missing package.
 #' @return A list containing the coefficients, formatted summary, and skipped models.
-run_linear_models <- function(df, options) {
+run_linear_models <- function(df, options, is_pkg_available = NULL) {
+  if (is.null(is_pkg_available)) {
+    is_pkg_available <- function(pkg) requireNamespace(pkg, quietly = TRUE)
+  }
+
   specs <- linear_model_specs()
   results <- list()
   skipped <- list()
 
   for (spec in specs) {
+    required_pkgs <- spec$required_packages %||% character()
+    missing_pkgs <- required_pkgs[!vapply(required_pkgs, is_pkg_available, logical(1))]
+    if (length(missing_pkgs) > 0) {
+      install_hint <- paste0("install.packages(", deparse(missing_pkgs), ")")
+      skipped[[spec$name]] <- list(
+        label = spec$label,
+        reason = cli::format_inline(
+          "Package {.pkg {missing_pkgs}} is required for {.emph {spec$label}}. Install with: {install_hint}"
+        )
+      )
+      next
+    }
+
     prepared <- prepare_linear_data(df, spec)
     if (prepared$skipped) {
       skipped[[spec$name]] <- list(label = spec$label, reason = prepared$reason)
