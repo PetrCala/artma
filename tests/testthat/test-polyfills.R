@@ -1,39 +1,3 @@
-test_that("str_trim removes whitespace correctly", {
-  box::use(artma / libs / infrastructure / polyfills[str_trim])
-
-  # Test both sides
-  expect_equal(str_trim("  hello  ", side = "both"), "hello")
-  expect_equal(str_trim("  hello  "), "hello") # default is both
-
-  # Test left side only
-  expect_equal(str_trim("  hello  ", side = "left"), "hello  ")
-
-  # Test right side only
-  expect_equal(str_trim("  hello  ", side = "right"), "  hello")
-
-  # Test with no whitespace
-  expect_equal(str_trim("hello", side = "both"), "hello")
-
-  # Test with tabs and newlines
-  expect_equal(str_trim("\t\nhello\t\n", side = "both"), "hello")
-})
-
-test_that("str_replace_all replaces all matches", {
-  box::use(artma / libs / infrastructure / polyfills[str_replace_all])
-
-  # Test basic replacement
-  expect_equal(str_replace_all("hello world", "o", "0"), "hell0 w0rld")
-
-  # Test regex patterns
-  expect_equal(str_replace_all("test123abc", "[0-9]", "X"), "testXXXabc")
-
-  # Test removing characters
-  expect_equal(str_replace_all("a-b-c", "-", ""), "abc")
-
-  # Test with no matches
-  expect_equal(str_replace_all("hello", "x", "y"), "hello")
-})
-
 test_that("str_remove removes first match", {
   box::use(artma / libs / infrastructure / polyfills[str_remove])
 
@@ -48,19 +12,6 @@ test_that("str_remove removes first match", {
 
   # Test with no match
   expect_equal(str_remove("hello", "xyz"), "hello")
-})
-
-test_that("str_to_title converts to title case", {
-  box::use(artma / libs / infrastructure / polyfills[str_to_title])
-
-  # Test basic conversion
-  expect_equal(str_to_title("hello world"), "Hello World")
-
-  # Test with mixed case
-  expect_equal(str_to_title("hELLo WoRLd"), "Hello World")
-
-  # Test with single word
-  expect_equal(str_to_title("hello"), "Hello")
 })
 
 test_that("map_chr extracts character values", {
@@ -111,87 +62,4 @@ test_that("keep filters elements", {
   # Test with character vector
   result <- keep(c("a", "ab", "abc"), function(x) nchar(x) > 1)
   expect_equal(result, c("ab", "abc"))
-})
-
-test_that("glue interpolates strings", {
-  box::use(artma / libs / infrastructure / polyfills[glue])
-
-  # Test basic interpolation
-  name <- "World"
-  result <- glue("Hello {name}")
-  expect_equal(result, "Hello World")
-
-  # Test with multiple variables
-  x <- 5
-  y <- 10
-  result <- glue("x={x}, y={y}")
-  expect_equal(result, "x=5, y=10")
-
-  # Test without interpolation
-  result <- glue("plain text")
-  expect_equal(result, "plain text")
-
-  # Test with concatenation
-  result <- glue("a", "b", "c", .sep = "-")
-  expect_equal(result, "a-b-c")
-})
-
-test_that("glue_collapse joins strings", {
-  box::use(artma / libs / infrastructure / polyfills[glue_collapse])
-
-  # Test basic collapse
-  result <- glue_collapse(c("a", "b", "c"), sep = ", ")
-  expect_equal(result, "a, b, c")
-
-  # Test with last separator
-  result <- glue_collapse(c("a", "b", "c"), sep = ", ", last = " and ")
-  expect_equal(result, "a, b and c")
-
-  # Test with empty vector
-  result <- glue_collapse(character(0), sep = ", ")
-  expect_equal(result, "")
-
-  # Test with single element
-  result <- glue_collapse("a", sep = ", ")
-  expect_equal(result, "a")
-})
-
-test_that("edit_file validates file existence", {
-  box::use(artma / libs / infrastructure / polyfills[edit_file])
-
-  # Test error on non-existent file
-  expect_error(
-    edit_file(tempfile()),
-    "File does not exist"
-  )
-
-  # Note: We cannot test the actual file.edit() call as it opens an interactive editor
-  # which would hang the tests. The actual functionality is tested manually.
-})
-
-test_that("polyfills match original behavior on real usage patterns", {
-  box::use(
-    artma / libs / infrastructure / polyfills[str_replace_all, str_trim, map_chr, keep]
-  )
-
-  # Test pattern from inst/artma/libs/string.R
-  input_string <- "Test String! @#$"
-  str_out <- str_replace_all(input_string, "[^a-zA-Z0-9]", "_")
-  str_out <- tolower(str_out)
-  str_out <- str_trim(str_out, side = "both")
-  str_out <- str_replace_all(str_out, "^_+|_+$", "")
-  # After removing leading/trailing underscores, we get "test_string"
-  expect_equal(str_out, "test_string")
-
-  # Test pattern from inst/artma/data/utils.R
-  defs <- list(
-    list(name = "data.colnames.effect", value = 1),
-    list(name = "data.colnames.se", value = 2),
-    list(name = "other.option", value = 3)
-  )
-  defs <- keep(defs, function(x) grepl("^data.colnames", x$name))
-  expect_length(defs, 2)
-
-  names <- map_chr(defs, "name")
-  expect_equal(names, c("data.colnames.effect", "data.colnames.se"))
 })

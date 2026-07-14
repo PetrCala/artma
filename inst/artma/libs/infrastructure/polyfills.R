@@ -4,40 +4,12 @@
 #' the package's dependency footprint. This module replaces functionality from:
 #' - stringr (string manipulation)
 #' - purrr (functional programming)
-#' - glue (string interpolation)
-#' - usethis (file editing)
 #'
 #' All functions maintain API compatibility with the original packages.
 #'
 #' @name polyfills
 
 # String manipulation (stringr replacements) ----
-
-#' Trim whitespace from strings
-#' @description Replacement for stringr::str_trim()
-#' @param string Character vector
-#' @param side Which side to trim: "both" (default), "left", "right"
-#' @return Trimmed character vector
-#' @export
-str_trim <- function(string, side = c("both", "left", "right")) {
-  side <- match.arg(side)
-  switch(side,
-    both = trimws(string, which = "both"),
-    left = trimws(string, which = "left"),
-    right = trimws(string, which = "right")
-  )
-}
-
-#' Replace all matches in a string
-#' @description Replacement for stringr::str_replace_all()
-#' @param string Input vector
-#' @param pattern Pattern to look for
-#' @param replacement Replacement string
-#' @return Character vector with replacements
-#' @export
-str_replace_all <- function(string, pattern, replacement) {
-  gsub(pattern, replacement, string, perl = TRUE)
-}
 
 #' Remove first match from a string
 #' @description Replacement for stringr::str_remove()
@@ -47,16 +19,6 @@ str_replace_all <- function(string, pattern, replacement) {
 #' @export
 str_remove <- function(string, pattern) {
   sub(pattern, "", string, perl = TRUE)
-}
-
-#' Convert string to title case
-#' @description Replacement for stringr::str_to_title()
-#' @param string Input vector
-#' @return Character vector in title case
-#' @export
-str_to_title <- function(string) {
-  # tools::toTitleCase() doesn't lowercase first, so we need to do that
-  tools::toTitleCase(tolower(string))
 }
 
 # Functional programming (purrr replacements) ----
@@ -125,94 +87,4 @@ keep <- function(.x, .p, ...) {
     }
   }
   Filter(.p, .x, ...)
-}
-
-# String interpolation (glue replacements) ----
-
-#' Interpolate strings
-#' @description Replacement for glue::glue()
-#' Uses sprintf-style formatting instead of brace interpolation
-#' @param ... Character strings with %s, %d, etc. placeholders
-#' @param .sep Separator between elements
-#' @param .envir Environment for evaluation (ignored, for compatibility)
-#' @return Character string
-#' @export
-glue <- function(..., .sep = "", .envir = parent.frame()) {
-  # This is a simplified version that works with sprintf-style formatting
-  # For complex cases, use sprintf() or paste0() directly
-  args <- list(...)
-
-  if (length(args) == 0) {
-    return("")
-  }
-
-  # If single string without placeholders, return as-is
-  if (length(args) == 1 && is.character(args[[1]])) {
-    # Check if it contains {var} style interpolation
-    str <- args[[1]]
-    if (grepl("\\{[^}]+\\}", str)) {
-      # Extract variable names
-      vars <- gregexpr("\\{([^}]+)\\}", str, perl = TRUE)
-      var_names <- regmatches(str, vars)[[1]]
-      var_names <- gsub("[{}]", "", var_names)
-
-      # Get values from environment
-      values <- lapply(var_names, function(v) {
-        tryCatch(eval(parse(text = v), envir = .envir), error = function(e) v)
-      })
-
-      # Replace {var} with values
-      result <- str
-      for (i in seq_along(var_names)) {
-        result <- sub(
-          paste0("\\{", var_names[i], "\\}"),
-          as.character(values[[i]]),
-          result
-        )
-      }
-      return(result)
-    }
-    return(str)
-  }
-
-  # Otherwise concatenate
-  paste0(unlist(args), collapse = .sep)
-}
-
-#' Collapse a character vector
-#' @description Replacement for glue::glue_collapse()
-#' @param x Character vector
-#' @param sep Separator
-#' @param width Maximum width (not implemented)
-#' @param last Separator for last element
-#' @return Collapsed string
-#' @export
-glue_collapse <- function(x, sep = "", width = Inf, last = "") {
-  if (length(x) == 0) {
-    return("")
-  }
-  if (length(x) == 1) {
-    return(as.character(x))
-  }
-
-  if (nzchar(last) && length(x) > 1) {
-    paste0(paste(x[-length(x)], collapse = sep), last, x[length(x)])
-  } else {
-    paste(x, collapse = sep)
-  }
-}
-
-# File utilities (usethis replacement) ----
-
-#' Open file in editor
-#' @description Replacement for usethis::edit_file()
-#' @param path File path to open
-#' @return NULL (invisibly)
-#' @export
-edit_file <- function(path) {
-  if (!file.exists(path)) {
-    stop(sprintf("File does not exist: %s", path)) # nolint
-  }
-  utils::file.edit(path)
-  invisible(NULL)
 }
