@@ -1,5 +1,8 @@
 box::use(
-  testthat[test_that, expect_s3_class, expect_equal, expect_type, expect_length, expect_identical, expect_match, expect_true]
+  testthat[
+    test_that, expect_s3_class, expect_equal, expect_length,
+    expect_identical, expect_match, expect_no_match, expect_true
+  ]
 )
 
 # The fixtures and other package modules must be loaded here separately to avoid linter issues
@@ -8,101 +11,26 @@ box::use(artma / testing / fixtures / index[FIXTURES])
 test_that("new_artifact constructs the correct S3 object", {
   box::use(artma / libs / infrastructure / cache[new_artifact])
 
-  a <- new_artifact(1:3, list(), list(pkg = "demo"))
+  a <- new_artifact(1:3, list(pkg = "demo"))
   expect_s3_class(a, "cached_artifact")
   expect_equal(a$value, 1:3)
-  expect_equal(a$log, list())
   expect_equal(a$meta$pkg, "demo")
 })
 
-test_that("capture_cli traps cli conditions and replay_log re-emits them", {
-  box::use(artma / libs / infrastructure / cache[capture_cli, replay_log])
-
+test_that("print.cached_artifact produces a human-readable summary", {
   FIXTURES$local_cli_silence()
 
-  res <- capture_cli(
-    {
-      cli::cli_alert_info("Hello")
-      42
-    },
-    emit = FALSE
-  )
+  box::use(artma / libs / infrastructure / cache[new_artifact, print.cached_artifact])
 
-  # ----- value --------------------------------------------------------------
-  expect_equal(res$value, 42)
+  art <- new_artifact(99, list(note = "demo"))
+  out <- testthat::capture_messages(print.cached_artifact(art))
 
-  # ----- log handling -------------------------------------------------------
-  expect_type(res$log, "list")
-  expect_length(res$log, 1L)
-  expect_type(res$log[[1]], "list")
-  expect_identical(res$log[[1]]$kind, "condition")
-  expect_type(res$log[[1]]$cli_type, "character")
-  expect_type(res$log[[1]]$args, "list")
-  expect_match(res$log[[1]]$message, "Hello", fixed = TRUE)
-
-  # replay should print exactly once
-  out <- testthat::capture_messages(replay_log(res$log))
-  expect_match(out, "Hello", fixed = TRUE)
+  expect_true(any(grepl("Artifact", out, fixed = TRUE)))
+  expect_true(any(grepl("Value:", out, fixed = TRUE)))
+  expect_true(any(grepl("Meta:", out, fixed = TRUE)))
 })
 
-test_that("capture_cli captures cat helpers and replays them faithfully", {
-  box::use(artma / libs / infrastructure / cache[capture_cli, replay_log])
-
-  FIXTURES$local_cli_silence()
-
-  res <- capture_cli(
-    {
-      cli::cat_rule("demo")
-      "done"
-    },
-    emit = FALSE
-  )
-
-  expect_equal(res$value, "done")
-  expect_length(res$log, 1L)
-
-  entry <- res$log[[1]]
-  expect_identical(entry$kind, "call")
-  expect_identical(entry$fun, "cat_rule")
-  expect_type(entry$args, "list")
-  expect_identical(entry$args[[1]], "demo")
-
-  replayed <- testthat::capture_output(replay_log(res$log))
-  original <- testthat::capture_output(cli::cat_rule("demo"))
-  expect_identical(replayed, original)
-})
-
-test_that("replay_log skips whitespace-only condition entries", {
-  box::use(artma / libs / infrastructure / cache[capture_cli, replay_log])
-
-  FIXTURES$local_cli_silence()
-
-  res <- capture_cli(
-    {
-      cli::cli_alert_info("Hello")
-      "done"
-    },
-    emit = FALSE
-  )
-
-  expect_length(res$log, 1L)
-
-  noisy_log <- c(
-    list(list(
-      kind = "condition",
-      cli_type = res$log[[1]]$cli_type,
-      args = res$log[[1]]$args,
-      message = "                                                            "
-    )),
-    res$log
-  )
-
-  out <- testthat::capture_messages(replay_log(noisy_log))
-  expect_length(out, 1L)
-  expect_match(out, "Hello", fixed = TRUE)
-})
-
-test_that("cache_cli memoises value + log and replays on hit", {
+test_that("cache_cli reruns on a miss and reuses the value on a hit", {
   box::use(artma / libs / infrastructure / cache[cache_cli, get_artifact])
 
   FIXTURES$local_cli_silence()
@@ -117,26 +45,20 @@ test_that("cache_cli memoises value + log and replays on hit", {
   cached_modeller <- cache_cli(fake_modeller$modeller, cache = tmp_cache)
 
   ## --- 1st call: cold ------------------------------------------------------
-  first_console <- testthat::capture_messages(
-    v1 <- cached_modeller(10)
-  )
+  first <- testthat::capture_messages(v1 <- cached_modeller(10))
   expect_equal(v1, 20)
   expect_equal(fake_modeller$calls(), 1L)
+  expect_match(paste(first, collapse = ""), "Running model", fixed = TRUE)
 
   # cache should now contain exactly one key
   expect_length(tmp_cache$keys(), 1L)
 
   ## --- 2nd call: warm ------------------------------------------------------
-  second_console <- testthat::capture_messages(
-    v2 <- cached_modeller(10)
-  )
+  testthat::capture_messages(v2 <- cached_modeller(10))
   expect_equal(v2, 20)
 
   # the implementation must not run again on a cache hit
   expect_equal(fake_modeller$calls(), 1L)
-
-  # console chatter must be *identical* because we replayed
-  expect_identical(first_console, second_console)
 
   # still only one artifact stored
   expect_length(tmp_cache$keys(), 1L)
@@ -145,10 +67,55 @@ test_that("cache_cli memoises value + log and replays on hit", {
   key <- tmp_cache$keys()[[1]]
   art <- get_artifact(tmp_cache, key)
   expect_s3_class(art, "cached_artifact")
-  expect_length(art$log, 1L)
-  expect_identical(art$log[[1]]$kind, "condition")
-  expect_match(art$log[[1]]$message, "Running model", fixed = TRUE)
+  expect_equal(art$value, 20)
   expect_equal(art$meta$cache$max_age, 3600)
+})
+
+test_that("a cache hit prints a notice instead of replaying original output", {
+  box::use(artma / libs / infrastructure / cache[cache_cli])
+
+  FIXTURES$local_cli_silence()
+
+  withr::local_options(list(artma.verbose = 3, artma.cache.max_age = 3600))
+
+  tmp_cache <- memoise::cache_filesystem(withr::local_tempdir())
+
+  fake_modeller <- FIXTURES$make_fake_modeller()
+  cached_modeller <- cache_cli(
+    fake_modeller$modeller,
+    extra_keys = list(stage = "demo"),
+    cache = tmp_cache
+  )
+
+  # cold run: the implementation's own chatter is emitted
+  cold <- paste(testthat::capture_messages(cached_modeller(10)), collapse = "")
+  expect_match(cold, "Running model", fixed = TRUE)
+
+  # warm run: a single notice, and none of the original output replayed
+  hit <- paste(testthat::capture_messages(cached_modeller(10)), collapse = "")
+  expect_match(hit, "Using cached results for demo", fixed = TRUE)
+  expect_no_match(hit, "Running model", fixed = TRUE)
+})
+
+test_that("a cache hit stays silent below info verbosity", {
+  box::use(artma / libs / infrastructure / cache[cache_cli])
+
+  FIXTURES$local_cli_silence()
+
+  withr::local_options(list(artma.verbose = 2, artma.cache.max_age = 3600))
+
+  tmp_cache <- memoise::cache_filesystem(withr::local_tempdir())
+
+  fake_modeller <- FIXTURES$make_fake_modeller()
+  cached_modeller <- cache_cli(
+    fake_modeller$modeller,
+    extra_keys = list(stage = "demo"),
+    cache = tmp_cache
+  )
+
+  testthat::capture_messages(cached_modeller(10))
+  hit <- paste(testthat::capture_messages(cached_modeller(10)), collapse = "")
+  expect_no_match(hit, "Using cached results", fixed = TRUE)
 })
 
 test_that("invalidate_fun forces recomputation for selected arguments", {
@@ -184,19 +151,6 @@ test_that("invalidate_fun forces recomputation for selected arguments", {
   expect_length(tmp_cache$keys(), 1L)
 })
 
-test_that("print.cached_artifact produces a human-readable summary", {
-  FIXTURES$local_cli_silence()
-
-  box::use(artma / libs / infrastructure / cache[new_artifact, print.cached_artifact])
-
-  art <- new_artifact(99, list(), list(note = "demo"))
-  out <- testthat::capture_messages(print.cached_artifact(art))
-
-  expect_true(any(grepl("Artifact", out, fixed = TRUE)))
-  expect_true(any(grepl("Value:", out, fixed = TRUE)))
-  expect_true(any(grepl("Log:", out, fixed = TRUE)))
-})
-
 test_that("cache_cli honours max_age to refresh stale artifacts", {
   box::use(artma / libs / infrastructure / cache[cache_cli])
 
@@ -213,13 +167,13 @@ test_that("cache_cli honours max_age to refresh stale artifacts", {
 
   cached <- cache_cli(tracked, cache = tmp_cache, max_age = 0)
 
-  first <- testthat::capture_messages(cached(5))
+  testthat::capture_messages(cached(5))
   expect_equal(hits, 1L)
   expect_length(tmp_cache$keys(), 1L)
 
-  second <- testthat::capture_messages(cached(5))
+  # a zero TTL makes every stored artifact stale on read, forcing a recompute
+  testthat::capture_messages(cached(5))
   expect_equal(hits, 2L)
-  expect_identical(first, second) # recomputation produces the same console story
 })
 
 test_that("cache_cli sources max_age from the artma.cache.max_age option", {

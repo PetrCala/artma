@@ -81,7 +81,7 @@ These packages are required for the package to function correctly when used by o
 - `digest` – For stable cache key generation.
 - `glue` – For efficient and readable string interpolation.
 - `lintr` – Runtime linting hooks that surface style issues inside the package.
-- `memoise` – For caching heavy computations and replayable console logs.
+- `memoise` – For caching heavy computations.
 - `metafor` – Meta-analytic estimators and diagnostics.
 - `NlcOptim` - Non-linear objective optimization.
 - `purrr` – Vector preprocessing utilities.
@@ -224,16 +224,16 @@ User options are generated in the project from a template file (potentially `opt
 
 # Caching heavy computations
 
-Artma's heavy modelling helpers often emit rich CLI output (alerts, tables,
-and progress messages). The `artma::cache_cli()` wrapper memoises both the
-return value _and_ the console story so repeated runs feel identical to the
-first execution while avoiding expensive recomputation.
+Artma's heavy modelling helpers are expensive to recompute. The
+`artma::cache_cli()` wrapper memoises their return value on disk via `memoise`
+so repeated runs skip the work entirely. On a cache hit it prints a single
+short notice instead of rerunning the function.
 
 ## Wrapping functions with cache_cli
 
 Wrap any expensive function with `cache_cli()` when exporting it from a
-module. The wrapper records CLI output as the function runs and stores the
-resulting `cached_artifact` object on disk using `memoise`.
+module. The wrapper stores the computed value in a `cached_artifact` object on
+disk using `memoise::cache_filesystem`.
 
 ```r
 # inside a module
@@ -248,12 +248,14 @@ run_models(df, formula)
 
 Key behaviours:
 
-- CLI output still prints on the first (cold) execution; cached runs replay
-  the recorded log so the console experience matches the original run.
+- The wrapped function's own CLI output prints on the first (cold) execution.
+  On a cache hit the output is not replayed; instead a single
+  `Using cached results` notice is emitted, respecting the current verbosity.
 - Provide a custom `cache` (e.g. an in-memory cache) if the default user cache
   directory is not suitable.
 - `extra_keys` lets you add memoisation key components such as package
-  versions or configuration hashes to avoid sharing stale results.
+  versions or configuration hashes to avoid sharing stale results. A `stage`
+  entry, when present, names the workflow in the cache hit notice.
 
 ### Using `cache_cli_runner` for reusable wrappers
 
@@ -284,22 +286,19 @@ specify a `max_age` timeout while keeping the call sites concise.
 
 ## Inspecting cached artifacts
 
-`cache_cli()` stores a `cached_artifact` containing the computed value, the
-replay log, and metadata (timestamp, session info, and cache settings). Use
-`get_artifact()` to retrieve artefacts by key and `replay_log()` to reprint
-previous CLI output when debugging.
+`cache_cli()` stores a `cached_artifact` containing the computed value and
+metadata (timestamp, extra key material, and the TTL used). Use
+`get_artifact()` to retrieve an artifact by key when debugging the on-disk
+cache.
 
 ```r
 cache <- memoise::cache_filesystem(PATHS$DIR_USR_CACHE)
 key <- cache$keys()[[1]]
 artifact <- get_artifact(cache, key)
 
-artifact$value          # original return value
-replay_log(artifact$log) # emit the stored CLI story
+artifact$value # original return value
+artifact$meta  # timestamp, extra keys, and cache settings
 ```
-
-The log stores both `cli_message` events and direct `cli::cat_*()` helper
-calls, so complex nested output is reproduced faithfully.
 
 ## Invalidation and configuration
 
