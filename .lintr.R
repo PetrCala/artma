@@ -22,7 +22,7 @@ linters <- c(
         #
         # All default box linters
         defaults = default_linters,
-        # Set indentation to 8 spaces
+        # Set indentation to 2 spaces
         indentation_linter = custom_linters_env$indentation_guard_clause_linter(indent = 2),
         # Check that all commas are followed by spaces, but do not have spaces before them.
         commas_linter = lintr::commas_linter(allow_trailing = FALSE),
@@ -33,8 +33,8 @@ linters <- c(
         object_length_linter = lintr::object_length_linter(length = 40),
         # Disable the default lintr object usage - incompatible with box module system
         object_usage_linter = NULL,
-        # All lines should be less than 120 characters
-        line_length_linter = lintr::line_length_linter(NULL), # 120, 160,...
+        # No line length limit enforced
+        line_length_linter = lintr::line_length_linter(NULL),
         # Disable commented code linter
         commented_code_linter = NULL,
         # Turn off linting for several functions otherwise flagged as undesirable
@@ -68,8 +68,7 @@ linters <- c(
 
 exclusions <- list(
     "local/",
-    "scripts/",
-    "utils/"
+    "scripts/"
 )
 
 # Clean up imported linters

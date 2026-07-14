@@ -452,6 +452,23 @@ devtools::test(filter = "test_name")
 
 For more information about writing and organizing tests, refer to the [testthat documentation](https://testthat.r-lib.org/).
 
+# Release machinery status
+
+The package is currently distributed via r-universe, not CRAN. Some release
+automation in this repository anticipates a future CRAN submission and is not
+yet active:
+
+- **Active**: `build-and-tag.yaml` (tagging, version bump, r-universe build),
+  `scripts/R/get_cran_version.R`, `scripts/R/generate_cran_comments.R`,
+  `.chglog/` (changelog generation).
+- **Dormant, kept for when CRAN submission happens**: `submit-to-cran.yaml`,
+  the reverse-dependency check step in `build-and-tag.yaml` (commented out),
+  `scripts/R/release.R`.
+
+When CRAN submission becomes real, re-enable the dormant workflow steps and
+recreate the `revdep/` directory (removed in a repository hygiene sweep) for
+`revdepcheck::revdep_check()` output.
+
 # Code of Conduct
 
 Please note that the artma project is released with a [Contributor Code of Conduct](https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html). By contributing to this project, you agree to abide by its terms.

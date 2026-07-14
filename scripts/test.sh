@@ -27,7 +27,7 @@ while [[ "$#" -gt 0 ]]; do
     ;;
   --help | -h)
     help
-    exit 1
+    exit 0
     ;;
   *)
     echo "Unknown parameter passed: $1"
@@ -36,12 +36,6 @@ while [[ "$#" -gt 0 ]]; do
   esac
   shift
 done
-
-# Show help if no arguments or help flags are provided
-if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-  help
-  exit 1
-fi
 
 if [[ -n "$FILE" ]]; then
   FULL_PATH="$TEST_DIR_NAME/$FILE"
