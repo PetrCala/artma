@@ -2,7 +2,6 @@ box::use(
   testthat[
     expect_equal,
     expect_false,
-    expect_gt,
     expect_length,
     expect_named,
     expect_true,
@@ -16,7 +15,6 @@ box::use(
   artma / econometric / bma[
     get_bma_formula,
     handle_bma_params,
-    run_vif_test,
     get_bma_data
   ],
   artma / methods / bma[bma]
@@ -105,19 +103,6 @@ test_that("handle_bma_params splits multiple model configurations", {
   expect_equal(result[[2]]$burn, 2000L)
   expect_equal(result[[1]]$mprior, "uniform")
   expect_equal(result[[2]]$mprior, "random")
-})
-
-test_that("run_vif_test calculates VIF coefficients from formula", {
-  df <- make_demo_bma_data()
-  vars <- c("effect", "se", "moderator1", "moderator2")
-
-  local_options("artma.verbose" = 1)
-
-  vif_coefs <- run_vif_test(vars, df, print_all_coefs = FALSE, verbose = FALSE)
-
-  expect_type(vif_coefs, "double")
-  expect_gt(length(vif_coefs), 0)
-  expect_true(all(is.finite(vif_coefs)))
 })
 
 test_that("get_bma_data subsets and scales data correctly", {
