@@ -33,7 +33,7 @@ devtools::load_all()        # Load package for interactive development
 devtools::test()            # Run tests from R console
 ```
 
-See `.make-help.md` for a quick reference guide.
+Run `make help` for a quick reference guide.
 
 ## Architecture
 

@@ -7,6 +7,10 @@ if (file.exists("~/.Rprofile")) {
 # This is needed because languageserver calls lintr::lint(path, text=content),
 # which sets parse_settings=FALSE, skipping config discovery entirely.
 # See: https://github.com/REditorSupport/languageserver
+# read_settings() is unexported in lintr; guard it in case it is removed or renamed.
 if (requireNamespace("lintr", quietly = TRUE)) {
-  lintr:::read_settings(getwd())
+  tryCatch(
+    lintr:::read_settings(getwd()), # nolint: undesirable_function_linter.
+    error = function(e) invisible(NULL)
+  )
 }

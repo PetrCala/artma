@@ -10,12 +10,12 @@ runs:
   using: composite
   steps:
     - name: Decrypt ArtmaBot GPG key
-      run: cd .github/workflows && gpg --quiet --batch --yes --decrypt --passphrase=${{ inputs.GPG_PASSPHRASE }} --output artma-bot-private-key.asc artma-bot-private-key.asc.gpg
+      run: cd .github/secrets && gpg --quiet --batch --yes --decrypt --passphrase=${{ inputs.GPG_PASSPHRASE }} --output artma-bot-private-key.asc artma-bot-private-key.asc.gpg
       shell: bash
 
     - name: Import ArtmaBot GPG Key
       shell: bash
-      run: cd .github/workflows && gpg --import artma-bot-private-key.asc
+      run: cd .github/secrets && gpg --import artma-bot-private-key.asc
 
     - name: Decrypt ArtmaBot SSH Deploy Key
       run: |
@@ -23,7 +23,7 @@ runs:
         gpg --quiet --batch --yes --decrypt \
             --passphrase="${{ inputs.GPG_PASSPHRASE }}" \
             --output ~/.ssh/deploy_key \
-            .github/workflows/artma-bot-ssh-key.gpg
+            .github/secrets/artma-bot-ssh-key.gpg
         chmod 600 ~/.ssh/deploy_key
       shell: bash
 

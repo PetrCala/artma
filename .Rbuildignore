@@ -10,7 +10,6 @@
 ^README\.md$
 ^README-dev\.md$
 ^local$
-^utils$
 ^scripts$
 ^run\.sh$
 ^codecov\.yml$
@@ -18,7 +17,6 @@
 ^Meta$
 ^cran-comments\.md$
 ^CRAN-SUBMISSION$
-^revdep$
 ^assets\.txt$
 ^metadata\.json$
 ^\.chglog$
@@ -28,6 +26,5 @@
 ^AGENTS\.md$
 ^CLAUDE\.md$
 ^Makefile$
-^\.make-help\.md$
 ^\.claude$
 ^\.Rprofile$
