@@ -869,13 +869,13 @@ cache:
       If `TRUE`, use caching to speed up the package.
       If `FALSE`, do not use caching.
 
-  cache_age:
+  max_age:
     type: "integer"
     default: 3600
     help: |
-      The age of the cache in seconds.
+      Maximum age of cached artifacts in seconds.
       Defaults to 3600 seconds (1 hour).
-      If the cache is older than this, it will be invalidated.
+      Cached entries older than this are recomputed on access.
 
 temp:
   # A set of options that are only set at runtime but never stored in the options file.
