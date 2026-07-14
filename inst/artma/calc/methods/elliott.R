@@ -457,10 +457,10 @@ fmincon <- function(x0, fn, gr = NULL, ..., method = "SQP",
   }
 
   if (!requireNamespace("NlcOptim", quietly = TRUE)) {
-    cli::cli_abort("Package 'NlcOptim' missing -- install from CRAN.")
+    cli::cli_abort("Package {.pkg NlcOptim} is required for the SQP optimization step. Install with: install.packages('NlcOptim')")
   }
   if (!requireNamespace("quadprog", quietly = TRUE)) {
-    cli::cli_abort("Package 'quadprog' missing -- install from CRAN.")
+    cli::cli_abort("Package {.pkg quadprog} is required for the SQP optimization step. Install with: install.packages('quadprog')")
   }
 
   fun <- match.fun(fn)

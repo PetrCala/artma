@@ -1,21 +1,31 @@
 box::use(
-  testthat[test_that],
-  lintr[expect_lint]
+  testthat[skip, skip_if_not_installed, test_that]
 )
 
-dir_create_linter <- getFromNamespace("dir_create_linter", "artma")
+get_dir_create_linter <- function() {
+  skip_if_not_installed("lintr")
+
+  linters <- load_repo_linters()
+  if (is.null(linters)) {
+    skip("scripts/linters.R is not available in this test environment")
+  }
+
+  linters$dir_create_linter()
+}
 
 test_that("dir_create_linter skips allowed usages", {
-  linter <- dir_create_linter()
+  linter <- get_dir_create_linter()
 
-  expect_lint("", NULL, linter)
-  expect_lint("fs::dir_create", NULL, linter)
+  lintr::expect_lint("", NULL, linter)
+  lintr::expect_lint("fs::dir_create", NULL, linter)
 })
 
 test_that("dir_create_linter disallows usage of dir.create()", {
-  linter <- dir_create_linter()
+  skip_if_not_installed("rex")
+
+  linter <- get_dir_create_linter()
   lint_msg <- rex::rex("Usage of dir.create() is not allowed.")
 
-  expect_lint("dir.create()", lint_msg, linter)
-  expect_lint("dir.create(file.path('some', 'path.R'))", lint_msg, linter)
+  lintr::expect_lint("dir.create()", lint_msg, linter)
+  lintr::expect_lint("dir.create(file.path('some', 'path.R'))", lint_msg, linter)
 })

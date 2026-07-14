@@ -48,10 +48,7 @@ register_runtime_dependencies <- function() {
   invisible(list(
     ggplot2::ggplot,
     ggtext::element_markdown,
-    NlcOptim::solnl,
     lmtest::coeftest,
-    plm::plm,
-    plm::vcovHC,
     sandwich::vcovCL,
     sandwich::vcovHC,
     yaml::read_yaml,

@@ -1,15 +1,20 @@
-#' Allow Guard Clause `if` Statements Without Braces
-#'
-#' Wraps [lintr::indentation_linter()] to avoid emitting indentation warnings for guard-clause
-#' style `if` statements where a single, indented expression immediately follows the condition
-#' on the next line. This keeps the rest of the indentation behavior intact while permitting the
-#' brace-less guard clause convention adopted in the codebase.
-#'
-#' @param indent Integer number of spaces to use for indentation checks.
-#' @param ... Additional arguments forwarded to [lintr::indentation_linter()].
-#'
-#' @importFrom lintr indentation_linter Linter
-#' @keywords internal
+# Custom lintr linters for this repository.
+#
+# This file is development tooling, not part of the installed package. It is
+# sourced by .lintr.R (which lintr reads whenever it looks up settings for
+# this repository) and by the linter unit tests under tests/testthat/.
+# It requires the lintr package to be installed at source time.
+
+# Allow guard clause `if` statements without braces.
+#
+# Wraps lintr::indentation_linter() to avoid emitting indentation warnings for guard-clause
+# style `if` statements where a single, indented expression immediately follows the condition
+# on the next line. This keeps the rest of the indentation behavior intact while permitting the
+# brace-less guard clause convention adopted in the codebase.
+#
+# Args:
+#   indent: Integer number of spaces to use for indentation checks.
+#   ...: Additional arguments forwarded to lintr::indentation_linter().
 indentation_guard_clause_linter <- function(indent = 2L, ...) {
   base_linter <- lintr::indentation_linter(indent = indent, ...)
 
@@ -73,15 +78,12 @@ indentation_guard_clause_linter <- function(indent = 2L, ...) {
   )
 }
 
-#' Disallow Literal `<U+XXXX>` Escape Text
-#'
-#' Flags literal `<U+XXXX>` sequences in source files. These appear when a file containing
-#' real UTF-8 characters is rewritten under the C locale (e.g. by styler or an R session
-#' without a UTF-8 locale), mangling the characters into escape text. Restore the intended
-#' character or use an ASCII equivalent instead.
-#'
-#' @importFrom lintr Linter Lint
-#' @keywords internal
+# Disallow literal `<U+XXXX>` escape text.
+#
+# Flags literal `<U+XXXX>` sequences in source files. These appear when a file containing
+# real UTF-8 characters is rewritten under the C locale (e.g. by styler or an R session
+# without a UTF-8 locale), mangling the characters into escape text. Restore the intended
+# character or use an ASCII equivalent instead.
 unicode_escape_linter <- function() {
   lintr::Linter(
     function(source_expression) {
@@ -126,14 +128,11 @@ unicode_escape_linter <- function() {
   )
 }
 
-#' Disallow `dir.create()` Function Calls
-#'
-#' This linter flags any usage of the [dir.create()] function, which is not permitted in the codebase.
-#' Using `dir.create()` can lead to unintended side effects such as creating directories during script execution.
-#' Instead, consider alternative approaches for managing directories.
-#'
-#' @importFrom lintr make_linter_from_xpath
-#' @keywords internal
+# Disallow `dir.create()` function calls.
+#
+# This linter flags any usage of the dir.create() function, which is not permitted in the codebase.
+# Using dir.create() can lead to unintended side effects such as creating directories during script execution.
+# Instead, consider alternative approaches for managing directories.
 dir_create_linter <- lintr::make_linter_from_xpath(
   xpath = "expr[SYMBOL_FUNCTION_CALL[text() = 'dir.create']]",
   lint_message = "Usage of dir.create() is not allowed. Use fs::dir_create() instead.",
