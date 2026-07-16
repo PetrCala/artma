@@ -12,166 +12,260 @@
 [![CRAN Status](https://www.r-pkg.org/badges/version/artma)](https://cran.r-project.org/package=artma)
 [![codecov](https://codecov.io/gh/PetrCala/artma/graph/badge.svg?token=6XNXVDOT80)](https://codecov.io/gh/PetrCala/artma)
 
-<!-- [![Lifecycle](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html) -->
-<!-- [![Version](https://img.shields.io/github/r-package/v/PetrCala/artma)](https://github.com/PetrCala/artma) -->
-
   <!-- badges: end -->
 
 </div>
 
-- [How to install](#how-to-install)
-  - [From CRAN](#from-cran)
-  - [From GitHub](#from-github)
-  - [Locally](#locally)
-- [Understanding artma](#understanding-artma)
-  - [If you are a user](#if-you-are-a-user)
-  - [If you are a developer](#if-you-are-a-developer)
-- [Using options](#using-options)
-  - [Creating an options file](#creating-an-options-file)
-  - [Loading an options file](#loading-an-options-file)
-  - [Adding new options](#adding-new-options)
-  - [Controlling verbosity](#controlling-verbosity)
-- [Using methods](#using-methods)
-  - [Using available methods](#using-available-methods)
-  - [Defining custom methods](#defining-custom-methods)
+**artma** provides a unified interface for running a wide range of meta-analysis methods directly on your data. Point it at a dataset, answer a few questions (or configure everything up front in a YAML file), and it runs the analyses, exports tables and plots, and returns the results as R objects.
 
-# How to install
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [How a run works](#how-a-run-works)
+- [Available methods](#available-methods)
+- [Options files](#options-files)
+  - [Creating and loading](#creating-and-loading)
+  - [Modifying options](#modifying-options)
+  - [Verbosity](#verbosity)
+- [Data](#data)
+  - [Supported formats](#supported-formats)
+  - [Per-variable configuration](#per-variable-configuration)
+- [Autonomy: how much artma asks](#autonomy-how-much-artma-asks)
+- [Results and visualization](#results-and-visualization)
+- [Custom methods](#custom-methods)
+- [Learn more](#learn-more)
 
-## From CRAN
+# Installation
 
-You can install `artma` directly from CRAN using
+From CRAN:
 
-```R
+```r
 install.packages("artma")
 ```
 
-## From GitHub
+From GitHub (development version):
 
-To install the package from GitHub, leverage the [**remotes**](https://cran.r-project.org/web/packages/remotes/index.html) package and call
-
-```R
-GH_REPO_PATH <- "PetrCala/artma"
-remotes::install_github(GH_REPO_PATH)
+```r
+remotes::install_github("PetrCala/artma")
 ```
 
-Note that you can pass a number of arguments to the `install_github` function. This allows you to install from different branches, tags, etc., if you so desire.
+For local development, clone the repository (see [README-dev.md](README-dev.md)) and load it with `devtools::load_all()`.
 
-## Locally
+# Quick start
 
-You can use the [**devtools**](https://devtools.r-lib.org) package to install this project locally as a package. To do so, clone the repository onto your machine as described in [README-dev.md](README-dev.md#how-to-run), navigate to the cloned folder in your R console, and call:
+The simplest way to use artma is fully interactively:
 
-```R
-devtools::load_all()
-
-## The folowing should now work
-artma::artma()
-artma::methods.list()
-# etc.
+```r
+library(artma)
+results <- artma()
 ```
 
-# Understanding artma
+In an interactive session, artma walks you through creating an options file, locating your data, mapping your columns, and choosing which methods to run. Everything you decide is saved to the options file, so subsequent runs are reproducible.
 
-## If you are a user
+Once you have an options file, runs can be fully scripted:
 
-The package includes several comprehensive vignettes that we highly recommend reading to understand the core philosophy and functionality. These vignettes provide detailed explanations, examples, and best practices for using the package effectively. You can access them through [the standard R documentation](https://cran.r-project.org/web/packages/artma/vignettes/) system or [on our website](https://github.com/PetrCala/artma/).
+```r
+# Run specific methods
+results <- artma(
+  methods = c("funnel_plot", "bma", "fma"),
+  options = "my_analysis.yaml"
+)
 
-## If you are a developer
+# Run everything
+results <- artma(methods = "all", options = "my_analysis.yaml")
 
-We have a whole [README file](README-dev.md) for developers, so feel free to take a look there.
+# Analyze a data frame you already have in memory
+results <- artma(data = my_df, methods = c("effect_summary_stats"))
 
-# Using options
-
-We leverage the in-built R options namespace to define custom runtime options. However, artma provides a vast number of custom options to fit your needs, so we use a custom-tailored solution to ensure your options are easily accessible and do not interfere with other R runtime options.
-
-All artma related options are stored in hierarchical `.yaml` files, stored in a temporary `options` folder. This folder, together with the options files themselves, is created at runtime, such as when invoking `artma::options.create()`.
-
-A user options file holds a hierarchical structure, such as in the following exmample:
-
-```yaml
-# In a custom user options .yaml file
-general:
-  specific:
-    option1: "value1"
+# Open the results folder when done
+results <- artma(methods = "all", options = "my_analysis.yaml", open_results = TRUE)
 ```
 
-## Creating an options file
+# How a run works
 
-If you do not have a user options file at a runtime of an artma runtime method, you will be prompted to create one upon the call to that function, right before that function main body runs.
+A call to `artma()` orchestrates four steps:
 
-In case you wish to do so explicitly, you can call `artma::options.create()`.
+1. **Options loading**: your YAML options file is read and its values are loaded into the R `options()` namespace (prefixed with `artma.`) for the duration of the call.
+2. **Data preparation**: the dataset is read, column names are standardized, missing values are handled, and derived columns (effect sizes, standard errors, and similar) are computed. Skipped when you pass `data` directly, apart from preprocessing and validation.
+3. **Method execution**: the requested methods run in dependency order. Methods that build on another method's output (for example, `best_practice_estimate` builds on `bma`) automatically receive that upstream result, so shared models are computed once.
+4. **Export and return**: each method's tables are exported as CSV and its plots are written to the results directory. The function returns a named list of results, one entry per method.
 
-## Loading an options file
+Runs are fault tolerant. A method that errors is skipped with a warning while the rest continue, and results from successful methods are still exported. Failed method names and their error messages are attached to the returned list as the `failed_methods` attribute. Methods whose required columns are missing from your data, or whose optional packages aren't installed, are skipped with an explanation rather than aborting the run.
 
-You can load an options file by providing its name to the main `artma()` function. We explicitly **advice against loading the the options in a persistent manner**, so that different options do not interfere with each other across different sessions or invocations.
+Expensive computations are cached on disk between runs. Disable this with `options(artma.cache.use_cache = FALSE)` if you need fresh results every time.
 
-For example, providing a name of a custom user options file would look as follows:
+# Available methods
 
-```R
+List them at any time with `artma::methods.list()`. The current set:
+
+| Method | What it does |
+| --- | --- |
+| `effect_summary_stats` | Summary statistics of the main effect, grouped by flagged variables |
+| `variable_summary_stats` | Summary statistics for selected variables in the dataset |
+| `funnel_plot` | Funnel plot of effect estimates against precision, for spotting publication bias |
+| `box_plot` | Box plots of effects grouped by a categorical variable |
+| `prima_facie_graphs` | Density and histogram plots of effect distributions by category |
+| `t_stat_histogram` | Histogram of t-statistics with significance reference lines |
+| `linear_tests` | Linear publication bias diagnostics (fixed, random, and weighted variants) |
+| `nonlinear_tests` | Publication bias diagnostics based on non-linear estimators |
+| `exogeneity_tests` | Diagnostics that relax the exogeneity assumption (IV regression, p-uniform*) |
+| `p_hacking_tests` | A suite of tests for p-hacking and selective reporting |
+| `bma` | Bayesian Model Averaging over moderator variables for heterogeneity analysis |
+| `fma` | Frequentist Model Averaging, reusing the BMA model to order predictors |
+| `best_practice_estimate` | Best-practice estimates computed from the BMA coefficients |
+
+Some methods rely on optional packages (for example, `bma` needs `BMS`). If one is missing, artma tells you and offers to install it in interactive sessions; in scripts the method is skipped, unless it's the only method you asked for, in which case the run stops with a clear error.
+
+# Options files
+
+All settings for an analysis live in a hierarchical YAML options file: the data path, column mappings, method parameters, output preferences, and so on. Options files make analyses reproducible and let you keep separate configurations for different projects side by side.
+
+When loaded, every option is available under the `artma.` prefix:
+
+```r
+getOption("artma.verbose") # e.g. 3
+```
+
+## Creating and loading
+
+If you call a runtime method without an options file, artma prompts you to create one. You can also do it explicitly:
+
+```r
+artma::options.create()
+```
+
+Pass the file name to `artma()` to use it for a run:
+
+```r
 artma::artma(
-  options="my_custom_options.yaml", # if not provided, you will be prompted to enter the name through the R console
-  options_dir="path/to/your/options" # optional, defaults to a temporary folder
+  options = "my_analysis.yaml",
+  options_dir = "path/to/your/options" # optional, defaults to the standard directory
 )
 ```
 
-Upon providing the name of the options file to use, this file is read, and the options loaded into the `options()` namespace just for the duration of the invocation of the given function. **For the duration of that function function**, his makes the options available like so:
+Options are loaded only for the duration of the call, so different configurations never leak across sessions or invocations.
 
-```R
-# Within a function that loads an option file
-option_value <- getOption("artma.general.specific.option1") # Stores 'value1'
+Useful helpers:
+
+```r
+artma::options.list()              # names of your existing options files
+artma::options.open()              # open a file for editing
+artma::options.help()              # documentation for every available option
+artma::options.validate()          # check a file against the template
+artma::options.fix()               # fill in missing options with defaults
+artma::options.copy()              # duplicate a configuration
+artma::options.delete()            # remove one
+artma::options.print_default_dir() # where the files live
 ```
 
-Notice that each option is **automatically prefixed by the name of the package**. This is to ensure that the options do not mix with other packages, or R base options.
+## Modifying options
 
-## Adding new options
-
-<!-- TODO -->
-
-## Controlling verbosity
-
-The package provides configurable verbosity levels through the options file. You can control how much information is displayed during package operations by setting the `verbose` option in your options file. The verbosity levels are:
-
-| Verbosity Level | Description                                         |
-| --------------- | --------------------------------------------------- |
-| 1               | Errors only - only stop() conditions                |
-| 2               | Warnings + errors - warning() and stop() conditions |
-| 3               | Info - short progress/high-level info (default)     |
-| 4               | Debug/trace - everything including internals        |
-
-The verbosity level is controlled by an integer value, with higher numbers indicating more verbose output. The default level is 3.
-
-To change the verbosity level, simply modify the `verbose` value in your options file. For example, to set minimal verbosity (only errors), you would set:
-
-```yaml
-verbose: 1
-```
-
-The verbosity level can be set differently for each options file, allowing you to have different levels of detail for different analyses or workflows.
-
-Remember that you can set the option value using the following call:
-
-```R
+```r
 artma::options.modify(
-  option_file_name="your_opt_file.yaml",
-  list('verbose' = 1)
+  options_file_name = "my_analysis.yaml",
+  user_input = list("verbose" = 4)
 )
 ```
 
-To check the current verbosity level, run `getOption('artma.verbose')`.
+## Verbosity
 
-# Using methods
+The `verbose` option (1 to 4) controls how much artma prints:
 
-Methods (or _runtime methods_) is what we recognize as the main executable functionality of the package. In other words, these methods are what the package suppports and recognizes during its runtime.
+| Level | Output |
+| --- | --- |
+| 1 | Errors only |
+| 2 | Warnings and errors |
+| 3 | Info: short progress and high-level messages (default) |
+| 4 | Debug: everything, including internals |
 
-All of these are defined in `inst/artma/methods`. The contents of this folder, namely its `.R` scripts, are imported during runtime, and loaded as recognized methods. Consequently, the contents folder should ideally be used **exclusively to store the runtime methods**, and nothing else.
+# Data
 
-## Using available methods
+## Supported formats
 
-To see what methods are available, you can run `artma::methods.list()`. The output of this function should mirror the contents of the `methods` folder.
+artma reads CSV, TSV, Excel (`.xlsx`/`.xls`), JSON, Stata (`.dta`), and RDS files. You can also skip file reading entirely by passing a data frame via `artma(data = ...)`; it still goes through preprocessing and validation.
 
-## Defining custom methods
+Preview any dataset (from a path, a data frame, or your options file) with:
 
-If you wish to use a custom method in the artma package, it should be enough to add it to the `methods` folder. However, it must adhere to several principles in order to be parsed corretly:
+```r
+artma::data.preview()
+```
 
-- Each method (module) recognized by artma must have a `run` function. This serves as the entrypoint for the method. The function **must accept the several specific parameters**, common across all runtime methods. To see these, open the definition of any of the existing methods and search for non-default parameters. These are the ones you have to use in every case.
+## Per-variable configuration
 
-If you wish to use any custom parameters for your function, you can define them through options. To understand how to do so, see the [Adding new options section](#adding-new-options).
+Each column in your dataset has a configuration entry that controls how it participates in the analyses: its type, which methods use it, grouping flags, and so on. Sensible defaults are auto-detected from the data; only your deviations from the defaults are persisted in the options file.
+
+```r
+artma::config.get()                          # the fully resolved config
+artma::config.get(var_name = "study_size")   # one variable's entry
+artma::config.set("study_size", bma = TRUE)  # override specific fields
+artma::config.overrides()                    # see only what you've overridden
+artma::config.reset("study_size")            # back to auto-detected defaults
+artma::config.fix()                          # regenerate the config from the data
+```
+
+# Autonomy: how much artma asks
+
+The autonomy level controls how many interactive prompts you get during a run:
+
+| Level | Behavior |
+| --- | --- |
+| `ask_more` | Prompt for most decisions, including non-critical ones |
+| `balanced` | Prompt for important decisions only |
+| `autonomous` (default) | Minimal prompts; rely on defaults and auto-detection |
+
+```r
+artma::autonomy.get()
+artma::autonomy.set("balanced")
+```
+
+Non-interactive sessions (scripts, CI) never prompt, regardless of the level.
+
+# Results and visualization
+
+Tables are exported as CSV and plots as graphics files into the results directory:
+
+```r
+artma::results.dir()  # print and return the path
+artma::results.open() # open it in your file browser
+```
+
+Plot appearance is configurable per session:
+
+```r
+artma::viz.themes()             # available themes
+artma::viz.get()                # current settings
+artma::viz.set(theme = "purple")
+```
+
+# Custom methods
+
+Runtime methods live in `inst/artma/methods/`, one file per method, and are discovered automatically. Each method is a plain function registered with `register_runtime_method()`, which declares its dependencies, required data columns, and optional packages, and wires in caching:
+
+```r
+box::use(
+  artma / modules / runtime_methods[new_method_result, register_runtime_method]
+)
+
+my_method <- function(df, ...) {
+  new_method_result(
+    tables = list(summary = my_summary_df),
+    plots = list(),
+    meta = list()
+  )
+}
+
+run <- register_runtime_method(
+  my_method,
+  stage = "my_method",
+  required_columns = c("effect", "se")
+)
+
+box::export(my_method, run)
+```
+
+Method parameters beyond the data frame come from the options system, so custom methods are configured the same way as built-in ones. See [README-dev.md](README-dev.md) for the full developer setup.
+
+# Learn more
+
+- The package vignettes cover the workflow in depth: [Getting Started](vignettes/getting-started.Rmd) and [Options Files](vignettes/options-files.Rmd), also available via `browseVignettes("artma")` or [on CRAN](https://cran.r-project.org/package=artma).
+- Developers should start with [README-dev.md](README-dev.md).
+- Bugs and feature requests: [GitHub issues](https://github.com/PetrCala/artma/issues).
