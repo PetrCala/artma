@@ -81,7 +81,6 @@ utils::globalVariables(c(
   "prompt_save_preference",
   "read",
   "read_data",
-  "read_data_raw",
   "read_options_file",
   "read_template",
   "reset_config_overrides",
