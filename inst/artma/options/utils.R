@@ -133,6 +133,28 @@ parse_options_file_name <- function(input_string) {
   str_out
 }
 
+#' @title Require an option value
+#' @description Read an option that must already be set, aborting with a clear,
+#'   named-option message when it is `NULL` (i.e. unset). Use this at call sites
+#'   that read a genuinely required key, so a missing value fails at the boundary
+#'   instead of propagating as a `NULL` dereference deeper in the pipeline.
+#' @param key *\[character\]* The fully-qualified option name (e.g.
+#'   `"artma.data.source_path"`).
+#' @return The option value (never `NULL`).
+#' @export
+require_option <- function(key) {
+  box::use(artma / const[CONST])
+
+  val <- getOption(key)
+  if (is.null(val)) {
+    cli::cli_abort(c(
+      "Required option {CONST$STYLES$OPTIONS$NAME(key)} is not set.",
+      "i" = "This value is populated when options are loaded; ensure options are loaded before this call."
+    ))
+  }
+  val
+}
+
 #' A helper function to map the expected type from an option definition.
 get_expected_type <- function(opt_def) {
   # If an explicit type is given, use that.
@@ -184,7 +206,7 @@ validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
 
   switch(opt_type,
     character = if (!is.character(val)) format_error(opt_name, "character", val),
-    integer = if (!is.numeric(val)) format_error(opt_name, "numeric/integer", val),
+    integer = if (!is.numeric(val) || any(val != as.integer(val), na.rm = TRUE)) format_error(opt_name, "integer", val),
     logical = if (!is.logical(val)) format_error(opt_name, "logical", val),
     numeric = if (!is.numeric(val)) format_error(opt_name, "numeric", val),
     NULL
@@ -230,6 +252,7 @@ box::export(
   parse_template_enum_value,
   print_options_help_text,
   remove_options_with_prefix,
+  require_option,
   validate_option_value,
   validate_user_input
 )

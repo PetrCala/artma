@@ -42,8 +42,8 @@ persist_expected_schema_cols <- function(cols) {
   normalized <- normalize_expected_schema_cols(cols)
   options("artma.data.expected_schema_columns" = normalized)
 
-  options_file_name <- getOption("artma.temp.file_name")
-  options_dir <- getOption("artma.temp.dir_name")
+  options_file_name <- getOption("artma.temp.file_name", NULL)
+  options_dir <- getOption("artma.temp.dir_name", NULL)
   has_options_file <- !is.null(options_file_name) && !is.null(options_dir)
 
   if (!has_options_file) {
@@ -494,8 +494,8 @@ apply_reconciliation <- function(decisions) {
     artma / libs / core / utils[get_verbosity]
   )
 
-  options_file_name <- getOption("artma.temp.file_name")
-  options_dir <- getOption("artma.temp.dir_name")
+  options_file_name <- getOption("artma.temp.file_name", NULL)
+  options_dir <- getOption("artma.temp.dir_name", NULL)
 
   has_options_file <- !is.null(options_file_name) && !is.null(options_dir)
 

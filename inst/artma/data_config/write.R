@@ -13,20 +13,12 @@ update_data_config <- function(changes) {
     artma / libs / core / utils[get_verbosity],
     artma / data_config / defaults[build_base_config, extract_overrides],
     artma / data_config / read[get_data_config],
-    artma / data_config / resolve[read_df_for_config]
+    artma / data_config / resolve[read_df_for_config],
+    artma / options / index[require_option]
   )
 
-  options_file_name <- getOption("artma.temp.file_name")
-  options_dir <- getOption("artma.temp.dir_name")
-
-  if (is.null(options_file_name) || is.null(options_dir)) {
-    cli::cli_abort(
-      paste(
-        "There was an error loading the options file -",
-        "the options file name and directory are not set."
-      )
-    )
-  }
+  options_file_name <- require_option("artma.temp.file_name")
+  options_dir <- require_option("artma.temp.dir_name")
 
   validate(is.list(changes))
   if (is.null(changes)) changes <- list()
@@ -113,8 +105,8 @@ fix_data_config <- function(
   base_config <- build_base_config(df)
 
   # Clear all overrides -- the base config is the canonical default
-  options_file_name <- getOption("artma.temp.file_name")
-  options_dir <- getOption("artma.temp.dir_name")
+  options_file_name <- getOption("artma.temp.file_name", NULL)
+  options_dir <- getOption("artma.temp.dir_name", NULL)
 
   if (!is.null(options_file_name) && !is.null(options_dir)) {
     suppressMessages(
@@ -145,19 +137,12 @@ fix_data_config <- function(
 #'   resets all overrides.
 #' @return *\[list\]* The updated fully-resolved data config (invisibly).
 reset_config_overrides <- function(var_name = NULL) {
-  options_file_name <- getOption("artma.temp.file_name")
-  options_dir <- getOption("artma.temp.dir_name")
+  box::use(artma / options / index[require_option])
 
-  if (is.null(options_file_name) || is.null(options_dir)) {
-    cli::cli_abort(
-      paste(
-        "There was an error loading the options file -",
-        "the options file name and directory are not set."
-      )
-    )
-  }
+  options_file_name <- require_option("artma.temp.file_name")
+  options_dir <- require_option("artma.temp.dir_name")
 
-  current_overrides <- getOption("artma.data.config")
+  current_overrides <- getOption("artma.data.config", list())
   if (!is.list(current_overrides)) current_overrides <- list()
 
   if (is.null(var_name)) {

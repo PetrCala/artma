@@ -105,8 +105,8 @@ save_to_options_file <- function(option_path, value) {
     {
       box::use(artma / options / files[read_options_file, write_options_file, options_file_path])
 
-      options_file_name <- getOption("artma.temp.file_name")
-      options_dir <- getOption("artma.temp.dir_name")
+      options_file_name <- getOption("artma.temp.file_name", NULL)
+      options_dir <- getOption("artma.temp.dir_name", NULL)
 
       if (is.null(options_file_name) || is.null(options_dir)) {
         if (get_verbosity() >= 2) {

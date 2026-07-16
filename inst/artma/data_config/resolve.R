@@ -77,11 +77,11 @@ standardize_df_for_config <- function(df) {
 #'   the data pipeline).
 #' @param df *\[data.frame\]* The dataframe to cache.
 #' @param df_path *\[character, optional\]* Source path associated with the
-#'   dataframe. Defaults to `getOption("artma.data.source_path")`.
+#'   dataframe. Defaults to `getOption("artma.data.source_path", NULL)`.
 #' @return `NULL`
 prime_df_for_config_cache <- function(
   df,
-  df_path = getOption("artma.data.source_path")
+  df_path = getOption("artma.data.source_path", NULL)
 ) {
   box::use(artma / libs / core / validation[validate])
 
@@ -106,7 +106,7 @@ prime_df_for_config_cache <- function(
 read_df_for_config <- function() {
   box::use(artma / data / read[read_data])
 
-  df_path <- getOption("artma.data.source_path")
+  df_path <- getOption("artma.data.source_path", NULL)
   if (is.null(df_path) || (length(df_path) == 1 && is.na(df_path))) {
     cli::cli_abort("Cannot resolve data config: {.code artma.data.source_path} is not set.")
   }

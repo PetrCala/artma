@@ -15,7 +15,7 @@ nonlinear_tests <- function(df) {
 
   opt <- get_option_group("artma.methods.nonlinear_tests")
 
-  add_marks <- resolve_add_significance_marks("artma.methods.nonlinear_tests")
+  add_marks <- resolve_add_significance_marks()
   round_to_opt <- opt$round_to
   if (length(round_to_opt) == 1 && is.na(round_to_opt)) {
     round_to_opt <- NULL

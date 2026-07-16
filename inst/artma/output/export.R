@@ -10,8 +10,8 @@ is_auto_output_dir <- function(output_dir) {
 persist_auto_output_dir <- function(output_dir) {
   box::use(artma / libs / core / utils[get_verbosity])
 
-  options_file_name <- getOption("artma.temp.file_name")
-  options_dir <- getOption("artma.temp.dir_name")
+  options_file_name <- getOption("artma.temp.file_name", NULL)
+  options_dir <- getOption("artma.temp.dir_name", NULL)
 
   if (is.null(options_file_name) || is.null(options_dir)) {
     if (get_verbosity() >= 4) {

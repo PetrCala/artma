@@ -18,7 +18,7 @@ linear_tests <- function(df) {
 
   opt <- get_option_group("artma.methods.linear_tests")
 
-  add_marks <- resolve_add_significance_marks("artma.methods.linear_tests")
+  add_marks <- resolve_add_significance_marks()
   bootstrap_replications <- opt$bootstrap_replications %||% 100L
   conf_level <- opt$conf_level %||% 0.95
   round_to <- as.integer(getOption("artma.output.number_of_decimals", 3))

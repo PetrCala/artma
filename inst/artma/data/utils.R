@@ -106,7 +106,7 @@ standardize_column_names <- function(df, auto_detect = TRUE) {
       final_mapping <- column_mapping_workflow(
         df = df,
         auto_mapping = auto_mapping,
-        options_file_name = getOption("artma.options_file_name"),
+        options_file_name = getOption("artma.options_file_name", NULL),
         force_interactive = (config_setup == "manual")
       )
     } else {
@@ -117,7 +117,7 @@ standardize_column_names <- function(df, auto_detect = TRUE) {
       final_mapping <- column_mapping_workflow(
         df = df,
         auto_mapping = list(),
-        options_file_name = getOption("artma.options_file_name"),
+        options_file_name = getOption("artma.options_file_name", NULL),
         force_interactive = TRUE
       )
     }

@@ -18,7 +18,7 @@ exogeneity_tests <- function(df) {
 
   opt <- get_option_group("artma.methods.exogeneity_tests")
 
-  add_marks <- resolve_add_significance_marks("artma.methods.exogeneity_tests")
+  add_marks <- resolve_add_significance_marks()
   iv_instrument <- opt$iv_instrument %||% "automatic"
   puniform_alpha <- opt$puniform_alpha %||% 0.05
   puniform_method <- opt$puniform_method %||% "ML"
