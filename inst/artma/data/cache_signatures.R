@@ -7,7 +7,7 @@ box::use(
 # including them would let the first run rewrite its own cache key, so a
 # second identical run could never hit the cache.
 #
-# - "data.config": `update_config_with_computed_columns()` appends computed
+# - "data.columns": `update_config_with_computed_columns()` appends computed
 #   column entries during the run. User-authored entries still feed the
 #   signature; see `user_authored_config_entries()`.
 # - "data.expected_schema_columns": the schema baseline persisted by
@@ -15,7 +15,7 @@ box::use(
 # - "data.source_path": runtime-populated; captured separately as a
 #   normalized path plus the file modification time.
 PIPELINE_WRITTEN_OPTION_KEYS <- c(
-  "data.config",
+  "data.columns",
   "data.expected_schema_columns",
   "data.source_path"
 )
@@ -95,7 +95,7 @@ user_authored_config_entries <- function(config) {
 #' key, so no explicit hashing happens here.
 #'
 #' Options that the pipeline itself writes while running (computed column
-#' entries in `data.config`, the `data.expected_schema_columns` baseline, and
+#' entries in `data.columns`, the `data.expected_schema_columns` baseline, and
 #' `temp.*` session bookkeeping) are excluded. Hashing them would make run 1
 #' change its own signature, so an identical run 2 would always miss the
 #' cache.
@@ -121,7 +121,7 @@ build_data_cache_signature <- function() {
     }
   }
 
-  data_config <- user_authored_config_entries(getOption("artma.data.config", NULL))
+  data_config <- user_authored_config_entries(getOption("artma.data.columns", NULL))
   artma_options <- drop_pipeline_written_options(get_option_group("artma"))
 
   list(

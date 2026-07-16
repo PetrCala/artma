@@ -28,7 +28,7 @@ test_that("enforce_data_types coerces columns according to the config", {
   # With no dataframe source, get_data_config returns the overrides as-is
   withr::local_options(list(
     "artma.data.source_path" = NA,
-    "artma.data.config" = list(
+    "artma.data.columns" = list(
       x = list(var_name = "x", data_type = "int"),
       y = list(var_name = "y", data_type = "category"),
       z = list(var_name = "z", data_type = "float")
@@ -49,7 +49,7 @@ test_that("enforce_data_types errors on a column with no config entry", {
 
   withr::local_options(list(
     "artma.data.source_path" = NA,
-    "artma.data.config" = list(
+    "artma.data.columns" = list(
       x = list(var_name = "x", data_type = "float")
     ),
     "artma.verbose" = 1
@@ -65,7 +65,7 @@ test_that("enforce_data_types skips entries without type information", {
 
   withr::local_options(list(
     "artma.data.source_path" = NA,
-    "artma.data.config" = list(
+    "artma.data.columns" = list(
       x = list(var_name = "x", data_type = "float"),
       y = list(var_name = "y")
     ),

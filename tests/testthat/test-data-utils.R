@@ -16,20 +16,31 @@ test_that("standardize_column_names handles missing required columns in options 
     artma / data / utils[get_required_colnames, standardize_column_names]
   )
 
-  mock_colnames <- MOCKS$create_mock_options_colnames()
+  # Rename every standard column in the mock data, so a required column with no
+  # record in the store cannot be silently resolved by the identity fallback
+  # (a df column that already carries the standard name needs no mapping).
+  renames <- list(
+    obs_id = "obs_id_col", study_id = "study_id_col", effect = "effect_col",
+    se = "se_col", t_stat = "t_stat_col", n_obs = "n_obs_col",
+    study_size = "study_size_col", reg_dof = "reg_dof_col", precision = "precision_col"
+  )
+  mock_colnames <- MOCKS$create_mock_options_colnames(colnames = renames)
+  mock_df <- MOCKS$create_mock_df(colnames_map = mock_colnames)
 
   all_colnames <- names(mock_colnames)
   required_colnames <- get_required_colnames()
   non_required_colnames <- setdiff(all_colnames, required_colnames)
 
-  # Build the full option list for a scenario, clearing (NULL) every colnames
-  # option that the scenario omits so that state set by a previous scenario
-  # cannot leak into the next one.
+  # Build the unified column store for a scenario: one role record with a
+  # source_name per mapped column.
   build_scenario_options <- function(scenario_colnames) {
-    opts <- lapply(stats::setNames(all_colnames, all_colnames), function(col) {
-      scenario_colnames[[col]]
-    })
-    stats::setNames(opts, paste0("artma.data.colnames.", all_colnames))
+    records <- list()
+    for (col in names(scenario_colnames)) {
+      val <- scenario_colnames[[col]]
+      if (is.null(val)) next
+      records[[col]] <- list(source_name = val)
+    }
+    list("artma.data.columns" = records)
   }
 
   # Enumerate every required and non-required column explicitly instead of
@@ -61,7 +72,6 @@ test_that("standardize_column_names handles missing required columns in options 
   )
 
   for (scenario in scenarios) {
-    mock_df <- MOCKS$create_mock_df(colnames_map = scenario$mock_colnames)
     withr::with_options(build_scenario_options(scenario$mock_colnames), {
       expect_error(
         standardize_column_names(df = mock_df, auto_detect = FALSE),
@@ -70,6 +80,19 @@ test_that("standardize_column_names handles missing required columns in options 
       )
     })
   }
+})
+
+test_that("standardize_column_names accepts identity columns without a stored record", {
+  box::use(artma / data / utils[standardize_column_names])
+
+  # All required columns are already present under their standard names, so an
+  # empty store is sufficient.
+  mock_df <- MOCKS$create_mock_df()
+
+  withr::with_options(list("artma.data.columns" = list()), {
+    standardized_df <- standardize_column_names(mock_df, auto_detect = FALSE)
+    expect_true(all(c("study_id", "effect", "se", "n_obs") %in% colnames(standardized_df)))
+  })
 })
 
 test_that("standardize_column_names handles missing required columns in data correctly", {

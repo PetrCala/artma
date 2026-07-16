@@ -23,11 +23,7 @@ pipeline_options <- function(tmp_file) {
   list(
     "artma.cache.use_cache" = TRUE,
     "artma.data.source_path" = tmp_file,
-    "artma.data.colnames.study_id" = "study_id",
-    "artma.data.colnames.effect" = "effect",
-    "artma.data.colnames.se" = "se",
-    "artma.data.colnames.n_obs" = "n_obs",
-    "artma.data.config" = precomputed_config_overrides(),
+    "artma.data.columns" = precomputed_config_overrides(),
     "artma.data.config_setup" = "auto",
     "artma.data.expected_schema_columns" = NULL,
     "artma.data.na_handling" = "remove",
@@ -47,7 +43,7 @@ test_that("build_data_cache_signature ignores options written by the pipeline", 
 
   withr::local_options(list(
     "artma.data.source_path" = tmp_file,
-    "artma.data.config" = list(
+    "artma.data.columns" = list(
       gdp = list(var_name = "gdp", effect_sum_stats = TRUE)
     ),
     "artma.data.expected_schema_columns" = NULL,
@@ -60,12 +56,12 @@ test_that("build_data_cache_signature ignores options written by the pipeline", 
 
   # Simulate what prepare_data() writes during a run: computed column entries
   # in the data config, the schema baseline, and session bookkeeping.
-  mutated_config <- getOption("artma.data.config")
+  mutated_config <- getOption("artma.data.columns")
   mutated_config$precision <- list(var_name = "precision", is_computed = TRUE)
   mutated_config$obs_id <- list(var_name = "obs_id", is_computed = TRUE)
 
   withr::local_options(list(
-    "artma.data.config" = mutated_config,
+    "artma.data.columns" = mutated_config,
     "artma.data.expected_schema_columns" = c("gdp", "effect", "se"),
     "artma.temp.file_name" = "unit-test.yaml",
     "artma.temp.dir_name" = withr::local_tempdir()
@@ -84,7 +80,7 @@ test_that("build_data_cache_signature reacts to user-authored inputs", {
 
   withr::local_options(list(
     "artma.data.source_path" = tmp_file,
-    "artma.data.config" = list(
+    "artma.data.columns" = list(
       gdp = list(var_name = "gdp", effect_sum_stats = TRUE)
     ),
     "artma.data.na_handling" = "remove"
@@ -101,7 +97,7 @@ test_that("build_data_cache_signature reacts to user-authored inputs", {
 
   # A user-authored data config entry changes the signature
   changed_config <- withr::with_options(
-    list("artma.data.config" = list(
+    list("artma.data.columns" = list(
       gdp = list(var_name = "gdp", effect_sum_stats = FALSE)
     )),
     build_data_cache_signature()

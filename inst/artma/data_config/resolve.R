@@ -27,16 +27,16 @@ get_source_mtime <- function(path) {
 }
 
 #' @title Get Current Column Names Map
-#' @description Reads the current column name mapping from the options
-#'   namespace. Used as part of the cache key so that a changed mapping
+#' @description Reads the current column name mapping from the unified
+#'   per-column store. Used as part of the cache key so that a changed mapping
 #'   forces re-standardization.
 #' @return *\[list\]* The current column names map (possibly empty).
 #' @keywords internal
 get_current_colnames_map <- function() {
-  box::use(artma / options / utils[get_option_group])
+  box::use(artma / data / utils[get_colnames_map])
 
   tryCatch(
-    get_option_group("artma.data.colnames"),
+    get_colnames_map(),
     error = function(e) list()
   )
 }

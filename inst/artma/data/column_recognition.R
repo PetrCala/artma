@@ -1,3 +1,18 @@
+#' Single home for every confidence threshold the column-matching engine uses.
+#' Both the recognition flow (options creation, auto-detection) and the schema
+#' reconciliation flow (rename proposals) read from this list, so the
+#' thresholds cannot drift apart again.
+#' - required_confidence: minimum score to auto-accept a match for a required column
+#' - optional_confidence: stricter minimum for optional columns (fewer false positives)
+#' - rename_suggest: minimum score for a rename proposal to be shown to the user
+#' - rename_auto: minimum score for a rename to be accepted without confirmation
+MATCH_THRESHOLDS <- list(
+  required_confidence = 0.7,
+  optional_confidence = 0.95,
+  rename_suggest = 0.5,
+  rename_auto = 0.75
+)
+
 #' @title Define column patterns for recognition
 #' @description Returns a list of patterns for recognizing standard columns
 #' @return *\[list\]* Named list of regex patterns and keywords for each standard column
@@ -539,12 +554,42 @@ resolve_multiple_matches <- function(df, candidates, std_col, matches) {
 }
 
 
+#' @title Score a rename candidate
+#' @description Scores how likely `candidate` is a rename of `stored_name`.
+#'   Combines the string-similarity signal with the pattern-based recognition
+#'   signal when the standard column the record maps to is known, so both the
+#'   recognition flow and schema reconciliation share one matching engine.
+#' @param stored_name *\[character\]* The column name stored in the config that
+#'   is now missing from the data frame.
+#' @param candidate *\[character\]* An unmatched column present in the data frame.
+#' @param std_name *\[character, optional\]* The standard column (role) the
+#'   stored name maps to, if any. Enables the pattern/value-analysis signal.
+#' @param df *\[data.frame, optional\]* The data frame, for value analysis.
+#' @return *\[numeric\]* Similarity score between 0 and 1.
+score_rename_candidate <- function(stored_name, candidate, std_name = NULL, df = NULL) {
+  score <- string_similarity(stored_name, candidate)
+
+  patterns <- get_column_patterns()
+  if (!is.null(std_name) && std_name %in% names(patterns)) {
+    match_result <- match_column_name(candidate, patterns[std_name])
+    if (!is.na(match_result$match)) {
+      pattern_score <- match_result$score
+      if (!is.null(df) && candidate %in% names(df)) {
+        pattern_score <- score_candidate_values(df, candidate, std_name, pattern_score)
+      }
+      score <- max(score, pattern_score)
+    }
+  }
+
+  score
+}
+
 #' @title Recognize columns in data frame
 #' @description Automatically recognize which columns correspond to standard columns
 #' @param df *\[data.frame\]* The data frame
 #' @param min_confidence *\[numeric\]* Minimum confidence score (0-1) to accept a match
 #' @return *\[list\]* Named list mapping standard columns to data frame columns
-recognize_columns <- function(df, min_confidence = 0.7) {
+recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_confidence) {
   box::use(
     artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity]
@@ -575,7 +620,7 @@ recognize_columns <- function(df, min_confidence = 0.7) {
   for (std_col in sorted_std_cols) {
     # Higher confidence threshold for optional columns to reduce false positives
     is_required <- std_col %in% required_cols
-    confidence_threshold <- if (is_required) min_confidence else 0.95
+    confidence_threshold <- if (is_required) min_confidence else MATCH_THRESHOLDS$optional_confidence
 
     # Find all columns that matched this standard column
     candidates <- names(matches)[vapply(matches, function(m) {
@@ -647,11 +692,13 @@ check_mapping_completeness <- function(mapping) {
 
 
 box::export(
+  MATCH_THRESHOLDS,
   get_column_patterns,
   match_column_name,
   recognize_columns,
   get_required_column_names,
   check_mapping_completeness,
+  score_rename_candidate,
   string_similarity,
   analyze_column_values,
   is_likely_numeric_id,

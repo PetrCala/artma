@@ -688,61 +688,22 @@ data:
 
       If this option is not set (NA), you will be prompted interactively when missing values are detected.
 
-  colnames:
-    obs_id:
-      type: "character"
-      allow_na: true
-      default: .na
-      standardize: true
-      help: "Column containing observation IDs"
-
-    study_id:
-      type: "character"
-      standardize: true
-      help: "Column containing study identifiers (names or IDs)"
-
-    effect:
-      type: "character"
-      standardize: true
-      help: "Column containing effect estimates"
-
-    se:
-      type: "character"
-      standardize: true
-      help: "Column containing standard errors"
-
-    t_stat:
-      type: "character"
-      standardize: true
-      allow_na: true
-      default: .na
-      help: "Column containing t-statistics"
-
-    n_obs:
-      type: "character"
-      standardize: true
-      help: "Column containing the number of observations"
-
-    study_size:
-      type: "character"
-      standardize: true
-      allow_na: true
-      default: .na
-      help: "Column containing the study sizes, i.e. the number of estimates per study"
-
-    reg_dof:
-      type: "character"
-      standardize: true
-      allow_na: true
-      default: .na
-      help: "Column containing the degrees of freedom for the regression"
-
-    precision:
-      type: "character"
-      standardize: true
-      allow_na: true
-      default: .na
-      help: "Column containing the precision of the effect estimates"
+  columns:
+    type: "list"
+    default: .na
+    allow_na: true
+    help: |
+      Unified per-column configuration: one record per dataset column, stored sparsely
+      (only non-default fields are persisted). Records for the standard columns
+      (effect, se, study_id, n_obs, ...) are keyed by the standard name and may carry
+      a {.strong source_name} field naming the column in your data file that maps to
+      that standard column. Records for moderator variables are keyed by the column's
+      own (syntactic) name.
+      Besides {.strong source_name}, each record can override analysis fields such as
+      var_name_verbose, var_name_description, data_type, group_category,
+      variable_summary, effect_sum_stats, equal, gltl, bma, bma_reference_var,
+      bma_to_log, bpe, bpe_sum_stats, bpe_equal, and bpe_gltl.
+      For more details, read the 'data_config' vignette.
 
   expected_schema_columns:
     type: "character"
@@ -771,15 +732,6 @@ data:
       How should the system identify which columns in your data file contain which variables?
         {cli::symbol$bullet} {.strong auto}: Automatically detect column names (e.g., recognizes "effect", "se", "study_name") and ask you to confirm the mapping
         {cli::symbol$bullet} {.strong manual}: Skip automatic detection and manually specify which columns map to which variables (interactive mode only)
-
-  config:
-    type: "list"
-    default: .na
-    allow_na: true
-    help: |
-      A list of configuration options for the data.
-      Each variable in the dataset requires a list of configuration options.
-      For more details, read the 'data_config' vignette.
 
   winsorization_level:
     type: "numeric"

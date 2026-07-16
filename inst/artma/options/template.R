@@ -428,11 +428,12 @@ parse_options_from_template <- function(
   options_def <- flatten_template_options(raw_template_options)
 
   parsed_options <- list()
-  column_name_prefix <- "data.colnames."
+  columns_option_name <- "data.columns"
 
-  # First pass: Resolve non-column-name options (especially data.source_path)
+  # First pass: Resolve everything except the unified column store
+  # (especially data.source_path, which column preprocessing depends on)
   for (opt in options_def) {
-    if (!startsWith(opt$name, column_name_prefix)) {
+    if (opt$name != columns_option_name) {
       val <- resolve_option_value(opt, user_input)
       val <- coerce_option_value(val, opt)
       # We do not validate here, only after all options are parsed
@@ -443,12 +444,13 @@ parse_options_from_template <- function(
     }
   }
 
-  # Now that data.source_path might be resolved, run column preprocessing
+  # Now that data.source_path might be resolved, run column preprocessing to
+  # build the role records of the unified column store
   user_input <- preprocess_column_mapping(user_input, options_def)
 
-  # Second pass: Resolve column name options (should now be in user_input from preprocessing)
+  # Second pass: Resolve the unified column store (now possibly in user_input)
   for (opt in options_def) {
-    if (startsWith(opt$name, column_name_prefix)) {
+    if (opt$name == columns_option_name) {
       val <- resolve_option_value(opt, user_input)
       val <- coerce_option_value(val, opt)
       # We do not validate here, only after all options are parsed

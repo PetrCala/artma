@@ -29,10 +29,13 @@ Options files use YAML format, which is human-readable and supports hierarchical
 ```yaml
 data:
   source_path: "/path/to/your/data.csv"
-  colnames:
-    effect: "effect_size"
-    se: "standard_error"
-    study: "study_name"
+  columns:
+    effect:
+      source_name: "effect_size"
+    se:
+      source_name: "standard_error"
+    study_id:
+      source_name: "study_name"
 methods:
   effect_summary_stats:
     conf_level: 0.95
@@ -53,10 +56,9 @@ Contains general package information:
 Controls data loading and preprocessing:
 
 - `source_path`: Path to your dataset file (CSV, Excel, JSON, Stata, or RDS)
-- `colnames`: Column name mappings (effect, se, study, n_obs, etc.)
+- `columns`: Unified per-column records: name mappings (`source_name`) plus per-variable analysis configuration
 - `na_handling`: How to handle missing values (stop, remove, median, mean, interpolate, mice)
 - `config_setup`: Whether to auto-configure or manually configure data
-- `config`: Detailed data configuration for each variable
 - `winsorization_level`: Outlier treatment level (0, 0.01, 0.05, 0.10)
 
 ### 3. `calc`
@@ -196,9 +198,11 @@ artma::options.create(
   options_file_name = "my_analysis",
   user_input = list(
     "data.source_path" = "/path/to/data.csv",
-    "data.colnames.effect" = "effect_size",
-    "data.colnames.se" = "standard_error",
-    "data.colnames.study" = "study_name",
+    "data.columns" = list(
+      effect = list(source_name = "effect_size"),
+      se = list(source_name = "standard_error"),
+      study_id = list(source_name = "study_name")
+    ),
     "methods.effect_summary_stats.conf_level" = 0.99
   )
 )
@@ -295,11 +299,15 @@ general:
 
 data:
   source_path: "/data/my_meta_analysis.csv"
-  colnames:
-    effect: "effect_size"
-    se: "standard_error"
-    study: "study_name"
-    n_obs: "sample_size"
+  columns:
+    effect:
+      source_name: "effect_size"
+    se:
+      source_name: "standard_error"
+    study_id:
+      source_name: "study_name"
+    n_obs:
+      source_name: "sample_size"
   na_handling: "stop"
   config_setup: "auto"
 
@@ -318,12 +326,15 @@ general:
 
 data:
   source_path: "/data/complex_analysis.csv"
-  colnames:
-    effect: "beta"
-    se: "se_beta"
-    study: "paper_id"
-    n_obs: "n"
-    study_id: "study_id"
+  columns:
+    effect:
+      source_name: "beta"
+    se:
+      source_name: "se_beta"
+    study_id:
+      source_name: "paper_id"
+    n_obs:
+      source_name: "n"
   na_handling: "median"
   winsorization_level: 0.05
   config_setup: "manual"
@@ -439,7 +450,7 @@ This will:
    - Or manually add the missing option to the YAML file
 
 4. **"Column not found in data"**
-   - Verify column name mappings in `data.colnames`
+   - Verify column name mappings in `data.columns` (each record's `source_name`)
    - Check that your dataset contains the specified columns
    - Use standardized column names if available
 

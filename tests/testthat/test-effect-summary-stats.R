@@ -27,7 +27,7 @@ make_config_entry <- function(name, verbose, data_type, equal = NA_real_, gltl =
 
 test_that("effect summary stats computes segmented summaries", {
   local_options(
-    "artma.data.config" = list(
+    "artma.data.columns" = list(
       group = make_config_entry("group", "Group", "int", equal = 1),
       score = make_config_entry("score", "Score", "float", gltl = "median")
     ),
@@ -72,7 +72,7 @@ test_that("effect summary stats computes segmented summaries", {
 
 test_that("formal output hides presentation columns", {
   local_options(
-    "artma.data.config" = list(
+    "artma.data.columns" = list(
       group = make_config_entry("group", "Group", "int", equal = 1)
     ),
     "artma.methods.effect_summary_stats.conf_level" = 0.9,

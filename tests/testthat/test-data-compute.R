@@ -28,7 +28,7 @@ test_that("compute_optional_columns preserves study labels while normalizing stu
   )
 
   withr::local_options(list(
-    "artma.data.config" = computed_config_overrides,
+    "artma.data.columns" = computed_config_overrides,
     "artma.output.save_results" = FALSE,
     "artma.calc.precision_type" = "1/SE",
     "artma.verbose" = 1
@@ -57,7 +57,7 @@ test_that("compute_optional_columns overwrites conflicting existing study_label"
   )
 
   withr::local_options(list(
-    "artma.data.config" = computed_config_overrides,
+    "artma.data.columns" = computed_config_overrides,
     "artma.output.save_results" = FALSE,
     "artma.calc.precision_type" = "1/SE",
     "artma.verbose" = 1
@@ -80,7 +80,7 @@ test_that("get_reserved_colnames covers every column compute_optional_columns ca
   )
 
   withr::local_options(list(
-    "artma.data.config" = computed_config_overrides,
+    "artma.data.columns" = computed_config_overrides,
     "artma.output.save_results" = FALSE,
     "artma.calc.precision_type" = "1/SE",
     "artma.verbose" = 1

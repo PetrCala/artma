@@ -41,14 +41,15 @@ get_pkg_path <- function() {
   package_name <- CONST$PACKAGE_NAME
 
   box_paths <- .normalize_box_paths(getOption("box.path"))
-  dev_candidates <- box_paths[dir.exists(box_paths) & grepl(file.path(package_name, "inst$"), box_paths)]
-  if (!rlang::is_empty(dev_candidates)) {
-    return(dev_candidates[[1]])
-  }
-
-  prod_candidates <- box_paths[dir.exists(box_paths) & grepl(paste0(package_name, "$"), box_paths)]
-  if (!rlang::is_empty(prod_candidates)) {
-    return(prod_candidates[[1]])
+  # Any box.path entry that actually contains the package's module directory
+  # can serve modules and package files. Taking the first match respects the
+  # search order (e.g. a worktree's inst/ prepended by tests/setup.R wins over
+  # an .Rprofile entry pointing at another checkout).
+  candidates <- box_paths[
+    dir.exists(box_paths) & dir.exists(file.path(box_paths, package_name))
+  ]
+  if (!rlang::is_empty(candidates)) {
+    return(candidates[[1]])
   }
 
   pkg_root <- .find_package_root(package_name)

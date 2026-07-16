@@ -94,7 +94,7 @@ config.overrides <- function(options_file_name = NULL, options_dir = NULL) {
     options_file_name = options_file_name,
     options_dir = options_dir,
     FUN = function() {
-      overrides <- getOption("artma.data.config", list())
+      overrides <- getOption("artma.data.columns", list())
       if (!is.list(overrides)) return(list())
       overrides
     }

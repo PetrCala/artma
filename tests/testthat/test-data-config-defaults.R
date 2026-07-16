@@ -84,17 +84,36 @@ test_that("build_default_config_entry: character column sets variable_summary FA
   expect_false(entry$variable_summary)
 })
 
-test_that("build_default_config_entry: entry has all 16 expected fields", {
+test_that("build_default_config_entry: entry has all expected fields", {
   box::use(artma / data_config / defaults[build_default_config_entry])
 
   entry <- build_default_config_entry("x", c(1, 2, 3))
   expected_fields <- c(
+    "source_name", "is_computed",
     "var_name", "var_name_verbose", "var_name_description",
     "data_type", "group_category", "variable_summary",
     "effect_sum_stats", "equal", "gltl", "bma", "bma_reference_var",
     "bma_to_log", "bpe", "bpe_sum_stats", "bpe_equal", "bpe_gltl"
   )
   expect_equal(sort(names(entry)), sort(expected_fields))
+})
+
+test_that("build_default_config_entry: source_name defaults to the column's own name", {
+  box::use(artma / data_config / defaults[build_default_config_entry, extract_overrides])
+
+  entry <- build_default_config_entry("x", c(1, 2, 3))
+  expect_equal(entry$source_name, "x")
+
+  # An identity source_name is stripped by the sparse diff; a genuine rename
+  # survives it.
+  default <- build_default_config_entry("effect", c(1, 2, 3))
+  identity_entry <- default
+  expect_null(extract_overrides(identity_entry, default))
+
+  renamed_entry <- default
+  renamed_entry$source_name <- "effect_size"
+  result <- extract_overrides(renamed_entry, default)
+  expect_equal(result$source_name, "effect_size")
 })
 
 # ── build_base_config ─────────────────────────────────────────────────────────

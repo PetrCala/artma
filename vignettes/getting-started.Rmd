@@ -143,8 +143,10 @@ artma::options.create(
   options_file_name = "analysis_2025",
   user_input = list(
     "data.source_path" = "/path/to/data.csv",
-    "data.colnames.effect" = "effect_size",
-    "data.colnames.se" = "standard_error",
+    "data.columns" = list(
+      effect = list(source_name = "effect_size"),
+      se = list(source_name = "standard_error")
+    ),
     "methods.effect_summary_stats.conf_level" = 0.95
   )
 )
@@ -257,8 +259,10 @@ artma::options.create(
   options_file_name = "my_analysis",
   user_input = list(
     "data.source_path" = "/path/to/data.csv",
-    "data.colnames.effect" = "effect_size",
-    "data.colnames.se" = "standard_error"
+    "data.columns" = list(
+      effect = list(source_name = "effect_size"),
+      se = list(source_name = "standard_error")
+    )
   )
 )
 ```

@@ -30,8 +30,11 @@ build_default_config_entry <- function(col_name, col_data) {
 
   # Fields with a non-NA default; every other key in CONST$DATA_CONFIG$KEYS
   # is filled in as NA below, so adding a new key there is the only edit
-  # needed to keep a config entry in sync.
+  # needed to keep a config entry in sync. The default source_name is the
+  # column's own name (identity mapping), so only genuine renames survive the
+  # sparse diff in extract_overrides().
   overrides <- list(
+    source_name = col_name,
     var_name = col_name,
     var_name_verbose = col_name_verbose,
     var_name_description = col_name_verbose,

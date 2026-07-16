@@ -1,7 +1,11 @@
 #' @title With custom colnames
-#' @description For a duration of the test, set the custom colnames to the options namespace so that any calls to 'get_option_group("artma.data.colnames")' return the provided mapping.
-#' @param colnames_map *[list]* A list of column names to set.
-#' @return *[function]* A function that restores the original colnames after the test.
+#' @description For the duration of the test, register the provided column
+#'   mapping in the unified per-column store (`artma.data.columns`) so that any
+#'   call reading the store (e.g. `get_colnames_map()`) returns the provided
+#'   mapping.
+#' @param colnames_map *[list]* A named list mapping standard column names to
+#'   source column names.
+#' @return `NULL`, invisibly. Restores the original store after the test.
 with_custom_colnames <- function(colnames_map) {
   if (!is.list(colnames_map)) {
     cli::cli_abort("The provided colnames map must be a list.")
@@ -10,15 +14,21 @@ with_custom_colnames <- function(colnames_map) {
     cli::cli_abort("The provided colnames map must not be empty.")
   }
 
-  option_keys <- paste0("artma.data.colnames.", names(colnames_map))
-  opt_list <- stats::setNames(
-    lapply(names(colnames_map), function(name) colnames_map[[name]]),
-    option_keys
-  )
-  old_options <- stats::setNames(lapply(option_keys, getOption), option_keys)
+  store <- getOption("artma.data.columns", list())
+  if (!is.list(store)) store <- list()
+  old_store <- store
 
-  options(opt_list)
-  withr::defer(options(old_options), envir = parent.frame())
+  for (std in names(colnames_map)) {
+    src <- colnames_map[[std]]
+    if (is.null(src) || (length(src) == 1 && is.na(src))) next
+    entry <- store[[std]]
+    if (!is.list(entry)) entry <- list()
+    entry$source_name <- src
+    store[[std]] <- entry
+  }
+
+  options("artma.data.columns" = store)
+  withr::defer(options("artma.data.columns" = old_store), envir = parent.frame())
   invisible(NULL)
 }
 
