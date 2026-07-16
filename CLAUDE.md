@@ -79,15 +79,40 @@ Because `box::use()` imports are invisible to R CMD check, every symbol imported
 
 Runtime methods are the main analytical functions users invoke via `artma::artma(methods = c("method_name"))`.
 
-Each method is defined in `inst/artma/methods/<method_name>.R` and **must** export a `run` function with this signature:
+Each method is defined in `inst/artma/methods/<method_name>.R`. The implementation is a plain function taking `(df, ...)`; the exported `run` wrapper is produced by `register_runtime_method()`, which adds the shared caching layer:
 
 ```r
-run <- function(df, ...) {
+box::use(
+  artma / modules / runtime_methods[new_method_result, register_runtime_method]
+)
+
+my_method <- function(df, ...) {
   # Implementation
+  new_method_result(
+    tables = list(summary = summary_df),
+    plots = list(),
+    meta = list()
+  )
 }
+
+run <- register_runtime_method(my_method, stage = "my_method")
+
+box::export(my_method, run)
 ```
 
+`register_runtime_method(impl, stage, ...)` (in `inst/artma/modules/runtime_methods.R`) replaces the old hand-written `cache_cli_runner` trailer; `stage` conventionally matches the implementation name. Export `run` plus the implementation (tests import it); do not export other internals unless another module genuinely reuses them.
+
 The `df` parameter is the preprocessed data frame; additional arguments come from the options system.
+
+#### Standard return contract
+
+Every method returns the value built by `new_method_result()`, a list with three slots:
+
+- `tables`: named list of `data.frame`s to export as CSV. The exporter (`export_method_result` in `inst/artma/output/export.R`) walks this list generically. Keys `summary`/`coefficients`/`table` (or a key equal to the method name) export as `<method>.csv`; any other key exports as `<method>_<key>.csv` (for example the `caliper`/`elliott`/`maive` sub-tables of `p_hacking_tests`).
+- `plots`: named list of plot objects (for example `ggplot`s) for programmatic access and printing. Graphics files are still written by each method during execution, not by the exporter.
+- `meta`: named list of anything else downstream consumers need, such as the BMA model, fit params, skip reasons, or auxiliary frames. For example `bma`/`fma` put their model/data/var_list under `meta`, and the MA table builder and `best_practice_estimate` read them from there.
+
+Methods that ship a custom print method (`box_plot`, `funnel_plot`, `t_stat_histogram`) pass `class =` to `new_method_result()` and read their fields from `meta`/`plots` in `R/print.R`.
 
 Methods are auto-discovered at runtime by scanning `inst/artma/methods/`. Use `artma::methods.list()` to see available methods.
 

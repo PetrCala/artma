@@ -8,6 +8,7 @@ exogeneity_tests <- function(df) {
     artma / libs / core / validation[assert, validate, validate_columns],
     artma / libs / core / utils[get_verbosity],
     artma / econometric / exogeneity[run_exogeneity_tests],
+    artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / options / significance_marks[resolve_add_significance_marks]
   )
@@ -82,18 +83,20 @@ exogeneity_tests <- function(df) {
     }
   }
 
-  invisible(results)
+  invisible(new_method_result(
+    tables = list(summary = results$summary),
+    meta = list(
+      iv = results$iv,
+      puniform = results$puniform,
+      skipped = results$skipped
+    )
+  ))
 }
 
 box::use(
-  artma / libs / infrastructure / cache[cache_cli_runner],
-  artma / data / cache_signatures[build_data_cache_signature]
+  artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- cache_cli_runner(
-  exogeneity_tests,
-  stage = "exogeneity_tests",
-  key_builder = function(...) build_data_cache_signature()
-)
+run <- register_runtime_method(exogeneity_tests, stage = "exogeneity_tests")
 
 box::export(exogeneity_tests, run)

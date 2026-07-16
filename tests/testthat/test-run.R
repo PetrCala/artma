@@ -165,9 +165,9 @@ test_that("partial results from a run with a failing method are exported", {
   box::use(artma / output / export[export_results])
 
   fake_methods <- list(
-    method_a = list(run = function(df, ...) data.frame(estimate = 1)),
+    method_a = list(run = function(df, ...) list(tables = list(summary = data.frame(estimate = 1)))),
     method_b = list(run = function(df, ...) cli::cli_abort("boom")),
-    method_c = list(run = function(df, ...) data.frame(estimate = 3))
+    method_c = list(run = function(df, ...) list(tables = list(summary = data.frame(estimate = 3))))
   )
   withr::local_options(list(artma.verbose = 0))
   methods_dir <- local_mock_methods_dir(fake_methods)

@@ -9,6 +9,7 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     artma / libs / core / autonomy[get_autonomy_level],
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
+    artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group]
   )
 
@@ -170,31 +171,32 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     stringsAsFactors = FALSE
   )
 
-  result <- list(
-    summary = summary,
-    formula = build_bpe_formula_string(
-      coef_post_mean = coef_post_mean,
-      predictor_values = author_values,
-      include_intercept = include_intercept,
-      round_to = round_to
-    ),
-    overrides = override_table,
-    bma_formula = bma_formula,
-    bma_source = resolved_bma$source,
-    autonomy_level = autonomy_level
+  formula <- build_bpe_formula_string(
+    coef_post_mean = coef_post_mean,
+    predictor_values = author_values,
+    include_intercept = include_intercept,
+    round_to = round_to
   )
-  class(result) <- c("artma_best_practice_estimate", class(result))
 
   if (get_verbosity() >= 3) {
     cli::cli_h3("Best-Practice Estimate")
-    cli::cli_alert_info("BMA source: {.val {result$bma_source}}")
-    cli::cat_print(result$summary)
+    cli::cli_alert_info("BMA source: {.val {resolved_bma$source}}")
+    cli::cat_print(summary)
     if (get_verbosity() >= 4) {
-      cli::cli_alert_info("Author formula: {result$formula}")
+      cli::cli_alert_info("Author formula: {formula}")
     }
   }
 
-  invisible(result)
+  invisible(new_method_result(
+    tables = list(summary = summary),
+    meta = list(
+      formula = formula,
+      overrides = override_table,
+      bma_formula = bma_formula,
+      bma_source = resolved_bma$source,
+      autonomy_level = autonomy_level
+    )
+  ))
 }
 
 resolve_bma_input_for_bpe <- function(df, bma_result, run_bma_if_missing) {
@@ -246,33 +248,22 @@ resolve_bma_input_for_bpe <- function(df, bma_result, run_bma_if_missing) {
 }
 
 normalize_bma_result_input <- function(bma_result) {
-  box::use(artma / libs / core / utils[get_verbosity])
-
   empty <- list(model = NULL, data = NULL, var_list = NULL, params = NULL)
 
   if (!is.list(bma_result)) {
     return(empty)
   }
 
-  if (!is.null(bma_result$model) || !is.null(bma_result$data) || !is.null(bma_result$var_list)) {
-    return(list(
-      model = bma_result$model,
-      data = bma_result$data,
-      var_list = bma_result$var_list,
-      params = bma_result$params
-    ))
-  }
+  # Accept the standard method contract (fields under meta) or a bare meta-like
+  # list for callers that pass one directly.
+  meta <- bma_result$meta %||% bma_result
 
-  if (length(bma_result) > 0 && is.list(bma_result[[1]]) &&
-    (!is.null(bma_result[[1]]$model) || !is.null(bma_result[[1]]$data) || !is.null(bma_result[[1]]$var_list))) {
-    if (get_verbosity() >= 2) {
-      cli::cli_alert_warning("Multiple BMA results were provided; using the first one for BPE.")
-    }
+  if (!is.null(meta$model) || !is.null(meta$data) || !is.null(meta$var_list)) {
     return(list(
-      model = bma_result[[1]]$model,
-      data = bma_result[[1]]$data,
-      var_list = bma_result[[1]]$var_list,
-      params = bma_result[[1]]$params
+      model = meta$model,
+      data = meta$data,
+      var_list = meta$var_list,
+      params = meta$params
     ))
   }
 
@@ -931,14 +922,9 @@ matches_any <- function(label, patterns) {
 
 
 box::use(
-  artma / libs / infrastructure / cache[cache_cli_runner],
-  artma / data / cache_signatures[build_data_cache_signature]
+  artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- cache_cli_runner(
-  best_practice_estimate,
-  stage = "best_practice_estimate",
-  key_builder = function(...) build_data_cache_signature()
-)
+run <- register_runtime_method(best_practice_estimate, stage = "best_practice_estimate")
 
 box::export(best_practice_estimate, run)

@@ -11,6 +11,7 @@ effect_summary_stats <- function(df) {
     artma / data_config / read[get_data_config],
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
+    artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group]
   )
 
@@ -173,7 +174,7 @@ effect_summary_stats <- function(df) {
       }
       empty <- data.frame(matrix(nrow = 0, ncol = length(CONST$EFFECT_SUMMARY_STATS$NAMES)), stringsAsFactors = FALSE)
       colnames(empty) <- CONST$EFFECT_SUMMARY_STATS$NAMES
-      return(empty)
+      return(new_method_result(tables = list(summary = empty)))
     }
   }
 
@@ -298,18 +299,13 @@ effect_summary_stats <- function(df) {
     cli::cat_print(out)
   }
 
-  invisible(out)
+  invisible(new_method_result(tables = list(summary = out)))
 }
 
 box::use(
-  artma / libs / infrastructure / cache[cache_cli_runner],
-  artma / data / cache_signatures[build_data_cache_signature]
+  artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- cache_cli_runner(
-  effect_summary_stats,
-  stage = "effect_summary_stats",
-  key_builder = function(...) build_data_cache_signature()
-)
+run <- register_runtime_method(effect_summary_stats, stage = "effect_summary_stats")
 
 box::export(effect_summary_stats, run)

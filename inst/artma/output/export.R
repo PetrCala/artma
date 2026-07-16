@@ -110,8 +110,9 @@ save_table <- function(df, name, output_dir) {
 #'
 #' @description
 #' Iterates over a named list of method results and exports each method's
-#' tabular data as CSV files. Graphics-only methods are skipped (they are
-#' handled by per-method export during execution).
+#' tabular data (the `tables` slot of the standard return contract) as CSV
+#' files. Graphics are written by each method during execution, so plot-only
+#' methods simply contribute no tables here.
 #'
 #' @param results *\[list\]* Named list of method results from `invoke_runtime_methods()`.
 #' @param output_dir *\[character\]* The base output directory.
@@ -134,42 +135,51 @@ export_results <- function(results, output_dir) {
   write_last_export_marker(output_dir)
 }
 
+#' Resolve the CSV basename for a table in the standard return contract
+#'
+#' @description
+#' A table keyed with a generic label (`summary`, `coefficients`, `table`), an
+#' empty key, or the method name itself is written as `<method_name>.csv`. Any
+#' other key is treated as a sub-table and written as `<method_name>_<key>.csv`
+#' (for example the caliper/elliott/maive tables of `p_hacking_tests`).
+#'
+#' @param method_name *\[character\]* The method name.
+#' @param key *\[character\]* The table's name within the `tables` list.
+#' @return *\[character\]* The CSV basename (without extension).
+#' @keywords internal
+resolve_table_basename <- function(method_name, key) {
+  generic_keys <- c("summary", "coefficients", "table")
+  if (is.null(key) || is.na(key) || !nzchar(key) ||
+    identical(key, method_name) || key %in% generic_keys) {
+    return(method_name)
+  }
+  paste0(method_name, "_", key)
+}
+
 #' Export a single method's result
 #'
-#' @param result The method's return value.
+#' @description
+#' A generic walk over the standard return contract. Every `data.frame` in the
+#' result's `tables` slot is written as a CSV; everything else (`plots`, `meta`)
+#' is ignored here. There are no per-method branches.
+#'
+#' @param result The method's return value (a `list` with a `tables` slot).
 #' @param method_name *\[character\]* The method name.
 #' @param output_dir *\[character\]* The base output directory.
 #' @keywords internal
 export_method_result <- function(result, method_name, output_dir) {
-  if (is.data.frame(result)) {
-    save_table(result, method_name, output_dir)
-    return(invisible())
-  }
-
   if (!is.list(result)) return(invisible())
 
-  # Methods with $summary
-  if (!is.null(result$summary) && is.data.frame(result$summary)) {
-    save_table(result$summary, method_name, output_dir)
-    return(invisible())
-  }
+  tables <- result$tables
+  if (!is.list(tables) || length(tables) == 0L) return(invisible())
 
-  # Methods with $coefficients (bma, fma)
-  if (!is.null(result$coefficients) && is.data.frame(result$coefficients)) {
-    save_table(result$coefficients, method_name, output_dir)
-    return(invisible())
+  table_names <- names(tables)
+  for (i in seq_along(tables)) {
+    tbl <- tables[[i]]
+    if (!is.data.frame(tbl)) next
+    key <- if (is.null(table_names)) NULL else table_names[[i]]
+    save_table(tbl, resolve_table_basename(method_name, key), output_dir)
   }
-
-  # p_hacking_tests: multiple sub-tables
-  sub_tables <- c("caliper", "elliott", "maive")
-  exported_any <- FALSE
-  for (sub in sub_tables) {
-    if (!is.null(result[[sub]]) && is.data.frame(result[[sub]])) {
-      save_table(result[[sub]], paste0(method_name, "_", sub), output_dir)
-      exported_any <- TRUE
-    }
-  }
-  if (exported_any) return(invisible())
 
   invisible()
 }

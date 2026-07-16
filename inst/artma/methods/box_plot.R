@@ -9,6 +9,7 @@ box_plot <- function(df) {
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
     artma / libs / core / autonomy[should_prompt_user],
+    artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / visualization / options[get_visualization_options],
     artma / visualization / export[save_plot, build_export_filename, ensure_export_dir]
@@ -48,10 +49,10 @@ box_plot <- function(df) {
     if (get_verbosity() >= 2) {
       cli::cli_alert_warning("No suitable grouping variable found. Skipping box plot.")
     }
-    return(invisible(list(
+    return(invisible(new_method_result(
       plots = list(),
-      factor_by = NULL,
-      n_groups = 0L
+      meta = list(factor_by = NULL, n_groups = 0L),
+      class = "artma_box_plot"
     )))
   }
 
@@ -88,9 +89,12 @@ box_plot <- function(df) {
     )
   }
 
-  # Add class for clean printing (print method defined in R/print.R)
-  class(result) <- c("artma_box_plot", class(result))
-  invisible(result)
+  # Class attached for clean printing (print method defined in R/print.R)
+  invisible(new_method_result(
+    plots = result$plots,
+    meta = list(factor_by = factor_by, n_groups = result$n_groups),
+    class = "artma_box_plot"
+  ))
 }
 
 

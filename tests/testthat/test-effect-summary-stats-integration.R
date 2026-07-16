@@ -118,7 +118,7 @@ test_that("effect_summary_stats handles empty config gracefully in non-interacti
   )
 
   # Should return empty result without error (non-interactive)
-  result <- effect_summary_stats(df)
+  result <- effect_summary_stats(df)$tables$summary
 
   expect_true(is.data.frame(result))
   expect_equal(nrow(result), 0)
@@ -170,7 +170,7 @@ test_that("effect_summary_stats processes configured variables correctly", {
     "artma.verbose" = 1
   )
 
-  result <- effect_summary_stats(df)
+  result <- effect_summary_stats(df)$tables$summary
 
   expect_true(is.data.frame(result))
   expect_true(nrow(result) > 0)
@@ -243,7 +243,7 @@ test_that("update_config_with_selections integrates with effect_summary_stats", 
     "artma.verbose" = 1
   )
 
-  result <- effect_summary_stats(df)
+  result <- effect_summary_stats(df)$tables$summary
 
   expect_true(is.data.frame(result))
   expect_true(nrow(result) > 0)
@@ -282,7 +282,7 @@ test_that("effect_summary_stats handles missing data gracefully", {
 
   # Should handle NA values without error
   expect_no_error({
-    result <- effect_summary_stats(df)
+    result <- effect_summary_stats(df)$tables$summary
   })
 })
 
@@ -315,7 +315,7 @@ test_that("effect_summary_stats handles non-numeric variables correctly", {
   )
 
   # Should warn about non-numeric variable
-  result <- effect_summary_stats(df)
+  result <- effect_summary_stats(df)$tables$summary
 
   expect_true(is.data.frame(result))
   # Category should be skipped, only "All Data" should appear
@@ -429,7 +429,7 @@ test_that("full workflow: suggestion -> config -> analysis works end-to-end", {
       "artma.verbose" = 1
     )
 
-    result <- effect_summary_stats(df)
+    result <- effect_summary_stats(df)$tables$summary
 
     # Verify we got results
     expect_true(is.data.frame(result))

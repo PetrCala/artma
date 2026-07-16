@@ -5,6 +5,7 @@ nonlinear_tests <- function(df) {
     artma / libs / core / validation[validate, validate_columns, assert],
     artma / libs / core / utils[get_verbosity],
     artma / econometric / nonlinear[run_nonlinear_methods],
+    artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / options / significance_marks[resolve_add_significance_marks]
   )
@@ -84,18 +85,20 @@ nonlinear_tests <- function(df) {
     }
   }
 
-  invisible(results)
+  invisible(new_method_result(
+    tables = list(summary = results$summary),
+    meta = list(
+      coefficients = results$coefficients,
+      skipped = results$skipped,
+      options = results$options
+    )
+  ))
 }
 
 box::use(
-  artma / libs / infrastructure / cache[cache_cli_runner],
-  artma / data / cache_signatures[build_data_cache_signature]
+  artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- cache_cli_runner(
-  nonlinear_tests,
-  stage = "nonlinear_tests",
-  key_builder = function(...) build_data_cache_signature()
-)
+run <- register_runtime_method(nonlinear_tests, stage = "nonlinear_tests")
 
 box::export(nonlinear_tests, run)

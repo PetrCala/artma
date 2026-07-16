@@ -45,9 +45,15 @@ test_that("funnel_plot creates a plot with required columns", {
   result <- funnel_plot(df)
 
   expect_s3_class(result, "artma_funnel_plot")
-  expect_named(result, c("plot", "n_points", "n_outliers_removed", "used_study_medians"))
-  expect_true(ggplot2::is_ggplot(result$plot))
-  expect_identical(result$used_study_medians, FALSE)
+  expect_named(result, c("tables", "plots", "meta"))
+  expect_named(result$plots, "funnel_plot")
+  expect_named(
+    result$meta,
+    c("n_points", "n_outliers_removed", "used_study_medians"),
+    ignore.order = TRUE
+  )
+  expect_true(ggplot2::is_ggplot(result$plots$funnel_plot))
+  expect_identical(result$meta$used_study_medians, FALSE)
 })
 
 
@@ -66,8 +72,8 @@ test_that("funnel_plot respects use_study_medians option", {
   df <- create_test_data(n = 100)
   result <- funnel_plot(df)
 
-  expect_identical(result$used_study_medians, TRUE)
-  expect_equal(result$n_points, 10)
+  expect_identical(result$meta$used_study_medians, TRUE)
+  expect_equal(result$meta$n_points, 10)
 })
 
 
@@ -91,8 +97,8 @@ test_that("funnel_plot filters outliers correctly", {
 
   result <- funnel_plot(df)
 
-  expect_true(result$n_outliers_removed > 0)
-  expect_true(result$n_points < nrow(df))
+  expect_true(result$meta$n_outliers_removed > 0)
+  expect_true(result$meta$n_points < nrow(df))
 })
 
 
@@ -111,8 +117,8 @@ test_that("funnel_plot with no outlier filtering keeps all points", {
   df <- create_test_data(n = 50)
   result <- funnel_plot(df)
 
-  expect_equal(result$n_outliers_removed, 0)
-  expect_equal(result$n_points, 50)
+  expect_equal(result$meta$n_outliers_removed, 0)
+  expect_equal(result$meta$n_points, 50)
 })
 
 
@@ -134,7 +140,7 @@ test_that("funnel_plot handles different themes", {
     df <- create_test_data(n = 20)
     result <- funnel_plot(df)
 
-    expect_true(ggplot2::is_ggplot(result$plot))
+    expect_true(ggplot2::is_ggplot(result$plots$funnel_plot))
   }
 })
 
@@ -154,7 +160,7 @@ test_that("funnel_plot handles precision_to_log option", {
   df <- create_test_data(n = 20)
   result <- funnel_plot(df)
 
-  expect_true(ggplot2::is_ggplot(result$plot))
+  expect_true(ggplot2::is_ggplot(result$plots$funnel_plot))
   expect_s3_class(result, "artma_funnel_plot")
 })
 
@@ -179,6 +185,6 @@ test_that("funnel_plot returns empty result when all data filtered", {
 
   result <- funnel_plot(df)
 
-  expect_null(result$plot)
-  expect_equal(result$n_points, 0)
+  expect_null(result$plots$funnel_plot)
+  expect_equal(result$meta$n_points, 0)
 })
