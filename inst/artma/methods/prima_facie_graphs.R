@@ -378,6 +378,10 @@ box::use(
   artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- register_runtime_method(prima_facie_graphs, stage = "prima_facie_graphs")
+run <- register_runtime_method(
+  prima_facie_graphs,
+  stage = "prima_facie_graphs",
+  required_columns = "effect"
+)
 
 box::export(prima_facie_graphs, run)

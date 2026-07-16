@@ -925,6 +925,12 @@ box::use(
   artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- register_runtime_method(best_practice_estimate, stage = "best_practice_estimate")
+run <- register_runtime_method(
+  best_practice_estimate,
+  stage = "best_practice_estimate",
+  depends_on = "bma",
+  required_columns = c("effect", "study_id"),
+  suggests = "BMS"
+)
 
 box::export(best_practice_estimate, run)

@@ -40,20 +40,53 @@ new_method_result <- function(tables = list(), plots = list(), meta = list(), cl
   result
 }
 
+#' @title Runtime method metadata attribute
+#' @description Name of the attribute that carries a method's declarative
+#'   metadata on its exported `run` wrapper.
+METHOD_META_ATTR <- "artma_method_meta"
+
 #' @title Register a runtime method
 #' @description
-#' Wrap a method implementation in the shared caching layer and return the
-#' `run` function every method file exports. This replaces the per-file
-#' registration trailer that previously duplicated the `cache_cli_runner`
-#' wiring across all method modules.
+#' Wrap a method implementation in the shared caching layer, attach the method's
+#' declarative metadata, and return the `run` function every method file
+#' exports. This replaces the per-file registration trailer that previously
+#' duplicated the `cache_cli_runner` wiring across all method modules.
+#'
+#' The metadata drives the orchestrator in `invoke_runtime_methods()`:
+#'
+#' * `depends_on`: names of methods that must run before this one. The
+#'   orchestrator topologically sorts by these edges and passes each upstream
+#'   result to the dependent as a `<dependency>_result` argument (for example
+#'   a `depends_on = "bma"` method receives `bma_result`).
+#' * `required_columns`: columns that must be present in the data frame. A
+#'   method whose columns are missing is skipped with an explanation instead of
+#'   aborting the run.
+#' * `suggests`: optional packages the method needs. A method whose suggested
+#'   packages are not installed is skipped (with an interactive install offer);
+#'   this is the single, declarative gate for optional-package dependencies.
+#'
 #' @param impl *\[function\]* The method implementation (its `run` worker).
 #' @param stage *\[character\]* Stage label used for cache keys and the cache
 #'   hit notice. Conventionally matches the implementation's name.
+#' @param depends_on *\[character, optional\]* Names of methods this one depends
+#'   on. Defaults to no dependencies.
+#' @param required_columns *\[character, optional\]* Columns the method needs in
+#'   the data frame. Defaults to none.
+#' @param suggests *\[character, optional\]* Optional packages the method needs.
+#'   Defaults to none.
+#' @param label *\[character, optional\]* Human-readable display label. Defaults
+#'   to `stage`.
 #' @param key_builder *\[function, optional\]* Cache signature builder. Defaults
 #'   to the standard data cache signature.
 #' @param ... *\[any\]* Extra arguments forwarded to `cache_cli_runner`.
-#' @return *\[function\]* The cached `run` wrapper.
-register_runtime_method <- function(impl, stage, key_builder = NULL, ...) {
+#' @return *\[function\]* The cached `run` wrapper, carrying the method metadata
+#'   in its `artma_method_meta` attribute.
+register_runtime_method <- function(impl, stage,
+                                    depends_on = character(),
+                                    required_columns = character(),
+                                    suggests = character(),
+                                    label = NULL,
+                                    key_builder = NULL, ...) {
   box::use(
     artma / libs / infrastructure / cache[cache_cli_runner],
     artma / data / cache_signatures[build_data_cache_signature]
@@ -63,7 +96,106 @@ register_runtime_method <- function(impl, stage, key_builder = NULL, ...) {
     key_builder <- function(...) build_data_cache_signature()
   }
 
-  cache_cli_runner(impl, stage = stage, key_builder = key_builder, ...)
+  run <- cache_cli_runner(impl, stage = stage, key_builder = key_builder, ...)
+
+  attr(run, METHOD_META_ATTR) <- list(
+    stage = stage,
+    label = if (is.null(label)) stage else label,
+    depends_on = as.character(depends_on),
+    required_columns = as.character(required_columns),
+    suggests = as.character(suggests)
+  )
+
+  run
+}
+
+#' @title Read a runtime method's declarative metadata
+#' @description Return the metadata attached to a method's `run` wrapper,
+#'   filling in defaults for methods that predate declarative registration.
+#' @param run_fn *\[function\]* A method's exported `run` wrapper.
+#' @param name *\[character, optional\]* Method name, used as the default stage
+#'   and label when the wrapper carries no metadata.
+#' @return *\[list\]* A list with `stage`, `label`, `depends_on`,
+#'   `required_columns`, and `suggests`.
+get_method_metadata <- function(run_fn, name = NULL) {
+  meta <- attr(run_fn, METHOD_META_ATTR, exact = TRUE)
+  if (is.null(meta)) {
+    meta <- list()
+  }
+
+  defaults <- list(
+    stage = name %||% NA_character_,
+    label = name %||% NA_character_,
+    depends_on = character(),
+    required_columns = character(),
+    suggests = character()
+  )
+
+  utils::modifyList(defaults, meta)
+}
+
+#' @title Topologically sort methods by their declared dependencies
+#' @description
+#' Order `method_names` so that every method runs after the methods it depends
+#' on. Dependencies pointing outside `method_names` are ignored (the dependent
+#' runs standalone). Ties preserve the input order, keeping the sort stable.
+#' Aborts when the dependency graph contains a cycle.
+#' @param method_names *\[character\]* Methods to order (in their base order).
+#' @param deps *\[list, optional\]* Named list mapping a method name to the
+#'   character vector of methods it depends on.
+#' @return *\[character\]* `method_names` in dependency-respecting order.
+topo_sort_methods <- function(method_names, deps = list()) {
+  ordered <- character()
+  remaining <- method_names
+
+  while (length(remaining) > 0L) {
+    progressed <- FALSE
+    for (name in remaining) {
+      prereqs <- intersect(deps[[name]] %||% character(), method_names)
+      if (all(prereqs %in% ordered)) {
+        ordered <- c(ordered, name)
+        remaining <- remaining[remaining != name]
+        progressed <- TRUE
+        break
+      }
+    }
+    if (!progressed) {
+      cli::cli_abort(c(
+        "x" = "Cyclic method dependencies detected.",
+        "i" = "Methods involved in the cycle: {.val {remaining}}"
+      ))
+    }
+  }
+
+  ordered
+}
+
+#' @title Columns a method requires but the data frame lacks
+#' @param df *\[data.frame\]* The prepared data frame.
+#' @param required_columns *\[character\]* Columns the method declares it needs.
+#' @return *\[character\]* The missing column names (empty when all are present).
+missing_required_columns <- function(df, required_columns) {
+  if (length(required_columns) == 0L) {
+    return(character())
+  }
+  setdiff(as.character(required_columns), colnames(df))
+}
+
+#' @title Suggested packages a method needs but are not installed
+#' @param suggests *\[character\]* Optional packages the method declares.
+#' @param is_installed *\[function, optional\]* Predicate testing whether a
+#'   package is installed. Injectable for testing; defaults to
+#'   `requireNamespace`.
+#' @return *\[character\]* The missing package names (empty when all present).
+missing_suggested_packages <- function(suggests, is_installed = NULL) {
+  if (length(suggests) == 0L) {
+    return(character())
+  }
+  if (is.null(is_installed)) {
+    is_installed <- function(pkg) requireNamespace(pkg, quietly = TRUE)
+  }
+  suggests <- as.character(suggests)
+  suggests[!vapply(suggests, function(pkg) isTRUE(is_installed(pkg)), logical(1))]
 }
 
 module_has_run <- function(module) {
@@ -152,9 +284,14 @@ get_runtime_method_modules <- function(
 }
 
 box::export(
+  get_method_metadata,
   get_runtime_method_modules,
+  METHOD_META_ATTR,
+  missing_required_columns,
+  missing_suggested_packages,
   module_should_be_runtime_method,
   new_method_result,
   register_runtime_method,
-  RUNTIME_METHOD_MARKER
+  RUNTIME_METHOD_MARKER,
+  topo_sort_methods
 )

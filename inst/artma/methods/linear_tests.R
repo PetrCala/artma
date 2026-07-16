@@ -87,6 +87,10 @@ box::use(
   artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- register_runtime_method(linear_tests, stage = "linear_tests")
+run <- register_runtime_method(
+  linear_tests,
+  stage = "linear_tests",
+  required_columns = c("effect", "se", "study_id")
+)
 
 box::export(linear_tests, run)

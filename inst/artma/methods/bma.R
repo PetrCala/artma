@@ -768,7 +768,12 @@ box::use(
   artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- register_runtime_method(bma, stage = "bma")
+run <- register_runtime_method(
+  bma,
+  stage = "bma",
+  required_columns = c("effect", "se"),
+  suggests = "BMS"
+)
 
 # prepare_bma_inputs is exported because the fma method reuses it directly.
 box::export(bma, run, prepare_bma_inputs)

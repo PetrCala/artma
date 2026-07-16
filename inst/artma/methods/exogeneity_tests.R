@@ -97,6 +97,11 @@ box::use(
   artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- register_runtime_method(exogeneity_tests, stage = "exogeneity_tests")
+run <- register_runtime_method(
+  exogeneity_tests,
+  stage = "exogeneity_tests",
+  required_columns = c("effect", "se", "study_id", "n_obs", "study_size"),
+  suggests = c("AER", "ivmodel")
+)
 
 box::export(exogeneity_tests, run)
