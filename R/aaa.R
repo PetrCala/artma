@@ -19,6 +19,13 @@ runtime_setup <- function(
     return(invisible())
   }
 
+  # Loading itself is pure, so it will neither migrate nor repair an outdated
+  # file. In interactive mode, detect an outdated file up front and offer to fix
+  # it before loading, so the user is not silently running on defaults.
+  if (interactive() && !is.null(options_file_name)) {
+    offer_options_fix(options_file_name = options_file_name, options_dir = options_dir)
+  }
+
   runtime_options <- options.load(
     options_file_name = options_file_name,
     options_dir = options_dir,
@@ -29,6 +36,51 @@ runtime_setup <- function(
   withr::local_options(runtime_options)
 
   FUN()
+}
+
+#' @title Offer to fix an outdated options file
+#' @description Validate the given options file and, if it has problems, offer the
+#'   interactive user a chance to repair it via [options.fix()] before it is
+#'   loaded. Best effort: any failure here is swallowed so that loading (which is
+#'   pure and applies defaults) can still proceed.
+#' @param options_file_name *\[character\]* Name of the options file, including the suffix.
+#' @param options_dir *\[character, optional\]* Path to the directory that contains user options.
+#' @keywords internal
+offer_options_fix <- function(options_file_name, options_dir = NULL) {
+  tryCatch(
+    {
+      errors <- withr::with_options(
+        list("artma.verbose" = 1),
+        suppressMessages(options.validate(
+          options_file_name = options_file_name,
+          options_dir = options_dir,
+          failure_action = "return_errors_quiet"
+        ))
+      )
+
+      if (length(errors) == 0) {
+        return(invisible())
+      }
+
+      cli::cli_alert_warning(
+        "Your options file {.file {options_file_name}} is outdated ({length(errors)} problem{?s})."
+      )
+      choice <- climenu::select(
+        choices = c("Fix now (recommended)", "Continue with defaults"),
+        prompt = "How would you like to handle this?"
+      )
+      if (choice == "Fix now (recommended)") {
+        options.fix(
+          options_file_name = options_file_name,
+          options_dir = options_dir,
+          force_default_overwrites = TRUE
+        )
+      }
+    },
+    error = function(e) invisible()
+  )
+
+  invisible()
 }
 
 # nolint end: box_usage_linter.

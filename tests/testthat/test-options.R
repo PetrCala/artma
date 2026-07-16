@@ -184,6 +184,111 @@ test_that("options.load backfills missing and invalid values with template defau
   expect_equal(loaded$`artma.calc.se_zero_handling`, "stop")
 })
 
+test_that("options.load never writes to the options file", {
+  box::use(artma[options.load])
+
+  tmp_dir <- withr::local_tempdir()
+  template_path <- file.path(tmp_dir, "template.yaml")
+
+  template <- list(
+    data = list(
+      threshold = list(type = "integer", default = 10L, help = "Threshold"),
+      enabled = list(type = "logical", default = TRUE, help = "Enabled")
+    )
+  )
+  yaml::write_yaml(template, template_path)
+
+  opts_path <- file.path(tmp_dir, "stale.yaml")
+  # Deliberately stale: missing 'enabled' and a wrong-typed 'threshold'.
+  yaml::write_yaml(
+    list(data = list(threshold = "not-an-int")),
+    opts_path
+  )
+
+  before_content <- readLines(opts_path)
+  before_mtime <- file.mtime(opts_path)
+
+  options.load(
+    options_file_name = "stale.yaml",
+    options_dir = tmp_dir,
+    template_path = template_path,
+    should_validate = TRUE,
+    should_return = TRUE
+  )
+
+  expect_identical(readLines(opts_path), before_content)
+  expect_equal(file.mtime(opts_path), before_mtime)
+})
+
+test_that("options.load aborts when a required option without a default is missing", {
+  box::use(artma[options.load])
+
+  tmp_dir <- withr::local_tempdir()
+  template_path <- file.path(tmp_dir, "template.yaml")
+
+  template <- list(
+    data = list(
+      source_path = list(type = "character", help = "Required source path")
+    )
+  )
+  yaml::write_yaml(template, template_path)
+  yaml::write_yaml(
+    list(data = list(unrelated = "value")),
+    file.path(tmp_dir, "opts.yaml")
+  )
+
+  expect_error(
+    options.load(
+      options_file_name = "opts.yaml",
+      options_dir = tmp_dir,
+      template_path = template_path,
+      should_validate = TRUE,
+      should_return = TRUE
+    ),
+    "source_path"
+  )
+})
+
+test_that("options.load parses the template only once per load", {
+  box::use(artma[options.load])
+
+  tmp_dir <- withr::local_tempdir()
+  template_path <- file.path(tmp_dir, "template.yaml")
+
+  template <- list(
+    data = list(
+      threshold = list(type = "integer", default = 10L, help = "Threshold")
+    )
+  )
+  yaml::write_yaml(template, template_path)
+  yaml::write_yaml(
+    list(data = list(threshold = 3L)),
+    file.path(tmp_dir, "opts.yaml")
+  )
+
+  real_read_yaml <- yaml::read_yaml
+  n_template_reads <- 0L
+  testthat::local_mocked_bindings(
+    read_yaml = function(file, ...) {
+      if (identical(file, template_path)) {
+        n_template_reads <<- n_template_reads + 1L
+      }
+      real_read_yaml(file, ...)
+    },
+    .package = "yaml"
+  )
+
+  options.load(
+    options_file_name = "opts.yaml",
+    options_dir = tmp_dir,
+    template_path = template_path,
+    should_validate = TRUE,
+    should_return = TRUE
+  )
+
+  expect_equal(n_template_reads, 1L)
+})
+
 test_that("options.load backfills defaults when loading without prefix", {
   box::use(artma[options.load])
 

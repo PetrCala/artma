@@ -201,7 +201,21 @@ test_that("options files predating the cache.max_age rename reconcile to the def
   skip_if_not(file.exists(template_path), "package sources are not available")
 
   tmp_dir <- withr::local_tempdir()
-  legacy <- list(cache = list(cache_age = 100L))
+  # The legacy file predates the cache.max_age rename (it still carries
+  # cache.cache_age). The required-without-default options are supplied so the
+  # pure load does not abort on them; the point here is the cache.max_age default.
+  legacy <- list(
+    cache = list(cache_age = 100L),
+    data = list(
+      source_path = "data.csv",
+      colnames = list(
+        study_id = "study",
+        effect = "effect",
+        se = "se",
+        n_obs = "n_obs"
+      )
+    )
+  )
   yaml::write_yaml(legacy, file.path(tmp_dir, "legacy.yaml"))
 
   # validation surfaces the renamed key as missing
