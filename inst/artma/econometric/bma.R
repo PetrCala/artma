@@ -499,14 +499,38 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
         number.cex = 0.5, cl.cex = 0.8, cl.ratio = 0.1
       )
     )
+
+    # BMS:::image.bma drops a matrix dimension for small models and errors for
+    # 2 to 3 regressors, so only attempt the image plot once there are >= 4.
+    n_regressors <- length(bma_model$reg.names)
+    image_supported <- n_regressors >= 4L
+
+    plot_env <- environment()
+    safe_render_plot <- function(plot_call, description) {
+      tryCatch(
+        eval(plot_call, envir = plot_env),
+        error = function(e) {
+          cli::cli_warn("Could not render the BMA {description}: {conditionMessage(e)}")
+        }
+      )
+    }
+    render_bma_image <- function() {
+      if (!image_supported) {
+        cli::cli_alert_info(
+          "Skipping the BMA image plot: it needs at least 4 regressors (model has {n_regressors})."
+        )
+        return(invisible(NULL))
+      }
+      safe_render_plot(main_plot_call, "image plot")
+    }
   }
 
   if (print_results == "all" && get_verbosity() >= 3) {
     cli::cli_alert_info("Printing BMA plots...")
-    eval(main_plot_call, envir = environment())
-    eval(bma_dist_call, envir = environment())
+    render_bma_image()
+    safe_render_plot(bma_dist_call, "distribution plot")
     if (has_corrplot) {
-      eval(corrplot_mixed_call, envir = environment())
+      safe_render_plot(corrplot_mixed_call, "correlation plot")
     }
   }
 
@@ -528,18 +552,24 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
       }
     }
 
-    grDevices::png(main_path,
-      width = 933 * graph_scale, height = 894 * graph_scale, units = "px",
-      res = 70 * graph_scale
-    )
-    eval(main_plot_call, envir = environment())
-    grDevices::dev.off()
+    if (image_supported) {
+      grDevices::png(main_path,
+        width = 933 * graph_scale, height = 894 * graph_scale, units = "px",
+        res = 70 * graph_scale
+      )
+      safe_render_plot(main_plot_call, "image plot")
+      grDevices::dev.off()
+    } else {
+      cli::cli_alert_info(
+        "Skipping the BMA image plot export: it needs at least 4 regressors (model has {n_regressors})."
+      )
+    }
 
     grDevices::png(dist_path,
       width = 528 * graph_scale, height = 506 * graph_scale, units = "px",
       res = 90 * graph_scale
     )
-    eval(bma_dist_call, envir = environment())
+    safe_render_plot(bma_dist_call, "distribution plot")
     grDevices::dev.off()
 
     if (has_corrplot) {
@@ -547,7 +577,7 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
         width = 700 * graph_scale, height = 669 * graph_scale, units = "px",
         res = 90 * graph_scale
       )
-      eval(corrplot_mixed_call, envir = environment())
+      safe_render_plot(corrplot_mixed_call, "correlation plot")
       grDevices::dev.off()
     }
   }
