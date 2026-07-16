@@ -28,9 +28,16 @@ RUNTIME_OPTION_PREFIXES <- c(
 
 #' @title Sort a named list by name
 #' @description Byte-order sorting keeps the signature independent of the
-#'   order in which options were set and of the session locale.
+#'   order in which options were set and of the session locale. Empty inputs
+#'   collapse to a canonical `list()` so that an empty group hashes the same
+#'   whether it arrived as an unnamed `list()` or a named list emptied by
+#'   filtering (e.g. a data config holding only pipeline-written entries). This
+#'   keeps the compute cache key stable across runs.
 #' @keywords internal
 sort_by_name <- function(x) {
+  if (length(x) == 0L) {
+    return(list())
+  }
   nms <- names(x)
   if (is.null(nms)) {
     return(x)

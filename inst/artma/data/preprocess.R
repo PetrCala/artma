@@ -53,62 +53,67 @@ remove_empty_rows <- function(df) {
   df
 }
 
-#' @title Check that required columns contain no empty cells and handle optional missing values
-#' @description Check required columns for missing values (always errors) and handle optional column missing values based on strategy.
-#' @param df *\[data.frame\]* The data frame to check and process
-#' @return *\[data.frame\]* The data frame with missing values handled
+#' @title Resolve the missing-value handling strategy
+#' @description Configure-phase decision that fixes `artma.data.na_handling`
+#'   before the cached compute phase runs. When the option is already set it is
+#'   a no-op. Otherwise, if the (already cleaned) data frame has missing values
+#'   in optional columns, it prompts the user interactively (and offers to save
+#'   the choice) or falls back to the deterministic `"stop"` strategy in a
+#'   non-interactive session. This is intentionally separate from
+#'   `handle_missing_values()` (the pure compute-phase step) so that no prompt
+#'   or option write ever happens inside the cached pipeline.
+#' @param df *\[data.frame\]* The cleaned data frame used to detect optional
+#'   missing values (as produced by `clean_data()`).
+#' @return `NULL`, invisibly.
 #' @keywords internal
-handle_missing_values_with_prompt <- function(df) {
+resolve_na_handling <- function(df) {
   box::use(
     artma / libs / core / utils[get_verbosity],
-    artma / data / na_handling[detect_missing_values, handle_missing_values],
+    artma / data / na_handling[detect_missing_values],
     artma / options / prompts[prompt_na_handling],
     artma / interactive / save_preference[prompt_save_preference]
   )
 
-  if (get_verbosity() >= 4) {
-    cli::cli_inform("Checking for missing values...")
-  }
-
-  # Detect all missing values
-  na_summary <- detect_missing_values(df)
-
-  # Check if we need to prompt the user
   na_handling_option <- getOption("artma.data.na_handling", default = NA)
 
-  # If option is not set AND there are optional missing values, prompt the user
-  if (is.na(na_handling_option) && na_summary$has_optional_na) {
-    if (interactive()) {
-      if (get_verbosity() >= 3) {
-        cli::cli_alert_info("Missing values detected and no handling strategy configured")
-      }
-
-      # Prompt the user for their preference
-      selected_strategy <- prompt_na_handling()
-
-      # Set the option for the current session
-      options(artma.data.na_handling = selected_strategy)
-
-      # Use the reusable save preference function
-      prompt_save_preference(
-        option_path = "data.na_handling",
-        value = selected_strategy,
-        description = "missing value handling strategy",
-        respect_autonomy = FALSE
-      )
-    } else {
-      # Non-interactive mode: default to "stop"
-      if (get_verbosity() >= 2) {
-        cli::cli_warn("Running in non-interactive mode with missing values. Defaulting to 'stop' strategy.")
-      }
-      options(artma.data.na_handling = "stop")
-    }
+  # Strategy already configured: nothing to decide.
+  if (!is.na(na_handling_option)) {
+    return(invisible(NULL))
   }
 
-  # Now handle missing values using the configured strategy
-  df_processed <- handle_missing_values(df)
+  na_summary <- detect_missing_values(df)
 
-  df_processed
+  # Without optional missing values there is no decision to make; the compute
+  # phase falls back to the deterministic "stop" default when it runs.
+  if (!na_summary$has_optional_na) {
+    return(invisible(NULL))
+  }
+
+  if (interactive()) {
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_info("Missing values detected and no handling strategy configured")
+    }
+
+    # Prompt the user for their preference and record it for this session.
+    selected_strategy <- prompt_na_handling()
+    options(artma.data.na_handling = selected_strategy)
+
+    # Offer to persist the preference to the options file.
+    prompt_save_preference(
+      option_path = "data.na_handling",
+      value = selected_strategy,
+      description = "missing value handling strategy",
+      respect_autonomy = FALSE
+    )
+  } else {
+    # Non-interactive mode: default to "stop"
+    if (get_verbosity() >= 2) {
+      cli::cli_warn("Running in non-interactive mode with missing values. Defaulting to 'stop' strategy.")
+    }
+    options(artma.data.na_handling = "stop")
+  }
+
+  invisible(NULL)
 }
 
 
@@ -245,21 +250,40 @@ winsorize_data <- function(df) {
 }
 
 
+#' @title Clean data
+#' @description Normalize blank cells to `NA` and drop empty rows. This is the
+#'   pre-missing-value cleaning shared by the configure phase (which detects
+#'   optional missing values on the cleaned frame to decide the NA strategy) and
+#'   the compute phase (`preprocess_data`). It performs no prompts and no option
+#'   writes, so it is safe to run in either phase.
+#' @param df *[data.frame]* Standardized data frame to clean.
+#' @return *[data.frame]* The cleaned data frame.
+#' @keywords internal
+clean_data <- function(df) {
+  df |>
+    normalize_whitespace_to_na() |>
+    remove_empty_rows()
+}
+
 #' @title Preprocess data
 #' @description Preprocess a standardized data frame: removes empty rows, handles
 #'   missing values, enforces data types, winsorizes, and validates values.
 #'   Column presence validation is handled upstream by the schema reconciliation
 #'   step; this function assumes the dataframe columns already match the config.
+#'   It is pure: the missing-value strategy is resolved beforehand by
+#'   `resolve_na_handling()` in the configure phase, so this function never
+#'   prompts or writes options and can run inside the cached compute phase.
 #' @param df *[data.frame]* Standardized data frame to clean.
 #' @return *[data.frame]* The type-safe, cleaned data frame.
 preprocess_data <- function(df) {
+  box::use(artma / data / na_handling[handle_missing_values])
+
   df |>
-    normalize_whitespace_to_na() |>
-    remove_empty_rows() |>
-    handle_missing_values_with_prompt() |>
+    clean_data() |>
+    handle_missing_values() |>
     enforce_data_types() |>
     winsorize_data() |>
     enforce_correct_values()
 }
 
-box::export(enforce_data_types, preprocess_data)
+box::export(clean_data, enforce_data_types, preprocess_data, resolve_na_handling)
