@@ -117,7 +117,7 @@ create_mock_df <- function(
     list(
       study_names = study_names,
       effect = generate_random_vector(from = -1, to = 1, length.out = nrow),
-      se = generate_random_vector(from = -1, to = 1, length.out = nrow),
+      se = generate_random_vector(from = 0.01, to = 1, length.out = nrow),
       n_obs = generate_random_vector(from = 10, to = 1000, length.out = nrow, integer = TRUE)
     )
   })
