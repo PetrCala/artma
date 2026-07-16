@@ -1,11 +1,39 @@
+#' @title Read a template from disk
+#' @description Read a template YAML file and remove the temp block. This is the
+#'   uncached primitive; callers should go through [parse_template()] so the
+#'   parse is shared within a load.
+#' @param template_path *\[character\]* Path to the template YAML file.
+#' @param mtime *\[numeric\]* Modification time of the template, used only as a
+#'   cache key by the memoised wrapper.
+#' @keywords internal
+.read_template_from_disk <- function(template_path, mtime) { # nolint: object_name_linter.
+  template <- yaml::read_yaml(template_path)
+  template[["temp"]] <- NULL
+  template
+}
+
+# Memoised on (path, mtime) so every template consumer within a single load
+# shares one disk read. The mtime key invalidates the cache when the file
+# changes on disk.
+.parse_template_memoised <- memoise::memoise(.read_template_from_disk) # nolint: object_name_linter.
+
+#' @title Parse an options template
+#' @description Read and cache a template YAML file, keyed on its path and
+#'   modification time. All template consumers share this parse, so a template
+#'   is read from disk at most once per load.
+#' @param template_path *\[character\]* Path to the template YAML file.
+#' @return A list of template options with the temp block removed.
+parse_template <- function(template_path) {
+  mtime <- as.numeric(file.mtime(template_path))
+  .parse_template_memoised(template_path, mtime)
+}
+
 #' @title Read template
 #' @description Read a template YAML file and remove the temp block.
 #' @param template_path *\[character\]* Path to the template YAML file.
 #' @return A list of template options.
 read_template <- function(template_path) {
-  template <- yaml::read_yaml(template_path)
-  template[["temp"]] <- NULL
-  template
+  parse_template(template_path)
 }
 
 #' @title Check if a node is an option definition
@@ -416,5 +444,6 @@ box::export(
   get_template_defaults,
   get_option_defs,
   parse_options_from_template,
+  parse_template,
   read_template
 )
