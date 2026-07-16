@@ -12,48 +12,39 @@ box::use(
 
 # ── identical_or_both_na ─────────────────────────────────────────────────────
 
-test_that("identical_or_both_na: both NA returns TRUE", {
+# Each case is list(a, b, expected); NULL and NA operands survive as list
+# elements. TRUE when both sides are NA, both NULL, or identical; FALSE for any
+# mismatch, including NA-vs-value, NULL-vs-value, and NULL-vs-NA.
+test_that("identical_or_both_na equates both-NA and both-NULL, rejects mismatches", {
   box::use(artma / data_config / defaults[identical_or_both_na])
-  expect_true(identical_or_both_na(NA, NA))
-})
 
-test_that("identical_or_both_na: both NULL returns TRUE", {
-  box::use(artma / data_config / defaults[identical_or_both_na])
-  expect_true(identical_or_both_na(NULL, NULL))
-})
+  cases <- list(
+    list(NA, NA, TRUE),
+    list(NULL, NULL, TRUE),
+    list(TRUE, TRUE, TRUE),
+    list(FALSE, FALSE, TRUE),
+    list("hello", "hello", TRUE),
+    list(42, 42, TRUE),
+    list(TRUE, FALSE, FALSE),
+    list("a", "b", FALSE),
+    list(1, 2, FALSE),
+    list(NA, TRUE, FALSE),
+    list(TRUE, NA, FALSE),
+    list(NA, "hello", FALSE),
+    list(NULL, TRUE, FALSE),
+    list("a", NULL, FALSE),
+    list(NULL, NA, FALSE),
+    list(NA, NULL, FALSE)
+  )
 
-test_that("identical_or_both_na: identical values return TRUE", {
-  box::use(artma / data_config / defaults[identical_or_both_na])
-  expect_true(identical_or_both_na(TRUE, TRUE))
-  expect_true(identical_or_both_na(FALSE, FALSE))
-  expect_true(identical_or_both_na("hello", "hello"))
-  expect_true(identical_or_both_na(42, 42))
-})
-
-test_that("identical_or_both_na: different values return FALSE", {
-  box::use(artma / data_config / defaults[identical_or_both_na])
-  expect_false(identical_or_both_na(TRUE, FALSE))
-  expect_false(identical_or_both_na("a", "b"))
-  expect_false(identical_or_both_na(1, 2))
-})
-
-test_that("identical_or_both_na: NA vs non-NA returns FALSE", {
-  box::use(artma / data_config / defaults[identical_or_both_na])
-  expect_false(identical_or_both_na(NA, TRUE))
-  expect_false(identical_or_both_na(TRUE, NA))
-  expect_false(identical_or_both_na(NA, "hello"))
-})
-
-test_that("identical_or_both_na: NULL vs non-NULL returns FALSE", {
-  box::use(artma / data_config / defaults[identical_or_both_na])
-  expect_false(identical_or_both_na(NULL, TRUE))
-  expect_false(identical_or_both_na("a", NULL))
-})
-
-test_that("identical_or_both_na: NULL vs NA returns FALSE", {
-  box::use(artma / data_config / defaults[identical_or_both_na])
-  expect_false(identical_or_both_na(NULL, NA))
-  expect_false(identical_or_both_na(NA, NULL))
+  for (i in seq_along(cases)) {
+    case <- cases[[i]]
+    expect_equal(
+      identical_or_both_na(case[[1]], case[[2]]),
+      case[[3]],
+      info = sprintf("case %d", i)
+    )
+  }
 })
 
 # ── build_default_config_entry ────────────────────────────────────────────────

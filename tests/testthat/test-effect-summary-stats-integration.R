@@ -1,12 +1,8 @@
 box::use(
   testthat[
-    describe,
     expect_equal,
-    expect_error,
-    expect_false,
     expect_no_error,
     expect_true,
-    expect_type,
     test_that
   ],
   withr[local_options]
@@ -20,67 +16,21 @@ box::use(
 
 # Test box imports ------------------------------------------------------------
 
-test_that("effect_summary_stats_interactive module exports expected functions", {
-  # This will fail if the module can't be loaded or exports are wrong
-  expect_no_error({
-    box::use(
-      artma / interactive / effect_summary_stats[
-        prompt_effect_summary_var_selection,
-        update_config_with_selections
-      ]
-    )
-  })
-
-  # Verify functions exist
-  expect_true(is.function(prompt_effect_summary_var_selection))
-  expect_true(is.function(update_config_with_selections))
-})
-
-test_that("effect_summary_stats method can import interactive module", {
-  # Verify the imports used in effect_summary_stats.R work
-  expect_no_error({
-    box::use(
-      artma / interactive / effect_summary_stats[
-        prompt_effect_summary_var_selection
-      ],
-      artma / data_config / write[update_data_config]
-    )
-  })
+# The interactive module's readline-driven exports are not called by any other
+# test (they prompt), so an existence check is their only unit coverage. Every
+# other import these smoke tests once verified (data_config, variable
+# suggestion/detection, utils, validation) is exercised by real callers in this
+# and neighbouring files, so their loadability is covered transitively.
+test_that("interactive effect-summary module exports its readline entry points", {
+  box::use(
+    artma / interactive / effect_summary_stats[
+      prompt_effect_summary_var_selection,
+      auto_select_effect_summary_vars
+    ]
+  )
 
   expect_true(is.function(prompt_effect_summary_var_selection))
-  expect_true(is.function(update_data_config))
-})
-
-test_that("all required data_config functions are available", {
-  expect_no_error({
-    box::use(
-      artma / data_config / write[update_data_config, fix_data_config],
-      artma / data_config / read[get_data_config]
-    )
-  })
-
-  expect_true(is.function(update_data_config))
-  expect_true(is.function(fix_data_config))
-  expect_true(is.function(get_data_config))
-})
-
-
-# Integration with variable suggestion ----------------------------------------
-
-test_that("interactive module integrates with variable suggestion", {
-  expect_no_error({
-    box::use(
-      artma / interactive / effect_summary_stats[
-        auto_select_effect_summary_vars
-      ],
-      artma / variable / suggestion[
-        suggest_variables_for_effect_summary
-      ]
-    )
-  })
-
   expect_true(is.function(auto_select_effect_summary_vars))
-  expect_true(is.function(suggest_variables_for_effect_summary))
 })
 
 
@@ -411,36 +361,6 @@ test_that("effect_summary_stats handles non-numeric variables correctly", {
   expect_true(is.data.frame(result))
   # Category should be skipped, only "All Data" should appear
   expect_equal(nrow(result), 1)
-})
-
-
-# Module dependency verification ----------------------------------------------
-
-test_that("all interactive module dependencies are resolvable", {
-  # Verify all imports in the interactive module work
-  expect_no_error({
-    box::use(
-      artma / variable / suggestion[suggest_variables_for_effect_summary],
-      artma / variable / detection[detect_variable_groups],
-      artma / libs / core / utils[get_verbosity],
-      artma / libs / core / validation[validate, assert],
-      artma / data / utils[determine_vector_type],
-      artma / const[CONST]
-    )
-  })
-})
-
-test_that("effect_summary_stats method dependencies are resolvable", {
-  # Verify all imports in effect_summary_stats.R work
-  expect_no_error({
-    box::use(
-      artma / const[CONST],
-      artma / data_config / read[get_data_config],
-      artma / libs / core / utils[get_verbosity],
-      artma / libs / core / validation[assert, validate, validate_columns],
-      artma / options / index[get_option_group]
-    )
-  })
 })
 
 

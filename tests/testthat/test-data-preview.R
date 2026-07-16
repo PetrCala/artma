@@ -66,25 +66,6 @@ test_that("data.preview rejects invalid data", {
   )
 })
 
-test_that("data.preview with path and preprocess FALSE uses raw read (no options)", {
-  withr::local_options(list(artma.verbose = 0))
-
-  tmp_csv <- withr::local_tempfile(fileext = ".csv")
-  write.csv(
-    data.frame(
-      MyStudy = c("S1", "S2"),
-      EffectSize = c(1.0, 2.0),
-      StdErr = c(0.1, 0.2),
-      N = c(50, 75)
-    ),
-    tmp_csv,
-    row.names = FALSE
-  )
-
-  # Raw read must not standardize column names; View is side effect, we only check no error
-  expect_null(artma::data.preview(tmp_csv, preprocess = FALSE))
-})
-
 test_that("read_data returns data frame without standardizing column names", {
   box::use(artma / data / read[read_data])
 

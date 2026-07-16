@@ -105,7 +105,7 @@ test_that("handle_bma_params splits multiple model configurations", {
   expect_equal(result[[2]]$mprior, "random")
 })
 
-test_that("get_bma_data subsets and scales data correctly", {
+test_that("get_bma_data subsets and scales non-binary variables", {
   df <- make_demo_bma_data()
   var_list <- data.frame(
     var_name = c("effect", "se", "moderator1", "moderator2"),
@@ -126,36 +126,16 @@ test_that("get_bma_data subsets and scales data correctly", {
     include_reference_groups = FALSE
   )
 
+  # Structure: the requested columns are subset out, one row per observation.
   expect_true(is.data.frame(bma_data))
   expect_equal(ncol(bma_data), 4)
   expect_equal(nrow(bma_data), nrow(df))
   expect_true("effect" %in% colnames(bma_data))
-})
 
-test_that("get_bma_data scales non-binary variables", {
-  df <- make_demo_bma_data()
-  var_list <- data.frame(
-    var_name = c("effect", "se", "moderator1", "moderator2"),
-    var_name_verbose = c("Effect", "SE", "Mod1", "Mod2"),
-    bma = c(TRUE, TRUE, TRUE, TRUE),
-    to_log_for_bma = c(FALSE, FALSE, FALSE, FALSE),
-    bma_reference_var = c(FALSE, FALSE, FALSE, FALSE),
-    stringsAsFactors = FALSE
-  )
-  variable_info <- c("effect", "se", "moderator1", "moderator2")
-
-  bma_data <- get_bma_data(
-    df,
-    var_list,
-    variable_info,
-    scale_data = TRUE,
-    from_vector = TRUE,
-    include_reference_groups = FALSE
-  )
-
+  # Scaling: the continuous moderator is centred and unit-scaled; the binary
+  # moderator is left untouched.
   expect_true(abs(mean(bma_data$moderator1)) < 1e-10)
   expect_true(abs(sd(bma_data$moderator1) - 1) < 1e-10)
-
   expect_false(abs(mean(bma_data$moderator2)) < 1e-10)
 })
 

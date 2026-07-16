@@ -17,22 +17,32 @@ computed_config_overrides <- list(
   precision = list(var_name = "precision", is_computed = TRUE)
 )
 
+# Options every compute_optional_columns test needs: mark the optional columns
+# as computed, skip result persistence, and fix the precision definition.
+local_compute_options <- function(.env = parent.frame()) {
+  withr::local_options(list(
+    "artma.data.columns" = computed_config_overrides,
+    "artma.output.save_results" = FALSE,
+    "artma.calc.precision_type" = "1/SE",
+    "artma.verbose" = 1
+  ), .local_envir = .env)
+}
 
-test_that("compute_optional_columns preserves study labels while normalizing study_id", {
-  df <- data.frame(
+# A three-row frame with a repeated study id (rows 1 and 3 share a study).
+sample_study_df <- function() {
+  data.frame(
     study_id = c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)"),
     effect = c(0.2, 0.5, 0.1),
     se = c(0.1, 0.2, 0.1),
     n_obs = c(120, 150, 120),
     stringsAsFactors = FALSE
   )
+}
 
-  withr::local_options(list(
-    "artma.data.columns" = computed_config_overrides,
-    "artma.output.save_results" = FALSE,
-    "artma.calc.precision_type" = "1/SE",
-    "artma.verbose" = 1
-  ))
+
+test_that("compute_optional_columns preserves study labels while normalizing study_id", {
+  df <- sample_study_df()
+  local_compute_options()
 
   result <- compute_optional_columns(df)
 
@@ -56,12 +66,7 @@ test_that("compute_optional_columns overwrites conflicting existing study_label"
     stringsAsFactors = FALSE
   )
 
-  withr::local_options(list(
-    "artma.data.columns" = computed_config_overrides,
-    "artma.output.save_results" = FALSE,
-    "artma.calc.precision_type" = "1/SE",
-    "artma.verbose" = 1
-  ))
+  local_compute_options()
 
   result <- compute_optional_columns(df)
 
@@ -71,20 +76,8 @@ test_that("compute_optional_columns overwrites conflicting existing study_label"
 
 
 test_that("get_reserved_colnames covers every column compute_optional_columns can add", {
-  df <- data.frame(
-    study_id = c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)"),
-    effect = c(0.2, 0.5, 0.1),
-    se = c(0.1, 0.2, 0.1),
-    n_obs = c(120, 150, 120),
-    stringsAsFactors = FALSE
-  )
-
-  withr::local_options(list(
-    "artma.data.columns" = computed_config_overrides,
-    "artma.output.save_results" = FALSE,
-    "artma.calc.precision_type" = "1/SE",
-    "artma.verbose" = 1
-  ))
+  df <- sample_study_df()
+  local_compute_options()
 
   cols_before <- names(df)
   result <- compute_optional_columns(df)

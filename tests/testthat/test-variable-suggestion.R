@@ -1,11 +1,8 @@
 box::use(
   testthat[
-    describe,
     expect_equal,
     expect_false,
     expect_true,
-    expect_type,
-    it,
     test_that
   ],
   withr[local_options]
@@ -61,16 +58,6 @@ make_test_data <- function() {
     stringsAsFactors = FALSE
   )
 }
-
-make_minimal_data <- function() {
-  data.frame(
-    effect = c(0.1, 0.2, 0.3, 0.4, 0.5),
-    se = c(0.05, 0.06, 0.07, 0.08, 0.09),
-    var1 = c(1, 2, 3, 4, 5),
-    stringsAsFactors = FALSE
-  )
-}
-
 
 # Tests for detect_dummy_groups -----------------------------------------------
 
