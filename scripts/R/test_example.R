@@ -6,7 +6,7 @@ test <- function() {
   box::use(
     artma / const[CONST],
     artma / paths[PATHS],
-    artma / testing / mocks / mock_df[create_mock_df],
+    artma / data / mock[create_mock_df],
     artma / data_config / parse[parse_df_into_data_config],
     artma / libs / core / utils[get_verbosity]
   )

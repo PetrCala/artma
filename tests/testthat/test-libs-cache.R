@@ -6,7 +6,7 @@ box::use(
 )
 
 # The fixtures and other package modules must be loaded here separately to avoid linter issues
-box::use(artma / testing / fixtures / index[FIXTURES])
+box::use(testing / fixtures / index[FIXTURES])
 
 test_that("new_artifact constructs the correct S3 object", {
   box::use(artma / libs / infrastructure / cache[new_artifact])

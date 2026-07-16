@@ -1,3 +1,64 @@
+#' Mock meta-analysis data generation.
+#'
+#' Powers the interactive "mock" file prompt (see `artma/options/template.R`)
+#' and is reused by the test suite through `tests/testthat/modules`. The random
+#' helpers below are module-private; only `create_mock_df` is exported.
+
+#' Generate a random numeric vector of a given length within a range.
+#'
+#' @param from *\[numeric\]* The lower bound of the range.
+#' @param to *\[numeric\]* The upper bound of the range.
+#' @param length.out *\[numeric\]* The length of the resulting vector.
+#' @param integer *\[logical\]* Whether to draw integer values. Defaults to FALSE.
+#' @return *\[numeric\]* A numeric vector drawn from the specified range.
+generate_random_vector <- function(from, to, length.out, integer = FALSE) {
+  if (!is.numeric(from) || !is.numeric(to) || !is.numeric(length.out)) {
+    cli::cli_abort("Invalid input: 'from', 'to', and 'length.out' should be numeric.")
+  }
+
+  if (from > to) {
+    cli::cli_abort("Invalid range: 'from' should be less than or equal to 'to'.")
+  }
+
+  if (integer) {
+    return(sample(from:to, size = length.out, replace = TRUE))
+  }
+
+  stats::runif(n = length.out, min = from, max = to)
+}
+
+#' Create mock study names with random occurrences.
+#'
+#' Generates `n_studies` unique study names and distributes `total_occurrences`
+#' rows among them at random, returning the repeated names.
+#'
+#' @param n_studies *\[integer\]* Number of unique mock study names to create.
+#' @param total_occurrences *\[integer\]* Total number of rows to distribute.
+#' @return *\[character\]* Study names repeated according to their occurrences.
+create_mock_study_names <- function(n_studies, total_occurrences) {
+  if (!is.numeric(n_studies) || !is.numeric(total_occurrences) || n_studies <= 0 || total_occurrences <= 0) {
+    cli::cli_abort("Both n_studies and total_occurrences should be positive integers.")
+  }
+
+  n_studies <- as.integer(n_studies)
+  total_occurrences <- as.integer(total_occurrences)
+
+  if (total_occurrences < n_studies) {
+    cli::cli_abort("Total occurrences must be greater than or equal to the number of studies.")
+  }
+
+  study_names <- paste("Mock Study", 1:n_studies)
+
+  random_occurrences <- function(total, n) {
+    points <- sort(sample(1:(total - 1), n - 1))
+    diff(c(0, points, total))
+  }
+
+  occurrences <- random_occurrences(total_occurrences, n_studies)
+
+  unname(unlist(base::Map(rep, study_names, occurrences)))
+}
+
 #' Create and return a mock meta-analysis data frame object
 #'
 #' @param effect_type A string indicating the type of effect to generate
@@ -20,11 +81,9 @@ create_mock_df <- function(
 ) {
   box::use(
     artma / const[CONST],
-    artma / libs / core / number[generate_random_vector],
     artma / libs / core / validation[assert],
     artma / libs / core / utils[get_verbosity],
-    artma / data / utils[get_standardized_colnames],
-    artma / testing / mocks / mock_utils[create_mock_study_names]
+    artma / data / utils[get_standardized_colnames]
   )
 
   if (is.null(seed)) {
@@ -104,7 +163,4 @@ create_mock_df <- function(
   data_frame
 }
 
-
-box::export(
-  create_mock_df
-)
+box::export(create_mock_df)

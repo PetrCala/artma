@@ -1,7 +1,7 @@
 box::use(
   testthat[test_that, expect_equal, expect_false, expect_identical],
-  artma / testing / fixtures / index[FIXTURES],
-  artma / testing / mocks / index[MOCKS]
+  testing / fixtures / index[FIXTURES],
+  testing / mocks / index[MOCKS]
 )
 
 # Computed-column config entries as the pipeline writes them. Seeding these

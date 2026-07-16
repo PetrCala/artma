@@ -3,7 +3,7 @@ box::use(
 )
 
 # The fixtures and other package modules must be loaded here separately to avoid linter issues
-box::use(artma / testing / fixtures / index[FIXTURES])
+box::use(testing / fixtures / index[FIXTURES])
 
 # This file guards against drift between the options template and the option
 # keys the code actually consumes. Both directions are asserted:
