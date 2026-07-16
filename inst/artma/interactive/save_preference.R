@@ -35,7 +35,7 @@ prompt_save_preference <- function(option_path, value, description = NULL, respe
     return(FALSE)
   }
 
-  if (respect_autonomy && !should_prompt_user(required_level = 3)) {
+  if (respect_autonomy && !should_prompt_user(required_level = "balanced")) {
     if (get_verbosity() >= 4) {
       cli::cli_inform("Autonomy level is high - preference not saved to file")
     }
@@ -194,7 +194,7 @@ prompt_save_variable_selection <- function(var_names, var_configs = NULL, descri
     return(FALSE)
   }
 
-  if (respect_autonomy && !should_prompt_user(required_level = 3)) {
+  if (respect_autonomy && !should_prompt_user(required_level = "balanced")) {
     if (get_verbosity() >= 4) {
       cli::cli_inform("Autonomy level is high - variable selection not saved to file")
     }

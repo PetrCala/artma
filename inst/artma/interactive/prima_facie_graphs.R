@@ -24,7 +24,7 @@ prompt_group_selection <- function(df, config, group_descriptors) {
 
   validate(is.data.frame(df), is.list(group_descriptors), length(group_descriptors) > 0)
 
-  if (!should_prompt_user(required_level = 3)) {
+  if (!should_prompt_user(required_level = "balanced")) {
     return(vapply(group_descriptors, function(g) g$group_id, character(1)))
   }
 

@@ -314,42 +314,42 @@ prompt_run_bma_for_bpe <- function() {
 }
 
 resolve_effective_autonomy_level <- function(level) {
-  if (is.null(level)) {
-    if (interactive()) {
-      return(4L)
-    }
-    return(5L)
-  }
-  as.integer(level)
+  box::use(artma / const[CONST])
+  level %||% CONST$AUTONOMY$DEFAULT
 }
 
 resolve_bpe_overrides <- function(predictor_names, autonomy_level, current_overrides, recommended_overrides) {
-  box::use(artma / libs / core / validation[validate])
+  box::use(
+    artma / const[CONST],
+    artma / libs / core / validation[validate]
+  )
 
   validate(
     is.character(predictor_names),
-    is.numeric(autonomy_level),
+    is.character(autonomy_level),
+    length(autonomy_level) == 1,
+    autonomy_level %in% CONST$AUTONOMY$LEVELS,
     is.list(current_overrides),
     is.list(recommended_overrides)
   )
 
-  if (autonomy_level >= 4) {
+  if (autonomy_level == "autonomous") {
     return(list(overrides = recommended_overrides, persist = FALSE))
   }
 
-  if (autonomy_level == 3) {
-    if (!interactive()) {
-      return(list(overrides = recommended_overrides, persist = FALSE))
+  # interactive() is the hard gate: non-interactive sessions never prompt.
+  # "ask_more" keeps the configured/current overrides rather than silently
+  # applying recommendations; "balanced" still defers to recommendations.
+  if (!interactive()) {
+    if (autonomy_level == "ask_more") {
+      return(list(overrides = current_overrides, persist = FALSE))
     }
-    use_recommendations <- prompt_use_bpe_recommendations()
-    if (isTRUE(use_recommendations)) {
-      return(list(overrides = recommended_overrides, persist = FALSE))
-    }
-    return(list(overrides = current_overrides, persist = FALSE))
+    return(list(overrides = recommended_overrides, persist = FALSE))
   }
 
-  if (!interactive()) {
-    if (autonomy_level == 2) {
+  if (autonomy_level == "balanced") {
+    use_recommendations <- prompt_use_bpe_recommendations()
+    if (isTRUE(use_recommendations)) {
       return(list(overrides = recommended_overrides, persist = FALSE))
     }
     return(list(overrides = current_overrides, persist = FALSE))
@@ -359,7 +359,7 @@ resolve_bpe_overrides <- function(predictor_names, autonomy_level, current_overr
     predictor_names = predictor_names,
     current_overrides = current_overrides,
     recommended_overrides = recommended_overrides,
-    show_recommendations = autonomy_level == 2
+    show_recommendations = TRUE
   )
 
   list(overrides = manual_overrides, persist = TRUE)

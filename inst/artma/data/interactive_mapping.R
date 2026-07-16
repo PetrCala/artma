@@ -131,7 +131,7 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
   # Track missing required columns
   missing_required <- setdiff(required_cols, names(auto_mapping))
 
-  if (!should_prompt_user(required_level = 4)) {
+  if (!should_prompt_user(required_level = "autonomous")) {
     if (get_verbosity() >= 3) {
       cli::cli_inform("Autonomy level is high - using auto-detected column mappings")
     }

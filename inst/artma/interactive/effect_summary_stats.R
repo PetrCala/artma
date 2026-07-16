@@ -30,7 +30,7 @@ prompt_effect_summary_var_selection <- function(df, config) {
     is.list(config)
   )
 
-  if (!should_prompt_user(required_level = 4)) {
+  if (!should_prompt_user(required_level = "autonomous")) {
     if (get_verbosity() >= 3) {
       cli::cli_inform("Autonomy level is high - using automatic variable selection")
     }
@@ -105,7 +105,7 @@ prompt_selection_mode <- function() {
     artma / libs / core / autonomy[should_prompt_user]
   )
 
-  if (!should_prompt_user(required_level = 4)) {
+  if (!should_prompt_user(required_level = "autonomous")) {
     return("auto")
   }
 
@@ -240,7 +240,7 @@ auto_select_effect_summary_vars <- function(df, config) {
   cli::cat_line()
 
   box::use(artma / libs / core / autonomy[should_prompt_user])
-  if (!should_prompt_user(required_level = 4)) {
+  if (!should_prompt_user(required_level = "autonomous")) {
     var_configs <- list()
     for (i in seq_len(nrow(suggested_vars))) {
       var <- suggested_vars[i, ]
@@ -314,7 +314,7 @@ manual_select_effect_summary_vars <- function(df, config) {
     artma / libs / core / autonomy[should_prompt_user]
   )
 
-  if (!should_prompt_user(required_level = 4)) {
+  if (!should_prompt_user(required_level = "autonomous")) {
     if (get_verbosity() >= 3) {
       cli::cli_inform("Autonomy level is high - skipping manual variable selection")
     }

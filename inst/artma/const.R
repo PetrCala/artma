@@ -14,6 +14,12 @@ CONST <- list(
   ),
   DATE_FORMAT = "%Y-%m-%d %H:%M:%S",
   DATE_ONLY_FORMAT = "%Y-%m-%d",
+  AUTONOMY = list(
+    # Ordered from most to least user interaction. interactive() is the hard gate;
+    # this only controls how eagerly to prompt within an interactive session.
+    LEVELS = c("ask_more", "balanced", "autonomous"),
+    DEFAULT = "autonomous"
+  ),
   DATA_CONFIG = list(
     KEYS = list(
       VAR_NAME = "var_name",

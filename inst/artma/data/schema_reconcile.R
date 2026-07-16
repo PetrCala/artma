@@ -717,7 +717,7 @@ reconcile_schema <- function(raw_df, mode = NULL) {
   show_drift_summary(drift, proposals_required, proposals_moderators, colnames_map)
 
   # Collect decisions
-  do_prompt <- (mode == "ask") && should_prompt_user(required_level = 4)
+  do_prompt <- (mode == "ask") && should_prompt_user(required_level = "autonomous")
 
   if (mode == "auto" || !do_prompt) {
     decisions <- auto_decisions(drift, proposals_required, proposals_moderators)

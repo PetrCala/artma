@@ -7,12 +7,14 @@
 autonomy.get()
 }
 \value{
-\emph{[integer or NULL]} The current autonomy level (1-5), or NULL if not set.
+\emph{[character or NULL]} The current autonomy level ("ask_more",
+"balanced", or "autonomous"), or NULL if not set.
 }
 \description{
 Get the current autonomy level.
 Autonomy controls how much user interaction is required during analysis.
-Higher levels mean less user interaction and more automatic decision-making.
+\code{interactive()} is the hard gate: non-interactive sessions never prompt,
+regardless of this setting.
 }
 \examples{
 \dontrun{
