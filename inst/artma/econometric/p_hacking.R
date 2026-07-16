@@ -765,5 +765,11 @@ build_elliott_summary <- function(elliott_tests, pvalues, options) {
 
 box::export(
   run_caliper_tests,
-  run_p_hacking_tests
+  run_p_hacking_tests,
+  run_single_caliper,
+  compute_pvalues,
+  prepare_maive_data,
+  maive_p_from_coef,
+  run_binomial,
+  run_fisher
 )
