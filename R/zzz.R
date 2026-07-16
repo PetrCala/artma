@@ -35,27 +35,6 @@ get_valid_boxpath <- function(libname, pkgname) {
   unique(c(current_box_path, pkg_path, dev_path))
 }
 
-#' Reference runtime dependencies so R CMD check detects Imports usage.
-#'
-#' These packages are required by the modules shipped under `inst/artma`
-#' and are accessed via `pkg::fun()` at runtime. Because those modules are
-#' not parsed when `R CMD check` scans the package's R sources, we touch the
-#' symbols here to make the dependency explicit.
-#'
-#' @keywords internal
-#' @noRd
-register_runtime_dependencies <- function() {
-  invisible(list(
-    ggplot2::ggplot,
-    ggtext::element_markdown,
-    lmtest::coeftest,
-    sandwich::vcovCL,
-    sandwich::vcovHC,
-    yaml::read_yaml,
-    yaml::write_yaml
-  ))
-}
-
 #' @title .onLoad hook for package initialization
 #' @description Called when the package is loaded.
 #' @param libname The path to the library.
@@ -74,8 +53,6 @@ register_runtime_dependencies <- function() {
 
   # Mandatory set
   options(box.path = get_valid_boxpath(libname, pkgname))
-
-  register_runtime_dependencies()
 
   invisible()
 }
