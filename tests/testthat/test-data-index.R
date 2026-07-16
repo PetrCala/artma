@@ -1,6 +1,6 @@
 box::use(
   testthat[test_that, expect_equal],
-  artma / testing / mocks / index[MOCKS]
+  testing / mocks / index[MOCKS]
 )
 
 test_that("prepare_data reads source data only once on a cache-miss execution", {

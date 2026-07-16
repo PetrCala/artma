@@ -3,8 +3,8 @@ box::use(
 )
 
 box::use(
-  artma / testing / mocks / index[MOCKS],
-  artma / testing / fixtures / index[FIXTURES]
+  testing / mocks / index[MOCKS],
+  testing / fixtures / index[FIXTURES]
 )
 
 # Note: These tests use auto_detect = FALSE to test core logic without interaction.

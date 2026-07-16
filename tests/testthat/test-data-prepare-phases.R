@@ -1,7 +1,7 @@
 box::use(
   testthat[expect_equal, expect_false, expect_identical, expect_true, test_that],
-  artma / testing / fixtures / index[FIXTURES],
-  artma / testing / mocks / index[MOCKS]
+  testing / fixtures / index[FIXTURES],
+  testing / mocks / index[MOCKS]
 )
 
 # Create a valid runtime options file pointing at `source_path`, load it, and

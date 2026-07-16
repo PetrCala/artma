@@ -237,7 +237,7 @@ prompt_user_for_option_value <- function(opt) {
   } else if (input_val == "mock" && prompt_type == "file") {
     # Generate mock data and save to temp file
     box::use(
-      artma / testing / mocks / mock_df[create_mock_df],
+      artma / data / mock[create_mock_df],
       artma / libs / core / utils[get_verbosity]
     )
 

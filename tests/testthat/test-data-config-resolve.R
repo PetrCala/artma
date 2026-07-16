@@ -128,7 +128,7 @@ test_that("read_df_for_config uses a primed dataframe cache without re-reading d
       prime_df_for_config_cache,
       read_df_for_config
     ],
-    artma / testing / mocks / index[MOCKS]
+    testing / mocks / index[MOCKS]
   )
 
   df <- MOCKS$create_mock_df(seed = 42)
@@ -158,7 +158,7 @@ test_that("read_df_for_config uses a primed dataframe cache without re-reading d
 test_that("read_df_for_config re-reads when the source file changes at the same path", {
   box::use(
     artma / data_config / resolve[read_df_for_config],
-    artma / testing / mocks / index[MOCKS]
+    testing / mocks / index[MOCKS]
   )
 
   df <- MOCKS$create_mock_df(seed = 42)
@@ -191,7 +191,7 @@ test_that("read_df_for_config re-reads when the source file changes at the same 
 test_that("get_data_config picks up file changes at the same source path", {
   box::use(
     artma / data_config / read[get_data_config],
-    artma / testing / mocks / index[MOCKS]
+    testing / mocks / index[MOCKS]
   )
 
   df <- MOCKS$create_mock_df(seed = 42)
@@ -228,7 +228,7 @@ test_that("config keys are standardized regardless of which entry point resolves
     artma / data / utils[standardize_column_names],
     artma / data_config / read[get_data_config],
     artma / data_config / resolve[prime_df_for_config_cache],
-    artma / testing / mocks / index[MOCKS]
+    testing / mocks / index[MOCKS]
   )
 
   raw_map <- list(
@@ -306,7 +306,7 @@ test_that("get_data_config: returns empty list when no config and no df", {
 test_that("get_data_config: merges overrides onto base when df is available", {
   box::use(
     artma / data_config / read[get_data_config],
-    artma / testing / mocks / index[MOCKS]
+    testing / mocks / index[MOCKS]
   )
 
   # Create a real temp CSV file
