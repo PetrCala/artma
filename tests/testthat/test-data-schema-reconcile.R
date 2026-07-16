@@ -171,20 +171,11 @@ test_that("score_rename_candidate uses the pattern engine when the role is known
 })
 
 # reconcile_schema (strict mode)
-
-test_that("reconcile_schema in strict mode aborts when required column is missing", {
-  box::use(artma / data / schema_reconcile[reconcile_schema])
-
-  raw_df <- data.frame(zzz = 1:3, se_col = 0.1, study = "A", n_obs = 10L)
-
-  withr::with_options(
-    base_reconcile_opts(),
-    expect_error(
-      reconcile_schema(raw_df, mode = "strict"),
-      class = "rlang_error"
-    )
-  )
-})
+#
+# The strict-mode abort paths (missing required column, missing moderator, added
+# column) are exercised with stronger `regexp` assertions in
+# test-schema-reconcile-integration.R (T2/T3/T4); this file keeps only the
+# no-drift pass case, which that file does not cover.
 
 test_that("reconcile_schema in strict mode passes when no drift exists", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
@@ -195,30 +186,4 @@ test_that("reconcile_schema in strict mode passes when no drift exists", {
   )
 
   expect_null(result)
-})
-
-test_that("reconcile_schema in strict mode aborts on missing moderator", {
-  box::use(artma / data / schema_reconcile[reconcile_schema])
-
-  withr::with_options(
-    base_reconcile_opts(list(
-      "artma.data.columns" = base_store(list(method_iv = list(bma = TRUE)))
-    )),
-    expect_error(
-      reconcile_schema(base_df(), mode = "strict"),
-      class = "rlang_error"
-    )
-  )
-})
-
-test_that("reconcile_schema in strict mode aborts on added column", {
-  box::use(artma / data / schema_reconcile[reconcile_schema])
-
-  withr::with_options(
-    base_reconcile_opts(),
-    expect_error(
-      reconcile_schema(base_df(region = "EU"), mode = "strict"),
-      class = "rlang_error"
-    )
-  )
 })

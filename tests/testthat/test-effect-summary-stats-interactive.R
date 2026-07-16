@@ -1,14 +1,10 @@
 box::use(
   testthat[
-    describe,
     expect_equal,
     expect_false,
     expect_true,
-    expect_type,
-    it,
     test_that
-  ],
-  withr[local_options]
+  ]
 )
 
 box::use(
@@ -74,40 +70,33 @@ make_test_data <- function() {
 
 # Tests for update_config_with_selections -------------------------------------
 
-test_that("update_config_with_selections sets equal split correctly", {
-  config <- make_test_config()
-
-  var_configs <- list(
-    published = list(
-      var_name = "published",
-      split_method = "equal",
-      split_value = "1"
-    )
+# Setting one split method on one variable flags it for effect summary stats,
+# records the chosen split value under that method, and leaves the opposite
+# split method NA. Covers equal/gltl with word ("mean"/"median") and numeric
+# ("1"/"0.75"/"2010") split values.
+test_that("update_config_with_selections sets a single split and clears the opposite", {
+  cases <- list(
+    list(var = "published", method = "equal", value = "1", cleared = "gltl"),
+    list(var = "year", method = "gltl", value = "mean", cleared = "equal"),
+    list(var = "quality", method = "gltl", value = "0.75", cleared = "equal"),
+    list(var = "year", method = "equal", value = "2010", cleared = "gltl"),
+    list(var = "year", method = "gltl", value = "median", cleared = "equal")
   )
 
-  result <- update_config_with_selections(config, var_configs)
-
-  expect_true(result$published$effect_sum_stats)
-  expect_equal(result$published$equal, "1")
-  expect_true(is.na(result$published$gltl))
-})
-
-test_that("update_config_with_selections sets gltl split correctly", {
-  config <- make_test_config()
-
-  var_configs <- list(
-    year = list(
-      var_name = "year",
-      split_method = "gltl",
-      split_value = "mean"
+  for (case in cases) {
+    label <- sprintf("%s/%s", case$var, case$method)
+    var_configs <- stats::setNames(
+      list(list(var_name = case$var, split_method = case$method, split_value = case$value)),
+      case$var
     )
-  )
 
-  result <- update_config_with_selections(config, var_configs)
+    result <- update_config_with_selections(make_test_config(), var_configs)
+    entry <- result[[case$var]]
 
-  expect_true(result$year$effect_sum_stats)
-  expect_equal(result$year$gltl, "mean")
-  expect_true(is.na(result$year$equal))
+    expect_true(entry$effect_sum_stats, info = label)
+    expect_equal(entry[[case$method]], case$value, info = label)
+    expect_true(is.na(entry[[case$cleared]]), info = label)
+  }
 })
 
 test_that("update_config_with_selections handles multiple variables", {
@@ -236,40 +225,6 @@ test_that("full workflow: auto suggestions converted to config updates", {
   expect_true(is.na(updated_config$quality$effect_sum_stats))
 })
 
-test_that("workflow handles gltl with numeric threshold", {
-  config <- make_test_config()
-
-  var_configs <- list(
-    quality = list(
-      var_name = "quality",
-      split_method = "gltl",
-      split_value = "0.75"
-    )
-  )
-
-  updated_config <- update_config_with_selections(config, var_configs)
-
-  expect_true(updated_config$quality$effect_sum_stats)
-  expect_equal(updated_config$quality$gltl, "0.75")
-})
-
-test_that("workflow handles equal with numeric value", {
-  config <- make_test_config()
-
-  var_configs <- list(
-    year = list(
-      var_name = "year",
-      split_method = "equal",
-      split_value = "2010"
-    )
-  )
-
-  updated_config <- update_config_with_selections(config, var_configs)
-
-  expect_true(updated_config$year$effect_sum_stats)
-  expect_equal(updated_config$year$equal, "2010")
-})
-
 test_that("config updates properly clear opposite split method", {
   config <- make_test_config()
 
@@ -323,22 +278,6 @@ test_that("update_config_with_selections handles NA values correctly", {
   # equal should be set, gltl should be NA
   expect_equal(result$year$equal, "2020")
   expect_true(is.na(result$year$gltl))
-})
-
-test_that("update_config_with_selections with character split values", {
-  config <- make_test_config()
-
-  var_configs <- list(
-    year = list(
-      var_name = "year",
-      split_method = "gltl",
-      split_value = "median" # Character, not numeric
-    )
-  )
-
-  result <- update_config_with_selections(config, var_configs)
-
-  expect_equal(result$year$gltl, "median")
 })
 
 test_that("var_configs with extra fields doesn't break update", {

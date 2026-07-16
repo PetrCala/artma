@@ -36,21 +36,20 @@ test_that("simulate_cdfs returns numeric vectors with expected shape", {
   expect_true(all(res >= 0))
 })
 
-test_that("simulate_cdfs is deterministic for fixed seed (multi-iteration)", {
-  tolerance <- 1e-12
+test_that("simulate_cdfs is deterministic for a fixed seed", {
+  # Same seed must reproduce the same draws, both for a single iteration and
+  # across several.
+  param_sets <- list(
+    list(seed = 123, iterations = 5, grid_points = 40),
+    list(seed = 42, iterations = 1, grid_points = 12)
+  )
 
-  res_first <- run_simulation(seed = 123, iterations = 5, grid_points = 40)
-  res_second <- run_simulation(seed = 123, iterations = 5, grid_points = 40)
+  for (p in param_sets) {
+    res_first <- run_simulation(seed = p$seed, iterations = p$iterations, grid_points = p$grid_points)
+    res_second <- run_simulation(seed = p$seed, iterations = p$iterations, grid_points = p$grid_points)
 
-  expect_equal(res_first, res_second, tolerance = tolerance)
-})
-
-test_that("simulate_cdfs is deterministic for fixed seed (single iteration)", {
-  tolerance <- 1e-12
-  res_first <- run_simulation(seed = 42, iterations = 1, grid_points = 12)
-  res_second <- run_simulation(seed = 42, iterations = 1, grid_points = 12)
-
-  expect_equal(res_first, res_second, tolerance = tolerance)
+    expect_equal(res_first, res_second, tolerance = 1e-12, info = sprintf("iterations = %d", p$iterations))
+  }
 })
 
 test_that("simulate_cdfs output is unchanged when progress is suppressed", {

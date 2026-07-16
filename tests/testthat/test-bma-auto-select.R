@@ -1,13 +1,11 @@
 box::use(
   testthat[
-    describe,
     expect_equal,
+    expect_false,
     expect_gt,
     expect_true,
-    expect_type,
     test_that
-  ],
-  withr[local_options]
+  ]
 )
 
 #' Tests for BMA automatic variable selection

@@ -383,22 +383,18 @@ describe("suggest_variables_for_bma", {
     expect_true("split_value" %in% names(result))
   })
 
-  it("final result has no perfect collinearity", {
+  it("drops one side of a perfectly collinear pair from the suggestions", {
     local_options("artma.verbose" = 1)
 
     df <- make_test_df()
-    df$var2 <- df$var1 * 2
+    df$var2 <- df$var1 * 2 # var2 is now perfectly collinear with var1
     config <- make_config()
 
     result <- suggest_variables_for_bma(df, config = config)
     suggested_vars <- result$var_name
 
-    # Verify no collinearity in final suggestions
-    collinearity_check <- detect_perfect_collinearity(df, suggested_vars)
-
-    # Should have no collinearity (or minimal)
-    # Note: May still have some due to data randomness, but should be much reduced
-    expect_true(is.logical(collinearity_check$has_collinearity))
+    # The collinear pair must not both survive into the final suggestions.
+    expect_false(all(c("var1", "var2") %in% suggested_vars))
   })
 })
 

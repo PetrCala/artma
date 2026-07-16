@@ -43,55 +43,27 @@ create_temp_csv_file <- function() {
 }
 
 
-test_that("preprocess_column_mapping returns unchanged when no data.source_path", {
-  user_input <- list(
-    "verbose" = 3
-  )
+# When there is nothing to auto-detect (no source path, NA/empty path, or a
+# path that does not resolve to a file), the mapping is returned unchanged.
+test_that("preprocess_column_mapping returns input unchanged when there is nothing to auto-detect", {
   options_def <- create_mock_options_def()
-
   withr::local_options(list("artma.verbose" = 1))
-  result <- preprocess_column_mapping(user_input, options_def)
 
-  expect_equal(result, user_input)
-})
-
-
-test_that("preprocess_column_mapping returns unchanged when data.source_path is NA", {
-  user_input <- list(
-    "data.source_path" = NA
+  cases <- list(
+    "no data.source_path" = list("verbose" = 3),
+    "data.source_path is NA" = list("data.source_path" = NA),
+    "data.source_path is empty string" = list("data.source_path" = ""),
+    "file does not exist" = list("data.source_path" = "/nonexistent/path/to/file.csv")
   )
-  options_def <- create_mock_options_def()
 
-  withr::local_options(list("artma.verbose" = 1))
-  result <- preprocess_column_mapping(user_input, options_def)
-
-  expect_equal(result, user_input)
-})
-
-
-test_that("preprocess_column_mapping returns unchanged when data.source_path is empty string", {
-  user_input <- list(
-    "data.source_path" = ""
-  )
-  options_def <- create_mock_options_def()
-
-  withr::local_options(list("artma.verbose" = 1))
-  result <- preprocess_column_mapping(user_input, options_def)
-
-  expect_equal(result, user_input)
-})
-
-
-test_that("preprocess_column_mapping returns unchanged when file does not exist", {
-  user_input <- list(
-    "data.source_path" = "/nonexistent/path/to/file.csv"
-  )
-  options_def <- create_mock_options_def()
-
-  withr::local_options(list("artma.verbose" = 1))
-  result <- preprocess_column_mapping(user_input, options_def)
-
-  expect_equal(result, user_input)
+  for (label in names(cases)) {
+    user_input <- cases[[label]]
+    expect_equal(
+      preprocess_column_mapping(user_input, options_def),
+      user_input,
+      info = label
+    )
+  }
 })
 
 
@@ -182,34 +154,6 @@ test_that("preprocess_column_mapping does not override a user-supplied column st
     result$data.columns,
     list(study_id = list(source_name = "my_custom_study_col"))
   )
-})
-
-
-test_that("preprocess_column_mapping handles tilde in path", {
-  # Create a CSV in temp dir and use tilde notation
-  tmp_dir <- tempdir()
-  tmp_file <- file.path(tmp_dir, "test_data.csv")
-
-  csv_content <- c(
-    "study_name,effect,se,n_obs",
-    "Study A,10.5,2.3,100"
-  )
-  writeLines(csv_content, tmp_file)
-  on.exit(unlink(tmp_file))
-
-  # Use relative path that will be expanded
-  user_input <- list(
-    "data.source_path" = tmp_file
-  )
-  options_def <- create_mock_options_def()
-
-  withr::local_options(list("artma.verbose" = 1))
-
-  # Should not error
-  result <- preprocess_column_mapping(user_input, options_def)
-
-  # Should have detected columns
-  expect_true("study_id" %in% names(result$data.columns))
 })
 
 

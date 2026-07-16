@@ -42,53 +42,27 @@ test_that("normalize_read_df replaces NA-strings, whitespace, and coerces types"
 })
 
 
-test_that("read_file normalizes a CSV identically to the canonical result", {
-  withr::local_options(list(artma.verbose = 0))
-  tmp <- withr::local_tempfile(fileext = ".csv")
-  utils::write.csv(raw_text_df(), tmp, row.names = FALSE)
+# read_file must normalize every supported input format to the same canonical
+# typed result. One registered test per format, each carrying its own optional
+# package skip so a missing reader skips only its own case.
+read_file_formats <- list(
+  list(name = "CSV", ext = ".csv", skip = character(0), write = function(df, path) utils::write.csv(df, path, row.names = FALSE)),
+  list(name = "RDS", ext = ".rds", skip = character(0), write = function(df, path) saveRDS(df, path)),
+  list(name = "Excel", ext = ".xlsx", skip = c("writexl", "readxl"), write = function(df, path) writexl::write_xlsx(df, path)),
+  list(name = "JSON", ext = ".json", skip = "jsonlite", write = function(df, path) jsonlite::write_json(df, path)),
+  list(name = "Stata", ext = ".dta", skip = "haven", write = function(df, path) haven::write_dta(df, path))
+)
 
-  expect_canonical(read_file(tmp))
-})
+for (case in read_file_formats) {
+  test_that(sprintf("read_file normalizes a %s file identically to the canonical result", case$name), {
+    for (pkg in case$skip) skip_if_not_installed(pkg)
+    withr::local_options(list(artma.verbose = 0))
+    tmp <- withr::local_tempfile(fileext = case$ext)
+    case$write(raw_text_df(), tmp)
 
-
-test_that("read_file normalizes an RDS identically to the canonical result", {
-  withr::local_options(list(artma.verbose = 0))
-  tmp <- withr::local_tempfile(fileext = ".rds")
-  saveRDS(raw_text_df(), tmp)
-
-  expect_canonical(read_file(tmp))
-})
-
-
-test_that("read_file normalizes an Excel file identically to the canonical result", {
-  skip_if_not_installed("writexl")
-  skip_if_not_installed("readxl")
-  withr::local_options(list(artma.verbose = 0))
-  tmp <- withr::local_tempfile(fileext = ".xlsx")
-  writexl::write_xlsx(raw_text_df(), tmp)
-
-  expect_canonical(read_file(tmp))
-})
-
-
-test_that("read_file normalizes a JSON file identically to the canonical result", {
-  skip_if_not_installed("jsonlite")
-  withr::local_options(list(artma.verbose = 0))
-  tmp <- withr::local_tempfile(fileext = ".json")
-  jsonlite::write_json(raw_text_df(), tmp)
-
-  expect_canonical(read_file(tmp))
-})
-
-
-test_that("read_file normalizes a Stata file identically to the canonical result", {
-  skip_if_not_installed("haven")
-  withr::local_options(list(artma.verbose = 0))
-  tmp <- withr::local_tempfile(fileext = ".dta")
-  haven::write_dta(raw_text_df(), tmp)
-
-  expect_canonical(read_file(tmp))
-})
+    expect_canonical(read_file(tmp))
+  })
+}
 
 
 test_that("read_by_type errors clearly when JSON does not flatten to a data frame", {
