@@ -14,39 +14,40 @@ box::use(
 #' @return *\[data.frame\]* The data frame with the empty rows removed
 #' @keywords internal
 remove_empty_rows <- function(df) {
-  box::use(
-    artma / libs / core / utils[get_verbosity],
-    artma / libs / infrastructure / polyfills[map_lgl]
-  )
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (get_verbosity() >= 4) {
     cli::cli_inform("Removing empty rows...")
   }
 
   required_colnames <- get_required_colnames()
+  required_colnames <- required_colnames[required_colnames %in% colnames(df)]
 
   # Critical required columns that must be present for a row to be valid
   # n_obs can be missing/imputed, but study_id, effect, and se are essential
   critical_cols <- c("study_id", "effect", "se")
   critical_cols <- critical_cols[critical_cols %in% colnames(df)]
 
-  # Remove rows where all required columns are NA
-  all_na_rows <- which(map_lgl(seq_len(nrow(df)), ~ all(is.na(df[., required_colnames, drop = FALSE]))))
-
-  # Also remove rows where all critical columns are missing (even if n_obs has a value)
-  # This catches rows that have n_obs but are missing the essential analysis columns
-  critical_na_rows <- if (length(critical_cols) > 0) {
-    which(map_lgl(seq_len(nrow(df)), ~ all(is.na(df[., critical_cols, drop = FALSE]))))
+  # A row is empty when all required columns are NA, or when all critical
+  # columns are missing (even if n_obs has a value). Both checks are vectorized
+  # with rowSums(is.na(...)) instead of iterating rows.
+  all_required_na <- if (length(required_colnames) > 0) {
+    rowSums(is.na(df[, required_colnames, drop = FALSE])) == length(required_colnames)
   } else {
-    integer(0)
+    rep(FALSE, nrow(df))
   }
 
-  # Combine both sets of rows to remove
-  na_rows <- unique(c(all_na_rows, critical_na_rows))
+  all_critical_na <- if (length(critical_cols) > 0) {
+    rowSums(is.na(df[, critical_cols, drop = FALSE])) == length(critical_cols)
+  } else {
+    rep(FALSE, nrow(df))
+  }
 
-  if (length(na_rows)) {
-    df <- df[-na_rows, ]
-    cli::cli_alert_success("Removed {.val {length(na_rows)}} empty rows.")
+  empty_rows <- all_required_na | all_critical_na
+
+  if (any(empty_rows)) {
+    df <- df[!empty_rows, , drop = FALSE]
+    cli::cli_alert_success("Removed {.val {sum(empty_rows)}} empty rows.")
   }
   df
 }
@@ -256,8 +257,6 @@ preprocess_data <- function(df) {
     remove_empty_rows() |>
     handle_missing_values_with_prompt() |>
     enforce_data_types() |>
-    normalize_whitespace_to_na() |>
-    remove_empty_rows() |>
     winsorize_data() |>
     enforce_correct_values()
 }

@@ -7,7 +7,13 @@ CONST <- list(
   PACKAGE_NAME = PACKAGE_NAME,
   PACKAGE_NAME_VERBOSE = PACKAGE_NAME_VERBOSE,
   DATA = list(
-    # A list of recognized data (meaning data frame) types
+    # A list of recognized data (meaning data frame) types.
+    # All formats go through one read dispatch (read_by_type) and one shared
+    # post-read normalization (normalize_read_df: NA-string replacement,
+    # whitespace-to-NA, and type coercion). Text formats (csv, tsv, and Excel,
+    # which is read as text) are fully coerced from strings. json must flatten
+    # to a tabular record set or a clear error is raised. dta and rds keep the
+    # types their native readers return and pass through NA normalization only.
     TYPES = c("csv", "tsv", "xlsx", "xls", "xlsm", "json", "dta", "rds"),
     # Strings that should be interpreted as NA when reading data files
     NA_STRINGS = c("", "NA", "N/A", "na", "n/a", "NULL", "null")

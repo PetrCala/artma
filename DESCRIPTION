@@ -45,7 +45,9 @@ Suggests:
     devtools (>= 2.4.5),
     fdrtool (>= 1.2.17),
     fs (>= 1.6.6),
+    haven (>= 2.5.0),
     ivmodel (>= 1.9.0),
+    jsonlite (>= 1.8.0),
     knitr (>= 1.50),
     languageserver (>= 0.3.16),
     lintr (>= 3.2.0),
@@ -58,11 +60,13 @@ Suggests:
     plm (>= 2.6-3),
     quadprog (>= 1.5-8),
     rddensity (>= 2.5),
+    readxl (>= 1.4.0),
     remotes (>= 2.5.0),
     rex (>= 1.2.1),
     rmarkdown (>= 2.30),
     roxygen2 (>= 7.3.3),
-    testthat (>= 3.2.3)
+    testthat (>= 3.2.3),
+    writexl (>= 1.4.0)
 VignetteBuilder: 
     knitr
 Config/testthat/edition: 3

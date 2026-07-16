@@ -47,42 +47,12 @@ detect_delimiter <- function(path, n_lines = 5) {
 }
 
 
-#' @title Detect file encoding
-#' @description Attempt to detect the file encoding
-#' @param path *\[character\]* Path to the file
-#' @return *\[character\]* The detected encoding
-detect_encoding <- function(path) {
-  box::use(artma / libs / core / validation[validate])
-
-  validate(is.character(path), file.exists(path))
-
-  # Try reading with different encodings
-  encodings <- c("UTF-8", "latin1", "ISO-8859-1", "CP1252")
-
-  for (enc in encodings) {
-    test <- tryCatch(
-      {
-        readLines(path, n = 10, encoding = enc, warn = FALSE)
-        enc
-      },
-      error = function(e) NULL
-    )
-    if (!is.null(test)) {
-      return(enc)
-    }
-  }
-
-  "UTF-8" # Fallback
-}
-
-
 #' @title Smart read CSV with auto-detection
-#' @description Read CSV file with automatic delimiter and encoding detection
+#' @description Read CSV file with automatic delimiter detection
 #' @param path *\[character\]* Path to the file
 #' @param delim *\[character, optional\]* Delimiter (auto-detected if NULL)
-#' @param encoding *\[character, optional\]* Encoding (auto-detected if NULL)
 #' @return *\[data.frame\]* The data frame
-smart_read_csv <- function(path, delim = NULL, encoding = NULL) {
+smart_read_csv <- function(path, delim = NULL) {
   box::use(
     artma / const[CONST],
     artma / libs / core / validation[validate],
@@ -98,13 +68,6 @@ smart_read_csv <- function(path, delim = NULL, encoding = NULL) {
     }
   }
 
-  if (is.null(encoding)) {
-    encoding <- detect_encoding(path)
-    if (get_verbosity() >= 4) {
-      cli::cli_inform("Auto-detected encoding: {.val {encoding}}")
-    }
-  }
-
   # Try reading with detected parameters
   df <- tryCatch(
     {
@@ -112,7 +75,6 @@ smart_read_csv <- function(path, delim = NULL, encoding = NULL) {
         path,
         header = TRUE,
         sep = delim,
-        fileEncoding = encoding,
         stringsAsFactors = FALSE,
         na.strings = CONST$DATA$NA_STRINGS,
         strip.white = TRUE,
@@ -240,7 +202,6 @@ validate_df_structure <- function(df, path) {
 
 box::export(
   detect_delimiter,
-  detect_encoding,
   smart_read_csv,
   validate_df_structure,
   normalize_whitespace_to_na

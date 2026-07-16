@@ -70,7 +70,7 @@ data.preview <- function(
     options_dir = NULL,
     preprocess = TRUE) {
   box::use(
-    artma / data / read[read_data, read_data_raw],
+    artma / data / read[read_data],
     artma / data / index[prepare_data],
     artma / data / preprocess[preprocess_data],
     artma / data / compute[compute_optional_columns],
@@ -107,7 +107,7 @@ data.preview <- function(
 
   # Path + preprocess FALSE: raw read, no options
   if (is.character(data) && length(data) == 1L && isFALSE(preprocess)) {
-    df <- read_data_raw(data)
+    df <- read_data(data)
     view_if_available(df, title = paste0("Preview: ", basename(data)))
     return(invisible(NULL))
   }

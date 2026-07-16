@@ -85,8 +85,8 @@ test_that("data.preview with path and preprocess FALSE uses raw read (no options
   expect_null(artma::data.preview(tmp_csv, preprocess = FALSE))
 })
 
-test_that("read_data_raw returns data frame without standardizing column names", {
-  box::use(artma / data / read[read_data_raw])
+test_that("read_data returns data frame without standardizing column names", {
+  box::use(artma / data / read[read_data])
 
   withr::local_options(list(artma.verbose = 0))
 
@@ -102,7 +102,7 @@ test_that("read_data_raw returns data frame without standardizing column names",
     row.names = FALSE
   )
 
-  df <- read_data_raw(tmp_csv)
+  df <- read_data(tmp_csv)
 
   expect_true(is.data.frame(df))
   expect_true("MyStudy" %in% names(df))
