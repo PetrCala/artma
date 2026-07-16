@@ -126,7 +126,7 @@ resolve_factor_by <- function(df, config, factor_by_option) {
   }
 
   # For box plots, study labels/IDs are almost always the right choice, so we only prompt
-  # at low autonomy levels (1-2). At medium and above, auto-select.
+  # below the "balanced" autonomy level. At "balanced" and above, auto-select.
   if (should_prompt_user(required_level = "balanced") && length(candidates) > 1) {
     box::use(artma / interactive / box_plot[prompt_factor_by_selection])
     return(prompt_factor_by_selection(df, config, candidates))
