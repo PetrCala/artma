@@ -122,7 +122,7 @@ read_file <- function(path) {
 read_data <- function(path = NULL) {
   box::use(artma / libs / core / utils[get_verbosity])
 
-  path <- if (!is.null(path)) path else getOption("artma.data.source_path")
+  path <- if (!is.null(path)) path else getOption("artma.data.source_path", NULL)
 
   if (is.null(path) || !nzchar(path)) {
     cli::cli_abort("No data source path provided. Please set {.field artma.data.source_path} option.")

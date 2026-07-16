@@ -312,15 +312,20 @@ resolve_option_value <- function(
 
 
 #' @title Coerce an option value
-#' @description A helper function that attempts to coerce an option value to the correct type. If it fails, it passes the value as is.
-#' @param val [any] The value to validate or coerce.
+#' @description Coerce an option value to the type declared in its template
+#'   definition. Coercion is fail-loud: if the value cannot be represented as the
+#'   expected type (a non-numeric in a numeric option, a fractional in an integer
+#'   option, a value outside an enum's members), it aborts naming the option, the
+#'   raw value, and the expected type instead of silently returning the original.
+#' @param val [any] The value to coerce.
 #' @param opt [list] The option definition.
 #' `any` The coerced value.
 #' @keywords internal
 coerce_option_value <- function(val, opt) {
   box::use(
     artma / const[CONST],
-    artma / libs / core / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity],
+    artma / options / utils[parse_template_enum_value]
   )
 
   # If the value is NULL, there's nothing to coerce
@@ -332,50 +337,72 @@ coerce_option_value <- function(val, opt) {
     return(val)
   }
 
-  # Enumerations, e.g. "enum: red|blue|green", return as is
-  if (startsWith(opt$type, "enum:")) {
-    return(val)
-  }
-
-  enforce_na_allowed <- function(val, opt) {
-    if (any(is.na(val)) && !isTRUE(opt$allow_na)) {
+  enforce_na_allowed <- function(v) {
+    if (any(is.na(v)) && !isTRUE(opt$allow_na)) {
       cli::cli_abort("Option {CONST$STYLES$OPTIONS$NAME(opt$name)} does not allow NA values.")
     }
   }
 
-  tryCatch(
-    {
-      enforce_na_allowed(val, opt)
+  abort_coercion <- function(expected_type) {
+    cli::cli_abort(c(
+      "Cannot coerce option {CONST$STYLES$OPTIONS$NAME(opt$name)} to {CONST$STYLES$OPTIONS$TYPE(expected_type)}.",
+      "x" = "Raw value: {CONST$STYLES$OPTIONS$VALUE(val)}."
+    ))
+  }
 
-      coerced_val <- switch(opt$type,
-        character = as.character(val),
-        integer = as.integer(val),
-        logical = as.logical(val),
-        numeric = as.numeric(val),
-        list = as.list(val),
-        val
-      )
+  enforce_na_allowed(val)
 
-      if (isTRUE(opt$standardize) && opt$type == "character") {
-        standard_val <- make.names(coerced_val)
-        if (standard_val != coerced_val && !is.na(coerced_val)) {
-          if (get_verbosity() >= 2) {
-            cli::cli_alert_warning(
-              "Option {CONST$STYLES$OPTIONS$NAME(opt$name)} does not allow non-standard values. Standardizing from {CONST$STYLES$OPTIONS$VALUE(val)} to {CONST$STYLES$OPTIONS$VALUE(standard_val)}."
-            )
-          }
-        }
-        coerced_val <- standard_val
-      }
+  # Enumerations, e.g. "enum: red|blue|green": coerce to character and validate membership.
+  if (startsWith(opt$type, "enum:")) {
+    coerced_val <- as.character(val)
+    valid_values <- parse_template_enum_value(opt$type)
+    if (!all(coerced_val %in% valid_values)) {
+      cli::cli_abort(c(
+        "Option {CONST$STYLES$OPTIONS$NAME(opt$name)} must be one of {.emph {toString(valid_values)}}.",
+        "x" = "Got: {CONST$STYLES$OPTIONS$VALUE(val)}."
+      ))
+    }
+    return(coerced_val)
+  }
 
-      # In come invalid cases, the coercion will return NA.
-      # We re-throw an error and catch it to return the original value.
-      # This makes it easier to find the invalid value afterwards.
-      enforce_na_allowed(coerced_val, opt)
-      coerced_val
+  coerce_numeric <- function(expected_type, as_fun) {
+    coerced <- suppressWarnings(as_fun(val))
+    # Coercion that manufactures NA out of a non-NA value is a failure, not a
+    # silent downgrade: surface it with the option name and raw value.
+    if (any(is.na(coerced) & !is.na(val))) {
+      abort_coercion(expected_type)
+    }
+    coerced
+  }
+
+  coerced_val <- switch(opt$type,
+    character = as.character(val),
+    integer = {
+      if (!is.numeric(val)) abort_coercion("integer")
+      non_na <- val[!is.na(val)]
+      if (any(non_na != as.integer(non_na))) abort_coercion("integer")
+      as.integer(val)
     },
-    error = function(e) val # Return the original value if coercion fails
+    logical = coerce_numeric("logical", as.logical),
+    numeric = coerce_numeric("numeric", as.numeric),
+    list = as.list(val),
+    val
   )
+
+  if (isTRUE(opt$standardize) && opt$type == "character") {
+    standard_val <- make.names(coerced_val)
+    if (standard_val != coerced_val && !is.na(coerced_val)) {
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning(
+          "Option {CONST$STYLES$OPTIONS$NAME(opt$name)} does not allow non-standard values. Standardizing from {CONST$STYLES$OPTIONS$VALUE(val)} to {CONST$STYLES$OPTIONS$VALUE(standard_val)}."
+        )
+      }
+    }
+    coerced_val <- standard_val
+  }
+
+  enforce_na_allowed(coerced_val)
+  coerced_val
 }
 
 #' @title Parse options from a template
@@ -438,6 +465,7 @@ parse_options_from_template <- function(
 }
 
 box::export(
+  coerce_option_value,
   collect_leaf_paths,
   flatten_template_options,
   flatten_user_options,

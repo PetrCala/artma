@@ -1,4 +1,16 @@
 
+<a name="unreleased"></a>
+## Unreleased
+
+### Breaking Changes
+
+* Removed the legacy per-method `<method>.add_significance_marks` option fallback. Significance marks are now driven solely by the canonical `methods.add_significance_marks` template key and its default.
+
+### Bug Fixes
+
+* Option reads without a default now fail loud via `require_option`, and option coercion aborts on bad values (non-numeric numerics, fractional integers, out-of-range enums) instead of silently keeping the raw value.
+
+
 <a name="v0.3.3"></a>
 ## [v0.3.3](https://github.com/PetrCala/artma/compare/v0.3.2...v0.3.3)
 

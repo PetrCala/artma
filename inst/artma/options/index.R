@@ -1,6 +1,7 @@
 box::use(
   artma / options / utils[
-    get_option_group
+    get_option_group,
+    require_option
   ],
   artma / options / template[
     flatten_template_options,
@@ -11,5 +12,6 @@ box::use(
 box::export(
   flatten_template_options,
   get_option_group,
-  parse_options_from_template
+  parse_options_from_template,
+  require_option
 )

@@ -26,7 +26,7 @@ get_data_config <- function(
   )
 
   # Read sparse overrides from options
-  overrides <- getOption("artma.data.config")
+  overrides <- getOption("artma.data.config", list())
   if (!is.list(overrides)) overrides <- list()
 
   # Try to build base config from the dataframe

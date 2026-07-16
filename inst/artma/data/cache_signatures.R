@@ -95,7 +95,7 @@ user_authored_config_entries <- function(config) {
 #' @return *\[list\]* A deterministic signature list suitable for
 #'   forwarding to `cache_cli()` wrappers as a `cache_signature` argument.
 build_data_cache_signature <- function() {
-  source_path <- getOption("artma.data.source_path")
+  source_path <- getOption("artma.data.source_path", NULL)
   normalized_path <- NULL
   source_mtime <- NA_real_
 
@@ -114,7 +114,7 @@ build_data_cache_signature <- function() {
     }
   }
 
-  data_config <- user_authored_config_entries(getOption("artma.data.config"))
+  data_config <- user_authored_config_entries(getOption("artma.data.config", NULL))
   artma_options <- drop_pipeline_written_options(get_option_group("artma"))
 
   list(
