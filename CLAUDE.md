@@ -8,79 +8,58 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build and Development Commands
 
-All major operations use `make`:
+Daily targets (run `make help` for the full list):
 
 ```bash
-make setup                      # Install dependencies and set up environment
-make test                       # Run all tests
-make test-file FILE=<path>      # Run a specific test file
+make setup                        # Install dependencies and set up environment
+make test                         # Run all tests
+make test-file FILE=<path>        # Run a specific test file
 make test-filter FILTER=<pattern> # Run tests matching pattern
-make test-e2e                   # Run end-to-end tests
-make lint                       # Lint the entire package
-make check                      # Run R CMD check via devtools
-make document                   # Generate documentation with roxygen2
-make coverage                   # Run code coverage report
-make build                      # Build the package
-make vignettes                  # Build vignettes
-make all                        # Run document, test, lint, and check
-make quick                      # Quick dev cycle (document + test)
+make lint                         # Lint the package
+make check                        # R CMD check via devtools
+make document                     # Regenerate docs and the check manifest
+make quick                        # Quick dev cycle (document + test)
 ```
 
-For development in R:
-
-```r
-devtools::load_all()        # Load package for interactive development
-devtools::test()            # Run tests from R console
-```
-
-Run `make help` for a quick reference guide.
+For interactive development, `devtools::load_all()` loads the package into an R session.
 
 ## Architecture
 
 ### Module System with `box`
 
-The package uses the `box` package for Python-style module imports. Implementation code lives in `inst/artma/` and is organized into:
+The package uses the `box` package for Python-style module imports. Implementation code lives in `inst/artma/`:
 
-- `inst/artma/methods/` — Runtime methods (the core analytical functions)
-- `inst/artma/libs/` — Shared utilities organized by category:
-  - `libs/core/` — Fundamental utilities (validation, utils, string, number, file)
-  - `libs/infrastructure/` — System-level functionality (cache, debug, polyfills)
-  - `libs/formatting/` — Result formatting (results)
-- `inst/artma/interactive/` — Interactive UI components (ask, editor, save_preference, effect_summary_stats, welcome)
-- `inst/artma/variable/` — Variable analysis and suggestion (detection, suggestion, bma)
-- `inst/artma/econometric/` — Econometric calculation helpers (bma, linear, nonlinear, exogeneity, p_hacking)
-- `inst/artma/data/` — Data pipeline (read, preprocess, compute)
-- `inst/artma/options/` — Options system and templates
-- `inst/artma/data_config/` — Data configuration handling
-- `inst/artma/calc/` — Computation engines for specific methods
-- `inst/artma/modules/` — Higher-level orchestration modules
+- `inst/artma/methods/`: runtime methods, the core analytical functions
+- `inst/artma/libs/`: shared utilities (`core`, `infrastructure`, `formatting`)
+- `inst/artma/interactive/`: interactive UI components
+- `inst/artma/variable/`: variable analysis and suggestion
+- `inst/artma/econometric/`: econometric calculation helpers
+- `inst/artma/data/`: data pipeline
+- `inst/artma/options/`: options system and templates
+- `inst/artma/data_config/`: data configuration handling
+- `inst/artma/calc/`: computation engines for specific methods
+- `inst/artma/modules/`: higher-level orchestration modules
 
-Import modules using:
+Import internal modules with `box::use()` paths relative to `inst`:
 
 ```r
 box::use(
   artma / libs / core / validation[validate, assert],
-  artma / libs / core / utils[get_verbosity],
-  artma / data / index[prepare_data],
-  artma / econometric / bma[get_bma_formula, run_bma],
-  artma / interactive / ask[ask_for_overwrite_permission],
-  artma / variable / suggestion[suggest_variables_for_effect_summary]
+  artma / data / index[prepare_data]
 )
 ```
 
-Always reference external package functions explicitly: `pkg::function()` (never bare function names).
+Always reference external package functions explicitly: `pkg::function()`, never bare names.
 
-#### Generated Check Manifest (`R/generated_check_manifest.R`)
+### Generated Check Manifest (`R/generated_check_manifest.R`)
 
-Because `box::use()` imports and `inst/artma` code are invisible to R CMD check, the package needs two workarounds to keep check quiet: a `utils::globalVariables()` declaration for every symbol that appears inside a `box::use()` call anywhere in `R/`, and a keep-alive reference for each Imports package that is only used inside `inst/artma`. Both are produced by `scripts/R/generate_check_manifest.R` into the single generated file `R/generated_check_manifest.R`.
+`box::use()` imports and `inst/artma` code are invisible to R CMD check, so the package needs two workarounds to keep check quiet: a `utils::globalVariables()` declaration for every symbol imported via `box::use()` in `R/`, and a keep-alive reference for each Imports package used only inside `inst/artma`. Both are generated by `scripts/R/generate_check_manifest.R` into `R/generated_check_manifest.R`.
 
-Do not hand-edit `R/generated_check_manifest.R` or add entries to it manually. After adding or changing a `box::use()` import in any `R/*.R` file, or adding a new Imports dependency that is only used inside `inst/artma`, run `make document` (which regenerates the manifest before running roxygen2) or `make generate-check-manifest` directly. A testthat test (`tests/testthat/test-generated-check-manifest.R`) fails with a message to run `make document` if the committed file drifts from what the generator would produce. Run `make check` periodically to catch any "no visible global function or variable" or "unused import" NOTEs.
+Never hand-edit the generated file. After adding or changing a `box::use()` import in any `R/*.R` file, or adding an Imports dependency used only inside `inst/artma`, run `make document` (which regenerates the manifest before roxygen2) or `make generate-check-manifest`. A testthat test fails if the committed file drifts from the generator's output.
 
-### Runtime Methods System
+### Runtime Methods
 
-Runtime methods are the main analytical functions users invoke via `artma::artma(methods = c("method_name"))`.
-
-Each method is defined in `inst/artma/methods/<method_name>.R`. The implementation is a plain function taking `(df, ...)`; the exported `run` wrapper is produced by `register_runtime_method()`, which adds the shared caching layer and attaches the method's declarative metadata:
+Runtime methods are the analytical functions users invoke via `artma::artma(methods = c("method_name"))`. Each lives in `inst/artma/methods/<method_name>.R` as a plain implementation function; `register_runtime_method()` (from `inst/artma/modules/runtime_methods.R`) produces the exported `run` wrapper, adding the shared caching layer and declarative metadata:
 
 ```r
 box::use(
@@ -88,7 +67,6 @@ box::use(
 )
 
 my_method <- function(df, bma_result = NULL, ...) {
-  # Implementation
   new_method_result(
     tables = list(summary = summary_df),
     plots = list(),
@@ -98,299 +76,113 @@ my_method <- function(df, bma_result = NULL, ...) {
 
 run <- register_runtime_method(
   my_method,
-  stage = "my_method",
-  depends_on = "bma",                       # methods that must run first
-  required_columns = c("effect", "se"),     # columns the method needs
-  suggests = "BMS"                          # optional packages the method needs
+  stage = "my_method",       # conventionally matches the implementation name
+  depends_on = "bma",        # methods that must run first
+  required_columns = c("effect", "se"),
+  suggests = "BMS"           # optional packages the method needs
 )
 
 box::export(my_method, run)
 ```
 
-`register_runtime_method(impl, stage, ...)` (in `inst/artma/modules/runtime_methods.R`) replaces the old hand-written `cache_cli_runner` trailer; `stage` conventionally matches the implementation name. Export `run` plus the implementation (tests import it); do not export other internals unless another module genuinely reuses them.
+Export `run` plus the implementation (tests import it); do not export other internals unless another module genuinely reuses them. The metadata arguments are optional:
 
-The metadata arguments are all optional and default to empty:
+- `depends_on`: the orchestrator (`invoke_runtime_methods()` in `R/artma.R`) topologically sorts by these edges (erroring on cycles) and passes each upstream result as a `<dependency>_result` argument, so `depends_on = "bma"` yields a `bma_result` parameter. Discovery order is preserved among independent methods.
+- `required_columns`: a method whose columns are missing from the data is skipped with an explanation instead of aborting the run.
+- `suggests`: the single declarative gate for optional packages. Missing packages soft-skip the method with a message, plus an interactive install offer. Exception: a non-interactive run requesting exactly that single method hard-aborts so scripts get a clear signal. Packages powering only an optional sub-model (e.g. `bayesm` in `nonlinear_tests`) stay as call-site `requireNamespace()` guards instead.
 
-- `depends_on`: names of methods that must run before this one. The orchestrator topologically sorts by these edges (erroring on cycles) and passes each upstream result to the dependent as a `<dependency>_result` argument, so a `depends_on = "bma"` method receives `bma_result`.
-- `required_columns`: columns that must be present in the data frame. A method whose columns are missing is skipped with an explanation instead of aborting the run.
-- `suggests`: optional packages the method needs. This is the single declarative gate for optional-package dependencies: a method whose suggested packages are not installed is skipped (soft-skip with a message everywhere, plus an interactive install offer). The one exception is a non-interactive run that requested exactly that single method, which hard-aborts so a script gets a clear signal. Packages that only power an optional sub-model (for example `bayesm` in `nonlinear_tests` or `rddensity` in `p_hacking_tests`) stay as call-site `requireNamespace` guards rather than method-level `suggests`, since they gate one sub-test, not the whole method.
+Methods are auto-discovered by scanning `inst/artma/methods/`; `artma::methods.list()` lists them. `df` is the preprocessed data frame; other arguments come from the options system.
 
-The `df` parameter is the preprocessed data frame; additional arguments come from the options system.
+#### Return contract
 
-#### Standard return contract
+Every method returns `new_method_result()`, a list with three slots:
 
-Every method returns the value built by `new_method_result()`, a list with three slots:
+- `tables`: named list of `data.frame`s exported as CSV by `export_method_result` (`inst/artma/output/export.R`). Keys `summary`/`coefficients`/`table` (or a key equal to the method name) export as `<method>.csv`; any other key as `<method>_<key>.csv`.
+- `plots`: named list of plot objects for programmatic access and printing. Graphics files are written by each method during execution, not by the exporter.
+- `meta`: anything else downstream consumers need (models, fit params, skip reasons, auxiliary frames).
 
-- `tables`: named list of `data.frame`s to export as CSV. The exporter (`export_method_result` in `inst/artma/output/export.R`) walks this list generically. Keys `summary`/`coefficients`/`table` (or a key equal to the method name) export as `<method>.csv`; any other key exports as `<method>_<key>.csv` (for example the `caliper`/`elliott`/`maive` sub-tables of `p_hacking_tests`).
-- `plots`: named list of plot objects (for example `ggplot`s) for programmatic access and printing. Graphics files are still written by each method during execution, not by the exporter.
-- `meta`: named list of anything else downstream consumers need, such as the BMA model, fit params, skip reasons, or auxiliary frames. For example `bma`/`fma` put their model/data/var_list under `meta`, and the MA table builder and `best_practice_estimate` read them from there.
-
-Methods that ship a custom print method (`box_plot`, `funnel_plot`, `t_stat_histogram`) pass `class =` to `new_method_result()` and read their fields from `meta`/`plots` in `R/print.R`.
-
-Methods are auto-discovered at runtime by scanning `inst/artma/methods/`. Use `artma::methods.list()` to see available methods.
-
-Execution order is derived from each method's `depends_on` metadata: `invoke_runtime_methods()` (in `R/artma.R`) topologically sorts the requested methods, preserving discovery order among independent ones. There is no central order list.
+Methods with a custom print method pass `class =` to `new_method_result()` and read their fields from `meta`/`plots` in `R/print.R`.
 
 ### Options System
 
-Options are stored in hierarchical YAML files. The system uses:
-
-1. **Template** (`inst/artma/options/templates/`) — Defines all available options with types, defaults, and validation rules
-2. **User options files** — Created at runtime in a temporary directory or user-specified location
-
-Options are loaded temporarily into the R `options()` namespace for the duration of a function call, prefixed with `artma.`:
+Options live in hierarchical YAML files. The template (`inst/artma/options/templates/`) defines every available option with its type, default, and validation rules; the template files are self-describing, so copy an existing node when adding an option. User options files are created at runtime. When loaded, options sit in the R `options()` namespace prefixed with `artma.`:
 
 ```r
-# In options YAML:
-# methods:
-#   effect_summary_stats:
-#     conf_level: 0.95
-
-# In code:
-conf_level <- getOption("artma.methods.effect_summary_stats.conf_level")
-# Or use the helper:
+conf_level <- getOption("artma.methods.effect_summary_stats.conf_level", 0.95)
 opt <- get_option_group("artma.methods.effect_summary_stats")
-conf_level <- opt$conf_level
 ```
 
-Template structure for each option node:
+#### Options access convention
 
-- `name` — Option name
-- `type` — R type (character, logical, numeric, etc.)
-- `default` — Default value
-- `fixed` — If true, user cannot override
-- `allow_na` — Whether NA is permitted
-- `prompt` — How to ask for value: "readline", "file", "directory"
-- `help` — Help text
-
-#### Options Access Convention
-
-When reading options with `getOption()`, always provide a sensible default that
-matches the template default:
+Always provide a default matching the template default:
 
 ```r
-# CORRECT — always provide a default
-precision_type <- getOption("artma.calc.precision_type", "1/SE")
+# CORRECT: always provide a default
 round_to <- getOption("artma.output.number_of_decimals", 3)
 
-# CORRECT — when using get_option_group, use %||% for each field
+# CORRECT: with get_option_group, use %||% per field
 opt <- get_option_group("artma.methods.box_plot")
 max_per_plot <- opt$max_boxes_per_plot %||% 60L
 
-# WRONG — no default, will return NULL if option is not set
-precision_type <- getOption("artma.calc.precision_type")
+# WRONG: returns NULL if the option is not set
+round_to <- getOption("artma.output.number_of_decimals")
 ```
 
-This keeps the package functional even when a user's options file is outdated
-or missing newly added options. The only exceptions are runtime-populated
-options (`artma.temp.*`, `artma.data.config`, `artma.data.source_path`) where
-`NULL` is the expected "not yet set" sentinel.
+This keeps the package functional when a user's options file predates newly added options. The exceptions are runtime-populated options (`artma.temp.*`, `artma.data.config`, `artma.data.source_path`), where `NULL` is the expected "not yet set" sentinel; read those with `require_option()` when they must exist.
 
-### Caching System
+### Caching
 
-Use `cache_cli()` to memoize expensive functions while preserving CLI output:
-
-```r
-box::use(artma / libs / infrastructure / cache[cache_cli, cache_cli_runner])
-
-run_models <- cache_cli(
-  .run_models_impl,
-  extra_keys = list(pkg_version = utils::packageVersion("artma"))
-)
-
-# Or for reusable patterns:
-run_summary <- cache_cli_runner(
-  summary_impl,
-  stage = "my_stage",
-  key_builder = function(...) build_data_cache_signature()
-)
-```
-
-Control caching behavior:
-
-- `invalidate_fun` — Function that returns TRUE to bypass cache
-- `max_age` — Time-to-live in seconds
-- `options(artma.cache.use_cache = FALSE)` — Disable caching globally
+`cache_cli()` (`inst/artma/libs/infrastructure/cache.R`) memoises a function on disk via `memoise` while preserving its CLI output; `cache_cli_runner()` layers stage naming and cache signatures on top. Control behavior with the `invalidate_fun` and `max_age` arguments, or disable caching globally with `options(artma.cache.use_cache = FALSE)`.
 
 ### Data Pipeline
 
-The data processing flow:
+1. Read (`artma/data/read.R`): load CSV, Excel, JSON, Stata, or RDS
+2. Preprocess (`artma/data/preprocess.R`): standardize column names, handle missing values
+3. Compute (`artma/data/compute.R`): derive columns (effect sizes, standard errors)
+4. Config (`artma/data_config/`): per-column configuration of which variables join which analyses
 
-1. **Read** (`artma/data/read.R`) — Load data from CSV, Excel, JSON, Stata, or RDS
-2. **Preprocess** (`artma/data/preprocess.R`) — Standardize column names, handle missing values
-3. **Compute** (`artma/data/compute.R`) — Calculate derived columns (effect sizes, standard errors)
-4. **Config** (`artma/data_config/`) — Data configuration defines which variables participate in which analyses
-
-The main entry point is `prepare_data()` from `artma/data/index.R`.
-
-### Validation Functions
-
-Use custom validation helpers instead of base R stopifnot:
-
-```r
-box::use(artma / libs / core / validation[validate, assert])
-
-validate(is.numeric(x), length(x) > 0, is.function(fn))
-# Validates conditions; prints verbose messages for type checks
-
-assert(x > 0, "x must be positive")
-# Custom assertion with explicit error message
-```
-
-### Interactive Menus
-
-For interactive CLI menus, use the `climenu` package (available as a sub-package in this repository):
-
-```r
-box::use(climenu[menu])
-
-choice <- menu(
-  choices = c("Option 1", "Option 2", "Option 3"),
-  title = "Select an option"
-)
-```
-
-Key features:
-
-- Keyboard navigation with arrow keys and vim bindings (j/k)
-- Search/filter functionality with `/`
-- Multi-select support
-- Customizable styling and prompts
-
-Do NOT use other menu packages like `utils::menu()` or external packages for interactive selections.
-
-### Verbosity Levels
-
-Control output verbosity via `options(artma.verbose = <level>)`:
-
-| Level | Description |
-|-------|-------------|
-| 1 | Errors only |
-| 2 | Warnings + errors |
-| 3 | Info (default) — progress and high-level info |
-| 4 | Debug/trace — everything including internals |
-
-Check verbosity in code:
-
-```r
-box::use(artma / libs / core / utils[get_verbosity])
-
-if (get_verbosity() >= 3) {
-  cli::cli_inform("Processing data...")
-}
-```
+The entry point is `prepare_data()` from `artma/data/index.R`.
 
 ### Autonomy System
 
-The autonomy system controls how much user interaction is required during analysis.
-`interactive()` is the hard gate: non-interactive sessions (R scripts, batch jobs)
-never prompt, regardless of the configured level. Within interactive sessions, the
-level controls how eagerly the package prompts, as one of three values:
+Controls how much user interaction happens during analysis. `interactive()` is the hard gate: non-interactive sessions never prompt, regardless of level. Within interactive sessions the level is one of:
 
-| Level | Description |
-|-------|-------------|
+| Level | Behavior |
+|-------|----------|
 | `ask_more` | Prompt for most decisions, including non-critical ones. |
 | `balanced` | Prompt for important decisions only. |
-| `autonomous` (default) | Minimal prompts; use defaults and auto-detection for most decisions. |
+| `autonomous` (default) | Minimal prompts; defaults and auto-detection. |
 
-**Core Mechanism**: The `should_prompt_user(required_level)` function determines whether to prompt based on the current autonomy level. The user is prompted only when the current level is strictly less autonomous than `required_level`, ordered `"ask_more" < "balanced" < "autonomous"`.
+`should_prompt_user(required_level)` (from `artma / libs / core / autonomy`) prompts only when the current level is strictly less autonomous than `required_level`, ordered `"ask_more" < "balanced" < "autonomous"`. Use `required_level = "balanced"` for non-critical options, preferences, and save/overwrite confirmations; `required_level = "autonomous"` (the default) for variable selection, method selection, and column mapping.
 
-**Usage in Code**:
+The level is stored in the options file under `autonomy.level` and loaded with the options. Public API: `artma::autonomy.get()`, `artma::autonomy.set()`, `artma::autonomy.is_full()` (also TRUE in non-interactive sessions).
 
-```r
-box::use(artma / libs / core / autonomy[should_prompt_user])
+## Conventions
 
-# Before prompting for variable selection
-if (!should_prompt_user(required_level = "autonomous")) {
-  # Use automatic selection with defaults
-  return(auto_select_variables(df, config))
-}
-
-# Show interactive menu
-selected <- climenu::select(...)
-```
-
-**Required Level Guidelines**:
-
-- `required_level = "balanced"`: Non-critical options, preferences, save/overwrite confirmations.
-- `required_level = "autonomous"` (default): Variable selection, method selection, column mapping.
-
-**Setting Autonomy Level**:
-
-```r
-# Get current level
-artma::autonomy.get()
-
-# Set level
-artma::autonomy.set("autonomous")
-
-# Check if fully autonomous (also TRUE in non-interactive sessions, which never prompt)
-artma::autonomy.is_full()
-```
-
-Legacy numeric levels (1-5) are still accepted by `autonomy.set()` / `set_autonomy_level()`
-and translated with a warning (1-2 -> `"ask_more"`, 3 -> `"balanced"`, 4-5 -> `"autonomous"`).
-
-The autonomy level is stored in the options file under `autonomy.level` and is automatically loaded when options are loaded via `options.load()`.
-
-## Code Style
-
-- **Formatting**: Use `styler::style_pkg()` before committing
-- **Linting**: Project uses custom linters in `.lintr.R`
-  - 2-space indentation
-  - `snake_case` or `dotted.case` naming (max 40 characters)
-  - No line length limit enforced by linter (but keep reasonable)
-  - Prefer `cli::cli_*` over base messaging functions
-- **Imports**: Always use `box::use()` for internal modules, `pkg::fun()` for external packages
-- **Documentation**: Roxygen2 with type annotations: `@param x *\[character, optional\]* Description`
+- Validation: use `validate()` and `assert()` from `artma / libs / core / validation`, not `stopifnot()`. `assert(cond, "message")` takes an explicit error message.
+- Interactive menus: use the `climenu` package (a sub-package of this repository). Never `utils::menu()` or other menu packages.
+- Verbosity: `options(artma.verbose = <1..4>)` scales from errors-only (1) to debug (4); default 3. Gate output with `get_verbosity() >= 3` from `artma / libs / core / utils`.
+- Constants: `CONST` (`inst/artma/const.R`) and `PATHS` (`inst/artma/paths.R`), both globally declared; import with `box::use(artma / const[CONST])`.
+- Style: 2-space indentation; `snake_case` or `dotted.case` names (max 40 chars); prefer `cli::cli_*` over base messaging; custom linters live in `.lintr.R`.
+- Documentation: roxygen2 with type annotations: `@param x *\[character, optional\]* Description`.
+- Commits: Conventional Commits, enforced by the commitlint workflow; the changelog is generated from them via `git-chglog`.
 
 ## Testing
 
-- Unit tests: `tests/testthat/test-<feature>.R`
-- E2E tests: `tests/E2E/`
-- Parallel testing enabled: `Config/testthat/parallel: TRUE`
+- Unit tests: `tests/testthat/test-<feature>.R`; E2E tests: `tests/E2E/` (run with `make test-e2e`).
+- Parallel testing is enabled (`Config/testthat/parallel: TRUE`).
 
-Run tests:
+## Pre-commit Checklist
 
-```bash
-make test                        # All tests
-make test-file FILE=test-foo.R   # Specific file
-make test-filter FILTER="pattern" # Filtered tests
-make coverage                    # Coverage report
-```
+1. `styler::style_pkg()` (or style the changed files).
+2. If you changed `box::use()` imports in `R/*.R` or added an Imports package used only in `inst/artma`: `make document` (see Generated Check Manifest).
+3. `make lint` and `make test`.
+4. Run lint/check under a UTF-8 locale (e.g. `LC_ALL=en_US.UTF-8`); the C locale corrupts UTF-8 characters in generated `man/*.Rd` files.
 
-## Commit Conventions
+## Environment
 
-Follow Conventional Commits (`@commitlint/config-conventional`):
-
-- `feat:` — New features
-- `fix:` — Bug fixes
-- `docs:` — Documentation changes
-- `test:` — Test additions/changes
-- `refactor:` — Code restructuring
-- `chore:` — Maintenance tasks
-- `perf:` — Performance improvements
-
-The commit lint workflow will reject non-conforming commits. This enables automatic changelog generation via `git-chglog`.
-
-## Key Constants
-
-Global constants are defined in `inst/artma/const.R` and exported as `CONST`. Paths are in `inst/artma/paths.R` as `PATHS`. Both are available globally via `utils::globalVariables()`.
-
-Access like:
-
-```r
-box::use(artma / const[CONST])
-CONST$PACKAGE_NAME
-CONST$DATA$TYPES
-```
-
-## Box Paths Configuration
-
-For linting to work correctly with `box.linters`, set in your `.Rprofile`:
+For `box.linters` to resolve imports during development, set in your `.Rprofile`:
 
 ```r
 options(box.path = "<path-to-artma>/inst")
 ```
-
-This makes box imports resolve correctly during development.
