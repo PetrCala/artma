@@ -206,18 +206,29 @@ artma <- function(
 #' @title Invoke methods
 #' @description Pass a vector of runtime methods to invoke, together with a data frame to invoke these methods on, and invoke them.
 #'
+#' Methods run in an order derived from their declared `depends_on` metadata
+#' (topologically sorted, discovery order preserved among independent methods);
+#' each upstream result is passed to its dependents as a `<dependency>_result`
+#' argument. Before a method runs, its declared `required_columns` are checked
+#' against the data frame and its `suggests` packages against the installed
+#' set; a method that fails either check is skipped with an explanation rather
+#' than aborting the run.
+#'
 #' Method failures are isolated: a method that throws an error is skipped with
 #' a warning and the remaining methods still run. The run only aborts for
 #' invalid input (for example, unknown method names), never because a method
-#' failed. When at least one method fails, a summary of successes and failures
-#' is printed at the end, and a final warning is emitted if every method failed.
+#' failed or was skipped. When at least one method fails or is skipped, a
+#' summary is printed at the end, and a final warning is emitted if every method
+#' failed.
 #' @param methods *\[character\]* A character vector of the methods to invoke.
 #' @param df *\[data.frame\]* The data frame to invoke the methods on.
 #' @param modules_dir *\[character, optional\]* Directory to discover runtime method modules in. Defaults to `NULL`, in which case the standard package methods directory is used. Used mainly for dependency injection in tests.
 #' @param ... *\[any\]* Additional arguments to pass to the methods.
 #' @return *\[list\]* Results of the invocations, indexed by method names.
 #'   Failed methods are omitted; their names and error messages are attached
-#'   as the `failed_methods` attribute (a named character vector).
+#'   as the `failed_methods` attribute. Methods skipped for missing columns or
+#'   packages are attached as the `skipped_methods` attribute (both named
+#'   character vectors).
 #'
 #' Internal example:
 #' df <- data.frame(...)
@@ -229,34 +240,28 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
     artma / const[CONST],
     artma / libs / core / string[pluralize],
     artma / libs / core / utils[get_verbosity],
-    artma / modules / runtime_methods[get_runtime_method_modules]
+    artma / modules / runtime_methods[
+      get_method_metadata,
+      get_runtime_method_modules,
+      missing_required_columns,
+      missing_suggested_packages,
+      topo_sort_methods
+    ]
   )
-
-  arrange_methods <- function(method_names) {
-    execution_order <- CONST$RUNTIME_METHODS$EXECUTION_ORDER
-
-    if (is.null(execution_order)) {
-      execution_order <- character()
-    }
-
-    execution_order <- unique(as.character(execution_order[!is.na(execution_order)]))
-
-    if (!length(execution_order)) {
-      return(method_names)
-    }
-
-    ordered <- execution_order[execution_order %in% method_names]
-    remaining <- method_names[!method_names %in% ordered]
-
-    c(ordered, remaining)
-  }
 
   RUNTIME_METHOD_MODULES <- if (is.null(modules_dir)) { # nolint: box_usage_linter.
     get_runtime_method_modules()
   } else {
     get_runtime_method_modules(modules_dir = modules_dir)
   }
-  supported_methods <- arrange_methods(names(RUNTIME_METHOD_MODULES))
+  supported_methods <- names(RUNTIME_METHOD_MODULES)
+
+  method_meta <- stats::setNames(
+    lapply(supported_methods, function(name) {
+      get_method_metadata(RUNTIME_METHOD_MODULES[[name]]$run, name = name)
+    }),
+    supported_methods
+  )
 
   if (is.null(methods)) {
     methods <- climenu::checkbox(
@@ -313,7 +318,13 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
 
   methods <- resolve_methods(methods)
 
-  methods <- supported_methods[supported_methods %in% methods]
+  # Order by declared dependencies (topological sort), keeping the discovery
+  # order for methods that are independent of one another. A dependent whose
+  # dependency is not requested runs standalone; the method itself falls back to
+  # recomputing what it needs.
+  requested_in_order <- supported_methods[supported_methods %in% methods]
+  deps_map <- lapply(method_meta[requested_in_order], function(meta) meta$depends_on)
+  methods <- topo_sort_methods(requested_in_order, deps_map)
 
   if (get_verbosity() >= 3) {
     cli::cli_h3("Running {.emph {CONST$PACKAGE_NAME}} methods")
@@ -325,18 +336,68 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
   results <- list()
   succeeded_methods <- character()
   failed_methods <- character()
+  skipped_methods <- character()
+
+  extra_args <- list(...)
 
   for (method_name in methods) {
+    meta <- method_meta[[method_name]]
+
+    # Gate on declared required columns: skip (do not abort) when any are absent.
+    missing_cols <- missing_required_columns(df, meta$required_columns)
+    if (length(missing_cols) > 0L) {
+      reason <- sprintf(
+        "missing required %s: %s",
+        pluralize("column", length(missing_cols)),
+        paste(missing_cols, collapse = ", ")
+      )
+      skipped_methods[[method_name]] <- reason
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning("Skipping {.code {method_name}}: {reason}")
+      }
+      next
+    }
+
+    # Gate on declared optional-package dependencies. Soft-skip everywhere, with
+    # an interactive install offer. The one hard-abort case: a non-interactive
+    # run that requested exactly this single method, so a script gets a clear
+    # signal rather than silently producing nothing.
+    missing_pkgs <- missing_suggested_packages(meta$suggests)
+    if (length(missing_pkgs) > 0L && interactive()) {
+      missing_pkgs <- prompt_install_missing_packages(missing_pkgs, method_name)
+    }
+    if (length(missing_pkgs) > 0L) {
+      reason <- sprintf(
+        "missing suggested %s: %s",
+        pluralize("package", length(missing_pkgs)),
+        paste(missing_pkgs, collapse = ", ")
+      )
+      if (!interactive() && length(methods) == 1L) {
+        cli::cli_abort(c(
+          "x" = "Method {.code {method_name}} cannot run: {reason}.",
+          "i" = "Install with: {.code install.packages({deparse(missing_pkgs)})}"
+        ))
+      }
+      skipped_methods[[method_name]] <- reason
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning("Skipping {.code {method_name}}: {reason}")
+      }
+      next
+    }
+
     if (get_verbosity() >= 3) {
       cli::cli_inform("{cli::symbol$bullet} Running the {.code {method_name}} method...")
     }
 
-    extra_args <- list(...)
     method_args <- c(list(df = df), extra_args)
 
-    needs_bma_result <- method_name == "best_practice_estimate"
-    if (needs_bma_result && !("bma_result" %in% names(extra_args)) && !is.null(results[["bma"]])) {
-      method_args$bma_result <- results[["bma"]]
+    # Pass each upstream dependency's result to the dependent as
+    # `<dependency>_result`, unless the caller already supplied it.
+    for (dep in meta$depends_on) {
+      dep_arg <- paste0(dep, "_result")
+      if (!(dep_arg %in% names(extra_args)) && !is.null(results[[dep]])) {
+        method_args[[dep_arg]] <- results[[dep]]
+      }
     }
 
     method_failed <- FALSE
@@ -364,7 +425,7 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
   # methods return the standard contract, so the coefficient frame lives in
   # `tables$coefficients` and skip reasons under `meta$skipped`.
   extract_ma_coefficients <- function(result) {
-    if (is.null(result) || !is.null(result$meta$skipped)) {
+    if (is.null(result) || !is.list(result) || !is.null(result$meta$skipped)) {
       return(NULL)
     }
     coefs <- result$tables$coefficients
@@ -399,27 +460,84 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
 
   if (length(failed_methods) > 0L) {
     attr(results, "failed_methods") <- failed_methods
+  }
+  if (length(skipped_methods) > 0L) {
+    attr(results, "skipped_methods") <- skipped_methods
+  }
 
-    if (get_verbosity() >= 3) {
-      cli::cli_h3("Method run summary")
-      if (length(succeeded_methods) > 0L) {
-        cli::cli_inform(c(
-          "v" = "Succeeded: {.code {succeeded_methods}}"
-        ))
-      }
-      for (failed_name in names(failed_methods)) {
-        cli::cli_inform(c(
-          "x" = "Failed: {.code {failed_name}} ({failed_methods[[failed_name]]})"
-        ))
-      }
+  if ((length(failed_methods) > 0L || length(skipped_methods) > 0L) && get_verbosity() >= 3) {
+    cli::cli_h3("Method run summary")
+    if (length(succeeded_methods) > 0L) {
+      cli::cli_inform(c(
+        "v" = "Succeeded: {.code {succeeded_methods}}"
+      ))
     }
-
-    if (length(succeeded_methods) == 0L && get_verbosity() >= 2) {
-      cli::cli_warn(
-        "All {length(methods)} requested {pluralize('method', length(methods))} failed. No method results were produced."
-      )
+    for (skipped_name in names(skipped_methods)) {
+      cli::cli_inform(c(
+        "i" = "Skipped: {.code {skipped_name}} ({skipped_methods[[skipped_name]]})"
+      ))
+    }
+    for (failed_name in names(failed_methods)) {
+      cli::cli_inform(c(
+        "x" = "Failed: {.code {failed_name}} ({failed_methods[[failed_name]]})"
+      ))
     }
   }
 
+  if (length(failed_methods) > 0L && length(succeeded_methods) == 0L && get_verbosity() >= 2) {
+    cli::cli_warn(
+      "All {length(methods)} requested {pluralize('method', length(methods))} failed. No method results were produced."
+    )
+  }
+
   results
+}
+
+#' @title Offer to install missing suggested packages
+#' @description
+#' In interactive sessions, offer to install the optional packages a method
+#' needs before it runs. Returns the packages still missing afterwards (the
+#' whole set unchanged when the user declines or the session is
+#' non-interactive), so the caller can decide to skip the method.
+#' @param pkgs *\[character\]* Packages the method suggests but that are absent.
+#' @param method_name *\[character\]* Method the packages are needed for.
+#' @param is_installed *\[function, optional\]* Predicate testing package
+#'   availability. Injectable for testing; defaults to `requireNamespace`.
+#' @param install_packages *\[function, optional\]* Installer. Injectable for
+#'   testing; defaults to `utils::install.packages`.
+#' @return *\[character\]* The packages that remain missing.
+#' @keywords internal
+prompt_install_missing_packages <- function(pkgs, method_name,
+                                            is_installed = NULL,
+                                            install_packages = NULL) {
+  box::use(
+    artma / libs / core / autonomy[should_prompt_user]
+  )
+
+  if (length(pkgs) == 0L) {
+    return(character())
+  }
+  if (is.null(is_installed)) {
+    is_installed <- function(pkg) requireNamespace(pkg, quietly = TRUE)
+  }
+  if (!interactive() || !should_prompt_user(required_level = "balanced")) {
+    return(pkgs)
+  }
+
+  choice <- climenu::select(
+    choices = c("Yes", "No"),
+    prompt = cli::format_inline(
+      "Method {.code {method_name}} needs {pkgs}, which {?is/are} not installed. Install now?"
+    )
+  )
+  if (!identical(choice, "Yes")) {
+    return(pkgs)
+  }
+
+  if (is.null(install_packages)) {
+    install_packages <- function(p) utils::install.packages(p)
+  }
+  tryCatch(install_packages(pkgs), error = function(e) NULL)
+
+  pkgs[!vapply(pkgs, function(pkg) isTRUE(is_installed(pkg)), logical(1))]
 }

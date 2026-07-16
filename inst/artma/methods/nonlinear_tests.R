@@ -99,6 +99,10 @@ box::use(
   artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- register_runtime_method(nonlinear_tests, stage = "nonlinear_tests")
+run <- register_runtime_method(
+  nonlinear_tests,
+  stage = "nonlinear_tests",
+  required_columns = c("effect", "se", "study_id")
+)
 
 box::export(nonlinear_tests, run)

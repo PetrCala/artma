@@ -37,6 +37,16 @@ local_mock_methods_dir <- function(fake_methods, env = parent.frame()) {
 
     run_fun_code <- paste(deparse(run_fun), collapse = "\n")
     module_code <- paste0("run <- ", run_fun_code, "\n")
+
+    meta <- fake_methods[[name]]$meta
+    if (!is.null(meta)) {
+      meta_code <- paste(deparse(meta), collapse = "\n")
+      module_code <- paste0(
+        module_code,
+        "attr(run, \"artma_method_meta\") <- ", meta_code, "\n"
+      )
+    }
+
     writeLines(module_code, file_path)
   }
 
@@ -193,7 +203,8 @@ test_that("invoke_runtime_methods forwards BMA result to dependent methods", {
           return("missing")
         }
         bma_result$token
-      }
+      },
+      meta = list(depends_on = "bma")
     )
   )
 
@@ -209,4 +220,134 @@ test_that("invoke_runtime_methods forwards BMA result to dependent methods", {
 
   expect_named(results, c("bma", "best_practice_estimate"))
   expect_equal(results$best_practice_estimate, "bma-ready")
+})
+
+test_that("invoke_runtime_methods runs bma before its dependents when requested in reverse", {
+  # fma and best_practice_estimate both depend on bma. Requested last-first,
+  # the topological sort must still run bma before either dependent.
+  fake_methods <- list(
+    best_practice_estimate = list(
+      run = function(df, ...) "bpe",
+      meta = list(depends_on = "bma")
+    ),
+    fma = list(
+      run = function(df, ...) "fma",
+      meta = list(depends_on = "bma")
+    ),
+    bma = list(run = function(df, ...) "bma")
+  )
+
+  withr::local_options(list(artma.verbose = 0))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  results <- artma:::invoke_runtime_methods(
+    methods = c("best_practice_estimate", "fma", "bma"),
+    df = df,
+    modules_dir = methods_dir
+  )
+
+  bma_pos <- which(names(results) == "bma")
+  expect_true(bma_pos < which(names(results) == "fma"))
+  expect_true(bma_pos < which(names(results) == "best_practice_estimate"))
+})
+
+test_that("invoke_runtime_methods honors a transitive dependency chain", {
+  # Explicit chain c -> b -> a; requested in reverse must run a, then b, then c.
+  fake_methods <- list(
+    c_method = list(run = function(df, ...) "c", meta = list(depends_on = "b_method")),
+    b_method = list(run = function(df, ...) "b", meta = list(depends_on = "a_method")),
+    a_method = list(run = function(df, ...) "a")
+  )
+
+  withr::local_options(list(artma.verbose = 0))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  results <- artma:::invoke_runtime_methods(
+    methods = c("c_method", "b_method", "a_method"),
+    df = df,
+    modules_dir = methods_dir
+  )
+
+  expect_equal(names(results), c("a_method", "b_method", "c_method"))
+})
+
+test_that("invoke_runtime_methods runs a discovered method absent from any order list", {
+  # Regression for the silent-drop bug: a method with no declared metadata and
+  # no place in a hardcoded order must still run.
+  fake_methods <- list(
+    method_a = list(run = function(df, ...) "a"),
+    orphan_method = list(run = function(df, ...) "orphan")
+  )
+
+  withr::local_options(list(artma.verbose = 0))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  results <- artma:::invoke_runtime_methods(methods = "all", df = df, modules_dir = methods_dir)
+
+  expect_setequal(names(results), c("method_a", "orphan_method"))
+  expect_equal(results$orphan_method, "orphan")
+})
+
+test_that("invoke_runtime_methods skips a method whose required columns are missing", {
+  fake_methods <- list(
+    needs_effect = list(
+      run = function(df, ...) "ran",
+      meta = list(required_columns = "effect")
+    ),
+    always_runs = list(run = function(df, ...) "ok")
+  )
+
+  withr::local_options(list(artma.verbose = 0))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  results <- artma:::invoke_runtime_methods(methods = "all", df = df, modules_dir = methods_dir)
+
+  expect_setequal(names(results), "always_runs")
+  skipped <- attr(results, "skipped_methods")
+  expect_named(skipped, "needs_effect")
+  expect_match(unname(skipped[["needs_effect"]]), "effect")
+})
+
+test_that("invoke_runtime_methods skips a method whose suggested package is missing", {
+  fake_methods <- list(
+    needs_pkg = list(
+      run = function(df, ...) "ran",
+      meta = list(suggests = "artmaNoSuchPackage")
+    ),
+    always_runs = list(run = function(df, ...) "ok")
+  )
+
+  withr::local_options(list(artma.verbose = 0))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  results <- artma:::invoke_runtime_methods(methods = "all", df = df, modules_dir = methods_dir)
+
+  expect_setequal(names(results), "always_runs")
+  skipped <- attr(results, "skipped_methods")
+  expect_named(skipped, "needs_pkg")
+  expect_match(unname(skipped[["needs_pkg"]]), "artmaNoSuchPackage")
+})
+
+test_that("invoke_runtime_methods aborts for a lone non-interactive method missing its package", {
+  fake_methods <- list(
+    needs_pkg = list(
+      run = function(df, ...) "ran",
+      meta = list(suggests = "artmaNoSuchPackage")
+    )
+  )
+
+  withr::local_options(list(artma.verbose = 0))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  # Non-interactive session (testthat) with a single requested method: hard abort.
+  expect_error(
+    artma:::invoke_runtime_methods(methods = "needs_pkg", df = df, modules_dir = methods_dir),
+    "artmaNoSuchPackage"
+  )
 })

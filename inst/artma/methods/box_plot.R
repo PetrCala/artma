@@ -404,14 +404,13 @@ export_box_plots <- function(plots, factor_by, export_path, graph_scale) {
 
 
 box::use(
-  artma / libs / infrastructure / cache[cache_cli_runner],
-  artma / data / cache_signatures[build_data_cache_signature]
+  artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- cache_cli_runner(
+run <- register_runtime_method(
   box_plot,
   stage = "box_plot",
-  key_builder = function(...) build_data_cache_signature()
+  required_columns = "effect"
 )
 
 box::export(box_plot, run)

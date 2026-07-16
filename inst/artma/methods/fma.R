@@ -162,6 +162,12 @@ box::use(
   artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- register_runtime_method(fma, stage = "fma")
+run <- register_runtime_method(
+  fma,
+  stage = "fma",
+  depends_on = "bma",
+  required_columns = c("effect", "se"),
+  suggests = c("BMS", "quadprog")
+)
 
 box::export(fma, run)

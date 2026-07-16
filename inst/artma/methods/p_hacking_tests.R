@@ -189,6 +189,10 @@ box::use(
   artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- register_runtime_method(p_hacking_tests, stage = "p_hacking_tests")
+run <- register_runtime_method(
+  p_hacking_tests,
+  stage = "p_hacking_tests",
+  required_columns = c("effect", "se", "t_stat", "study_id")
+)
 
 box::export(p_hacking_tests, run)

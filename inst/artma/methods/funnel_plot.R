@@ -448,6 +448,10 @@ box::use(
   artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- register_runtime_method(funnel_plot, stage = "funnel_plot")
+run <- register_runtime_method(
+  funnel_plot,
+  stage = "funnel_plot",
+  required_columns = c("effect", "precision")
+)
 
 box::export(funnel_plot, run)

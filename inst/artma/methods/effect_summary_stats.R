@@ -306,6 +306,10 @@ box::use(
   artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- register_runtime_method(effect_summary_stats, stage = "effect_summary_stats")
+run <- register_runtime_method(
+  effect_summary_stats,
+  stage = "effect_summary_stats",
+  required_columns = c("effect", "study_size")
+)
 
 box::export(effect_summary_stats, run)

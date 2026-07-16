@@ -79,14 +79,14 @@ Because `box::use()` imports are invisible to R CMD check, every symbol imported
 
 Runtime methods are the main analytical functions users invoke via `artma::artma(methods = c("method_name"))`.
 
-Each method is defined in `inst/artma/methods/<method_name>.R`. The implementation is a plain function taking `(df, ...)`; the exported `run` wrapper is produced by `register_runtime_method()`, which adds the shared caching layer:
+Each method is defined in `inst/artma/methods/<method_name>.R`. The implementation is a plain function taking `(df, ...)`; the exported `run` wrapper is produced by `register_runtime_method()`, which adds the shared caching layer and attaches the method's declarative metadata:
 
 ```r
 box::use(
   artma / modules / runtime_methods[new_method_result, register_runtime_method]
 )
 
-my_method <- function(df, ...) {
+my_method <- function(df, bma_result = NULL, ...) {
   # Implementation
   new_method_result(
     tables = list(summary = summary_df),
@@ -95,12 +95,24 @@ my_method <- function(df, ...) {
   )
 }
 
-run <- register_runtime_method(my_method, stage = "my_method")
+run <- register_runtime_method(
+  my_method,
+  stage = "my_method",
+  depends_on = "bma",                       # methods that must run first
+  required_columns = c("effect", "se"),     # columns the method needs
+  suggests = "BMS"                          # optional packages the method needs
+)
 
 box::export(my_method, run)
 ```
 
 `register_runtime_method(impl, stage, ...)` (in `inst/artma/modules/runtime_methods.R`) replaces the old hand-written `cache_cli_runner` trailer; `stage` conventionally matches the implementation name. Export `run` plus the implementation (tests import it); do not export other internals unless another module genuinely reuses them.
+
+The metadata arguments are all optional and default to empty:
+
+- `depends_on`: names of methods that must run before this one. The orchestrator topologically sorts by these edges (erroring on cycles) and passes each upstream result to the dependent as a `<dependency>_result` argument, so a `depends_on = "bma"` method receives `bma_result`.
+- `required_columns`: columns that must be present in the data frame. A method whose columns are missing is skipped with an explanation instead of aborting the run.
+- `suggests`: optional packages the method needs. This is the single declarative gate for optional-package dependencies: a method whose suggested packages are not installed is skipped (soft-skip with a message everywhere, plus an interactive install offer). The one exception is a non-interactive run that requested exactly that single method, which hard-aborts so a script gets a clear signal. Packages that only power an optional sub-model (for example `bayesm` in `nonlinear_tests` or `rddensity` in `p_hacking_tests`) stay as call-site `requireNamespace` guards rather than method-level `suggests`, since they gate one sub-test, not the whole method.
 
 The `df` parameter is the preprocessed data frame; additional arguments come from the options system.
 
@@ -116,7 +128,7 @@ Methods that ship a custom print method (`box_plot`, `funnel_plot`, `t_stat_hist
 
 Methods are auto-discovered at runtime by scanning `inst/artma/methods/`. Use `artma::methods.list()` to see available methods.
 
-Execution order for methods is controlled by `CONST$RUNTIME_METHODS$EXECUTION_ORDER` in `inst/artma/const.R`.
+Execution order is derived from each method's `depends_on` metadata: `invoke_runtime_methods()` (in `R/artma.R`) topologically sorts the requested methods, preserving discovery order among independent ones. There is no central order list.
 
 ### Options System
 

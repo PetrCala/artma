@@ -561,6 +561,10 @@ box::use(
   artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- register_runtime_method(t_stat_histogram, stage = "t_stat_histogram")
+run <- register_runtime_method(
+  t_stat_histogram,
+  stage = "t_stat_histogram",
+  required_columns = "t_stat"
+)
 
 box::export(t_stat_histogram, run)

@@ -107,23 +107,6 @@ CONST <- list(
       DEFAULT = cli::col_yellow
     )
   ),
-  RUNTIME_METHODS = list(
-    EXECUTION_ORDER = c(
-      "variable_summary_stats",
-      "effect_summary_stats",
-      "box_plot",
-      "funnel_plot",
-      "t_stat_histogram",
-      "prima_facie_graphs",
-      "linear_tests",
-      "nonlinear_tests",
-      "exogeneity_tests",
-      "p_hacking_tests",
-      "bma",
-      "fma",
-      "best_practice_estimate"
-    )
-  ),
   URLS = list(
     BASE = RUN_URL,
     PACKAGE_BASE = paste0(RUN_URL, "/", PACKAGE_NAME),

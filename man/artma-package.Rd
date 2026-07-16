@@ -16,7 +16,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Petr Čala \email{61505008@fsv.cuni.cz}
+\strong{Maintainer}: Petr <c4><8c>ala \email{61505008@fsv.cuni.cz}
 
 }
 \keyword{internal}
