@@ -109,9 +109,10 @@ test_that("build_data_cache_signature reacts to user-authored inputs", {
   expect_false(identical(baseline, changed_config))
 })
 
-test_that("prepare_data hits the cache on a second identical run", {
+test_that("compute phase hits the cache on a second identical run", {
   box::use(
-    artma / data / index[prepare_data_impl],
+    artma / data / index[compute_data_impl, prime_raw_df],
+    artma / data / read[read_data],
     artma / data / cache_signatures[build_data_cache_signature],
     artma / libs / infrastructure / cache[cache_cli_runner]
   )
@@ -124,15 +125,19 @@ test_that("prepare_data hits the cache on a second identical run", {
 
   withr::local_options(pipeline_options(tmp_file))
 
+  # The raw frame is read once and handed to the cached compute phase, exactly
+  # as prepare_data() does.
+  prime_raw_df(read_data(tmp_file))
+
   # The config df cache keys on path + mtime, so entries left behind by other
   # tests cannot collide with this test's temp file.
   runs <- 0L
   counted_impl <- function() {
     runs <<- runs + 1L
-    prepare_data_impl()
+    compute_data_impl()
   }
 
-  # Same wiring as prepare_data in artma/data/index.R, but with an isolated
+  # Same wiring as compute_data in artma/data/index.R, but with an isolated
   # in-memory cache so the test does not touch the user cache directory.
   runner <- cache_cli_runner(
     counted_impl,
@@ -141,8 +146,7 @@ test_that("prepare_data hits the cache on a second identical run", {
     cache = memoise::cache_memory()
   )
 
-  # Run 1 computes; it also writes artma.data.expected_schema_columns, which
-  # must not feed the cache key.
+  # Run 1 computes.
   first <- testthat::capture_messages(df_first <- runner())
   expect_equal(runs, 1L)
 
@@ -155,4 +159,36 @@ test_that("prepare_data hits the cache on a second identical run", {
   withr::local_options(list("artma.data.na_handling" = "median"))
   testthat::capture_messages(runner())
   expect_equal(runs, 2L)
+})
+
+test_that("compute phase is pure: it does not mutate options()", {
+  box::use(
+    artma / data / index[compute_data_impl, prime_raw_df],
+    artma / data / read[read_data]
+  )
+
+  FIXTURES$local_cli_silence()
+
+  df <- MOCKS$create_mock_df(seed = 7)
+  tmp_file <- withr::local_tempfile(fileext = ".csv")
+  utils::write.csv(df, tmp_file, row.names = FALSE)
+
+  # Cache off so the implementation actually runs and could mutate options.
+  withr::local_options(utils::modifyList(
+    pipeline_options(tmp_file),
+    list("artma.cache.use_cache" = FALSE)
+  ))
+
+  prime_raw_df(read_data(tmp_file))
+
+  artma_options <- function() {
+    opts <- options()
+    opts[grepl("^artma\\.", names(opts))]
+  }
+
+  before <- artma_options()
+  testthat::capture_messages(compute_data_impl())
+  after <- artma_options()
+
+  expect_identical(after, before)
 })

@@ -302,8 +302,11 @@ update_config_with_computed_columns <- function(df) {
 
 
 #' @title Compute optional columns
-#' @description Compute optional columns that the user did not provide,
-#'   then update the data config to include them.
+#' @description Compute optional columns that the user did not provide.
+#'   This step is pure: it only derives columns and never writes the data
+#'   config. Registering the computed columns in the data config is the job of
+#'   the persist phase (`update_config_with_computed_columns`), which runs
+#'   whether or not this cached compute step executed.
 #'   This includes:
 #'   - obs_id: Sequential observation IDs (1 to nrow)
 #'   - study_id: Integer study IDs based on study names
@@ -321,18 +324,13 @@ compute_optional_columns <- function(df) {
     cli::cli_alert_info("Computing optional columns for {.val {nrow(df)}} observations…")
   }
 
-  df_with_computed <- df |>
+  df |>
     add_obs_id_column() |>
     add_study_id_column() |>
     add_t_stat_column() |>
     add_study_size_column() |>
     add_reg_dof_column() |>
     add_precision_column()
-
-  # Update the data config to include computed columns
-  update_config_with_computed_columns(df_with_computed)
-
-  df_with_computed
 }
 
-box::export(compute_optional_columns)
+box::export(compute_optional_columns, update_config_with_computed_columns)

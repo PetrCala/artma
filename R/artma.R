@@ -144,11 +144,13 @@ artma <- function(
     if (is.null(data)) {
       df <- prepare_data()
     } else {
-      # User provided data directly - still need to preprocess and compute
+      # User provided data directly - still need to preprocess and compute.
+      # Mirror prepare_data's phases: decide the NA strategy (configure), run
+      # the pure preprocess + compute, then persist the computed columns.
       # nolint start: object_usage_linter.
       box::use(
-        artma / data / preprocess[preprocess_data],
-        artma / data / compute[compute_optional_columns]
+        artma / data / preprocess[clean_data, preprocess_data, resolve_na_handling],
+        artma / data / compute[compute_optional_columns, update_config_with_computed_columns]
       )
       # nolint end
 
@@ -156,8 +158,10 @@ artma <- function(
         cli::cli_inform("Using provided data frame (skipping file read step).")
       }
 
+      resolve_na_handling(clean_data(data))
       df <- preprocess_data(data)
       df <- compute_optional_columns(df)
+      update_config_with_computed_columns(df)
     }
 
     # Invoke methods
