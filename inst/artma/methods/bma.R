@@ -416,7 +416,7 @@ prompt_bma_variable_selection <- function(df, config) {
     artma / variable / bma[suggest_variables_for_bma]
   )
 
-  if (!should_prompt_user(required_level = 4)) {
+  if (!should_prompt_user(required_level = "autonomous")) {
     if (get_verbosity() >= 3) {
       cli::cli_inform("Autonomy level is high - using automatic variable selection")
     }
@@ -450,7 +450,7 @@ prompt_bma_variable_selection_mode <- function() {
     artma / libs / core / autonomy[should_prompt_user]
   )
 
-  if (!should_prompt_user(required_level = 4)) {
+  if (!should_prompt_user(required_level = "autonomous")) {
     return("auto")
   }
 
@@ -569,7 +569,7 @@ auto_select_bma_variables <- function(df, config) {
   cli::cat_line()
 
   box::use(artma / libs / core / autonomy[should_prompt_user])
-  if (!should_prompt_user(required_level = 4)) {
+  if (!should_prompt_user(required_level = "autonomous")) {
     var_names <- suggested_vars$var_name
     cli::cli_alert_success("Using {length(var_names)} suggested moderator{?s} (autonomy level: high)")
     return(var_names)
@@ -630,7 +630,7 @@ manual_select_bma_variables <- function(df, config) {
     artma / libs / core / autonomy[should_prompt_user]
   )
 
-  if (!should_prompt_user(required_level = 4)) {
+  if (!should_prompt_user(required_level = "autonomous")) {
     if (get_verbosity() >= 3) {
       cli::cli_inform("Autonomy level is high - skipping manual variable selection")
     }

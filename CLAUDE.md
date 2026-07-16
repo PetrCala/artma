@@ -244,17 +244,18 @@ if (get_verbosity() >= 3) {
 
 ### Autonomy System
 
-The autonomy system controls how much user interaction is required during analysis. It provides 5 levels of autonomy:
+The autonomy system controls how much user interaction is required during analysis.
+`interactive()` is the hard gate: non-interactive sessions (R scripts, batch jobs)
+never prompt, regardless of the configured level. Within interactive sessions, the
+level controls how eagerly the package prompts, as one of three values:
 
-| Level | Name | Description |
-|-------|------|-------------|
-| 1 | Minimal | Maximum user control - prompt for all optional decisions |
-| 2 | Low | Frequent prompts - ask for most non-critical decisions |
-| 3 | Medium | Balanced - prompt for important decisions only |
-| 4 | High | Mostly autonomous - minimal prompts for critical decisions only (default for interactive mode) |
-| 5 | Full | Fully autonomous - no prompts, use all defaults and auto-detection (default for non-interactive mode) |
+| Level | Description |
+|-------|-------------|
+| `ask_more` | Prompt for most decisions, including non-critical ones. |
+| `balanced` | Prompt for important decisions only. |
+| `autonomous` (default) | Minimal prompts; use defaults and auto-detection for most decisions. |
 
-**Core Mechanism**: The `should_prompt_user(required_level)` function determines whether to prompt based on current autonomy level. If current level < required_level, prompt; otherwise use defaults.
+**Core Mechanism**: The `should_prompt_user(required_level)` function determines whether to prompt based on the current autonomy level. The user is prompted only when the current level is strictly less autonomous than `required_level`, ordered `"ask_more" < "balanced" < "autonomous"`.
 
 **Usage in Code**:
 
@@ -262,7 +263,7 @@ The autonomy system controls how much user interaction is required during analys
 box::use(artma / libs / core / autonomy[should_prompt_user])
 
 # Before prompting for variable selection
-if (!should_prompt_user(required_level = 4)) {
+if (!should_prompt_user(required_level = "autonomous")) {
   # Use automatic selection with defaults
   return(auto_select_variables(df, config))
 }
@@ -273,12 +274,8 @@ selected <- climenu::select(...)
 
 **Required Level Guidelines**:
 
-- `required_level=2`: Non-critical options, preferences
-- `required_level=3`: Save preferences, overwrite confirmations
-- `required_level=4`: Variable selection, method selection, column mapping
-- `required_level=5`: Critical decisions (rarely used, would never prompt)
-
-**Non-Interactive Mode**: In non-interactive mode (e.g., R scripts, batch jobs), level 5 is always enforced regardless of the setting, as user prompts are not possible.
+- `required_level = "balanced"`: Non-critical options, preferences, save/overwrite confirmations.
+- `required_level = "autonomous"` (default): Variable selection, method selection, column mapping.
 
 **Setting Autonomy Level**:
 
@@ -287,13 +284,16 @@ selected <- climenu::select(...)
 artma::autonomy.get()
 
 # Set level
-artma::autonomy.set(4)
+artma::autonomy.set("autonomous")
 
-# Check if fully autonomous
+# Check if fully autonomous (also TRUE in non-interactive sessions, which never prompt)
 artma::autonomy.is_full()
 ```
 
-The autonomy level is stored in the options file under `general.autonomy.level` and is automatically loaded when options are loaded via `options.load()`.
+Legacy numeric levels (1-5) are still accepted by `autonomy.set()` / `set_autonomy_level()`
+and translated with a warning (1-2 -> `"ask_more"`, 3 -> `"balanced"`, 4-5 -> `"autonomous"`).
+
+The autonomy level is stored in the options file under `autonomy.level` and is automatically loaded when options are loaded via `options.load()`.
 
 ## Code Style
 

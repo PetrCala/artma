@@ -314,3 +314,47 @@ test_that("autonomy level from an options file is honored via the withr runtime 
     expect_equal(get_autonomy_level(), 2L)
   })
 })
+
+test_that("a legacy numeric autonomy.level in an options file migrates cleanly on load", {
+  box::use(artma[options.load])
+  box::use(artma / libs / core / autonomy[get_autonomy_level])
+
+  tmp_dir <- withr::local_tempdir()
+  template_path <- file.path(tmp_dir, "template.yaml")
+
+  # Mirrors the post-collapse autonomy.level template node (a 3-value enum).
+  template <- list(
+    autonomy = list(
+      level = list(
+        type = "enum: 'ask_more'|'balanced'|'autonomous'",
+        default = "autonomous",
+        help = "Autonomy level"
+      )
+    )
+  )
+  yaml::write_yaml(template, template_path)
+
+  # Simulate an options file written before the collapse, storing the old numeric level.
+  yaml::write_yaml(
+    list(autonomy = list(level = 4L)),
+    file.path(tmp_dir, "legacy-autonomy.yaml")
+  )
+
+  loaded <- NULL
+  expect_no_error({
+    loaded <- options.load(
+      options_file_name = "legacy-autonomy.yaml",
+      options_dir = tmp_dir,
+      template_path = template_path,
+      should_validate = TRUE,
+      should_return = TRUE
+    )
+  })
+
+  # The stale numeric value fails enum validation and is backfilled with the new default.
+  expect_equal(loaded$`artma.autonomy.level`, "autonomous")
+
+  withr::with_options(loaded, {
+    expect_equal(get_autonomy_level(), "autonomous")
+  })
+})

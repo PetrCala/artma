@@ -7,14 +7,15 @@
 autonomy.set(level)
 }
 \arguments{
-\item{level}{\emph{[integer]} The autonomy level to set (1-5).
+\item{level}{\emph{[character]} The autonomy level to set.
 \itemize{
-\item 1 (Minimal): Maximum user control - prompt for all optional decisions
-\item 2 (Low): Frequent prompts - ask for most non-critical decisions
-\item 3 (Medium): Balanced - prompt for important decisions only
-\item 4 (High): Mostly autonomous - minimal prompts for critical decisions only (default)
-\item 5 (Full): Fully autonomous - no prompts, use all defaults and auto-detection
-}}
+\item "ask_more": Prompt for most decisions, including non-critical ones.
+\item "balanced": Prompt for important decisions only.
+\item "autonomous" (default): Minimal prompts; use defaults and auto-detection for most decisions.
+}
+
+Legacy numeric levels (1-5) are still accepted and translated, with a
+warning (1-2 -> "ask_more", 3 -> "balanced", 4-5 -> "autonomous").}
 }
 \value{
 \code{NULL} (invisible)
@@ -26,9 +27,9 @@ This setting controls how much user interaction is required during analysis.
 \examples{
 \dontrun{
 # Set to fully autonomous mode
-autonomy.set(5)
+autonomy.set("autonomous")
 
 # Set to balanced mode
-autonomy.set(3)
+autonomy.set("balanced")
 }
 }

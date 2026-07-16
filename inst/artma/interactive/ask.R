@@ -22,7 +22,7 @@ ask_for_overwrite_permission <- function(file_path, action_name = "the operation
       cli::cli_abort("Cannot prompt for overwrite permission in non-interactive mode.")
     }
 
-    if (!should_prompt_user(required_level = 3)) {
+    if (!should_prompt_user(required_level = "balanced")) {
       if (get_verbosity() >= 3) {
         cli::cli_alert_info("Autonomy level is high - aborting to avoid overwriting existing file.")
       }

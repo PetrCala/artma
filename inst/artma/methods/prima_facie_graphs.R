@@ -178,7 +178,7 @@ resolve_groups <- function(df, config, opt) {
   }
 
   # Interactive selection at low autonomy levels
-  if (should_prompt_user(required_level = 3) && length(group_descriptors) > 1) {
+  if (should_prompt_user(required_level = "balanced") && length(group_descriptors) > 1) {
     box::use(artma / interactive / prima_facie_graphs[prompt_group_selection])
     selected_ids <- prompt_group_selection(df, config, group_descriptors)
     group_descriptors <- Filter(

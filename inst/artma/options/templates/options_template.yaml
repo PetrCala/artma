@@ -1,24 +1,20 @@
 autonomy:
   level:
-    type: "integer"
-    default: 4
+    type: "enum: 'ask_more'|'balanced'|'autonomous'"
+    default: "autonomous"
     confirm_default: true
     prompt: "function"
     prompt_function: "prompt_autonomy_level"
     suppress_help_in_prompt: true
     help: |
       The autonomy level controls how much user interaction is required during analysis.
-      Higher levels mean less user interaction and more automatic decision-making.
+      interactive() is the hard gate: non-interactive sessions (e.g., R scripts, batch jobs)
+      never prompt, regardless of this setting.
 
       Autonomy levels:
-        {cli::symbol$bullet} {.strong 1 - Minimal}: Maximum user control - prompt for all optional decisions
-        {cli::symbol$bullet} {.strong 2 - Low}: Frequent prompts - ask for most non-critical decisions
-        {cli::symbol$bullet} {.strong 3 - Medium}: Balanced - prompt for important decisions only
-        {cli::symbol$bullet} {.strong 4 - High}: Mostly autonomous - minimal prompts for critical decisions only (default for interactive mode)
-        {cli::symbol$bullet} {.strong 5 - Full}: Fully autonomous - no prompts, use all defaults and auto-detection (default for non-interactive mode)
-
-      In non-interactive mode (e.g., R scripts, batch jobs), level 5 is always used regardless of this setting,
-      as user prompts are not possible in such environments.
+        {cli::symbol$bullet} {.strong ask_more}: Prompt for most decisions, including non-critical ones.
+        {cli::symbol$bullet} {.strong balanced}: Prompt for important decisions only.
+        {cli::symbol$bullet} {.strong autonomous} (default): Minimal prompts; use defaults and auto-detection for most decisions.
 
 calc:
   precision_type:

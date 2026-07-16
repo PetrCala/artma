@@ -23,7 +23,7 @@ prompt_factor_by_selection <- function(df, config, candidates) {
   validate(is.data.frame(df), is.character(candidates), length(candidates) > 0)
 
   # Only prompt at low autonomy levels (1-2); study is almost always correct
-  if (!should_prompt_user(required_level = 3)) {
+  if (!should_prompt_user(required_level = "balanced")) {
     return(candidates[1])
   }
 

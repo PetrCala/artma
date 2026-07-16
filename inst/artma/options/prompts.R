@@ -90,31 +90,30 @@ prompt_na_handling <- function(opt, ...) {
 prompt_autonomy_level <- function(opt, ...) {
   box::use(
     artma / const[CONST],
-    artma / libs / core / autonomy[get_autonomy_levels, get_default_autonomy_level]
+    artma / libs / core / autonomy[get_default_autonomy_level]
   )
 
-  levels <- get_autonomy_levels()
+  descriptions <- c(
+    ask_more = "Prompt for most decisions, including non-critical ones.",
+    balanced = "Prompt for important decisions only.",
+    autonomous = "Minimal prompts; use defaults and auto-detection for most decisions."
+  )
+
+  levels <- CONST$AUTONOMY$LEVELS
   default_level <- get_default_autonomy_level()
+  default_index <- match(default_level, levels)
 
   cli::cli_h1("Autonomy Level")
   cli::cli_text("Autonomy controls how much user interaction is required during analysis.")
-  cli::cli_text("Higher levels mean less user interaction and more automatic decision-making.")
+  cli::cli_text("{.code interactive()} is the hard gate: non-interactive sessions never prompt, regardless of this setting.")
   cli::cat_line()
 
-  # Create a named vector where names are display text and values are the level numbers
+  # Create a named vector where names are display text and values are the level names
   choices <- stats::setNames(
-    as.integer(names(levels)), # Values: 1, 2, 3, 4, 5
+    levels,
     vapply(
-      names(levels),
-      function(lvl) {
-        level_def <- levels[[lvl]]
-        sprintf(
-          "Level %s - %s: %s",
-          lvl,
-          level_def$name,
-          level_def$description
-        )
-      },
+      levels,
+      function(lvl) sprintf("%s: %s", lvl, descriptions[[lvl]]),
       character(1)
     )
   )
@@ -122,7 +121,7 @@ prompt_autonomy_level <- function(opt, ...) {
   selected <- climenu::select(
     choices = names(choices), # Display the descriptive text
     prompt = "Select your preferred autonomy level",
-    selected = default_level # Default is index 4
+    selected = default_index
   )
 
   if (rlang::is_empty(selected)) {
