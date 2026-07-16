@@ -138,10 +138,6 @@ test_that("read_df_for_config uses a primed dataframe cache without re-reading d
 
   withr::local_options(list(
     "artma.data.source_path" = tmp_file,
-    "artma.data.colnames.study_id" = "study_id",
-    "artma.data.colnames.effect" = "effect",
-    "artma.data.colnames.se" = "se",
-    "artma.data.colnames.n_obs" = "n_obs",
     "artma.verbose" = 3
   ))
 
@@ -168,10 +164,6 @@ test_that("read_df_for_config re-reads when the source file changes at the same 
 
   withr::local_options(list(
     "artma.data.source_path" = tmp_file,
-    "artma.data.colnames.study_id" = "study_id",
-    "artma.data.colnames.effect" = "effect",
-    "artma.data.colnames.se" = "se",
-    "artma.data.colnames.n_obs" = "n_obs",
     "artma.verbose" = 1
   ))
 
@@ -201,11 +193,7 @@ test_that("get_data_config picks up file changes at the same source path", {
 
   withr::local_options(list(
     "artma.data.source_path" = tmp_file,
-    "artma.data.colnames.study_id" = "study_id",
-    "artma.data.colnames.effect" = "effect",
-    "artma.data.colnames.se" = "se",
-    "artma.data.colnames.n_obs" = "n_obs",
-    "artma.data.config" = list(),
+    "artma.data.columns" = list(),
     "artma.verbose" = 1
   ))
 
@@ -244,11 +232,12 @@ test_that("config keys are standardized regardless of which entry point resolves
 
   withr::local_options(list(
     "artma.data.source_path" = tmp_file,
-    "artma.data.colnames.study_id" = "study",
-    "artma.data.colnames.effect" = "coef",
-    "artma.data.colnames.se" = "stderr",
-    "artma.data.colnames.n_obs" = "nobs",
-    "artma.data.config" = list(),
+    "artma.data.columns" = list(
+      study_id = list(source_name = "study"),
+      effect = list(source_name = "coef"),
+      se = list(source_name = "stderr"),
+      n_obs = list(source_name = "nobs")
+    ),
     "artma.verbose" = 1
   ))
 
@@ -280,7 +269,7 @@ test_that("get_data_config: returns overrides when df not available", {
   )
 
   withr::local_options(list(
-    "artma.data.config" = config,
+    "artma.data.columns" = config,
     "artma.data.source_path" = NA,
     "artma.verbose" = 1
   ))
@@ -294,7 +283,7 @@ test_that("get_data_config: returns empty list when no config and no df", {
   box::use(artma / data_config / read[get_data_config])
 
   withr::local_options(list(
-    "artma.data.config" = list(),
+    "artma.data.columns" = list(),
     "artma.data.source_path" = NA,
     "artma.verbose" = 1
   ))
@@ -316,7 +305,7 @@ test_that("get_data_config: merges overrides onto base when df is available", {
   withr::defer(unlink(tmp_file))
 
   withr::local_options(list(
-    "artma.data.config" = list(
+    "artma.data.columns" = list(
       effect = list(bma = TRUE)
     ),
     "artma.data.source_path" = tmp_file,

@@ -17,9 +17,18 @@ CONST <- list(
     TYPES = c("csv", "tsv", "xlsx", "xls", "xlsm", "json", "dta", "rds"),
     # Strings that should be interpreted as NA when reading data files
     NA_STRINGS = c("", "NA", "N/A", "na", "n/a", "NULL", "null"),
+    # Standard column names the pipeline recognizes. These keys identify the
+    # role records in the unified per-column store (`data.columns`); every
+    # other record key is a moderator variable. Accessors live in
+    # `data/utils.R` (`get_standardized_colnames()`, `get_required_colnames()`).
+    STANDARD_COLNAMES = c(
+      "obs_id", "study_id", "effect", "se", "t_stat",
+      "n_obs", "study_size", "reg_dof", "precision"
+    ),
+    # The subset of standard columns the analysis cannot run without.
+    REQUIRED_COLNAMES = c("study_id", "effect", "se", "n_obs"),
     # Standard column names derived or computed by the data pipeline (never
-    # user moderator variables). Required column names are a separate,
-    # template-derived set; see `get_required_colnames()` in `data/utils.R`.
+    # user moderator variables).
     COMPUTED_COLNAMES = c("obs_id", "study_label", "t_stat", "study_size", "reg_dof", "precision")
   ),
   DATE_FORMAT = "%Y-%m-%d %H:%M:%S",
@@ -32,6 +41,8 @@ CONST <- list(
   ),
   DATA_CONFIG = list(
     KEYS = list(
+      SOURCE_NAME = "source_name",
+      IS_COMPUTED = "is_computed",
       VAR_NAME = "var_name",
       VAR_NAME_VERBOSE = "var_name_verbose",
       VAR_NAME_DESCRIPTION = "var_name_description",

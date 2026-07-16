@@ -458,7 +458,9 @@ confirm_column_mapping <- function(mapping, required_cols) {
 
 
 #' @title Save column mapping to options
-#' @description Save the confirmed mapping to the artma options
+#' @description Save the confirmed mapping into the unified per-column store
+#'   (`data.columns`): each standard column gets a role record carrying the
+#'   mapped `source_name`.
 #' @param mapping *\[list\]* The column mapping (std_col -> data_col)
 #' @param options_file_name *\[character, optional\]* Options file name
 #' @return *\[invisible\]* NULL
@@ -469,27 +471,34 @@ save_column_mapping_to_options <- function(mapping, options_file_name = NULL) {
     cli::cli_inform("Saving column mapping to options")
   }
 
-  # Convert mapping to options format (artma.data.colnames.*)
-  user_input <- list()
+  # Merge the mapping into the existing unified column store. Identity
+  # mappings clear any stale source_name instead of being stored: the sparse
+  # store only holds genuine renames.
+  store <- getOption("artma.data.columns", list())
+  if (!is.list(store)) store <- list()
+
   for (std_col in names(mapping)) {
-    opt_key <- paste0("data.colnames.", std_col)
-    user_input[[opt_key]] <- mapping[[std_col]]
+    entry <- store[[std_col]]
+    if (!is.list(entry)) entry <- list()
+    if (identical(mapping[[std_col]], std_col)) {
+      entry$source_name <- NULL
+      store[[std_col]] <- if (length(entry) == 0) NULL else entry
+    } else {
+      entry$source_name <- mapping[[std_col]]
+      store[[std_col]] <- entry
+    }
   }
 
   # Update options
   if (!is.null(options_file_name)) {
     artma::options.modify(
-      user_input = user_input,
+      user_input = list("data.columns" = store),
       options_file_name = options_file_name
     )
+    options("artma.data.columns" = store)
   } else {
     # Set in current session
-    for (key in names(user_input)) {
-      opt_name <- paste0("artma.", key)
-      options_list <- list()
-      options_list[[opt_name]] <- user_input[[key]]
-      do.call(options, options_list)
-    }
+    options("artma.data.columns" = store)
   }
 
   if (get_verbosity() >= 3) {

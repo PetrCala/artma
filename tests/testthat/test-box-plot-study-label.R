@@ -21,7 +21,7 @@ test_that("box_plot auto-selects study_label over study_id for grouping", {
     "artma.visualization.export_graphics" = FALSE,
     "artma.output.save_results" = FALSE,
     "artma.verbose" = 1,
-    "artma.data.config" = list()
+    "artma.data.columns" = list()
   ))
 
   result <- box_plot(df)

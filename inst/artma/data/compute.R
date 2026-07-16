@@ -92,20 +92,16 @@ add_study_id_column <- function(df) {
 #' @keywords internal
 add_t_stat_column <- function(df) {
   box::use(
-    artma / const[CONST],
     calc = artma / calc / index
   )
-  opt_path <- "artma.data.colnames.t_stat"
 
   if ("t_stat" %in% colnames(df)) {
     if (any(is.na(df$t_stat))) {
       n_missing <- sum(is.na(df$t_stat))
-      opt_name <- CONST$STYLES$OPTIONS$NAME(opt_path)
-      opt_val <- CONST$STYLES$OPTIONS$VALUE("NA")
       cli::cli_abort(c(
         "!" = "Found {n_missing} missing t-statistics in the column {.val t_stat}.",
-        "i" = "Please add these to your data frame or set the option {opt_name} to {opt_val} to compute them automatically.",
-        "i" = "You can set the option by running {.code artma::options.modify(user_input = list('{opt_path}' = NA))}."
+        "i" = "Please add these to your data frame, or remove the {.val t_stat} column mapping so they are computed automatically.",
+        "i" = "You can remove the mapping by running {.code artma::config.set('t_stat', source_name = NA)}."
       ))
     }
   }

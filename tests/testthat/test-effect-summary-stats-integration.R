@@ -100,7 +100,7 @@ test_that("effect_summary_stats handles empty config gracefully in non-interacti
 
   # Set empty config and non-interactive mode
   local_options(
-    "artma.data.config" = list(
+    "artma.data.columns" = list(
       effect = list(
         var_name = "effect",
         effect_sum_stats = NA,
@@ -138,7 +138,7 @@ test_that("effect_summary_stats processes configured variables correctly", {
 
   # Configure year for effect summary stats
   local_options(
-    "artma.data.config" = list(
+    "artma.data.columns" = list(
       effect = list(
         var_name = "effect",
         var_name_verbose = "Effect",
@@ -202,7 +202,7 @@ test_that("effect_summary_stats computes the All Data row exactly", {
   )
 
   local_options(
-    "artma.data.config" = list(
+    "artma.data.columns" = list(
       effect = list(var_name = "effect", effect_sum_stats = NA, equal = NA, gltl = NA),
       study_size = list(
         var_name = "study_size",
@@ -259,7 +259,7 @@ test_that("effect_summary_stats confidence interval widens with the confidence l
 
   run_at <- function(conf_level) {
     local_options(
-      "artma.data.config" = config,
+      "artma.data.columns" = config,
       "artma.methods.effect_summary_stats.conf_level" = conf_level,
       "artma.output.number_of_decimals" = 3,
       "artma.verbose" = 1
@@ -328,7 +328,7 @@ test_that("update_config_with_selections integrates with effect_summary_stats", 
 
   # Set config and run effect_summary_stats
   local_options(
-    "artma.data.config" = updated_config,
+    "artma.data.columns" = updated_config,
     "artma.methods.effect_summary_stats.conf_level" = 0.95,
     "artma.output.number_of_decimals" = 3,
     "artma.verbose" = 1
@@ -357,7 +357,7 @@ test_that("effect_summary_stats handles missing data gracefully", {
   )
 
   local_options(
-    "artma.data.config" = list(
+    "artma.data.columns" = list(
       effect = list(var_name = "effect", effect_sum_stats = NA, equal = NA, gltl = NA),
       study_size = list(var_name = "study_size", effect_sum_stats = NA, equal = NA, gltl = NA),
       year = list(
@@ -390,7 +390,7 @@ test_that("effect_summary_stats handles non-numeric variables correctly", {
   )
 
   local_options(
-    "artma.data.config" = list(
+    "artma.data.columns" = list(
       effect = list(var_name = "effect", effect_sum_stats = NA, equal = NA, gltl = NA),
       study_size = list(var_name = "study_size", effect_sum_stats = NA, equal = NA, gltl = NA),
       category = list(
@@ -516,7 +516,7 @@ test_that("full workflow: suggestion -> config -> analysis works end-to-end", {
 
     # Step 4: Run analysis with updated config
     local_options(
-      "artma.data.config" = updated_config,
+      "artma.data.columns" = updated_config,
       "artma.verbose" = 1
     )
 

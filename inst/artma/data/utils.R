@@ -5,26 +5,45 @@ assign_na_col <- function(df, colname) {
 }
 
 #' @title Get standard column names
-#' @description Get a vector of column names from the user options template.
-#' @param filter_fn *\[function\]* A function to filter the option definitions.
+#' @description Get the vector of standard column names the pipeline recognizes.
+#'   These are the role keys of the unified per-column store (`data.columns`).
 #' @return *\[character\]* A vector of column names.
-get_standardized_colnames <- function(filter_fn = function(x) TRUE) {
-  box::use(
-    artma / options / template[get_option_defs],
-    artma / libs / infrastructure / polyfills[keep, map_chr, str_remove]
-  )
-  opt_path <- "data.colnames"
-  defs <- get_option_defs(opt_path = opt_path)
-  defs <- keep(defs, filter_fn)
-  names <- map_chr(defs, "name")
-  str_remove(names, paste0("^", opt_path, "\\."))
+get_standardized_colnames <- function() {
+  box::use(artma / const[CONST])
+  CONST$DATA$STANDARD_COLNAMES
 }
 
 #' @title Get required columns
 #' @description Get a vector of columns required by the analysis to exist in the data frame.
 #' @return *\[character\]* A vector of column names.
 get_required_colnames <- function() {
-  get_standardized_colnames(filter_fn = ~ !isTRUE(.x$allow_na))
+  box::use(artma / const[CONST])
+  CONST$DATA$REQUIRED_COLNAMES
+}
+
+#' @title Get the column name mapping from the unified column store
+#' @description Reads `artma.data.columns` and extracts the mapping from
+#'   standard column names to the source column names in the user's data file.
+#'   Only role records (keyed by a standard column name) with a non-NA
+#'   `source_name` participate. Identity mappings are typically absent from the
+#'   sparse store; a standard column already named correctly in the data frame
+#'   needs no record.
+#' @return *\[list\]* Named list mapping standard names to source column names.
+get_colnames_map <- function() {
+  store <- getOption("artma.data.columns", list())
+  if (!is.list(store) || length(store) == 0) {
+    return(list())
+  }
+
+  map <- list()
+  for (std in intersect(names(store), get_standardized_colnames())) {
+    entry <- store[[std]]
+    if (!is.list(entry)) next
+    src <- entry[["source_name"]]
+    if (is.null(src) || length(src) != 1 || is.na(src) || !nzchar(src)) next
+    map[[std]] <- src
+  }
+  map
 }
 
 #' @title Get reserved column names
@@ -57,7 +76,6 @@ get_number_of_studies <- function(df) {
 standardize_column_names <- function(df, auto_detect = TRUE) {
   box::use(
     artma / libs / core / validation[validate],
-    artma / options / index[get_option_group],
     artma / libs / core / utils[get_verbosity]
   )
 
@@ -65,21 +83,14 @@ standardize_column_names <- function(df, auto_detect = TRUE) {
 
   names(df) <- make.names(names(df))
 
-  # Try to get existing column mapping from options
-  map <- tryCatch(
-    {
-      opt_map <- get_option_group("artma.data.colnames")
-      # Filter out NA values
-      opt_map[!is.na(opt_map)]
-    },
-    error = function(e) list()
-  )
-
-  map <- lapply(map, make.names) # Handle non-standard column names
+  # Read the column mapping from the unified per-column store
+  map <- lapply(get_colnames_map(), make.names) # Handle non-standard column names
   required_colnames <- get_required_colnames()
 
-  # Check if we have all required columns mapped
-  missing_required <- base::setdiff(required_colnames, names(map))
+  # A required column is unresolved when it is neither mapped nor already
+  # present in the data frame under its standard name (identity mappings are
+  # not stored in the sparse column store).
+  missing_required <- base::setdiff(required_colnames, c(names(map), names(df)))
 
   # If mapping is incomplete and auto_detect is enabled, try to recognize columns
   if (length(missing_required) > 0 && auto_detect) {
@@ -128,8 +139,8 @@ standardize_column_names <- function(df, auto_detect = TRUE) {
     }
   }
 
-  # Check that every required column is mapped
-  missing_required <- base::setdiff(required_colnames, names(map))
+  # Check that every required column is either mapped or already present
+  missing_required <- base::setdiff(required_colnames, c(names(map), names(df)))
   if (length(missing_required)) {
     cli::cli_abort(c(
       "x" = "Missing mapping for required columns: {.val {missing_required}}",
@@ -239,6 +250,7 @@ box::export(
   assign_na_col,
   determine_df_type,
   determine_vector_type,
+  get_colnames_map,
   get_number_of_studies,
   get_required_colnames,
   get_reserved_colnames,

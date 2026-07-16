@@ -20,8 +20,14 @@ runtime_setup <- function(
   }
 
   # Loading itself is pure, so it will neither migrate nor repair an outdated
-  # file. In interactive mode, detect an outdated file up front and offer to fix
-  # it before loading, so the user is not silently running on defaults.
+  # file. Migrate legacy dual-store files (data.colnames + data.config) to the
+  # unified data.columns store up front, then, in interactive mode, detect an
+  # outdated file and offer to fix it before loading, so the user is not
+  # silently running on defaults.
+  if (!is.null(options_file_name)) {
+    box::use(artma / options / migrate[migrate_legacy_options])
+    migrate_legacy_options(options_file_name = options_file_name, options_dir = options_dir)
+  }
   if (interactive() && !is.null(options_file_name)) {
     offer_options_fix(options_file_name = options_file_name, options_dir = options_dir)
   }

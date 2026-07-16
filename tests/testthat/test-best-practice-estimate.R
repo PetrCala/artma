@@ -69,7 +69,7 @@ test_that("best_practice_estimate uses provided BMA result and returns structure
   local_options(list(
     artma.verbose = 0,
     artma.autonomy.level = "autonomous",
-    artma.data.config = make_bpe_demo_config(),
+    artma.data.columns = make_bpe_demo_config(),
     artma.visualization.export_graphics = FALSE,
     artma.methods.bma.burn = 50L,
     artma.methods.bma.iter = 300L,
@@ -110,7 +110,7 @@ test_that("best_practice_estimate fails early when BMA is missing and auto-run i
   local_options(list(
     artma.verbose = 0,
     artma.autonomy.level = "autonomous",
-    artma.data.config = make_bpe_demo_config(),
+    artma.data.columns = make_bpe_demo_config(),
     artma.methods.best_practice_estimate.run_bma_if_missing = FALSE
   ))
 
@@ -131,7 +131,7 @@ test_that("best_practice_estimate accepts logical BPE overrides from config", {
   local_options(list(
     artma.verbose = 0,
     artma.autonomy.level = "ask_more",
-    artma.data.config = config,
+    artma.data.columns = config,
     artma.visualization.export_graphics = FALSE,
     artma.methods.bma.burn = 50L,
     artma.methods.bma.iter = 300L,

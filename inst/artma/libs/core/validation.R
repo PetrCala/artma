@@ -174,9 +174,9 @@ assert_options_template_exists <- function(path) {
 #' @param opt_path *\[character\]* The option path to check.
 #' @return *\[logical\]* Whether the option path is valid.
 #' @examples
-#' validate_opt_path("data.colnames") # passes
-#' validate_opt_path("data.colnames.obs_id") # passes
-#' validate_opt_path(c("data.colnames", "data.colnames.obs_id")) # fails
+#' validate_opt_path("data.columns") # passes
+#' validate_opt_path("methods.bma.burn") # passes
+#' validate_opt_path(c("data.columns", "methods.bma.burn")) # fails
 #' validate_opt_path(NULL) # passes
 #' @export
 validate_opt_path <- function(opt_path) {
@@ -190,7 +190,7 @@ validate_opt_path <- function(opt_path) {
     cli::cli_abort("The option path must be a single character string.")
   }
   if (!grepl("^[[:alnum:]_]+(\\.[[:alnum:]_]+)*$", opt_path)) {
-    cli::cli_abort("The option path must be a single word or dot-separated path (e.g. 'data' or 'data.colnames')")
+    cli::cli_abort("The option path must be a single word or dot-separated path (e.g. 'data' or 'data.columns')")
   }
   invisible(NULL)
 }

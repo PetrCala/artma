@@ -13,10 +13,6 @@ local_runtime_options <- function(source_path, extra = list()) {
   user_input <- utils::modifyList(
     list(
       "data.source_path" = source_path,
-      "data.colnames.study_id" = "study_id",
-      "data.colnames.effect" = "effect",
-      "data.colnames.se" = "se",
-      "data.colnames.n_obs" = "n_obs",
       "data.na_handling" = "remove",
       "data.reconcile_mode" = "auto",
       "calc.se_zero_handling" = "ignore",
@@ -93,19 +89,19 @@ test_that("warm-cache run repopulates a deleted data config (motivating bug)", {
   runner$run()
   expect_equal(runner$compute_runs(), 1L)
 
-  after_first <- getOption("artma.data.config")
+  after_first <- getOption("artma.data.columns")
   computed_keys <- c("t_stat", "study_size", "reg_dof", "precision", "study_label")
   expect_true(all(computed_keys %in% names(after_first)))
 
   # Simulate deleting the data config: clear it entirely.
-  options("artma.data.config" = list())
+  options("artma.data.columns" = list())
 
   # Run 2 (warm): compute is a cache hit and does NOT run, but persist must
   # still repopulate the config.
   runner$run()
   expect_equal(runner$compute_runs(), 1L) # compute was skipped (cache hit)
 
-  after_second <- getOption("artma.data.config")
+  after_second <- getOption("artma.data.columns")
   expect_true(all(computed_keys %in% names(after_second)))
 })
 

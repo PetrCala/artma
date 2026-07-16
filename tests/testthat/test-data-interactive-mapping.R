@@ -3,6 +3,7 @@ box::use(
     expect_equal,
     expect_false,
     expect_no_error,
+    expect_null,
     expect_true,
     test_that
   ]
@@ -75,18 +76,17 @@ test_that("save_column_mapping_to_options sets session options correctly", {
 
   withr::local_options(list(
     "artma.verbose" = 1,
-    "artma.data.colnames.study_id" = NULL,
-    "artma.data.colnames.effect" = NULL,
-    "artma.data.colnames.se" = NULL
+    "artma.data.columns" = list()
   ))
 
   # Save without options file (just to session)
   save_column_mapping_to_options(mapping, options_file_name = NULL)
 
-  # Check that options were set
-  expect_equal(getOption("artma.data.colnames.study_id"), "study_name")
-  expect_equal(getOption("artma.data.colnames.effect"), "effect_size")
-  expect_equal(getOption("artma.data.colnames.se"), "std_error")
+  # Check that role records were written to the unified store
+  store <- getOption("artma.data.columns")
+  expect_equal(store$study_id$source_name, "study_name")
+  expect_equal(store$effect$source_name, "effect_size")
+  expect_equal(store$se$source_name, "std_error")
 })
 
 
@@ -113,23 +113,20 @@ test_that("save_column_mapping_to_options handles multiple columns", {
 
   withr::local_options(list(
     "artma.verbose" = 1,
-    "artma.data.colnames.study_id" = NULL,
-    "artma.data.colnames.effect" = NULL,
-    "artma.data.colnames.se" = NULL,
-    "artma.data.colnames.n_obs" = NULL,
-    "artma.data.colnames.t_stat" = NULL,
-    "artma.data.colnames.obs_id" = NULL
+    "artma.data.columns" = list()
   ))
 
   save_column_mapping_to_options(mapping, options_file_name = NULL)
 
-  # Verify all were set
-  expect_equal(getOption("artma.data.colnames.study_id"), "study_name")
-  expect_equal(getOption("artma.data.colnames.effect"), "effect")
-  expect_equal(getOption("artma.data.colnames.se"), "se")
-  expect_equal(getOption("artma.data.colnames.n_obs"), "n_obs")
-  expect_equal(getOption("artma.data.colnames.t_stat"), "t_statistic")
-  expect_equal(getOption("artma.data.colnames.obs_id"), "sid")
+  # Genuine renames are stored; identity mappings (effect, se, n_obs) are not,
+  # since a column already carrying the standard name needs no record.
+  store <- getOption("artma.data.columns")
+  expect_equal(store$study_id$source_name, "study_name")
+  expect_equal(store$t_stat$source_name, "t_statistic")
+  expect_equal(store$obs_id$source_name, "sid")
+  expect_null(store$effect)
+  expect_null(store$se)
+  expect_null(store$n_obs)
 })
 
 
@@ -157,12 +154,31 @@ test_that("save_column_mapping_to_options works with verbose output", {
 
   withr::local_options(list(
     "artma.verbose" = 4,
-    "artma.data.colnames.study_id" = NULL
+    "artma.data.columns" = list()
   ))
 
   expect_no_error(
     save_column_mapping_to_options(mapping, options_file_name = NULL)
   )
+})
+
+
+test_that("save_column_mapping_to_options preserves existing analysis fields", {
+  withr::local_options(list(
+    "artma.verbose" = 1,
+    "artma.data.columns" = list(
+      effect = list(bma = TRUE)
+    )
+  ))
+
+  save_column_mapping_to_options(
+    list(effect = "effect_size"),
+    options_file_name = NULL
+  )
+
+  store <- getOption("artma.data.columns")
+  expect_equal(store$effect$source_name, "effect_size")
+  expect_true(store$effect$bma)
 })
 
 

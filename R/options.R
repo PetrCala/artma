@@ -354,9 +354,17 @@ options.load <- function(
 
   parent_key <- if (load_with_prefix) CONST$PACKAGE_NAME else NULL
   leaf_set <- collect_leaf_paths(template_path)
+  # The flattened paths carry the parent prefix, so the leaf set must too:
+  # otherwise list-typed leaves (e.g. data.columns) are descended into instead
+  # of being taken whole.
+  flatten_leaf_set <- if (is.null(parent_key)) {
+    leaf_set
+  } else {
+    paste0(parent_key, ".", leaf_set)
+  }
   user_values <- flatten_user_options(
     user_options = nested_options,
-    leaf_set = leaf_set,
+    leaf_set = flatten_leaf_set,
     parent = parent_key
   )
 
@@ -677,6 +685,11 @@ options.fix <- function(
   if (!file.exists(expected_path)) {
     cli::cli_abort(cli::format_inline("The user options file {.file {options_file_name}} does not exist under path {.path {expected_path}}."))
   }
+
+  # Fold any legacy dual-store column options into the unified data.columns
+  # store before validating, so the fix pass works on the current format.
+  box::use(artma / options / migrate[migrate_legacy_options])
+  migrate_legacy_options(options_file_name = options_file_name, options_dir = options_dir)
 
   errors <- withr::with_options(
     list("artma.verbose" = min(get_verbosity(), 2)),

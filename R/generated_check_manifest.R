@@ -56,6 +56,8 @@ utils::globalVariables(c(
   "list_options_files",
   "ma_table",
   "mark_welcome_as_shown",
+  "migrate",
+  "migrate_legacy_options",
   "missing_required_columns",
   "missing_suggested_packages",
   "modules",

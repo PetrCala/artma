@@ -4,7 +4,7 @@
 #' @return *\[logical\]* Whether the data config is valid.
 data_config_is_valid <- function(
     config = NULL) {
-  config <- if (is.null(config)) getOption("artma.data.config", NULL) else config
+  config <- if (is.null(config)) getOption("artma.data.columns", NULL) else config
   # There is potentially room for more checks here
   is.list(config)
 }
