@@ -4,9 +4,6 @@ on:
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch:
-  push:
-    branches:
-      - ci/consolidate-test-workflows-174
 
 permissions:
   contents: read
