@@ -182,6 +182,97 @@ test_that("effect_summary_stats processes configured variables correctly", {
 })
 
 
+# Value-level assertions ------------------------------------------------------
+
+test_that("effect_summary_stats computes the All Data row exactly", {
+  box::use(
+    artma / methods / effect_summary_stats[effect_summary_stats]
+  )
+
+  # Fixed dataset with hand-computable summary statistics.
+  #   mean   = 0.32   median = 0.30   min = 0.10   max = 0.50
+  #   sd     = 0.164 (rounded)        obs = 5
+  #   z_0.95 = qnorm(0.975) = 1.959964
+  #   se     = round(sd, 3) / sqrt(5); ci = mean +/- z * se -> [0.176, 0.464]
+  #   weighted mean with w = 1 / study_size^2 -> 0.165
+  df <- data.frame(
+    effect = c(0.10, 0.24, 0.30, 0.46, 0.50),
+    study_size = c(10, 20, 30, 40, 50),
+    stringsAsFactors = FALSE
+  )
+
+  local_options(
+    "artma.data.config" = list(
+      effect = list(var_name = "effect", effect_sum_stats = NA, equal = NA, gltl = NA),
+      study_size = list(
+        var_name = "study_size",
+        var_name_verbose = "Study Size",
+        data_type = "int",
+        effect_sum_stats = TRUE,
+        equal = NA,
+        gltl = NA
+      )
+    ),
+    "artma.methods.effect_summary_stats.conf_level" = 0.95,
+    "artma.methods.effect_summary_stats.formal_output" = FALSE,
+    "artma.output.number_of_decimals" = 3,
+    "artma.verbose" = 1
+  )
+
+  result <- effect_summary_stats(df)$tables$summary
+  all_data <- result[result$`Var Name` == "All Data", , drop = FALSE]
+
+  expect_equal(nrow(all_data), 1L)
+  expect_equal(all_data$Mean, 0.32)
+  expect_equal(all_data$Median, 0.30)
+  expect_equal(all_data$Min, 0.10)
+  expect_equal(all_data$Max, 0.50)
+  expect_equal(all_data$SD, 0.164)
+  expect_equal(all_data$Obs, 5L)
+  expect_equal(all_data$`CI lower`, 0.176)
+  expect_equal(all_data$`CI upper`, 0.464)
+  expect_equal(all_data$`Weighted Mean`, 0.165)
+})
+
+test_that("effect_summary_stats confidence interval widens with the confidence level", {
+  box::use(
+    artma / methods / effect_summary_stats[effect_summary_stats]
+  )
+
+  df <- data.frame(
+    effect = c(0.10, 0.24, 0.30, 0.46, 0.50),
+    study_size = c(10, 20, 30, 40, 50),
+    stringsAsFactors = FALSE
+  )
+
+  config <- list(
+    effect = list(var_name = "effect", effect_sum_stats = NA, equal = NA, gltl = NA),
+    study_size = list(
+      var_name = "study_size",
+      var_name_verbose = "Study Size",
+      data_type = "int",
+      effect_sum_stats = TRUE,
+      equal = NA,
+      gltl = NA
+    )
+  )
+
+  run_at <- function(conf_level) {
+    local_options(
+      "artma.data.config" = config,
+      "artma.methods.effect_summary_stats.conf_level" = conf_level,
+      "artma.output.number_of_decimals" = 3,
+      "artma.verbose" = 1
+    )
+    res <- effect_summary_stats(df)$tables$summary
+    row <- res[res$`Var Name` == "All Data", , drop = FALSE]
+    row$`CI upper` - row$`CI lower`
+  }
+
+  expect_true(run_at(0.99) > run_at(0.95))
+  expect_true(run_at(0.95) > run_at(0.80))
+})
+
 # Config update integration ---------------------------------------------------
 
 test_that("update_config_with_selections integrates with effect_summary_stats", {

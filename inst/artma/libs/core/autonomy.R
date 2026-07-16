@@ -89,9 +89,13 @@ is_autonomy_level_set <- function() {
 #'   user is not prompted. The user is prompted only when the current level is
 #'   strictly less autonomous than `required_level`, ordered
 #'   "ask_more" < "balanced" < "autonomous". Defaults to "autonomous".
+#' @param is_interactive *\[logical\]* Whether the session is interactive. Defaults
+#'   to `interactive()`. Injectable so both branches of the hard gate can be
+#'   exercised in headless tests; production callers should leave it at the
+#'   default.
 #' @return *\[logical\]* TRUE if the user should be prompted, FALSE otherwise.
 #' @export
-should_prompt_user <- function(required_level = "autonomous") {
+should_prompt_user <- function(required_level = "autonomous", is_interactive = interactive()) {
   box::use(
     artma / const[CONST],
     artma / libs / core / validation[validate]
@@ -104,7 +108,7 @@ should_prompt_user <- function(required_level = "autonomous") {
   )
 
   # interactive() is the hard gate: never prompt outside interactive sessions
-  if (!interactive()) {
+  if (!is_interactive) {
     return(FALSE)
   }
 

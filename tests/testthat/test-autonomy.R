@@ -67,7 +67,7 @@ test_that("is_autonomy_level_set works correctly", {
   expect_true(is_autonomy_level_set())
 })
 
-test_that("should_prompt_user respects autonomy level ordering", {
+test_that("should_prompt_user respects autonomy level ordering (interactive branch)", {
   box::use(artma / libs / core / autonomy[
     should_prompt_user,
     set_autonomy_level
@@ -75,12 +75,7 @@ test_that("should_prompt_user respects autonomy level ordering", {
 
   withr::local_options(list(artma.autonomy.level = NULL))
 
-  # This test only works in interactive mode; in non-interactive mode,
-  # should_prompt_user always returns FALSE regardless of the level.
-  if (!interactive()) {
-    skip("Test requires interactive mode")
-  }
-
+  # The interactive branch is exercised headlessly by injecting is_interactive.
   levels <- c("ask_more", "balanced", "autonomous")
   ordinal <- stats::setNames(seq_along(levels), levels)
 
@@ -88,7 +83,7 @@ test_that("should_prompt_user respects autonomy level ordering", {
     set_autonomy_level(current_level)
 
     for (required_level in levels) {
-      should_prompt <- should_prompt_user(required_level)
+      should_prompt <- should_prompt_user(required_level, is_interactive = TRUE)
       expected <- ordinal[[current_level]] < ordinal[[required_level]]
       expect_equal(should_prompt, expected,
         info = paste0(
@@ -100,15 +95,29 @@ test_that("should_prompt_user respects autonomy level ordering", {
   }
 })
 
-test_that("should_prompt_user returns TRUE when level not set (interactive mode)", {
+test_that("should_prompt_user returns TRUE when level not set (interactive branch)", {
   box::use(artma / libs / core / autonomy[should_prompt_user])
 
   withr::local_options(list(artma.autonomy.level = NULL))
 
-  if (interactive()) {
-    expect_true(should_prompt_user(required_level = "ask_more"))
-    expect_true(should_prompt_user(required_level = "autonomous"))
-  }
+  expect_true(should_prompt_user(required_level = "ask_more", is_interactive = TRUE))
+  expect_true(should_prompt_user(required_level = "autonomous", is_interactive = TRUE))
+})
+
+test_that("should_prompt_user hard-gates on the non-interactive branch", {
+  box::use(artma / libs / core / autonomy[should_prompt_user, set_autonomy_level])
+
+  withr::local_options(list(artma.autonomy.level = NULL))
+
+  # Even at the most prompt-eager level, an injected non-interactive session
+  # never prompts.
+  set_autonomy_level("ask_more")
+  expect_false(should_prompt_user(required_level = "autonomous", is_interactive = FALSE))
+  expect_false(should_prompt_user(required_level = "ask_more", is_interactive = FALSE))
+
+  # Unset level would prompt interactively, but not when non-interactive.
+  options(artma.autonomy.level = NULL)
+  expect_false(should_prompt_user(required_level = "autonomous", is_interactive = FALSE))
 })
 
 test_that("should_prompt_user returns FALSE in non-interactive mode regardless of level", {
