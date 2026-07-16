@@ -3,7 +3,8 @@ box::use(
 )
 
 box::use(
-  artma / data / compute[compute_optional_columns]
+  artma / data / compute[compute_optional_columns],
+  artma / data / utils[get_reserved_colnames]
 )
 
 computed_config_overrides <- list(
@@ -66,4 +67,29 @@ test_that("compute_optional_columns overwrites conflicting existing study_label"
 
   expect_equal(result$study_label, c("Study A", "Study B", "Study A"))
   expect_equal(result$study_id, c(1L, 2L, 1L))
+})
+
+
+test_that("get_reserved_colnames covers every column compute_optional_columns can add", {
+  df <- data.frame(
+    study_id = c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)"),
+    effect = c(0.2, 0.5, 0.1),
+    se = c(0.1, 0.2, 0.1),
+    n_obs = c(120, 150, 120),
+    stringsAsFactors = FALSE
+  )
+
+  withr::local_options(list(
+    "artma.data.config" = computed_config_overrides,
+    "artma.output.save_results" = FALSE,
+    "artma.calc.precision_type" = "1/SE",
+    "artma.verbose" = 1
+  ))
+
+  cols_before <- names(df)
+  result <- compute_optional_columns(df)
+  cols_added <- setdiff(names(result), cols_before)
+
+  expect_true(length(cols_added) > 0)
+  expect_true(all(cols_added %in% get_reserved_colnames()))
 })

@@ -16,7 +16,11 @@ CONST <- list(
     # types their native readers return and pass through NA normalization only.
     TYPES = c("csv", "tsv", "xlsx", "xls", "xlsm", "json", "dta", "rds"),
     # Strings that should be interpreted as NA when reading data files
-    NA_STRINGS = c("", "NA", "N/A", "na", "n/a", "NULL", "null")
+    NA_STRINGS = c("", "NA", "N/A", "na", "n/a", "NULL", "null"),
+    # Standard column names derived or computed by the data pipeline (never
+    # user moderator variables). Required column names are a separate,
+    # template-derived set; see `get_required_colnames()` in `data/utils.R`.
+    COMPUTED_COLNAMES = c("obs_id", "study_label", "t_stat", "study_size", "reg_dof", "precision")
   ),
   DATE_FORMAT = "%Y-%m-%d %H:%M:%S",
   DATE_ONLY_FORMAT = "%Y-%m-%d",
@@ -72,14 +76,14 @@ CONST <- list(
       "Var Name", "Var Class", "Mean", "Median",
       "Min", "Max", "SD", "Obs", "Missing obs"
     ),
-    DESIRED_VARS = c("effect", "se", "sample_size", "dof")
+    DESIRED_VARS = c("effect", "se", "n_obs", "reg_dof")
   ),
   EFFECT_SUMMARY_STATS = list(
     NAMES = c(
       "Var Name", "Var Class", "Mean", "CI lower", "CI upper", "Weighted Mean",
       "WM CI lower", "WM CI upper", "Median", "Min", "Max", "SD", "Obs"
     ),
-    DESIRED_VARS = c("effect", "se", "sample_size", "dof")
+    DESIRED_VARS = c("effect", "se", "n_obs", "reg_dof")
   ),
   MOCKS = list(
     TMP_DATA_FILE_NAME = "tmp_data.csv",

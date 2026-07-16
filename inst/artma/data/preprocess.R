@@ -23,9 +23,10 @@ remove_empty_rows <- function(df) {
   required_colnames <- get_required_colnames()
   required_colnames <- required_colnames[required_colnames %in% colnames(df)]
 
-  # Critical required columns that must be present for a row to be valid
-  # n_obs can be missing/imputed, but study_id, effect, and se are essential
-  critical_cols <- c("study_id", "effect", "se")
+  # Critical required columns that must be present for a row to be valid.
+  # n_obs is deliberately excluded: it can be missing/imputed downstream,
+  # while the remaining required columns (study_id, effect, se) are essential.
+  critical_cols <- setdiff(required_colnames, "n_obs")
   critical_cols <- critical_cols[critical_cols %in% colnames(df)]
 
   # A row is empty when all required columns are NA, or when all critical

@@ -22,7 +22,8 @@ box::use(
   artma / variable / suggestion[
     suggest_variables_for_effect_summary,
     decide_variable_suggestion
-  ]
+  ],
+  artma / data / utils[get_reserved_colnames]
 )
 
 # Test data generators --------------------------------------------------------
@@ -249,8 +250,27 @@ test_that("detect_variable_groups excludes reserved columns", {
 
   result <- detect_variable_groups(df)
 
-  reserved <- c("effect", "se", "study_id", "study_label", "study_size", "sample_size", "dof")
+  # "sample_size" here is a regular user moderator column (see make_test_data),
+  # not the pre-standardization alias for n_obs, so it must NOT be excluded.
+  expect_true("sample_size" %in% result$var_name)
+
+  reserved <- c("effect", "se", "study_id", "study_label", "study_size")
   expect_false(any(result$var_name %in% reserved))
+})
+
+test_that("detect_variable_groups excludes computed pipeline columns", {
+  df <- make_test_data()
+  df$n_obs <- df$study_size
+  df$obs_id <- seq_len(nrow(df))
+  df$t_stat <- df$effect / df$se
+  df$reg_dof <- df$n_obs - 2
+  df$precision <- 1 / df$se
+
+  result <- detect_variable_groups(df)
+
+  computed_cols <- c("n_obs", "obs_id", "t_stat", "reg_dof", "precision")
+  expect_false(any(result$var_name %in% computed_cols))
+  expect_true(all(computed_cols %in% get_reserved_colnames()))
 })
 
 test_that("detect_variable_groups assigns singleton group_type to ungrouped vars", {
@@ -608,6 +628,20 @@ test_that("suggest_variables_for_effect_summary requires effect column", {
     suggest_variables_for_effect_summary(df),
     "effect"
   )
+})
+
+test_that("suggest_variables_for_effect_summary never suggests computed columns as moderators", {
+  df <- make_test_data()
+  df$n_obs <- df$study_size
+  df$obs_id <- seq_len(nrow(df))
+  df$t_stat <- df$effect / df$se
+  df$reg_dof <- df$n_obs - 2
+  df$precision <- 1 / df$se
+
+  result <- suggest_variables_for_effect_summary(df)
+
+  computed_cols <- c("n_obs", "obs_id", "t_stat", "reg_dof", "precision")
+  expect_false(any(computed_cols %in% result$var_name))
 })
 
 test_that("suggest_variables_for_effect_summary uses config when provided", {

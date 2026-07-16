@@ -615,10 +615,12 @@ recognize_columns <- function(df, min_confidence = 0.7) {
 
 
 #' @title Get required column names for artma
-#' @description Returns the list of required column names for artma to function
+#' @description Returns the list of required column names for artma to function.
+#'   Delegates to the template-derived single source of truth.
 #' @return *\[character\]* Vector of required column names
 get_required_column_names <- function() {
-  c("study_id", "effect", "se", "n_obs")
+  box::use(artma / data / utils[get_required_colnames])
+  get_required_colnames()
 }
 
 

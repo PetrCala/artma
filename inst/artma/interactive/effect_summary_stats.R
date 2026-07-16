@@ -311,7 +311,8 @@ auto_select_effect_summary_vars <- function(df, config) {
 manual_select_effect_summary_vars <- function(df, config) {
   box::use(
     artma / libs / core / utils[get_verbosity],
-    artma / libs / core / autonomy[should_prompt_user]
+    artma / libs / core / autonomy[should_prompt_user],
+    artma / data / utils[get_reserved_colnames]
   )
 
   if (!should_prompt_user(required_level = "autonomous")) {
@@ -330,8 +331,7 @@ manual_select_effect_summary_vars <- function(df, config) {
   }
 
   # Get potential variables (exclude reserved columns)
-  reserved_vars <- c("effect", "se", "study_id", "study_label", "study_size", "sample_size", "dof")
-  potential_vars <- names(config)[!names(config) %in% reserved_vars]
+  potential_vars <- names(config)[!names(config) %in% get_reserved_colnames()]
 
   # Filter to numeric/integer variables that exist in the data
   valid_vars <- character(0)
