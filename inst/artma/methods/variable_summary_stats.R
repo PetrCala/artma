@@ -11,6 +11,7 @@ variable_summary_stats <- function(df) {
     artma / const[CONST],
     artma / libs / core / validation[assert],
     artma / data_config / read[get_data_config],
+    artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / libs / core / utils[get_verbosity]
   )
@@ -29,7 +30,7 @@ variable_summary_stats <- function(df) {
     if (get_verbosity() >= 2) {
       cli::cli_alert_warning("No variables selected to compute summary statistics for.")
     }
-    return(data.frame())
+    return(new_method_result(tables = list(summary = data.frame())))
   }
 
   # Initialize output data frame
@@ -87,18 +88,13 @@ variable_summary_stats <- function(df) {
     cli::cli_alert_warning("Missing data for {.val {length(missing_data_vars)}} variables: {.val {missing_data_vars}}")
   }
 
-  invisible(df_out)
+  invisible(new_method_result(tables = list(summary = df_out)))
 }
 
 box::use(
-  artma / libs / infrastructure / cache[cache_cli_runner],
-  artma / data / cache_signatures[build_data_cache_signature]
+  artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- cache_cli_runner(
-  variable_summary_stats,
-  stage = "variable_summary_stats",
-  key_builder = function(...) build_data_cache_signature()
-)
+run <- register_runtime_method(variable_summary_stats, stage = "variable_summary_stats")
 
-box::export(run)
+box::export(variable_summary_stats, run)

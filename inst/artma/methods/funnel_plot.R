@@ -7,6 +7,7 @@ funnel_plot <- function(df) {
   box::use(
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
+    artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / visualization / options[get_visualization_options],
     artma / visualization / export[save_plot, build_export_filename, ensure_export_dir]
@@ -66,11 +67,14 @@ funnel_plot <- function(df) {
     if (get_verbosity() >= 2) {
       cli::cli_alert_warning("All observations filtered as outliers. Skipping funnel plot.")
     }
-    return(invisible(list(
-      plot = NULL,
-      n_points = 0L,
-      n_outliers_removed = n_outliers,
-      used_study_medians = use_study_medians
+    return(invisible(new_method_result(
+      plots = list(funnel_plot = NULL),
+      meta = list(
+        n_points = 0L,
+        n_outliers_removed = n_outliers,
+        used_study_medians = use_study_medians
+      ),
+      class = "artma_funnel_plot"
     )))
   }
 
@@ -111,14 +115,15 @@ funnel_plot <- function(df) {
     )
   }
 
-  result <- list(
-    plot = plot,
-    n_points = nrow(plot_data),
-    n_outliers_removed = n_outliers,
-    used_study_medians = use_study_medians
-  )
-  class(result) <- c("artma_funnel_plot", class(result))
-  invisible(result)
+  invisible(new_method_result(
+    plots = list(funnel_plot = plot),
+    meta = list(
+      n_points = nrow(plot_data),
+      n_outliers_removed = n_outliers,
+      used_study_medians = use_study_medians
+    ),
+    class = "artma_funnel_plot"
+  ))
 }
 
 
@@ -440,14 +445,9 @@ export_funnel_plot <- function(plot, export_path, graph_scale) {
 
 
 box::use(
-  artma / libs / infrastructure / cache[cache_cli_runner],
-  artma / data / cache_signatures[build_data_cache_signature]
+  artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- cache_cli_runner(
-  funnel_plot,
-  stage = "funnel_plot",
-  key_builder = function(...) build_data_cache_signature()
-)
+run <- register_runtime_method(funnel_plot, stage = "funnel_plot")
 
 box::export(funnel_plot, run)

@@ -49,33 +49,35 @@ test_that("nonlinear tests return tidy coefficients and summary", {
 
   res <- suppressWarnings(nonlinear_tests(df))
 
+  expect_named(res, c("tables", "plots", "meta"))
+  expect_named(res$tables, "summary")
   expect_named(
-    res,
-    c("coefficients", "summary", "skipped", "options"),
+    res$meta,
+    c("coefficients", "skipped", "options"),
     ignore.order = TRUE
   )
 
-  expect_gt(nrow(res$coefficients), 0L)
+  expect_gt(nrow(res$meta$coefficients), 0L)
   expect_named(
-    res$coefficients,
+    res$meta$coefficients,
     c(
       "model", "model_label", "term", "estimate", "std_error", "p_value",
       "n_obs_total", "n_obs_model", "estimate_formatted", "std_error_formatted"
     )
   )
-  expect_setequal(unique(res$coefficients$term), c("publication_bias", "effect"))
-  expect_true(all(res$coefficients$n_obs_total == nrow(df)))
+  expect_setequal(unique(res$meta$coefficients$term), c("publication_bias", "effect"))
+  expect_true(all(res$meta$coefficients$n_obs_total == nrow(df)))
 
-  expect_gt(nrow(res$summary), 0L)
+  expect_gt(nrow(res$tables$summary), 0L)
   expect_equal(
-    rownames(res$summary),
+    rownames(res$tables$summary),
     c(
       "Publication Bias", "(Std. Error)", "Effect Beyond Bias",
       "(Std. Error)", "Total observations", "Model observations"
     )
   )
-  expect_equal(res$summary$Metric, rownames(res$summary))
-  expect_equal(res$options$round_to, 2L)
+  expect_equal(res$tables$summary$Metric, rownames(res$tables$summary))
+  expect_equal(res$meta$options$round_to, 2L)
 })
 
 test_that("nonlinear methods record skipped models when input is insufficient", {

@@ -83,17 +83,20 @@ test_that("best_practice_estimate uses provided BMA result and returns structure
   bma_result <- bma(df)
   result <- best_practice_estimate(df, bma_result = bma_result)
 
+  expect_named(result, c("tables", "plots", "meta"))
+  expect_named(result$tables, "summary")
   expect_named(
-    result,
-    c("summary", "formula", "overrides", "bma_formula", "bma_source", "autonomy_level")
+    result$meta,
+    c("formula", "overrides", "bma_formula", "bma_source", "autonomy_level"),
+    ignore.order = TRUE
   )
-  expect_equal(result$bma_source, "provided")
-  expect_true(is.data.frame(result$summary))
-  expect_true(nrow(result$summary) >= 1)
-  expect_true("estimate" %in% colnames(result$summary))
-  expect_true(is.data.frame(result$overrides))
+  expect_equal(result$meta$bma_source, "provided")
+  expect_true(is.data.frame(result$tables$summary))
+  expect_true(nrow(result$tables$summary) >= 1)
+  expect_true("estimate" %in% colnames(result$tables$summary))
+  expect_true(is.data.frame(result$meta$overrides))
 
-  overrides <- stats::setNames(result$overrides$override, result$overrides$variable)
+  overrides <- stats::setNames(result$meta$overrides$override, result$meta$overrides$variable)
   expect_equal(overrides[["se"]], "0")
   expect_equal(overrides[["citations"]], "max")
   expect_equal(overrides[["first_lag_instrument"]], "0")
@@ -142,7 +145,7 @@ test_that("best_practice_estimate accepts logical BPE overrides from config", {
   bma_result <- bma(df)
   result <- best_practice_estimate(df, bma_result = bma_result)
 
-  overrides <- stats::setNames(result$overrides$override, result$overrides$variable)
+  overrides <- stats::setNames(result$meta$overrides$override, result$meta$overrides$variable)
   expect_equal(overrides[["top_journal"]], "1")
   expect_equal(overrides[["first_lag_instrument"]], "0")
   expect_false(is.na(overrides[["se"]]))

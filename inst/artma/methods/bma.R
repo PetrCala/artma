@@ -15,6 +15,7 @@ bma <- function(df) {
     ],
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
+    artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / visualization / options[get_visualization_options]
   )
@@ -79,17 +80,17 @@ bma <- function(df) {
     if (get_verbosity() >= 2) {
       cli::cli_alert_warning("No valid BMA variables available. Skipping BMA analysis.")
     }
-    return(list(
-      coefficients = data.frame(
-        variable = character(0),
-        pip = numeric(0),
-        post_mean = numeric(0),
-        post_sd = numeric(0),
-        cond_pos_sign = numeric(0),
-        stringsAsFactors = FALSE
-      ),
-      model = NULL,
-      skipped = prepared$skipped
+    empty_coefs <- data.frame(
+      variable = character(0),
+      pip = numeric(0),
+      post_mean = numeric(0),
+      post_sd = numeric(0),
+      cond_pos_sign = numeric(0),
+      stringsAsFactors = FALSE
+    )
+    return(new_method_result(
+      tables = list(coefficients = empty_coefs),
+      meta = list(model = NULL, skipped = prepared$skipped)
     ))
   }
 
@@ -161,11 +162,20 @@ bma <- function(df) {
     )
   }
 
-  if (length(results) == 1) {
-    invisible(results[[1]])
-  } else {
-    invisible(results)
-  }
+  # Downstream consumers (fma, best_practice_estimate, the MA table builder) use
+  # the first parameter set; the full list is preserved under meta$all.
+  primary <- results[[1]]
+  invisible(new_method_result(
+    tables = list(coefficients = primary$coefficients),
+    meta = list(
+      model = primary$model,
+      data = primary$data,
+      params = primary$params,
+      var_list = primary$var_list,
+      skipped = NULL,
+      all = results
+    )
+  ))
 }
 
 #' Prepare inputs for BMA and FMA workflows
@@ -755,14 +765,10 @@ save_bma_variables_to_data_config <- function(variables, config) {
 
 
 box::use(
-  artma / libs / infrastructure / cache[cache_cli_runner],
-  artma / data / cache_signatures[build_data_cache_signature]
+  artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- cache_cli_runner(
-  bma,
-  stage = "bma",
-  key_builder = function(...) build_data_cache_signature()
-)
+run <- register_runtime_method(bma, stage = "bma")
 
+# prepare_bma_inputs is exported because the fma method reuses it directly.
 box::export(bma, run, prepare_bma_inputs)

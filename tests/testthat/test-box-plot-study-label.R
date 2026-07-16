@@ -27,5 +27,5 @@ test_that("box_plot auto-selects study_label over study_id for grouping", {
   result <- box_plot(df)
 
   expect_true(is.list(result))
-  expect_equal(result$factor_by, "study_label")
+  expect_equal(result$meta$factor_by, "study_label")
 })

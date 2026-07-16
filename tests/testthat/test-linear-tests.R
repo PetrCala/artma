@@ -47,22 +47,24 @@ test_that("linear tests return tidy coefficients and summary", {
 
   res <- linear_tests(df)
 
+  expect_named(res, c("tables", "plots", "meta"))
+  expect_named(res$tables, "summary")
   expect_named(
-    res,
-    c("coefficients", "summary", "skipped", "options"),
+    res$meta,
+    c("coefficients", "skipped", "options"),
     ignore.order = TRUE
   )
 
   expect_equal(
-    sort(unique(res$coefficients$model)),
+    sort(unique(res$meta$coefficients$model)),
     sort(c(
       "ols", "fe", "be", "re", "ols_study_weighted", "ols_precision_weighted"
     ))
   )
 
-  expect_equal(nrow(res$coefficients), 12L)
+  expect_equal(nrow(res$meta$coefficients), 12L)
   expect_named(
-    res$coefficients,
+    res$meta$coefficients,
     c(
       "estimate", "std_error", "statistic", "p_value", "term", "model",
       "model_label", "n_obs", "term_label", "bootstrap_lower",
@@ -72,17 +74,17 @@ test_that("linear tests return tidy coefficients and summary", {
     )
   )
 
-  expect_gt(nrow(res$summary), 0)
+  expect_gt(nrow(res$tables$summary), 0)
   expect_equal(
-    rownames(res$summary),
+    rownames(res$tables$summary),
     c(
       "Publication Bias", "(Std. Error)", "Bootstrap CI (PB)",
       "Effect Beyond Bias", "(Std. Error)", "Bootstrap CI (Effect)",
       "Total Observations"
     )
   )
-  expect_true(all(res$coefficients$significance %in% c("", "*", "**", "***")))
-  expect_equal(res$options$bootstrap_replications, 10L)
+  expect_true(all(res$meta$coefficients$significance %in% c("", "*", "**", "***")))
+  expect_equal(res$meta$options$bootstrap_replications, 10L)
 })
 
 test_that("linear tests gracefully skip models with missing columns", {
@@ -99,9 +101,9 @@ test_that("linear tests gracefully skip models with missing columns", {
 
   res <- linear_tests(df)
 
-  expect_false("ols_precision_weighted" %in% res$coefficients$model)
-  expect_true("ols_precision_weighted" %in% names(res$skipped))
-  expect_true(grepl("Missing required columns", res$skipped$ols_precision_weighted$reason))
+  expect_false("ols_precision_weighted" %in% res$meta$coefficients$model)
+  expect_true("ols_precision_weighted" %in% names(res$meta$skipped))
+  expect_true(grepl("Missing required columns", res$meta$skipped$ols_precision_weighted$reason))
 })
 
 test_that("panel models are skipped with a clear message when plm is unavailable", {

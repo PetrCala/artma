@@ -9,6 +9,7 @@ prima_facie_graphs <- function(df) {
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
     artma / libs / core / autonomy[should_prompt_user],
+    artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / variable / detection[detect_variable_groups],
     artma / visualization / options[get_visualization_options],
@@ -54,7 +55,7 @@ prima_facie_graphs <- function(df) {
         "No suitable variable groups found for prima facie graphs. Skipping."
       )
     }
-    return(invisible(list(plots = list(), groups = character(0))))
+    return(invisible(new_method_result(meta = list(groups = character(0)))))
   }
 
   plots <- list()
@@ -94,7 +95,7 @@ prima_facie_graphs <- function(df) {
     if (get_verbosity() >= 2) {
       cli::cli_alert_warning("No prima facie graphs could be created.")
     }
-    return(invisible(list(plots = list(), groups = character(0))))
+    return(invisible(new_method_result(meta = list(groups = character(0)))))
   }
 
   if (get_verbosity() >= 3) {
@@ -118,9 +119,10 @@ prima_facie_graphs <- function(df) {
     )
   }
 
-  result <- list(plots = plots, groups = group_names)
-  class(result) <- c("artma_prima_facie_graphs", class(result))
-  invisible(result)
+  invisible(new_method_result(
+    plots = plots,
+    meta = list(groups = group_names)
+  ))
 }
 
 
@@ -373,14 +375,9 @@ export_prima_facie_plots <- function(plots, group_names, export_path, graph_scal
 
 
 box::use(
-  artma / libs / infrastructure / cache[cache_cli_runner],
-  artma / data / cache_signatures[build_data_cache_signature]
+  artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- cache_cli_runner(
-  prima_facie_graphs,
-  stage = "prima_facie_graphs",
-  key_builder = function(...) build_data_cache_signature()
-)
+run <- register_runtime_method(prima_facie_graphs, stage = "prima_facie_graphs")
 
 box::export(prima_facie_graphs, run)

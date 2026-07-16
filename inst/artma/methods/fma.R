@@ -10,6 +10,7 @@ fma <- function(df, bma_result = NULL) {
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
     artma / methods / bma[prepare_bma_inputs],
+    artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group]
   )
 
@@ -81,22 +82,14 @@ fma <- function(df, bma_result = NULL) {
     if (!is.list(result)) {
       return(list())
     }
-    if (!is.null(result$model) || !is.null(result$data) || !is.null(result$var_list)) {
+    # Accept the standard method contract (fields under meta) or a bare
+    # meta-like list for callers that pass one directly.
+    meta <- result$meta %||% result
+    if (!is.null(meta$model) || !is.null(meta$data) || !is.null(meta$var_list)) {
       return(list(
-        model = result$model,
-        data = result$data,
-        var_list = result$var_list
-      ))
-    }
-    if (length(result) > 0 && is.list(result[[1]]) &&
-      (!is.null(result[[1]]$model) || !is.null(result[[1]]$data) || !is.null(result[[1]]$var_list))) {
-      if (get_verbosity() >= 2) {
-        cli::cli_alert_warning("Multiple BMA results supplied. Using the first one for FMA.")
-      }
-      return(list(
-        model = result[[1]]$model,
-        data = result[[1]]$data,
-        var_list = result[[1]]$var_list
+        model = meta$model,
+        data = meta$data,
+        var_list = meta$var_list
       ))
     }
     list()
@@ -121,17 +114,16 @@ fma <- function(df, bma_result = NULL) {
       if (get_verbosity() >= 2) {
         cli::cli_alert_warning("No valid BMA variables available. Skipping FMA analysis.")
       }
-      return(list(
-        coefficients = data.frame(
-          variable = character(0),
-          coefficient = numeric(0),
-          se = numeric(0),
-          p_value = numeric(0),
-          stringsAsFactors = FALSE
-        ),
-        weights = numeric(0),
-        model = NULL,
-        skipped = prepared$skipped
+      empty_coefs <- data.frame(
+        variable = character(0),
+        coefficient = numeric(0),
+        se = numeric(0),
+        p_value = numeric(0),
+        stringsAsFactors = FALSE
+      )
+      return(new_method_result(
+        tables = list(coefficients = empty_coefs),
+        meta = list(weights = numeric(0), model = NULL, skipped = prepared$skipped)
       ))
     }
 
@@ -154,25 +146,22 @@ fma <- function(df, bma_result = NULL) {
     print_results = effective_print
   )
 
-  list(
-    coefficients = fma_results$coefficients,
-    weights = fma_results$weights,
-    model = bma_model,
-    data = bma_data,
-    params = bma_params,
-    var_list = bma_var_list
+  new_method_result(
+    tables = list(coefficients = fma_results$coefficients),
+    meta = list(
+      weights = fma_results$weights,
+      model = bma_model,
+      data = bma_data,
+      params = bma_params,
+      var_list = bma_var_list
+    )
   )
 }
 
 box::use(
-  artma / libs / infrastructure / cache[cache_cli_runner],
-  artma / data / cache_signatures[build_data_cache_signature]
+  artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- cache_cli_runner(
-  fma,
-  stage = "fma",
-  key_builder = function(...) build_data_cache_signature()
-)
+run <- register_runtime_method(fma, stage = "fma")
 
 box::export(fma, run)

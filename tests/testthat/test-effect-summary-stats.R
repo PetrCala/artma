@@ -44,7 +44,7 @@ test_that("effect summary stats computes segmented summaries", {
     score = c(1, 2, 3, 4, 5)
   )
 
-  result <- effect_summary_stats(df)
+  result <- effect_summary_stats(df)$tables$summary
 
   expect_named(result, c(
     "Var Name", "Var Class", "Mean", "CI lower", "CI upper",
@@ -87,7 +87,7 @@ test_that("formal output hides presentation columns", {
     group = c(1, 1, 0)
   )
 
-  result <- effect_summary_stats(df)
+  result <- effect_summary_stats(df)$tables$summary
 
   expect_named(result, c(
     "Var Name", "Mean", "CI lower", "CI upper",

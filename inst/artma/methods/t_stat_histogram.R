@@ -10,6 +10,7 @@ t_stat_histogram <- function(df) {
   box::use(
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
+    artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / visualization / options[get_visualization_options],
     artma / visualization / export[
@@ -155,17 +156,20 @@ t_stat_histogram <- function(df) {
     0L
   }
 
-  result <- list(
-    plot_main = main_result$plot,
-    plot_close_up = close_up_plot,
-    n_observations = nrow(df),
-    n_outliers_main = main_result$n_outliers,
-    n_outliers_close_up = close_up_outliers,
-    mean_t_stat = mean(df$t_stat, na.rm = TRUE),
-    close_up_enabled = close_up_enabled
-  )
-  class(result) <- c("artma_t_stat_histogram", class(result))
-  invisible(result)
+  invisible(new_method_result(
+    plots = list(
+      plot_main = main_result$plot,
+      plot_close_up = close_up_plot
+    ),
+    meta = list(
+      n_observations = nrow(df),
+      n_outliers_main = main_result$n_outliers,
+      n_outliers_close_up = close_up_outliers,
+      mean_t_stat = mean(df$t_stat, na.rm = TRUE),
+      close_up_enabled = close_up_enabled
+    ),
+    class = "artma_t_stat_histogram"
+  ))
 }
 
 
@@ -554,14 +558,9 @@ export_t_stat_histograms <- function(main_plot,
 
 
 box::use(
-  artma / libs / infrastructure / cache[cache_cli_runner],
-  artma / data / cache_signatures[build_data_cache_signature]
+  artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- cache_cli_runner(
-  t_stat_histogram,
-  stage = "t_stat_histogram",
-  key_builder = function(...) build_data_cache_signature()
-)
+run <- register_runtime_method(t_stat_histogram, stage = "t_stat_histogram")
 
 box::export(t_stat_histogram, run)

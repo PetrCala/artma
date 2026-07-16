@@ -10,6 +10,7 @@ p_hacking_tests <- function(df) {
     artma / libs / core / validation[assert, validate, validate_columns],
     artma / libs / core / utils[get_verbosity],
     artma / econometric / p_hacking[run_p_hacking_tests],
+    artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / options / significance_marks[resolve_add_significance_marks]
   )
@@ -174,18 +175,20 @@ p_hacking_tests <- function(df) {
     }
   }
 
-  invisible(results)
+  invisible(new_method_result(
+    tables = list(
+      caliper = results$caliper,
+      elliott = results$elliott,
+      maive = results$maive
+    ),
+    meta = list(skipped = results$skipped)
+  ))
 }
 
 box::use(
-  artma / libs / infrastructure / cache[cache_cli_runner],
-  artma / data / cache_signatures[build_data_cache_signature]
+  artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- cache_cli_runner(
-  p_hacking_tests,
-  stage = "p_hacking_tests",
-  key_builder = function(...) build_data_cache_signature()
-)
+run <- register_runtime_method(p_hacking_tests, stage = "p_hacking_tests")
 
 box::export(p_hacking_tests, run)

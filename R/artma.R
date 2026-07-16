@@ -360,17 +360,22 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
     }
   }
 
-  # Build unified MA table when BMA and/or FMA have produced results
-  bma_result <- results[["bma"]]
-  fma_result <- results[["fma"]]
+  # Build unified MA table when BMA and/or FMA have produced results. Both
+  # methods return the standard contract, so the coefficient frame lives in
+  # `tables$coefficients` and skip reasons under `meta$skipped`.
+  extract_ma_coefficients <- function(result) {
+    if (is.null(result) || !is.null(result$meta$skipped)) {
+      return(NULL)
+    }
+    coefs <- result$tables$coefficients
+    if (is.null(coefs) || !is.data.frame(coefs) || nrow(coefs) == 0) {
+      return(NULL)
+    }
+    coefs
+  }
 
-  has_bma <- !is.null(bma_result) && is.null(bma_result$skipped) &&
-    !is.null(bma_result$coefficients) && nrow(bma_result$coefficients) > 0
-  has_fma <- !is.null(fma_result) && is.null(fma_result$skipped) &&
-    !is.null(fma_result$coefficients) && nrow(fma_result$coefficients) > 0
-
-  bma_coefs <- if (has_bma) bma_result$coefficients
-  fma_coefs <- if (has_fma) fma_result$coefficients
+  bma_coefs <- extract_ma_coefficients(results[["bma"]])
+  fma_coefs <- extract_ma_coefficients(results[["fma"]])
 
   if (!is.null(bma_coefs) || !is.null(fma_coefs)) {
     box::use(artma / output / ma_table[build_ma_table, display_ma_table])
@@ -384,7 +389,11 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
 
     if (!is.null(ma_table)) {
       display_ma_table(ma_table, verbosity = get_verbosity())
-      results[["ma_table"]] <- list(summary = ma_table)
+      results[["ma_table"]] <- list(
+        tables = list(summary = ma_table),
+        plots = list(),
+        meta = list()
+      )
     }
   }
 
