@@ -8,7 +8,7 @@
 #   make build      - Build package tarball
 #   make clean      - Clean build artifacts
 
-.PHONY: help install test test-file test-filter test-e2e check check-fast lint document build clean coverage coverage-report style desc-normalize all dev quick setup vignettes preview-vignette fix-options clear-cache stats
+.PHONY: help install test test-file test-filter test-e2e check check-fast lint document generate-check-manifest build clean coverage coverage-report style desc-normalize all dev quick setup vignettes preview-vignette fix-options clear-cache stats
 
 # Default target
 help:
@@ -101,9 +101,14 @@ lint:
 	@Rscript -e "devtools::load_all(); lintr::lint_package()"
 
 # Generate documentation
-document:
+document: generate-check-manifest
 	@echo "Generating documentation..."
 	@Rscript -e "devtools::document()"
+
+# Regenerate the R CMD check manifest (globalVariables + Imports keep-alive)
+generate-check-manifest:
+	@echo "Generating R CMD check manifest..."
+	@Rscript scripts/R/generate_check_manifest.R
 
 # Build package tarball
 build: document

@@ -71,9 +71,11 @@ box::use(
 
 Always reference external package functions explicitly: `pkg::function()` (never bare function names).
 
-#### Global Variables Declaration (`R/globals.R`)
+#### Generated Check Manifest (`R/generated_check_manifest.R`)
 
-Because `box::use()` imports are invisible to R CMD check, every symbol imported via `box::use()` inside `R/` files must be declared in `R/globals.R` via `utils::globalVariables()`. When adding new `box::use()` imports in any `R/*.R` file — whether importing a module path segment (e.g., `core`, `output`) or a specific function (e.g., `resolve_output_dir`) — add the new symbol to `R/globals.R` in alphabetical order. Run `make check` periodically to catch any "no visible global function or variable" NOTEs caused by missing declarations.
+Because `box::use()` imports and `inst/artma` code are invisible to R CMD check, the package needs two workarounds to keep check quiet: a `utils::globalVariables()` declaration for every symbol that appears inside a `box::use()` call anywhere in `R/`, and a keep-alive reference for each Imports package that is only used inside `inst/artma`. Both are produced by `scripts/R/generate_check_manifest.R` into the single generated file `R/generated_check_manifest.R`.
+
+Do not hand-edit `R/generated_check_manifest.R` or add entries to it manually. After adding or changing a `box::use()` import in any `R/*.R` file, or adding a new Imports dependency that is only used inside `inst/artma`, run `make document` (which regenerates the manifest before running roxygen2) or `make generate-check-manifest` directly. A testthat test (`tests/testthat/test-generated-check-manifest.R`) fails with a message to run `make document` if the committed file drifts from what the generator would produce. Run `make check` periodically to catch any "no visible global function or variable" or "unused import" NOTEs.
 
 ### Runtime Methods System
 
