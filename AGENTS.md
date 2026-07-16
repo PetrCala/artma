@@ -17,7 +17,6 @@ Source exports live in `R/`, while modular implementation code is grouped under 
 - **`inst/artma/data_config/`** — Data configuration handling
 - **`inst/artma/calc/`** — Computation engines for specific methods
 - **`inst/artma/modules/`** — Higher-level orchestration modules
-- **`inst/artma/testing/`** — Test fixtures and mocks
 
 Tests reside in `tests/testthat` for unit coverage and `tests/E2E` for installation-level checks. Generated documentation belongs in `man/`, long-form guides in `vignettes/`, and helper scripts in `scripts/`. Run assets or large examples under `inst/` so they ship with the package.
 
@@ -40,7 +39,7 @@ Format R code with `styler::style_pkg()` or your IDE's styler integration before
 
 Always reference functions from external packages with the explicit `pkg::fun()` syntax so call sites remain unambiguous.
 
-Because `box::use()` imports are invisible to R CMD check, every symbol imported via `box::use()` inside `R/` files must also be declared in `R/globals.R` via `utils::globalVariables()`. When adding new `box::use()` imports in any `R/*.R` file, add the new symbols to `R/globals.R` in alphabetical order. Run `make check` to catch any missing declarations.
+Because `box::use()` imports are invisible to R CMD check, every symbol imported via `box::use()` inside `R/` files must be declared with `utils::globalVariables()`, and each `Imports` package used only inside `inst/artma` needs a keep-alive reference. Both are produced automatically into `R/generated_check_manifest.R` by `scripts/R/generate_check_manifest.R`. Do not hand-edit that generated file. After adding or changing a `box::use()` import in any `R/*.R` file, run `make document` (which regenerates the manifest) or `make generate-check-manifest`. A testthat test fails if the committed file drifts. Run `make check` to catch any missing declarations.
 
 ## Testing Guidelines
 

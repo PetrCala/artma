@@ -54,7 +54,6 @@ The package uses the `box` package for Python-style module imports. Implementati
 - `inst/artma/data_config/` — Data configuration handling
 - `inst/artma/calc/` — Computation engines for specific methods
 - `inst/artma/modules/` — Higher-level orchestration modules
-- `inst/artma/testing/` — Test fixtures and mocks
 
 Import modules using:
 

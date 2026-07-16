@@ -77,40 +77,53 @@ Below is a list of required packages and reasoning for why they are needed.
 
 These packages are required for the package to function correctly when used by others.
 
-- `cli` – For styled and structured console output (messages, warnings, etc.)
-- `digest` – For stable cache key generation.
-- `glue` – For efficient and readable string interpolation.
-- `lintr` – Runtime linting hooks that surface style issues inside the package.
-- `memoise` – For caching heavy computations.
-- `metafor` – Meta-analytic estimators and diagnostics.
-- `NlcOptim` - Non-linear objective optimization.
-- `purrr` – Vector preprocessing utilities.
-- `rlang` – Modern condition handling and tidy evaluation helpers.
-- `stringr` – Consistent string manipulation functions.
-- `usethis` – Automates development-time file generation that is exposed to users.
-- `withr` – Temporarily change global state (e.g., options, env vars) within a controlled context.
-- `yaml` – Parsing and reading `.yaml` configuration files.
+- `box`: Python-style module system used for the package's internal imports.
+- `cli`: styled and structured console output (messages, warnings, etc.).
+- `climenu`: interactive CLI menus with keyboard navigation, search, and multi-select.
+- `ggplot2`: plotting engine for funnel plots, box plots, and histograms.
+- `ggtext`: rich-text rendering for ggplot2 labels and titles.
+- `lmtest`: hypothesis tests for linear regression models.
+- `memoise`: on-disk caching of heavy computations.
+- `Rcpp`: C++ integration for performance-critical routines (see `LinkingTo`).
+- `rlang`: condition handling and tidy evaluation helpers.
+- `sandwich`: robust and clustered covariance-matrix estimators.
+- `withr`: temporarily change global state (e.g., options, env vars) within a controlled context.
+- `yaml`: parsing and reading `.yaml` options files.
 
-## Development Dependencies (`Suggests`)
+## Optional Dependencies (`Suggests`)
 
-These packages are used for development only.
+These packages are not required to load the package. Some power development tooling; others are gated behind a method's declarative `suggests` (or a call-site `requireNamespace()` guard) and are only needed when that analysis runs.
 
-- `box` – Package and module handling.
-- `box.linters` – Box-specific linting support.
-- `covr` – Code coverage reporting.
-- `devtools` – Package development tools (e.g., `load_all()`, `check()`, `test()`).
-- `fs` – File system handling with a consistent API.
-- `here` – Reliable file path construction within a project.
-- `knitr` – Dynamic report generation, especially for vignettes or R Markdown.
-- `languageserver` – Provides LSP support for IDE features like autocomplete and linting.
-- `mathjaxr` – MathJax support for documentation previews (e.g., vignettes).
-- `optparse` – Command line argument parsing for scripts.
-- `pkgbuild` – Tools for building R packages.
-- `remotes` – Install packages from GitHub or other remote sources.
-- `rex` – Human-readable regular expression construction (useful in testing/linting tools).
-- `rmarkdown` – Rendering and previewing Markdown-based reports.
-- `roxygen2` – Inline documentation generation.
-- `testthat` – Unit testing framework.
+Development and tooling:
+
+- `box.linters`: box-specific linting support.
+- `covr`: code coverage reporting.
+- `devtools`: package development tools (e.g., `load_all()`, `check()`, `test()`).
+- `fs`: file-system handling with a consistent API.
+- `knitr`: dynamic report generation for vignettes and R Markdown.
+- `languageserver`: LSP support for IDE features like autocomplete and linting.
+- `lintr`: static style and lint checks.
+- `mathjaxr`: MathJax support for documentation previews.
+- `optparse`: command-line argument parsing for scripts.
+- `pkgbuild`: tools for building R packages.
+- `remotes`: install packages from GitHub or other remote sources.
+- `rex`: human-readable regular-expression construction.
+- `rmarkdown`: rendering and previewing Markdown-based reports.
+- `roxygen2`: inline documentation generation.
+- `testthat`: unit testing framework.
+
+Optional analysis features (installed on demand for specific methods):
+
+- `AER`, `ivmodel`: instrumental-variable estimators.
+- `bayesm`, `BMS`: Bayesian model averaging back-ends.
+- `car`, `clubSandwich`: additional regression diagnostics and clustered covariance.
+- `corrplot`: correlation-matrix visualisation.
+- `fdrtool`, `rddensity`: p-hacking and density-discontinuity tests.
+- `haven`, `readxl`, `writexl`, `jsonlite`: reading and writing non-CSV data formats.
+- `MAIVE`: MAIVE meta-analysis estimator.
+- `mice`: multiple imputation of missing values.
+- `NlcOptim`, `quadprog`: non-linear and quadratic optimisation used by some estimators.
+- `plm`: panel-data linear models.
 
 ### Dependency versioning policy
 
@@ -203,7 +216,6 @@ The module structure is organized by domain:
 - **`inst/artma/data_config/`** — Data configuration handling
 - **`inst/artma/calc/`** — Computation engines for specific methods
 - **`inst/artma/modules/`** — Higher-level orchestration modules
-- **`inst/artma/testing/`** — Test fixtures and mocks
 
 This structure promotes better code reuse, easier debugging, and improved separation of concerns, aligning with modern software development practices. During the package installation, the `inst` folder gets bundled too, and becomes thus available for `box` imports.
 

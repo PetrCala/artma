@@ -5,10 +5,15 @@
 ### Breaking Changes
 
 * Removed the legacy per-method `<method>.add_significance_marks` option fallback. Significance marks are now driven solely by the canonical `methods.add_significance_marks` template key and its default.
+* The autonomy system now uses the three named levels `ask_more`, `balanced`, and `autonomous` instead of the old 1-5 numeric scale. Numeric values are still accepted by `autonomy.set()` but are deprecated and translated to the nearest named level with a warning.
 
 ### Bug Fixes
 
 * Option reads without a default now fail loud via `require_option`, and option coercion aborts on bad values (non-numeric numerics, fractional integers, out-of-range enums) instead of silently keeping the raw value.
+
+### Code Refactoring
+
+* Reduced the runtime dependency footprint: `metafor` was dropped and several packages (including `plm` and `NlcOptim`) moved to `Suggests`, so they install only when a method that needs them runs.
 
 
 <a name="v0.3.3"></a>
