@@ -1,15 +1,20 @@
-name: Run Tests
+name: E2E Test
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+  push:
+    branches:
+      - ci/consolidate-test-workflows-174
 
 permissions:
   contents: read
 
 jobs:
-  R-CMD-check:
+  test-e2e:
     runs-on: ubuntu-latest
+    continue-on-error: true
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
@@ -22,9 +27,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::testthat, any::devtools
+          needs: check
 
-      - name: Run testthat tests
-        run: |
-          devtools::test(stop_on_failure = TRUE)
-        shell: Rscript {0}
+      - name: Run E2E tests
+        run: make test-e2e
