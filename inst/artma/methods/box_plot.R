@@ -149,12 +149,11 @@ resolve_factor_by <- function(df, config, factor_by_option) {
 #' @return *\[character\]* Vector of candidate variable names
 #' @keywords internal
 detect_factor_candidates <- function(df, config) {
+  box::use(artma / data / utils[get_reserved_colnames])
+
   # For box plots, include study identifiers as candidates (unlike other methods),
   # but exclude numeric identifiers and computed columns
-  excluded_names <- c(
-    "effect", "se", "t_stat", "study_size",
-    "n_obs", "sample_size", "dof", "reg_dof", "precision", "obs_id"
-  )
+  excluded_names <- setdiff(get_reserved_colnames(), c("study_id", "study_label"))
 
   var_names <- setdiff(names(df), excluded_names)
 

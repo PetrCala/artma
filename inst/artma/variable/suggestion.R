@@ -44,7 +44,7 @@ suggest_variables_for_effect_summary <- function(df, config = NULL,
   box::use(
     artma / variable / detection[detect_variable_groups],
     artma / libs / core / validation[validate, assert],
-    artma / data / utils[determine_vector_type],
+    artma / data / utils[determine_vector_type, get_reserved_colnames],
     artma / const[CONST]
   )
 
@@ -64,7 +64,7 @@ suggest_variables_for_effect_summary <- function(df, config = NULL,
   groups <- detect_variable_groups(df, config = config)
 
   # Reserved columns that should never be suggested
-  reserved <- c("effect", "se", "study_id", "study_label", "study_size", "sample_size", "dof")
+  reserved <- get_reserved_colnames()
 
   results <- list()
 

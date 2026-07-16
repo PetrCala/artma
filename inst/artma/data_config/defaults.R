@@ -28,24 +28,21 @@ build_default_config_entry <- function(col_name, col_data) {
     }
   )
 
-  list(
-    "var_name" = col_name,
-    "var_name_verbose" = col_name_verbose,
-    "var_name_description" = col_name_verbose,
-    "data_type" = col_data_type,
-    "group_category" = NA,
-    "variable_summary" = is.numeric(col_data),
-    "effect_sum_stats" = NA,
-    "equal" = NA,
-    "gltl" = NA,
-    "bma" = NA,
-    "bma_reference_var" = NA,
-    "bma_to_log" = NA,
-    "bpe" = NA,
-    "bpe_sum_stats" = NA,
-    "bpe_equal" = NA,
-    "bpe_gltl" = NA
+  # Fields with a non-NA default; every other key in CONST$DATA_CONFIG$KEYS
+  # is filled in as NA below, so adding a new key there is the only edit
+  # needed to keep a config entry in sync.
+  overrides <- list(
+    var_name = col_name,
+    var_name_verbose = col_name_verbose,
+    var_name_description = col_name_verbose,
+    data_type = col_data_type,
+    variable_summary = is.numeric(col_data)
   )
+
+  keys <- unlist(CONST$DATA_CONFIG$KEYS, use.names = FALSE)
+  entry <- stats::setNames(as.list(rep(NA, length(keys))), keys)
+  entry[names(overrides)] <- overrides
+  entry
 }
 
 #' @title Build Base Config

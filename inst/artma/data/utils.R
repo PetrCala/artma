@@ -27,6 +27,17 @@ get_required_colnames <- function() {
   get_standardized_colnames(filter_fn = ~ !isTRUE(.x$allow_na))
 }
 
+#' @title Get reserved column names
+#' @description Get the full set of standard column names produced by the
+#'   data pipeline: required input columns plus columns computed downstream
+#'   (e.g. `obs_id`, `reg_dof`, `precision`). These are never valid moderator
+#'   variables and must be excluded from variable detection and suggestion.
+#' @return *\[character\]* A vector of reserved column names.
+get_reserved_colnames <- function() {
+  box::use(artma / const[CONST])
+  union(get_required_colnames(), CONST$DATA$COMPUTED_COLNAMES)
+}
+
 #' Get the number of studies in an analysis data frame.
 #'
 #' @param df *\[data.frame\]* The analysis data frame.
@@ -230,6 +241,7 @@ box::export(
   determine_vector_type,
   get_number_of_studies,
   get_required_colnames,
+  get_reserved_colnames,
   get_standardized_colnames,
   raise_invalid_data_type_error,
   standardize_column_names

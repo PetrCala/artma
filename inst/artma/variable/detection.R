@@ -29,17 +29,14 @@
 #' @export
 detect_variable_groups <- function(df, var_names = NULL, config = NULL) {
   box::use(
-    artma / const[CONST],
+    artma / data / utils[get_reserved_colnames],
     artma / libs / core / validation[validate]
   )
 
   validate(is.data.frame(df))
 
-  # Reserved column names that should not be grouped
-  reserved_names <- c("effect", "se", "study_id", "study_label", "study_size", "sample_size", "dof")
-
   if (is.null(var_names)) {
-    var_names <- setdiff(names(df), reserved_names)
+    var_names <- setdiff(names(df), get_reserved_colnames())
   }
 
   if (!length(var_names)) {
