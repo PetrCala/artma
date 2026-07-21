@@ -627,6 +627,21 @@ run_exogeneity_tests <- function(df, options) {
 #' @param puniform_results *[list]* Results from p-uniform* test.
 #' @param options *[list]* Options.
 #' @return *[data.frame]* Formatted summary table.
+#' @title Placeholder for a metric that could not be computed
+#' @description
+#' Used in the exogeneity summary table wherever a coefficient, test
+#' statistic, or p-value is unavailable, so the printed table reads legibly
+#' instead of leaking raw `NA`/`<NA>` formatting.
+NOT_COMPUTABLE <- "not computable"
+
+#' @title Replace NA entries in a character vector with the placeholder
+#' @param x *[character]* Vector to sanitize.
+#' @return *[character]* Vector with `NA` values replaced by `NOT_COMPUTABLE`.
+na_to_not_computable <- function(x) {
+  x[is.na(x)] <- NOT_COMPUTABLE
+  x
+}
+
 build_exogeneity_summary <- function(iv_results, puniform_results, options) {
   row_labels <- c(
     "Publication Bias",
@@ -649,16 +664,16 @@ build_exogeneity_summary <- function(iv_results, puniform_results, options) {
     pb <- iv_coef[iv_coef$term == "publication_bias", , drop = FALSE]
     eff <- iv_coef[iv_coef$term == "effect", , drop = FALSE]
 
-    summary[["IV"]] <- c(
+    summary[["IV"]] <- na_to_not_computable(c(
       if (nrow(pb) > 0) pb$estimate_formatted else NA_character_,
       if (nrow(pb) > 0) pb$std_error_formatted else NA_character_,
       if (nrow(eff) > 0) eff$estimate_formatted else NA_character_,
       if (nrow(eff) > 0) eff$std_error_formatted else NA_character_,
       if (nrow(iv_coef) > 0) format_number(iv_coef$n_obs[1], 0) else NA_character_,
       format_number(iv_results$ar_fstat, options$round_to)
-    )
+    ))
   } else {
-    summary[["IV"]] <- rep(NA_character_, length(row_labels))
+    summary[["IV"]] <- rep(NOT_COMPUTABLE, length(row_labels))
   }
 
   # p-uniform* column
@@ -668,28 +683,28 @@ build_exogeneity_summary <- function(iv_results, puniform_results, options) {
     eff <- pu_coef[pu_coef$term == "effect", , drop = FALSE]
 
     # Format publication bias test as "L = X.XX (p = Y.YY)"
-    pb_test_str <- if (nrow(pb_test) > 0) {
+    pb_test_str <- if (nrow(pb_test) > 0 && is.finite(pb_test$statistic)) {
       paste0("L = ", format_number(pb_test$statistic, options$round_to))
     } else {
       NA_character_
     }
 
-    pb_p_str <- if (nrow(pb_test) > 0) {
+    pb_p_str <- if (nrow(pb_test) > 0 && is.finite(pb_test$p_value)) {
       paste0("(p = ", format_number(pb_test$p_value, options$round_to), ")")
     } else {
       NA_character_
     }
 
-    summary[["p-Uniform*"]] <- c(
+    summary[["p-Uniform*"]] <- na_to_not_computable(c(
       pb_test_str,
       pb_p_str,
       if (nrow(eff) > 0) eff$estimate_formatted else NA_character_,
       if (nrow(eff) > 0) eff$std_error_formatted else NA_character_,
       if (nrow(pu_coef) > 0) format_number(pu_coef$n_obs[1], 0) else NA_character_,
       "" # No F-test for p-uniform
-    )
+    ))
   } else {
-    summary[["p-Uniform*"]] <- rep(NA_character_, length(row_labels))
+    summary[["p-Uniform*"]] <- rep(NOT_COMPUTABLE, length(row_labels))
   }
 
   attr(summary, "row.names") <- row_labels
