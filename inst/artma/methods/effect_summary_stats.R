@@ -167,16 +167,12 @@ effect_summary_stats <- function(df) {
       effect_vars <- names(config)[vapply(config, is_effect_var, logical(1))]
     }
 
-    # If still no variables (user declined or non-interactive), return empty
-    if (!length(effect_vars)) {
-      if (get_verbosity() >= 2) {
-        cli::cli_alert_warning("No variables selected to compute summary statistics for.")
-      }
-      empty <- data.frame(matrix(nrow = 0, ncol = length(CONST$EFFECT_SUMMARY_STATS$NAMES)), stringsAsFactors = FALSE)
-      colnames(empty) <- CONST$EFFECT_SUMMARY_STATS$NAMES
-      return(new_method_result(tables = list(summary = empty)))
-    }
+    # If still no variables (user declined or non-interactive), fall through
+    # with the effect column defaulted in, so the table still gets at least
+    # the "All Data" row computed below.
   }
+
+  rows_env <- environment()
 
   add_row <- function(label, class_name, subset_data) {
     if (!length(subset_data$effect)) {
@@ -187,7 +183,7 @@ effect_summary_stats <- function(df) {
     unweighted <- compute_unweighted_stats(subset_data$effect)
     weighted <- compute_weighted_stats(subset_data$effect, weights)
 
-    rows[[length(rows) + 1]] <<- data.frame(
+    new_row <- data.frame(
       `Var Name` = label,
       `Var Class` = class_name,
       Mean = format_numeric(unweighted$mean),
@@ -204,6 +200,7 @@ effect_summary_stats <- function(df) {
       check.names = FALSE,
       stringsAsFactors = FALSE
     )
+    assign("rows", c(rows_env$rows, list(new_row)), envir = rows_env)
 
     TRUE
   }

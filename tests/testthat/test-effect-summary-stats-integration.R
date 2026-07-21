@@ -36,7 +36,7 @@ test_that("interactive effect-summary module exports its readline entry points",
 
 # Workflow integration tests --------------------------------------------------
 
-test_that("effect_summary_stats handles empty config gracefully in non-interactive mode", {
+test_that("effect_summary_stats defaults to the All Data row in non-interactive mode", {
   box::use(
     artma / methods / effect_summary_stats[effect_summary_stats]
   )
@@ -67,11 +67,12 @@ test_that("effect_summary_stats handles empty config gracefully in non-interacti
     "artma.verbose" = 1
   )
 
-  # Should return empty result without error (non-interactive)
+  # Should default the effect column in, producing the "All Data" row
   result <- effect_summary_stats(df)$tables$summary
 
   expect_true(is.data.frame(result))
-  expect_equal(nrow(result), 0)
+  expect_equal(nrow(result), 1)
+  expect_equal(result$`Var Name`, "All Data")
 })
 
 test_that("effect_summary_stats processes configured variables correctly", {
