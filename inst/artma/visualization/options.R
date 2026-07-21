@@ -21,7 +21,7 @@
 #' }
 get_visualization_options <- function() {
   box::use(artma / options / index[get_option_group])
-  box::use(artma / visualization / colors[validate_theme, VALID_THEMES])
+  box::use(artma / visualization / colors[VALID_THEMES])
   box::use(artma / libs / core / validation[assert])
 
   opt <- get_option_group("artma.visualization")
@@ -71,7 +71,7 @@ get_visualization_options <- function() {
 #' @keywords internal
 set_visualization_option <- function(theme = NULL, export_graphics = NULL,
                                      export_path = NULL, graph_scale = NULL) {
-  box::use(artma / visualization / colors[validate_theme, VALID_THEMES])
+  box::use(artma / visualization / colors[VALID_THEMES])
   box::use(artma / libs / core / validation[assert])
 
   previous <- get_visualization_options()

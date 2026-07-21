@@ -687,10 +687,6 @@ check_mapping_completeness <- function(mapping) {
 }
 
 
-# Helper for NULL coalescing
-`%||%` <- function(x, y) if (is.null(x)) y else x # nolint
-
-
 box::export(
   MATCH_THRESHOLDS,
   get_column_patterns,

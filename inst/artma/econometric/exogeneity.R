@@ -3,10 +3,6 @@
 NULL
 
 box::use(
-  stats[model.frame, pnorm, quantile]
-)
-
-box::use(
   artma / libs / formatting / results[
     significance_mark,
     format_number,

@@ -1,11 +1,3 @@
-#' Check if the package is being loaded via devtools::load_all()
-#'
-#' @return TRUE if loaded via devtools, FALSE otherwise
-#' @keywords internal
-is_devtools_load <- function() {
-  identical(Sys.getenv("DEVTOOLS_LOAD"), "true")
-}
-
 #' @title Get valid box path
 #' @description
 #' Construct a box path that will allow box imports for the current package. This is done by adding the package path to the box path option if it is not already there.

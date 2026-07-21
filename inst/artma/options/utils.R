@@ -23,32 +23,6 @@ get_option_group <- function(prefix) {
   group
 }
 
-#' @title Remove Options by Prefix
-#' @description This function removes all options from the R namespace whose names start with a specified prefix.
-#' @param prefix A string representing the prefix of the options to remove.
-#' @return `NULL`
-remove_options_with_prefix <- function(prefix) {
-  box::use(artma / libs / core / utils[get_verbosity])
-
-  opts <- options()
-  opts_to_remove <- names(opts)[startsWith(names(opts), prefix)]
-
-  if (get_verbosity() >= 4) {
-    cli::cli_inform("Clearing the following options from the options namespace: {.emph {opts_to_remove}}")
-  }
-
-  if (length(opts_to_remove) == 0) {
-    if (get_verbosity() >= 3) {
-      cli::cli_alert_info("No options found with the prefix: {prefix}")
-    }
-    return(invisible(NULL))
-  }
-
-  options(stats::setNames(rep(list(NULL), length(opts_to_remove)), opts_to_remove))
-
-  invisible(NULL)
-}
-
 #' @title Flat to nested
 #' @description Convert a list of flat options to a nested one
 #' @param flat_option_list [list] A list of flat options
@@ -251,7 +225,6 @@ box::export(
   parse_options_file_name,
   parse_template_enum_value,
   print_options_help_text,
-  remove_options_with_prefix,
   require_option,
   validate_option_value,
   validate_user_input
