@@ -70,10 +70,9 @@ map_lgl <- function(.x, .f, ...) {
 #' @description Replacement for purrr::keep()
 #' @param .x A list or atomic vector
 #' @param .p A predicate function or formula
-#' @param ... Additional arguments passed to .p
 #' @return Filtered vector
 #' @export
-keep <- function(.x, .p, ...) {
+keep <- function(.x, .p) {
   # Handle formula notation (purrr-style)
   if (inherits(.p, "formula")) {
     # Convert formula ~expr to function(x) expr
@@ -86,5 +85,5 @@ keep <- function(.x, .p, ...) {
       eval(formula_body, envir = list(.x = x, . = x), enclos = formula_env)
     }
   }
-  Filter(.p, .x, ...)
+  Filter(.p, .x)
 }

@@ -720,22 +720,7 @@ build_elliott_summary <- function(elliott_tests, pvalues, options) {
   p_values_formatted <- format_number(p_vals, options$round_to)
 
   # Add significance markers
-  significance <- character(length(p_vals))
-  for (i in seq_along(p_vals)) {
-    if (is.na(p_vals[i])) {
-      significance[i] <- ""
-    } else if (p_vals[i] <= 0.01) {
-      significance[i] <- "***"
-    } else if (p_vals[i] <= 0.05) {
-      significance[i] <- "**"
-    } else if (p_vals[i] <= 0.10) {
-      significance[i] <- "*"
-    } else {
-      significance[i] <- ""
-    }
-  }
-
-  p_values_formatted <- paste0(p_values_formatted, significance)
+  p_values_formatted <- paste0(p_values_formatted, significance_mark(p_vals))
 
   summary <- data.frame(
     Test = test_names,

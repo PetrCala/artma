@@ -47,10 +47,10 @@ create_mock_study_names <- function(n_studies, total_occurrences) {
     cli::cli_abort("Total occurrences must be greater than or equal to the number of studies.")
   }
 
-  study_names <- paste("Mock Study", 1:n_studies)
+  study_names <- paste("Mock Study", seq_len(n_studies))
 
   random_occurrences <- function(total, n) {
-    points <- sort(sample(1:(total - 1), n - 1))
+    points <- sort(sample(seq_len(total - 1), n - 1))
     diff(c(0, points, total))
   }
 
@@ -137,7 +137,7 @@ create_mock_df <- function(
     se = se,
     n_obs = n_obs
   )
-  df_names <- unname(unlist(vapply(names(base_df), function(x) colnames_map[x], FUN.VALUE = list(1))))
+  df_names <- unname(unlist(colnames_map[names(base_df)]))
   data_frame <- data.frame(stats::setNames(base_df, df_names))
 
   if (with_file_creation) {
