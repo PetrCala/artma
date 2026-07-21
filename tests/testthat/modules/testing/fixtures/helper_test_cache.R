@@ -10,14 +10,15 @@ local_cli_silence <- function(env = parent.frame()) {
 # relying on wall-clock sleeps to simulate cost.
 make_fake_modeller <- function() {
   calls <- 0L
+  self_env <- environment()
   modeller <- function(x) {
-    calls <<- calls + 1L
+    self_env$calls <- self_env$calls + 1L
     cli::cli_alert("Running model on {.val {x}}")
     x * 2
   }
   list(
     modeller = modeller,
-    calls = function() calls
+    calls = function() self_env$calls
   )
 }
 

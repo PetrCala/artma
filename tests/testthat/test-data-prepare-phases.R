@@ -51,8 +51,9 @@ local_phase_runner <- function() {
   )
 
   compute_runs <- 0L
+  self_env <- environment()
   counted_compute <- function() {
-    compute_runs <<- compute_runs + 1L
+    self_env$compute_runs <- self_env$compute_runs + 1L
     compute_data_impl()
   }
   compute_cached <- cache_cli_runner(
@@ -71,7 +72,7 @@ local_phase_runner <- function() {
     df
   }
 
-  list(run = run, compute_runs = function() compute_runs)
+  list(run = run, compute_runs = function() self_env$compute_runs)
 }
 
 test_that("warm-cache run repopulates a deleted data config (motivating bug)", {
