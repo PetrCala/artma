@@ -6,11 +6,13 @@ box::use(
   withr[local_options]
 )
 
-# RoBMA fits through JAGS, a system library. rjags only loads when JAGS is
-# present, which makes it a reliable probe for a machine that can actually fit.
+# RoBMA fits through JAGS, a system library. Probe for the `jags` executable
+# rather than loading the rjags namespace: on some platforms (observed on
+# macOS oldrel CI) rjags segfaults on dyn.load when its bundled JAGS version
+# doesn't match the system library, which would crash the whole test process.
 skip_if_no_jags <- function() {
   skip_if_not_installed("RoBMA")
-  if (!requireNamespace("rjags", quietly = TRUE)) {
+  if (!nzchar(Sys.which("jags"))) {
     skip("JAGS is not available")
   }
 }
