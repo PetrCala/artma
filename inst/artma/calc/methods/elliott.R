@@ -285,9 +285,9 @@ lambda2 <- function(x1, x2, h) {
 }
 
 #' Compute bounds for the p-curve and its derivatives
-compute_bounds <- function(pmax, J, order) {
+compute_bounds <- function(p_min, p_max, J, order) {
   h <- seq(0, 100, by = 0.001)
-  grid <- linspace(0, pmax, J + 1)
+  grid <- linspace(p_min, p_max, J + 1)
   order <- as.integer(order)
   if (!order %in% 0:2) {
     cli::cli_abort("Unsupported order")
@@ -306,13 +306,15 @@ compute_bounds <- function(pmax, J, order) {
       bounds[j] <- max(abs(lambda_mid - 2 * lambda2(grid[j + 1], grid[j + 2], h) + lambda_left))
     }
   }
-  bounds[1] <- 1
+  if (p_min == 0) {
+    bounds[1] <- 1
+  }
   matrix(bounds, ncol = 1)
 }
 
-bound0 <- function(pmax, J) compute_bounds(pmax, J, 0)
-bound1 <- function(pmax, J) compute_bounds(pmax, J, 1)
-bound2 <- function(pmax, J) compute_bounds(pmax, J, 2)
+bound0 <- function(p_min, p_max, J) compute_bounds(p_min, p_max, J, 0)
+bound1 <- function(p_min, p_max, J) compute_bounds(p_min, p_max, J, 1)
+bound2 <- function(p_min, p_max, J) compute_bounds(p_min, p_max, J, 2)
 
 #' Filter p-values and optional study identifiers
 filter_pvalues <- function(Q, ind, p_min, p_max) {
@@ -333,26 +335,38 @@ compute_phat <- function(P, J, p_min, p_max) {
 
 #' Covariance matrix of the empirical distribution under clustering
 compute_omega <- function(P, ind, phat, bins) {
+  N <- length(P)
+  J <- length(phat) + 1
   if (length(ind) > 1) {
     omega <- matrix(0, length(phat), length(phat))
     for (cluster in unique(ind)) {
-      X <- P[ind == cluster]
-      mq <- build_indicator_matrix(X, bins, phat)
-      omega <- omega + mq %*% t(mq)
+      mq <- build_indicator_matrix(P[ind == cluster], bins, phat)
+      # Outer product of the per-cluster sum of (indicator - phat). The canonical
+      # implementation writes this as mq %*% ones(n_c, n_c) %*% t(mq) on the
+      # transposed (bins x observations) layout.
+      cluster_sum <- matrix(colSums(mq), ncol = 1)
+      omega <- omega + cluster_sum %*% t(cluster_sum)
     }
-    omega / length(P)
+    omega / N
+  } else if (min(phat) == 0) {
+    qhat <- matrix(phat * N / (N + 1) + 1 / (J * (N + 1)), ncol = 1)
+    diag(c(qhat)) - qhat %*% t(qhat)
   } else {
-    qhat <- phat * length(P) / (length(P) + 1) + 1 / (length(phat) + 1) / (length(P) + 1)
-    diag(qhat) - qhat %*% t(qhat)
+    p <- matrix(phat, ncol = 1)
+    diag(c(p)) - p %*% t(p)
   }
 }
 
 build_indicator_matrix <- function(X, bins, phat) {
   J <- length(phat) + 1
   mq <- matrix(0, nrow = length(X), ncol = J - 1)
+  lower <- bins[1:(J - 1)]
+  upper <- bins[2:J]
   for (q in seq_along(X)) {
-    mq[q, ] <- as.numeric((X[q] > head(bins, -1)) & (X[q] <= tail(bins, -1)))
-    mq[q, X[q] == 0 & seq_len(J - 1) == 1] <- 1
+    mq[q, ] <- as.numeric((X[q] > lower) & (X[q] <= upper))
+    if (X[q] == 0) {
+      mq[q, 1] <- 1
+    }
   }
   sweep(mq, 2, phat, `-`)
 }
@@ -379,17 +393,25 @@ extend_difference_matrix <- function(D, J, K) {
   dk
 }
 
-build_constraint_vector <- function(B0, B1, B2, Galpha, use_bounds, J, K) { # nolint: object_name_linter.
-  if (identical(use_bounds, 0)) {
-    return(c(-B0))
+#' Constraint vector for the Cox-Shi programme
+#'
+#' Mirrors the canonical construction: the bound block (or a vector of -1 when
+#' bounds are switched off) followed by the zero block for the shape
+#' restrictions. The zero block has `(K + 1) * (J - K / 2)` entries; without it
+#' R recycles the bound block and slackens the shape constraints.
+build_constraint_vector <- function(B0, B1, B2, bnd_adj, use_bounds, J, K, p_min = 0) { # nolint: object_name_linter.
+  zeros <- rep(0, (K + 1) * (J - K / 2))
+  if (use_bounds == 0) {
+    return(c(rep(-1, J), zeros))
   }
-  b0 <- -B0 / Galpha
-  b1 <- -B1 / Galpha
-  b2 <- -B2 / Galpha
-  b0[1] <- -1
-  b1[1] <- -1
-  b2[1] <- -1
-  c(b0, b1, b2)
+  bounds <- list(-B0 / bnd_adj, -B1 / bnd_adj, -B2 / bnd_adj)[seq_len(K + 1)]
+  if (p_min == 0) {
+    bounds <- lapply(bounds, function(b) {
+      b[1] <- -1
+      b
+    })
+  }
+  c(unlist(lapply(bounds, as.vector)), zeros)
 }
 
 fmincon <- function(x0, fn, gr = NULL, ..., method = "SQP",
@@ -469,67 +491,85 @@ fmincon <- function(x0, fn, gr = NULL, ..., method = "SQP",
   )
 }
 
-solve_coxshi_problem <- function(t0, fn, A, b) {
+#' Solve the Cox-Shi quadratic programme, retrying from random starts
+#'
+#' Returns `NULL` once the retry budget is exhausted so that callers can report
+#' nonconvergence instead of looping forever on a deterministic failure.
+solve_coxshi_problem <- function(t0, fn, A, b, max_restarts = 10L) { # nolint: object_name_linter.
   res <- tryCatch(fmincon(t0, fn, A = A, b = b), error = function(e) NULL)
-  while (is.null(res) || !is.list(res)) {
-    ru <- runif(length(t0))
+  restarts <- 0L
+  while ((is.null(res) || !is.list(res)) && restarts < max_restarts) {
+    ru <- stats::runif(length(t0))
     t0 <- matrix(ru / sum(ru), ncol = 1)
     res <- tryCatch(fmincon(t0, fn, A = A, b = b), error = function(e) NULL)
+    restarts <- restarts + 1L
   }
-  res
+  if (is.null(res) || !is.list(res)) NULL else res
+}
+
+#' NA carrying a human-readable reason for skipping a test
+skipped_result <- function(reason) {
+  out <- NA_real_
+  attr(out, "reason") <- reason
+  out
 }
 
 cox_shi_test <- function(Q, ind, p_min, p_max, J, K, use_bounds) {
+  use_bounds <- as.integer(use_bounds)
+  K <- as.integer(K) # nolint: object_name_linter.
+  J <- as.integer(J) # nolint: object_name_linter.
   filtered <- filter_pvalues(Q, ind, p_min, p_max)
   P <- filtered$P
   ind_filtered <- filtered$ind
   N <- length(P)
-  Galpha <- N / length(Q) # nolint: object_name_linter.
+  bnd_adj <- N / length(Q)
   phat_data <- compute_phat(P, J, p_min, p_max)
   phat <- phat_data$phat
   bins <- phat_data$bins
-  B0 <- bound0(p_max, J)
-  B1 <- bound1(p_max, J)
-  B2 <- bound2(p_max, J)
-  if (identical(use_bounds, 0)) {
-    B0 <- rep(1, J)
-  }
+  B0 <- bound0(p_min, p_max, J)
+  B1 <- bound1(p_min, p_max, J)
+  B2 <- bound2(p_min, p_max, J)
   omega <- compute_omega(P, ind_filtered, phat, bins)
+  omega_inv <- if (is.finite(det(omega)) && abs(det(omega)) > 0) {
+    tryCatch(solve(omega), error = function(e) NULL)
+  } else {
+    NULL
+  }
+  if (is.null(omega_inv)) {
+    return(skipped_result(paste0(
+      "the bin covariance matrix is singular with J = ", J,
+      " bins on [", p_min, ", ", p_max, "] (", N,
+      " p-values in the window); try fewer bins"
+    )))
+  }
   D <- build_difference_matrix(J)
   dk <- extend_difference_matrix(D, J, K)
-  if (identical(use_bounds, 0)) {
-    dk <- rbind(-diag(J), diag(J), dk)
+  dk <- if (use_bounds == 0) {
+    rbind(-diag(J), diag(J), dk)
   } else {
-    dk <- rbind(-diag(J), -dk, diag(J), dk)
+    rbind(-diag(J), -dk, diag(J), dk)
   }
   ej <- rep(0, J)
   ej[J] <- 1
-  F1 <- rbind(-diag(J - 1), rep(1, J - 1))
-  constraint_vector <- if (identical(use_bounds, 0)) {
-    rep(0, nrow(dk))
-  } else {
-    build_constraint_vector(B0, B1, B2, Galpha, use_bounds, J, K)
-  }
-  A <- dk %*% F1
+  F1 <- rbind(-diag(J - 1), rep(1, J - 1)) # nolint: object_name_linter.
+  constraint_vector <- build_constraint_vector(B0, B1, B2, bnd_adj, use_bounds, J, K, p_min)
+  A <- dk %*% F1 # nolint: object_name_linter.
   b_vec <- dk %*% ej - constraint_vector
   fn <- function(t) {
     diff_vec <- phat - t
-    N * t(diff_vec) %*% solve(omega) %*% diff_vec
+    N * t(diff_vec) %*% omega_inv %*% diff_vec
   }
-  start <- matrix(1 / (J - 1), ncol = 1, nrow = J - 1)
+  start <- matrix(1 / J, ncol = 1, nrow = J - 1)
   result <- solve_coxshi_problem(start, fn, A, b_vec)
-  if (is.null(result) || is.null(result$par)) {
-    return(NA_real_)
+  if (is.null(result) || is.null(result$par) || result$convergence != 0) {
+    return(skipped_result("the constrained optimisation did not converge"))
   }
-  t_opt <- result$par
-  stat <- fn(t_opt)
+  stat <- fn(result$par)
   ba <- A[result$info$lambda$ineqlin > 0, , drop = FALSE]
-  JX <- qr(ba)$rank
-  if (result$convergence == 0 && JX > 0) {
-    1 - stats::pchisq(stat, df = JX)
-  } else {
-    NA_real_
-  }
+  JX <- qr(ba)$rank # nolint: object_name_linter.
+  # JX == 0 is the interior (unconstrained) solution: no shape restriction
+  # binds, so the p-curve is compatible with the null and p = 1.
+  as.numeric(1 - stats::pchisq(stat, df = JX) * (JX > 0))
 }
 
 box::export(
@@ -553,5 +593,6 @@ box::export(
   extend_difference_matrix,
   build_constraint_vector,
   solve_coxshi_problem,
+  skipped_result,
   cox_shi_test
 )
