@@ -79,6 +79,28 @@ test_that("build_unified_columns merges both legacy stores into one record per c
   expect_null(records$t_stat)
 })
 
+test_that("build_unified_columns keeps an existing unified store and lets it win", {
+  box::use(artma / options / migrate[build_unified_columns])
+
+  records <- build_unified_columns(
+    colnames_map = list(effect = "pcc"),
+    config = list(effect = list(bma = TRUE)),
+    existing = list(
+      effect = list(source_name = "b"),
+      gdp_growth = list(bma = FALSE)
+    )
+  )
+
+  # The newer unified store overrides the legacy name mapping
+  expect_equal(records$effect$source_name, "b")
+
+  # Legacy fields the unified store does not mention survive the merge
+  expect_true(records$effect$bma)
+
+  # Records only present in the unified store are not dropped
+  expect_false(records$gdp_growth$bma)
+})
+
 test_that("a legacy options file migrates automatically with clear messaging", {
   box::use(artma / options / migrate[migrate_legacy_options])
 
