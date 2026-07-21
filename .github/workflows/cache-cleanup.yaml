@@ -1,0 +1,35 @@
+# Deletes the Actions caches saved under a PR's ref once that PR closes.
+# Those caches (r-lib/actions/setup-r-dependencies across the R CMD Check
+# matrix, Lint Check, and Test Coverage) are useless the moment the PR
+# closes but otherwise linger until GitHub's LRU eviction reclaims them,
+# crowding out the caches saved under refs/heads/master that every new
+# PR restores from (see R-CMD-check-extended.yaml).
+name: Cache Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to clean up caches for"
+        required: true
+        type: number
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  delete-pr-caches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete caches for closed PR ref
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+        run: |
+          gh cache delete --all --succeed-on-no-caches \
+            --repo "$REPO" \
+            --ref "refs/pull/${PR_NUMBER}/merge"
