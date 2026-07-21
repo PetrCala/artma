@@ -67,6 +67,7 @@ Config/Needs/dev: box.linters, devtools, languageserver, remotes
 Config/Needs/e2e: remotes
 Config/Needs/lint: devtools, remotes
 Config/Needs/release: devtools, optparse, pkgbuild, remotes
+Config/Needs/website: pkgdown
 Config/testthat/edition: 3
 Config/testthat/parallel: TRUE
 Config/testthat/start-first: github-actions, release

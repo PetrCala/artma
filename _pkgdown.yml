@@ -1,0 +1,19 @@
+url: https://petrcala.github.io/artma/
+
+template:
+  bootstrap: 5
+
+navbar:
+  components:
+    news:
+      text: Changelog
+      href: https://github.com/PetrCala/artma/blob/master/NEWS.md
+
+articles:
+  - title: Get started
+    navbar: ~
+    contents:
+      - getting-started
+      - methods-overview
+      - options-files
+      - release-cycle
