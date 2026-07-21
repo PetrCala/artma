@@ -26,6 +26,13 @@ box::use(
   artma / calc / methods / maive[maive]
 )
 
+#' @title Extract the skip reason attached to a `skipped_result()` value
+#' @param value *[numeric]* A test result, possibly a `skipped_result()`.
+#' @return *[character or NULL]* The reason, or `NULL` if `value` is not a skip.
+skip_reason <- function(value) {
+  attr(value, "reason")
+}
+
 # Caliper tests (Gerber & Malhotra, 2008) ---------------------------------
 
 #' @title Run single Caliper test
@@ -354,6 +361,28 @@ compute_pvalues <- function(effect, se) {
   2 * stats::pnorm(-abs(t_stats))
 }
 
+#' @title Resolve t-statistics, preferring a user-mapped column
+#' @description
+#' Uses `df$t_stat` where reported, which is more faithful to what the primary
+#' study published (e.g. clustered standard errors the meta-analyst cannot
+#' recompute from `effect`/`se` alone), falling back to `effect / se` for rows
+#' where `t_stat` is absent or `NA`.
+#' @param df *[data.frame]* Input data with effect, se, and optional t_stat columns.
+#' @return *[numeric]* Vector of t-statistics, one per row of `df`.
+resolve_t_stats <- function(df) {
+  validate(is.data.frame(df), is.numeric(df$effect), is.numeric(df$se))
+
+  fallback <- df$effect / df$se
+  if (!"t_stat" %in% colnames(df)) {
+    return(fallback)
+  }
+
+  reported <- suppressWarnings(as.numeric(df$t_stat))
+  missing <- is.na(reported)
+  reported[missing] <- fallback[missing]
+  reported
+}
+
 #' @title Run binomial test wrapper
 #' @param pvalues *[numeric]* P-values to test.
 #' @param p_min *[numeric]* Lower bound of interval.
@@ -373,7 +402,7 @@ run_binomial <- function(pvalues, p_min, p_max, type = "c") {
 
   tryCatch(
     binomial_test(pvalues, p_min, p_max, type),
-    error = function(e) NA_real_
+    error = function(e) skipped_result(e$message)
   )
 }
 
@@ -393,9 +422,13 @@ run_lcm <- function(pvalues, p_min, p_max, cdfs) {
 
   assert(p_min < p_max, "p_min must be less than p_max")
 
+  if (!requireNamespace("fdrtool", quietly = TRUE)) {
+    return(skipped_result("package 'fdrtool' is not installed"))
+  }
+
   tryCatch(
     lcm_test(pvalues, p_min, p_max, norm = 8, cdfs),
-    error = function(e) NA_real_
+    error = function(e) skipped_result(e$message)
   )
 }
 
@@ -415,33 +448,36 @@ run_fisher <- function(pvalues, p_min, p_max) {
 
   tryCatch(
     fisher_test(pvalues, p_min, p_max),
-    error = function(e) NA_real_
+    error = function(e) skipped_result(e$message)
   )
 }
 
 #' @title Run discontinuity test wrapper
 #' @param pvalues *[numeric]* P-values to test.
 #' @param cutoff *[numeric]* Significance threshold to test for discontinuity.
-#' @param bandwidth *[numeric]* Initial bandwidth for test.
+#' @param bandwidth *[numeric, optional]* Manual bandwidth override. Leave
+#'   `NULL` to let rddensity select its bandwidth automatically.
 #' @return *[numeric]* P-value from test.
-run_discontinuity <- function(pvalues, cutoff = 0.05, bandwidth = 0.05) {
+run_discontinuity <- function(pvalues, cutoff = 0.05, bandwidth = NULL) {
   validate(
     is.numeric(pvalues),
-    is.numeric(cutoff),
-    is.numeric(bandwidth)
+    is.numeric(cutoff)
   )
 
   assert(cutoff > 0 && cutoff < 1, "cutoff must be in (0, 1)")
-  assert(bandwidth > 0, "bandwidth must be positive")
+
+  if (!is.null(bandwidth)) {
+    validate(is.numeric(bandwidth))
+    assert(bandwidth > 0, "bandwidth must be positive")
+  }
 
   if (!requireNamespace("rddensity", quietly = TRUE)) {
-    cli::cli_warn("Package 'rddensity' not available - skipping discontinuity test")
-    return(NA_real_)
+    return(skipped_result("package 'rddensity' is not installed"))
   }
 
   tryCatch(
     run_discontinuity_test(pvalues, c = cutoff, h = bandwidth),
-    error = function(e) NA_real_
+    error = function(e) skipped_result(e$message)
   )
 }
 
@@ -487,13 +523,7 @@ run_cox_shi <- function(pvalues, study_id = NULL, p_min, p_max, n_bins = 10L,
     error = function(e) skipped_result(e$message)
   )
 
-  reason <- attr(result, "reason")
-  if (!is.null(reason)) {
-    cli::cli_alert_warning(
-      "Cox-Shi test on [{p_min}, {p_max}] skipped: {reason}."
-    )
-  }
-  as.numeric(result)
+  result
 }
 
 #' @title Run suite of p-hacking tests
@@ -506,24 +536,19 @@ run_cox_shi <- function(pvalues, study_id = NULL, p_min, p_max, n_bins = 10L,
 run_p_hacking_tests <- function(df, options) {
   validate(is.data.frame(df), is.list(options))
 
-  required_cols <- c("effect", "se")
-  missing_cols <- setdiff(required_cols, colnames(df))
-
-  if (length(missing_cols) > 0) {
-    cli::cli_alert_warning("Missing required columns: {.field {missing_cols}}")
-    return(list(
-      caliper = NULL,
-      elliott = NULL,
-      maive = NULL,
-      skipped = list(reason = paste("Missing columns:", paste(missing_cols, collapse = ", ")))
-    ))
-  }
-
   study_id <- if ("study_id" %in% colnames(df)) df$study_id else seq_len(nrow(df))
-  t_stats <- df$effect / df$se
-  pvalues <- compute_pvalues(df$effect, df$se)
+  t_stats <- resolve_t_stats(df)
+  pvalues <- 2 * stats::pnorm(-abs(t_stats))
 
   output <- list()
+  skipped <- list()
+  record_skip <- function(key, value) {
+    reason <- skip_reason(value)
+    if (!is.null(reason)) {
+      skipped[[key]] <<- reason
+    }
+    invisible(NULL)
+  }
 
   # 1. Caliper Tests
   if (options$include_caliper) {
@@ -550,14 +575,16 @@ run_p_hacking_tests <- function(df, options) {
     elliott_tests <- list()
 
     # Pre-simulate CDFs for LCM test
+    cdfs_reason <- NULL
     cdfs <- tryCatch(
       simulate_cdfs_parallel(
         iterations = options$lcm_iterations,
         grid_points = options$lcm_grid_points,
-        block_size = options$simulate_cdfs_chunk_size
+        block_size = options$simulate_cdfs_chunk_size,
+        seed = options$simulate_cdfs_seed
       ),
       error = function(e) {
-        cli::cli_warn("Failed to simulate CDFs for LCM test: {e$message}")
+        cdfs_reason <<- e$message
         numeric(0)
       }
     )
@@ -573,7 +600,8 @@ run_p_hacking_tests <- function(df, options) {
       p_value = run_binomial(pvalues, 0, 0.1, type = "c")
     )
 
-    # LCM tests
+    # LCM tests (always reported, even when the CDF simulation failed, so the
+    # skip reason surfaces instead of the rows silently disappearing)
     if (length(cdfs) > 0) {
       elliott_tests$lcm_005 <- list(
         test = "LCM [0, 0.05]",
@@ -584,6 +612,10 @@ run_p_hacking_tests <- function(df, options) {
         test = "LCM [0, 0.10]",
         p_value = run_lcm(pvalues, 0, 0.1, cdfs)
       )
+    } else {
+      lcm_skip <- skipped_result(cdfs_reason %||% "CDF simulation returned no draws")
+      elliott_tests$lcm_005 <- list(test = "LCM [0, 0.05]", p_value = lcm_skip)
+      elliott_tests$lcm_01 <- list(test = "LCM [0, 0.10]", p_value = lcm_skip)
     }
 
     # Fisher tests
@@ -628,6 +660,10 @@ run_p_hacking_tests <- function(df, options) {
       )
     }
 
+    for (key in names(elliott_tests)) {
+      record_skip(key, elliott_tests[[key]]$p_value)
+    }
+
     output$elliott <- build_elliott_summary(elliott_tests, pvalues, options)
   }
 
@@ -650,23 +686,28 @@ run_p_hacking_tests <- function(df, options) {
             studylevel = options$maive_studylevel,
             SE = options$maive_se,
             AR = options$maive_ar,
-            first_stage = options$maive_first_stage
+            first_stage = options$maive_first_stage,
+            seed = options$maive_seed
           )
         },
         error = function(e) {
-          cli::cli_warn("MAIVE estimation failed: {e$message}")
+          skipped[["maive"]] <<- paste("MAIVE estimation failed:", e$message)
           NULL
         }
       )
-      output$maive <- tryCatch(
-        format_maive_results(maive_results, options),
-        error = function(e) {
-          cli::cli_warn("MAIVE result formatting failed: {e$message}")
-          NULL
-        }
-      )
+      output$maive <- if (is.null(maive_results)) {
+        NULL
+      } else {
+        tryCatch(
+          format_maive_results(maive_results, options),
+          error = function(e) {
+            skipped[["maive"]] <<- paste("MAIVE result formatting failed:", e$message)
+            NULL
+          }
+        )
+      }
     } else {
-      cli::cli_warn("MAIVE requires 'n_obs' column - skipping MAIVE test")
+      skipped[["maive"]] <- "requires the 'n_obs' column, which is absent from the data"
       output$maive <- NULL
     }
   }
@@ -675,6 +716,7 @@ run_p_hacking_tests <- function(df, options) {
   output$n_significant_005 <- sum(pvalues <= 0.05, na.rm = TRUE)
   output$n_significant_010 <- sum(pvalues <= 0.10, na.rm = TRUE)
   output$options <- options
+  output$skipped <- if (length(skipped) > 0) skipped else NULL
 
   output
 }
@@ -725,9 +767,12 @@ box::export(
   run_p_hacking_tests,
   run_single_caliper,
   compute_pvalues,
+  resolve_t_stats,
   prepare_maive_data,
   maive_p_from_coef,
   run_binomial,
+  run_lcm,
+  run_discontinuity,
   run_cox_shi,
   run_fisher
 )

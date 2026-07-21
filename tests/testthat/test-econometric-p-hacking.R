@@ -5,21 +5,25 @@ box::use(
     expect_false,
     expect_match,
     expect_true,
+    skip_if_not_installed,
     test_that
   ],
   withr[local_options],
   artma / econometric / p_hacking[
     compute_pvalues,
+    resolve_t_stats,
     maive_p_from_coef,
     prepare_maive_data,
     run_single_caliper,
     run_binomial,
+    run_lcm,
+    run_discontinuity,
     run_cox_shi,
     run_fisher,
     run_caliper_tests,
     run_p_hacking_tests
   ],
-  artma / calc / methods / elliott[cox_shi_test]
+  artma / calc / methods / elliott[cox_shi_test, simulate_cdfs_parallel]
 )
 
 # compute_pvalues -----------------------------------------------------------
@@ -40,6 +44,19 @@ test_that("compute_pvalues returns two-sided normal p-values", {
 
 test_that("compute_pvalues errors on mismatched lengths", {
   expect_error(compute_pvalues(c(1, 2), c(1)))
+})
+
+# resolve_t_stats -------------------------------------------------------------
+
+test_that("resolve_t_stats falls back to effect / se when t_stat is absent", {
+  df <- data.frame(effect = c(1, 2), se = c(1, 2))
+  expect_equal(resolve_t_stats(df), c(1, 1))
+})
+
+test_that("resolve_t_stats prefers a reported t_stat over effect / se", {
+  df <- data.frame(effect = c(1, 2), se = c(1, 1), t_stat = c(5, NA))
+  # Row 1 uses the reported 5 (not effect/se = 1); row 2 falls back to 2/1 = 2.
+  expect_equal(resolve_t_stats(df), c(5, 2))
 })
 
 # maive_p_from_coef ---------------------------------------------------------
@@ -214,6 +231,7 @@ base_p_hacking_options <- function(...) {
     lcm_iterations = 50L,
     lcm_grid_points = 50L,
     simulate_cdfs_chunk_size = 512L,
+    simulate_cdfs_seed = 123L,
     include_discontinuity = FALSE,
     discontinuity_bandwidth = 0.05,
     include_cox_shi = FALSE,
@@ -228,6 +246,7 @@ base_p_hacking_options <- function(...) {
     maive_se = 1L,
     maive_ar = 0L,
     maive_first_stage = 0L,
+    maive_seed = 123L,
     add_significance_marks = TRUE,
     round_to = 3L
   )
@@ -282,16 +301,6 @@ test_that("run_p_hacking_tests dedupes duplicated caliper thresholds/widths with
   expect_equal(ncol(result$caliper), 2L)
 })
 
-test_that("run_p_hacking_tests skips gracefully when required columns are missing", {
-  local_options(artma.verbose = 1)
-  df <- data.frame(effect = c(0.1, 0.2, 0.3))
-
-  result <- run_p_hacking_tests(df, base_p_hacking_options())
-
-  expect_true(!is.null(result$skipped))
-  expect_true(grepl("se", result$skipped$reason))
-})
-
 test_that("run_p_hacking_tests runs the Elliott suite when requested", {
   local_options(
     artma.verbose = 1,
@@ -308,6 +317,131 @@ test_that("run_p_hacking_tests runs the Elliott suite when requested", {
   expect_true(is.data.frame(result$elliott))
   expect_true("Binomial [0, 0.05]" %in% result$elliott$Test)
   expect_true("Fisher [0, 0.05]" %in% result$elliott$Test)
+})
+
+# Skip reasons ---------------------------------------------------------------
+
+test_that("run_p_hacking_tests records a skip reason when the CDF simulation yields no draws", {
+  local_options(artma.verbose = 1)
+  df <- make_p_hacking_df()
+
+  result <- run_p_hacking_tests(
+    df,
+    base_p_hacking_options(
+      include_caliper = FALSE,
+      include_elliott = TRUE,
+      lcm_iterations = 0L
+    )
+  )
+
+  expect_true(!is.null(result$skipped$lcm_005))
+  expect_true(!is.null(result$skipped$lcm_01))
+  # The row is still reported (not silently absent), just as NA.
+  lcm_rows <- result$elliott[grepl("^LCM", result$elliott$Test), ]
+  expect_equal(nrow(lcm_rows), 2L)
+})
+
+test_that("run_p_hacking_tests records a skip reason for a singular Cox-Shi covariance", {
+  local_options(artma.verbose = 1)
+  set.seed(404, kind = "Mersenne-Twister", normal.kind = "Inversion")
+  t_stats <- abs(stats::rnorm(300, mean = 1, sd = 1))
+  df <- data.frame(effect = t_stats, se = rep(1, length(t_stats)))
+
+  result <- run_p_hacking_tests(
+    df,
+    base_p_hacking_options(
+      include_caliper = FALSE,
+      include_elliott = TRUE,
+      include_cox_shi = TRUE,
+      cox_shi_bins = 20L
+    )
+  )
+
+  expect_match(result$skipped$cox_shi_005, "singular")
+})
+
+test_that("run_p_hacking_tests records a skip reason when MAIVE lacks n_obs", {
+  local_options(artma.verbose = 1)
+  df <- make_p_hacking_df()
+  df$n_obs <- NULL
+
+  result <- run_p_hacking_tests(
+    df,
+    base_p_hacking_options(include_caliper = FALSE, include_maive = TRUE)
+  )
+
+  expect_match(result$skipped$maive, "n_obs")
+  expect_true(is.null(result$maive))
+})
+
+test_that("run_lcm skips with a reason instead of failing silently", {
+  local_pretend_packages_absent("fdrtool")
+
+  result <- run_lcm(c(0.01, 0.02, 0.03), 0, 0.05, cdfs = c(0.1, 0.2, 0.3))
+
+  expect_true(is.na(result))
+  expect_match(attr(result, "reason"), "fdrtool")
+})
+
+# LCM / MAIVE reproducibility --------------------------------------------
+
+test_that("simulate_cdfs_parallel is reproducible when seed is passed explicitly", {
+  res_a <- simulate_cdfs_parallel(iterations = 20, grid_points = 30, seed = 123, show_progress = FALSE)
+  res_b <- simulate_cdfs_parallel(iterations = 20, grid_points = 30, seed = 123, show_progress = FALSE)
+
+  expect_equal(res_a, res_b)
+})
+
+test_that("run_p_hacking_tests produces identical LCM p-values across two runs", {
+  local_options(artma.verbose = 1)
+  df <- make_p_hacking_df()
+  opts <- base_p_hacking_options(
+    include_caliper = FALSE,
+    include_elliott = TRUE,
+    lcm_iterations = 200L,
+    lcm_grid_points = 200L
+  )
+
+  result_a <- run_p_hacking_tests(df, opts)
+  result_b <- run_p_hacking_tests(df, opts)
+
+  lcm_a <- result_a$elliott[grepl("^LCM", result_a$elliott$Test), "P-value"]
+  lcm_b <- result_b$elliott[grepl("^LCM", result_b$elliott$Test), "P-value"]
+  expect_equal(lcm_a, lcm_b)
+})
+
+test_that("run_p_hacking_tests produces identical MAIVE bootstrap results across two runs", {
+  skip_if_not_installed("MAIVE")
+  local_options(artma.verbose = 1)
+  df <- make_p_hacking_df()
+  opts <- base_p_hacking_options(
+    include_caliper = FALSE,
+    include_maive = TRUE,
+    maive_se = 3L # Wild bootstrap: irreproducible without a threaded seed.
+  )
+
+  result_a <- run_p_hacking_tests(df, opts)
+  result_b <- run_p_hacking_tests(df, opts)
+
+  expect_equal(result_a$maive, result_b$maive)
+})
+
+# Discontinuity alignment -----------------------------------------------------
+
+test_that("run_discontinuity uses automatic bandwidth and never errors uncaught", {
+  local_options(artma.verbose = 1)
+  # Sparse, mass-near-cutoff p-values that used to trip the manual retry loop.
+  set.seed(40)
+  pvalues <- stats::runif(40)
+
+  result <- run_discontinuity(pvalues, cutoff = 0.05)
+
+  expect_true(is.numeric(result))
+  ok <- is.na(result) || (is.finite(result) && result >= 0 && result <= 1)
+  expect_true(ok)
+  if (is.na(result)) {
+    expect_true(!is.null(attr(result, "reason")))
+  }
 })
 
 # Cox-Shi ------------------------------------------------------------------
@@ -391,16 +525,14 @@ test_that("cox_shi_test skips with a reason when the covariance is singular", {
   expect_match(attr(result, "reason"), "singular")
 })
 
-test_that("run_cox_shi turns a skip reason into a warning and a plain NA", {
+test_that("run_cox_shi preserves the skip reason for the caller to record", {
   set.seed(404, kind = "Mersenne-Twister", normal.kind = "Inversion")
   pvalues <- 2 * (1 - stats::pnorm(abs(stats::rnorm(300, mean = 1, sd = 1))))
 
-  result <- suppressMessages(
-    run_cox_shi(pvalues, seq_along(pvalues), 0, 0.05, n_bins = 20L)
-  )
+  result <- run_cox_shi(pvalues, seq_along(pvalues), 0, 0.05, n_bins = 20L)
 
   expect_true(is.na(result))
-  expect_true(is.null(attr(result, "reason")))
+  expect_match(attr(result, "reason"), "singular")
 })
 
 test_that("run_p_hacking_tests reports numeric Cox-Shi rows on clustered data", {

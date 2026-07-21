@@ -13,9 +13,11 @@
 #'   4=Wild cluster boot, 5=Pairs boot.
 #' @param AR *[integer]* Anderson-Rubin CI: 0=no, 1=yes (default).
 #' @param first_stage *[integer]* First stage option (default 0).
+#' @param seed *[integer]* RNG seed for bootstrap SE modes (SE = 2..5), so
+#'   repeated runs on the same data reproduce identical results (default 123).
 #' @return *[list]* MAIVE output with beta, SE, F-test, Hausman test, etc.
 maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2L,
-                  SE = 1L, AR = 0L, first_stage = 0L) {
+                  SE = 1L, AR = 0L, first_stage = 0L, seed = 123L) {
   box::use(
     artma / libs / core / validation[validate, assert]
   )
@@ -25,7 +27,8 @@ maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2
     is.numeric(method),
     is.numeric(weight),
     is.numeric(instrument),
-    is.numeric(studylevel)
+    is.numeric(studylevel),
+    is.numeric(seed)
   )
 
   # Check if MAIVE package is available
@@ -53,7 +56,8 @@ maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2
       studylevel = as.integer(studylevel),
       SE = as.integer(SE),
       AR = as.integer(AR),
-      first_stage = as.integer(first_stage)
+      first_stage = as.integer(first_stage),
+      seed = as.integer(seed)
     ),
     error = function(e) {
       cli::cli_abort(c(

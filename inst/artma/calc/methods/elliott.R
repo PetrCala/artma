@@ -18,14 +18,21 @@ simulate_cdfs_block_cpp <- function(eps_block) {
 #' @param workers [integer] Number of workers to use.
 #' @param block_size [integer] Size of the block to process.
 #' @param show_progress [logical] Whether to show progress bar.
+#' @param seed [integer, optional] RNG seed to set before simulating. Leave
+#'   `NULL` to use (and consume) the caller's current RNG state.
 #' @return Numeric vector of simulated suprema.
 simulate_cdfs_parallel <- function(
   iterations = 10000,
   grid_points = 10000,
   workers = NULL,
   block_size = 256L,
-  show_progress = TRUE
+  show_progress = TRUE,
+  seed = NULL
 ) {
+  if (!is.null(seed)) {
+    set.seed(as.integer(seed))
+  }
+
   gp <- as.integer(grid_points)
   it <- as.integer(iterations)
   if (is.null(workers)) {
@@ -62,6 +69,21 @@ simulate_cdfs_parallel <- function(
   }
 
   use_cpp <- isTRUE(getOption("artma.methods.p_hacking_tests.simulate_cdfs.use_cpp", TRUE))
+  if (use_cpp) {
+    use_cpp <- tryCatch(
+      {
+        simulate_cdfs_block_cpp(matrix(0, nrow = 1, ncol = 1))
+        TRUE
+      },
+      error = function(e) {
+        cli::cli_warn(c(
+          "The compiled C++ implementation for CDF simulation is unavailable ({e$message}).",
+          "i" = "Falling back to the pure R implementation."
+        ))
+        FALSE
+      }
+    )
+  }
   if (use_cpp) {
     use_fork <- (.Platform$OS.type != "windows")
     if (!use_fork && workers > 1L) {
@@ -266,14 +288,19 @@ fisher_test <- function(P, p_min, p_max) {
 }
 
 #' Discontinuity test based on rddensity
-run_discontinuity_test <- function(P, c, h) {
-  h_band <- h - 0.001
-  repeat {
-    h_band <- h_band + 0.001
-    res <- rddensity::rddensity(P, c = c, h = h_band)
-    if (!is.na(res$test$p_jk)) {
-      break
-    }
+#' @param P [numeric] P-values to test.
+#' @param c [numeric] Cutoff to test for a discontinuity.
+#' @param h [numeric, optional] Manual bandwidth override. Leave `NULL`
+#'   (the canonical default) to let rddensity select its bandwidth
+#'   automatically.
+run_discontinuity_test <- function(P, c, h = NULL) {
+  res <- if (is.null(h)) {
+    rddensity::rddensity(P, c = c)
+  } else {
+    rddensity::rddensity(P, c = c, h = h)
+  }
+  if (is.na(res$test$p_jk)) {
+    return(skipped_result("rddensity returned no p-value (insufficient mass near the cutoff)"))
   }
   res$test$p_jk
 }
