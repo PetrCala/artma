@@ -18,8 +18,10 @@
 #' viz.get("export_path")
 #' }
 viz.get <- function(option = NULL) {
-  box::use(artma / visualization / options[get_visualization_options])
-  box::use(artma / libs / core / validation[assert])
+  box::use(
+    artma / visualization / options[get_visualization_options],
+    artma / libs / core / validation[assert]
+  )
 
   opts <- get_visualization_options()
 
