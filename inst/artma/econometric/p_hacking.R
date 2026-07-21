@@ -292,8 +292,9 @@ format_maive_results <- function(maive_output, options) {
   }
 
   rd <- options$round_to
-  rows <- list()
-  add <- function(stat, val) rows[[length(rows) + 1L]] <<- list(stat = stat, val = val)
+  acc <- new.env(parent = emptyenv())
+  acc$rows <- list()
+  add <- function(stat, val) acc$rows[[length(acc$rows) + 1L]] <- list(stat = stat, val = val)
   sep <- function() add("", "")
 
   # --- Estimates ---
@@ -352,8 +353,8 @@ format_maive_results <- function(maive_output, options) {
   }
 
   # Build data frame
-  stats <- vapply(rows, `[[`, "", "stat")
-  vals <- vapply(rows, `[[`, "", "val")
+  stats <- vapply(acc$rows, `[[`, "", "stat")
+  vals <- vapply(acc$rows, `[[`, "", "val")
 
   data.frame(
     Statistic = stats,
