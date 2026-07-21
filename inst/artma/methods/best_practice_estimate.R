@@ -215,7 +215,8 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     coef_post_mean = coef_post_mean,
     predictor_values = author_values,
     include_intercept = include_intercept,
-    round_to = round_to
+    round_to = round_to,
+    standardized_predictors = detect_bpe_standardized_predictors(bma_data, predictors)
   )
 
   tables <- list(summary = summary)
@@ -1366,7 +1367,25 @@ resolve_bpe_value <- function(values, override) {
   )
 }
 
-build_bpe_formula_string <- function(coef_post_mean, predictor_values, include_intercept, round_to) {
+#' @title Detect which BPE predictors were z-scaled for BMA
+#' @description
+#' `get_bma_data()` standardizes every non-binary predictor before handing the
+#' data to BMA, so the values `compute_context_values()` reads back out of
+#' `bma_data` are on the standardized scale for those columns. This flags
+#' which predictors that applies to, so the formula string can label them
+#' instead of silently printing standardized values as if they were raw ones.
+#' @param bma_data *\[data.frame\]* The (possibly standardized) BMA data.
+#' @param predictors *\[character\]* Predictor names to check.
+#' @return *\[logical\]* Named vector, TRUE where the predictor is standardized.
+detect_bpe_standardized_predictors <- function(bma_data, predictors) {
+  stats::setNames(
+    vapply(predictors, function(var_name) length(unique(bma_data[[var_name]])) != 2, logical(1)),
+    predictors
+  )
+}
+
+build_bpe_formula_string <- function(coef_post_mean, predictor_values, include_intercept, round_to,
+                                     standardized_predictors = NULL) {
   parts <- character(0)
 
   if (include_intercept && "(Intercept)" %in% names(coef_post_mean)) {
@@ -1379,13 +1398,15 @@ build_bpe_formula_string <- function(coef_post_mean, predictor_values, include_i
     if (!is.finite(beta) || !is.finite(value)) {
       next
     }
+    is_standardized <- isTRUE(standardized_predictors[[var_name]])
     parts <- c(
       parts,
       sprintf(
-        "%s * %s (%s)",
+        "%s * %s (%s%s)",
         format(round(beta, round_to), nsmall = round_to),
         format(round(value, round_to), nsmall = round_to),
-        var_name
+        var_name,
+        if (is_standardized) ", standardized" else ""
       )
     )
   }

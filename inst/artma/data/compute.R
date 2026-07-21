@@ -328,7 +328,7 @@ compute_optional_columns <- function(df) {
   box::use(artma / libs / core / utils[get_verbosity])
 
   if (get_verbosity() >= 3) {
-    cli::cli_alert_info("Computing optional columns for {.val {nrow(df)}} observations…")
+    cli::cli_alert_info("Computing optional columns for {.val {nrow(df)}} observations...")
   }
 
   df |>
