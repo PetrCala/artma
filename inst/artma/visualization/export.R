@@ -68,6 +68,10 @@ build_export_filename <- function(base_name, factor_by, index = NULL, extension 
 #' substantially faster than the base `grDevices::png` device. Falls back to
 #' `grDevices::png` when `ragg` is not installed.
 #'
+#' Inside a forked method worker on a platform where those devices would abort
+#' the child, a cairo-backed device is used instead. See
+#' `artma/visualization/fork_safety`.
+#'
 #' @param path *\[character\]* Full file path (including filename)
 #' @param width *\[numeric\]* Device width, in `units`
 #' @param height *\[numeric\]* Device height, in `units`
@@ -79,7 +83,8 @@ build_export_filename <- function(base_name, factor_by, index = NULL, extension 
 open_png_device <- function(path, width, height, units = "px", res = 90) {
   box::use(
     artma / libs / core / validation[validate],
-    artma / libs / infrastructure / output_files[record_output_file]
+    artma / libs / infrastructure / output_files[record_output_file],
+    artma / visualization / fork_safety[use_fork_safe_png_device]
   )
 
   validate(
@@ -90,7 +95,12 @@ open_png_device <- function(path, width, height, units = "px", res = 90) {
     is.numeric(res), res > 0
   )
 
-  if (requireNamespace("ragg", quietly = TRUE)) {
+  if (use_fork_safe_png_device()) {
+    grDevices::png(
+      filename = path, width = width, height = height,
+      units = units, res = res, type = "cairo"
+    )
+  } else if (requireNamespace("ragg", quietly = TRUE)) {
     ragg::agg_png(filename = path, width = width, height = height, units = units, res = res)
   } else {
     grDevices::png(filename = path, width = width, height = height, units = units, res = res)
@@ -123,7 +133,8 @@ save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units =
   box::use(
     artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity],
-    artma / libs / infrastructure / output_files[record_output_file]
+    artma / libs / infrastructure / output_files[record_output_file],
+    artma / visualization / fork_safety[fork_safe_png_device, use_fork_safe_png_device]
   )
 
   validate(
@@ -141,7 +152,13 @@ save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units =
     file.remove(path)
   }
 
-  device <- if (requireNamespace("ragg", quietly = TRUE)) ragg::agg_png else NULL
+  device <- if (use_fork_safe_png_device()) {
+    fork_safe_png_device
+  } else if (requireNamespace("ragg", quietly = TRUE)) {
+    ragg::agg_png
+  } else {
+    NULL
+  }
 
   ggplot2::ggsave(
     filename = path,

@@ -262,6 +262,41 @@ test_that("execute_method_layer gives identical results in parallel and sequenti
   )
 })
 
+test_that("describe_dead_worker never reports an empty error", {
+  box::use(artma / modules / method_execution[describe_dead_worker])
+
+  # `mclapply()` yields NULL for a child that was killed outright, which used to
+  # collapse to an empty failure message.
+  silent <- describe_dead_worker(NULL, "bma")
+  expect_true(nzchar(silent))
+  expect_match(silent, "bma", fixed = TRUE)
+  expect_match(silent, "artma.general.parallel", fixed = TRUE)
+
+  detailed <- describe_dead_worker("boom", "funnel_plot")
+  expect_match(detailed, "funnel_plot", fixed = TRUE)
+  expect_match(detailed, "boom", fixed = TRUE)
+})
+
+test_that("execute_method_layer explains a worker that died without an error", {
+  box::use(artma / modules / method_execution[execute_method_layer])
+
+  skip_if(!can_fork(), "forking is unavailable")
+
+  outcomes <- suppressWarnings(execute_method_layer(
+    c("a", "b"),
+    run_one = function(name) {
+      if (identical(name, "b")) tools::pskill(Sys.getpid())
+      name
+    },
+    workers = 2L
+  ))
+
+  expect_equal(outcomes[[1L]]$value, "a")
+  expect_null(outcomes[[2L]]$value)
+  expect_true(nzchar(outcomes[[2L]]$error))
+  expect_match(outcomes[[2L]]$error, "b", fixed = TRUE)
+})
+
 test_that("execute_method_layer captures output from forked workers", {
   box::use(artma / modules / method_execution[execute_method_layer])
 

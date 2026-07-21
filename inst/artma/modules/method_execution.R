@@ -15,7 +15,8 @@
 
 box::use(
   artma / libs / core / autonomy[get_autonomy_level, get_default_autonomy_level],
-  artma / libs / core / validation[assert]
+  artma / libs / core / validation[assert],
+  artma / visualization / fork_safety[graphics_survive_fork, with_forked_worker_flag]
 )
 
 #' @title Group methods into dependency layers
@@ -102,12 +103,16 @@ max_parallel_workers <- function() {
 #'   testing; defaults to `parallel::detectCores()`.
 #' @param max_workers *\[numeric, optional\]* Hard ceiling on the worker count.
 #'   Injectable for testing; defaults to `max_parallel_workers()`.
+#' @param graphics_fork_safe *\[logical, optional\]* Whether a forked worker can
+#'   write a plot on this platform. Injectable for testing; defaults to
+#'   `graphics_survive_fork()`.
 #' @return *\[integer\]* The number of workers, at least `1`.
 resolve_worker_count <- function(n_tasks,
                                  is_interactive = NULL,
                                  os_type = NULL,
                                  n_cores = NULL,
-                                 max_workers = NULL) {
+                                 max_workers = NULL,
+                                 graphics_fork_safe = NULL) {
   n_tasks <- as.integer(n_tasks)
   if (is.na(n_tasks) || n_tasks < 2L) {
     return(1L)
@@ -127,6 +132,14 @@ resolve_worker_count <- function(n_tasks,
   if (isTRUE(is_interactive) && !identical(autonomy_level, "autonomous")) {
     # Methods may still prompt at these autonomy levels, and a forked child
     # cannot read from the console.
+    return(1L)
+  }
+
+  # Exporting graphics means opening a raster device in the child. Where that
+  # would abort the worker and no fork-safe device exists, run sequentially
+  # rather than lose the methods that draw.
+  graphics_fork_safe <- graphics_fork_safe %||% graphics_survive_fork()
+  if (isTRUE(getOption("artma.visualization.export_graphics", TRUE)) && !isTRUE(graphics_fork_safe)) {
     return(1L)
   }
 
@@ -259,6 +272,37 @@ replay_captured_output <- function(output) {
   invisible(NULL)
 }
 
+#' @title Describe a forked worker that returned no usable outcome
+#' @description
+#' `parallel::mclapply()` signals a child that terminated abnormally either with
+#' a `try-error` or, when the child was killed outright, with `NULL`. The latter
+#' carries no message at all, so the reported failure would otherwise be an
+#' empty string. Turn both into a diagnostic that names the method and points at
+#' the sequential fallback, which reproduces the fault in the parent where the
+#' real error is visible.
+#' @param outcome *\[any\]* Whatever `mclapply()` returned for the method.
+#' @param method_name *\[character\]* The method that was being run.
+#' @return *\[character\]* A single-line description of the failure.
+#' @keywords internal
+describe_dead_worker <- function(outcome, method_name) {
+  detail <- trimws(paste(as.character(outcome), collapse = " "))
+
+  if (nzchar(detail)) {
+    return(sprintf(
+      "the forked worker running '%s' terminated abnormally: %s", method_name, detail
+    ))
+  }
+
+  sprintf(
+    paste0(
+      "the forked worker running '%s' died without reporting an error ",
+      "(the child process was killed, e.g. by a crash in compiled code or the OS). ",
+      "Re-run with options(artma.general.parallel = FALSE) to see the underlying failure."
+    ),
+    method_name
+  )
+}
+
 #' @title Run one layer of methods
 #' @description
 #' Execute every method in `method_names` through `run_one`, capturing output
@@ -293,23 +337,29 @@ execute_method_layer <- function(method_names, run_one, streams = list(), worker
   if (workers > 1L) {
     outcomes <- parallel::mclapply(
       method_names,
-      run_task,
+      function(method_name) with_forked_worker_flag(run_task(method_name)),
       mc.cores = workers,
       mc.preschedule = FALSE,
       mc.set.seed = TRUE
     )
-    # A worker that dies outright (rather than signalling an R error) comes
-    # back as a try-error; surface it through the same bookkeeping.
-    outcomes <- lapply(outcomes, function(outcome) {
-      if (inherits(outcome, "try-error") || !is.list(outcome)) {
-        return(list(
+    # A worker that dies outright rather than signalling an R error comes back
+    # as a try-error, or as NULL when the child was killed before it could
+    # answer at all. Neither carries a usable message, so describe what
+    # happened instead of reporting an empty failure.
+    outcomes <- Map(
+      function(outcome, method_name) {
+        if (is.list(outcome) && !inherits(outcome, "try-error")) {
+          return(outcome)
+        }
+        list(
           value = NULL,
-          error = trimws(paste(as.character(outcome), collapse = " ")),
+          error = describe_dead_worker(outcome, method_name),
           output = character()
-        ))
-      }
-      outcome
-    })
+        )
+      },
+      outcomes,
+      method_names
+    )
     return(outcomes)
   }
 
@@ -318,6 +368,7 @@ execute_method_layer <- function(method_names, run_one, streams = list(), worker
 
 box::export(
   build_rng_streams,
+  describe_dead_worker,
   execute_method_layer,
   group_methods_into_layers,
   max_parallel_workers,
