@@ -464,6 +464,23 @@ methods:
         If `TRUE`, run BMA when best-practice estimation has no BMA result to
         reuse. In interactive mode, you will still be prompted for confirmation.
 
+    include_economic_significance:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, include the economic significance table (effect of a 1-SD
+        and a min-to-max change in each BMA variable, as a level and as a
+        percentage of the best-practice estimate).
+
+    economic_significance_pip_threshold:
+      type: "numeric"
+      allow_na: true
+      default: .na
+      help: |
+        If set, restrict the economic significance table to variables whose
+        posterior inclusion probability (PIP) is at least this value.
+        Leave unset (NA) to include every BMA variable.
+
   fma:
     round_to:
       type: "integer"
