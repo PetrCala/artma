@@ -145,6 +145,28 @@ boot_estimate_within <- function(data, rows) {
   c(effect = mean(y) - slope * mean(x), publication_bias = slope)
 }
 
+# Between effects estimator. plm's model = "between" is the unweighted OLS
+# on cluster means, one row per distinct cluster (unlike the size-weighted
+# between regression inside the Swamy-Arora components below). Duplicated
+# resampled clusters keep their id, so they merge into one group with
+# unchanged means, exactly as plm treats the resampled frame. plm errors on
+# a single cluster (fewer rows than coefficients), so the guard mirrors it.
+boot_estimate_be <- function(data, rows) {
+  y <- data$effect[rows]
+  x <- data$se[rows]
+  group <- droplevels(data$study_id[rows])
+  if (nlevels(group) < 2L) {
+    cli::cli_abort("Between regression needs at least two distinct clusters")
+  }
+
+  first_in_group <- !duplicated(as.integer(group))
+  group_x <- stats::ave(x, group)[first_in_group]
+  group_y <- stats::ave(y, group)[first_in_group]
+
+  fit <- stats::lm.fit(cbind(1, group_x), group_y)
+  c(effect = fit$coefficients[[1L]], publication_bias = fit$coefficients[[2L]])
+}
+
 # Random effects estimator: feasible GLS via the theta (quasi-demeaning)
 # transformation with Swamy-Arora variance components, replicating
 # plm::plm(model = "random") exactly. With one regressor plus intercept,
@@ -450,7 +472,8 @@ linear_model_specs <- function() {
       fit = function(df) plm::plm(effect ~ se, data = df, model = "between", index = "study_id"),
       tidy = tidy_plm_generic,
       boot_coefs = boot_coefs_intercept_slope,
-      supports_bootstrap = FALSE
+      boot_estimate = boot_estimate_be,
+      supports_bootstrap = TRUE
     ),
     list(
       name = "re",
