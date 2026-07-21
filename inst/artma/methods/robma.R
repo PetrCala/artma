@@ -35,7 +35,7 @@ robma <- function(df) {
   samples <- opt$samples %||% 5000L
   burnin <- opt$burnin %||% 2000L
   adapt <- opt$adapt %||% 500L
-  parallel <- opt$parallel %||% FALSE
+  parallel <- resolve_parallel(opt$parallel, chains)
   autofit <- opt$autofit %||% TRUE
   seed <- opt$seed %||% NA_integer_
   measure <- opt$measure %||% "SMD"
@@ -139,6 +139,32 @@ robma <- function(df) {
     ),
     meta = list(model = fit, n_obs = nrow(fit_data))
   )
+}
+
+#' @title Resolve the RoBMA parallel sampling flag
+#' @description
+#' RoBMA spawns one worker per chain when `parallel = TRUE`, so parallel
+#' sampling only pays off when the machine has a spare core on top of the
+#' chains. Auto-detect that when the user left the option unset (`NA`); an
+#' explicit `TRUE`/`FALSE` in the options file always wins.
+#' @param setting *\[logical, optional\]* The `parallel` option value.
+#' @param chains *\[numeric\]* Number of MCMC chains to be fitted.
+#' @return *\[logical\]* Whether to sample the chains in parallel.
+resolve_parallel <- function(setting, chains) {
+  if (!is.null(setting) && !is.na(setting)) {
+    return(isTRUE(setting))
+  }
+
+  if (tolower(Sys.getenv("_R_CHECK_LIMIT_CORES_", "")) %in% c("true", "warn")) {
+    return(FALSE)
+  }
+
+  cores <- parallel::detectCores()
+  if (is.na(cores)) {
+    cores <- 1L
+  }
+
+  cores > chains
 }
 
 #' @title Empty RoBMA estimates table

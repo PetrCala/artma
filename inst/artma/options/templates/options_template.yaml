@@ -547,9 +547,15 @@ methods:
 
     parallel:
       type: "logical"
-      default: false
+      allow_na: true
+      default: .na
       help: |
-        If `TRUE`, fit the models of the RoBMA ensemble in parallel.
+        If `TRUE`, sample the MCMC chains of each RoBMA model in parallel,
+        which is close to a `chains`-fold speed-up on a multi-core machine.
+        RoBMA starts one worker per chain, so leave the option unset (NA) to
+        enable parallel sampling only when the machine has more cores than
+        `chains`, and fall back to sequential sampling otherwise. Setting the
+        option explicitly overrides the auto-detection.
 
     autofit:
       type: "logical"
