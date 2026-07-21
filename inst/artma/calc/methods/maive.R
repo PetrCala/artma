@@ -1,7 +1,7 @@
 #' @title MAIVE wrapper
 #' @description
 #' Wrapper for the MAIVE (Meta-Analysis Instrumental Variable Estimator) method
-#' from the PetrCala/maive GitHub package. This estimator addresses publication
+#' from the CRAN package \pkg{MAIVE}. This estimator addresses publication
 #' bias and p-hacking in meta-analysis using instrumental variables.
 #' @param dat *[data.frame]* Data with columns: bs (estimates), sebs (std errors),
 #'   Ns (sample sizes), studyid (study IDs, optional).
@@ -32,7 +32,7 @@ maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2
   if (!requireNamespace("MAIVE", quietly = TRUE)) {
     cli::cli_abort(c(
       "Package {.pkg MAIVE} is required for MAIVE estimation.",
-      "i" = "Install with: devtools::install_github('PetrCala/maive@0.0.2.11')"
+      "i" = "Install with: install.packages('MAIVE')"
     ))
   }
 
