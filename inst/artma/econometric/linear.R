@@ -96,15 +96,19 @@ prepare_linear_data <- function(df, spec) {
 #' @description Resample the data by clusters.
 #' @param df *[data.frame]* Data to resample.
 #' @param cluster_column *[character]* Column name holding the cluster ids.
+#' @param cluster_splits *[list, optional]* Precomputed row indices split by
+#'   cluster, as returned by `split(seq_len(nrow(df)), df[[cluster_column]])`.
+#'   Pass this when resampling repeatedly so the split is not recomputed.
 #' @return A resampled data frame with replacement at the cluster level.
-resample_by_cluster <- function(df, cluster_column) {
-  if (is.null(cluster_column) || !cluster_column %in% colnames(df)) {
-    rows <- sample.int(nrow(df), nrow(df), replace = TRUE)
-    return(df[rows, , drop = FALSE])
+resample_by_cluster <- function(df, cluster_column, cluster_splits = NULL) {
+  if (is.null(cluster_splits)) {
+    if (is.null(cluster_column) || !cluster_column %in% colnames(df)) {
+      rows <- sample.int(nrow(df), nrow(df), replace = TRUE)
+      return(df[rows, , drop = FALSE])
+    }
+    cluster_splits <- split(seq_len(nrow(df)), df[[cluster_column]])
   }
 
-  cluster_ids <- df[[cluster_column]]
-  cluster_splits <- split(seq_len(nrow(df)), cluster_ids)
   sampled_clusters <- sample(names(cluster_splits), length(cluster_splits), replace = TRUE)
   sampled_indices <- unlist(cluster_splits[sampled_clusters], use.names = FALSE)
   df[sampled_indices, , drop = FALSE]
@@ -124,8 +128,13 @@ bootstrap_confidence <- function(spec, data, replications, conf_level) {
   samples <- matrix(NA_real_, nrow = replications, ncol = length(spec$terms))
   colnames(samples) <- spec$terms
 
+  cluster_column <- spec$cluster_column
+  cluster_splits <- if (!is.null(cluster_column) && cluster_column %in% colnames(data)) {
+    split(seq_len(nrow(data)), data[[cluster_column]])
+  }
+
   for (i in seq_len(replications)) {
-    boot_data <- resample_by_cluster(data, spec$cluster_column)
+    boot_data <- resample_by_cluster(data, cluster_column, cluster_splits)
     fit <- tryCatch(spec$fit(boot_data), error = function(e) NULL)
     if (is.null(fit)) next
     tidy <- tryCatch(spec$tidy(fit, boot_data), error = function(e) NULL)
