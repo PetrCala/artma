@@ -10,7 +10,9 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
     artma / modules / runtime_methods[new_method_result],
-    artma / options / index[get_option_group]
+    artma / options / index[get_option_group],
+    artma / visualization / options[get_visualization_options],
+    artma / visualization / export[save_plot, build_export_filename, ensure_export_dir]
   )
 
   validate(is.data.frame(df))
@@ -117,7 +119,6 @@ best_practice_estimate <- function(df, bma_result = NULL) {
   vcov_matrix <- resolve_bpe_vcov(ols_model = ols_model, cluster_ids = context$study_id)
   z_value <- stats::qnorm((1 + conf_level) / 2)
 
-  rows <- list()
   author_values <- compute_context_values(
     bma_data = bma_data,
     row_idx = seq_len(nrow(bma_data)),
@@ -125,12 +126,40 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     overrides = resolved_overrides
   )
 
-  if (include_author_row) {
-    rows[[length(rows) + 1]] <- build_bpe_row(
-      scope = "author",
-      study_id = NA_character_,
-      study_label = "Author",
-      predictor_values = author_values,
+  # Computed unconditionally (regardless of include_author_row/include_study_rows)
+  # because plots reuse the author reference point and per-study estimates.
+  author_row <- build_bpe_row(
+    scope = "author",
+    study_id = NA_character_,
+    study_label = "Author",
+    predictor_values = author_values,
+    coef_post_mean = coef_post_mean,
+    include_intercept = include_intercept,
+    vcov_matrix = vcov_matrix,
+    z_value = z_value
+  )
+
+  study_rows <- list()
+  unique_ids <- unique(context$study_id)
+  for (study_id in unique_ids) {
+    row_idx <- which(context$study_id == study_id)
+    if (!length(row_idx)) {
+      next
+    }
+
+    study_values <- compute_context_values(
+      bma_data = bma_data,
+      row_idx = row_idx,
+      predictors = predictors,
+      overrides = resolved_overrides
+    )
+
+    study_label <- context$study_label[match(study_id, context$study_id)]
+    study_rows[[length(study_rows) + 1]] <- build_bpe_row(
+      scope = "study",
+      study_id = as.character(study_id),
+      study_label = as.character(study_label),
+      predictor_values = study_values,
       coef_post_mean = coef_post_mean,
       include_intercept = include_intercept,
       vcov_matrix = vcov_matrix,
@@ -138,33 +167,12 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     )
   }
 
+  rows <- list()
+  if (include_author_row) {
+    rows[[length(rows) + 1]] <- author_row
+  }
   if (include_study_rows) {
-    unique_ids <- unique(context$study_id)
-    for (study_id in unique_ids) {
-      row_idx <- which(context$study_id == study_id)
-      if (!length(row_idx)) {
-        next
-      }
-
-      study_values <- compute_context_values(
-        bma_data = bma_data,
-        row_idx = row_idx,
-        predictors = predictors,
-        overrides = resolved_overrides
-      )
-
-      study_label <- context$study_label[match(study_id, context$study_id)]
-      rows[[length(rows) + 1]] <- build_bpe_row(
-        scope = "study",
-        study_id = as.character(study_id),
-        study_label = as.character(study_label),
-        predictor_values = study_values,
-        coef_post_mean = coef_post_mean,
-        include_intercept = include_intercept,
-        vcov_matrix = vcov_matrix,
-        z_value = z_value
-      )
-    }
+    rows <- c(rows, study_rows)
   }
 
   summary <- do.call(rbind, rows)
@@ -194,21 +202,32 @@ best_practice_estimate <- function(df, bma_result = NULL) {
   tables <- list(summary = summary)
 
   if (include_economic_significance) {
-    bpe_reference_estimate <- compute_bpe_point_estimate(
-      predictor_values = author_values,
-      coef_post_mean = coef_post_mean,
-      include_intercept = include_intercept
-    )
     tables$economic_significance <- compute_bpe_economic_significance(
       predictors = predictors,
       bma_data = bma_data,
       coef_post_mean = coef_post_mean,
-      bpe_reference_estimate = bpe_reference_estimate,
+      bpe_reference_estimate = author_row$estimate,
       pip_values = pip_values,
       config = config,
       round_to = round_to,
       pip_threshold = economic_significance_pip_threshold
     )
+  }
+
+  vis <- get_visualization_options()
+  plots <- build_bpe_plots(
+    study_rows = study_rows,
+    author_estimate = author_row$estimate,
+    predictors = predictors,
+    config = config,
+    bma_data = bma_data,
+    context = context,
+    round_to = round_to,
+    theme_name = vis$theme
+  )
+
+  if (isTRUE(vis$export_graphics) && length(plots)) {
+    export_bpe_plots(plots = plots, export_path = vis$export_path, graph_scale = vis$graph_scale)
   }
 
   if (get_verbosity() >= 3) {
@@ -222,6 +241,7 @@ best_practice_estimate <- function(df, bma_result = NULL) {
 
   invisible(new_method_result(
     tables = tables,
+    plots = plots,
     meta = list(
       formula = formula,
       overrides = override_table,
@@ -841,6 +861,347 @@ compute_bpe_economic_significance <- function(predictors, bma_data, coef_post_me
 
   rownames(out) <- NULL
   out
+}
+
+#' @title Build Best-Practice Estimate Plots
+#' @description
+#' Builds the sorted "miracle" scatter plot of per-study best-practice
+#' estimates (with the author's own estimate highlighted) and, for every
+#' variable flagged for BPE grouping in the data config, a per-factor density
+#' plot of the per-study estimates split by factor level.
+#' @keywords internal
+build_bpe_plots <- function(study_rows, author_estimate, predictors, config, bma_data,
+                            context, round_to, theme_name) {
+  plots <- list()
+
+  study_estimates <- if (length(study_rows)) do.call(rbind, study_rows) else NULL
+
+  min_points_for_scatter <- 4L
+  if (!is.null(study_estimates) && nrow(study_estimates) >= min_points_for_scatter) {
+    plots$bpe_scatter <- create_bpe_scatter_plot(
+      study_estimates = study_estimates,
+      author_estimate = author_estimate,
+      theme_name = theme_name
+    )
+  }
+
+  if (!is.null(study_estimates) && nrow(study_estimates) > 0) {
+    density_plots <- build_bpe_density_plots(
+      predictors = predictors,
+      config = config,
+      bma_data = bma_data,
+      context = context,
+      study_estimates = study_estimates,
+      round_to = round_to,
+      theme_name = theme_name
+    )
+    plots <- c(plots, density_plots)
+  }
+
+  plots
+}
+
+#' @title Create the Sorted BPE Scatter Plot
+#' @description
+#' Studies sorted by their best-practice estimate, a spline smoother through
+#' the sorted points, and a dashed reference line at the author's own
+#' best-practice estimate.
+#' @keywords internal
+create_bpe_scatter_plot <- function(study_estimates, author_estimate, theme_name) {
+  box::use(
+    artma / visualization / colors[get_colors, get_vline_color],
+    artma / visualization / theme[get_theme]
+  )
+
+  has_author_reference <- is.finite(author_estimate)
+
+  plot_df <- study_estimates[order(study_estimates$estimate), , drop = FALSE]
+  plot_df$rank <- seq_len(nrow(plot_df))
+  plot_df$relative_to_author <- "Study"
+  if (has_author_reference) {
+    plot_df$relative_to_author <- "Below author's BPE"
+    plot_df$relative_to_author[
+      is.finite(plot_df$estimate) & plot_df$estimate >= author_estimate
+    ] <- "At or above author's BPE"
+  }
+
+  palette <- get_colors(theme_name, "bpe", submethod = "miracle")
+  vline_color <- get_vline_color(theme_name)
+  plot_theme <- get_theme(theme_name)
+
+  p <- ggplot2::ggplot(
+    data = plot_df,
+    ggplot2::aes(x = .data$rank, y = .data$estimate, color = .data$relative_to_author)
+  ) +
+    ggplot2::geom_errorbar(
+      ggplot2::aes(ymin = .data$ci_lower, ymax = .data$ci_upper),
+      width = 0, alpha = 0.4
+    ) +
+    ggplot2::geom_point(size = 2) +
+    ggplot2::scale_color_brewer(palette = palette, name = "Study vs. author's BPE") +
+    ggplot2::labs(
+      title = NULL,
+      x = "Studies (sorted by best-practice estimate)",
+      y = "Best-practice estimate"
+    ) +
+    plot_theme
+
+  if (has_author_reference) {
+    p <- p + ggplot2::geom_hline(
+      yintercept = author_estimate, linetype = "dashed", color = vline_color, linewidth = 0.85
+    )
+  }
+
+  spline_points <- plot_df[is.finite(plot_df$rank) & is.finite(plot_df$estimate), , drop = FALSE]
+  min_points_for_spline <- 4L
+  if (nrow(spline_points) >= min_points_for_spline) {
+    spline_fit <- tryCatch(
+      stats::smooth.spline(x = spline_points$rank, y = spline_points$estimate),
+      error = function(e) NULL
+    )
+    if (!is.null(spline_fit)) {
+      spline_df <- data.frame(rank = spline_fit$x, estimate = spline_fit$y)
+      p <- p + ggplot2::geom_line(
+        data = spline_df,
+        mapping = ggplot2::aes(x = .data$rank, y = .data$estimate),
+        inherit.aes = FALSE,
+        color = vline_color,
+        linewidth = 1
+      )
+    }
+  }
+
+  p
+}
+
+#' @title Build Per-Factor BPE Density Plots
+#' @description
+#' For every predictor flagged via `bpe_sum_stats`/`bpe_equal`/`bpe_gltl` in
+#' the data config, split studies into groups by that variable's study-level
+#' value and plot the density of their best-practice estimates per group.
+#' @keywords internal
+build_bpe_density_plots <- function(predictors, config, bma_data, context, study_estimates,
+                                    round_to, theme_name) {
+  plots <- list()
+
+  for (var_name in predictors) {
+    config_key <- find_config_key_for_var(var_name, config)
+    if (is.null(config_key)) {
+      next
+    }
+
+    var_cfg <- config[[config_key]]
+    if (!is_bpe_factor_var(var_cfg)) {
+      next
+    }
+
+    var_label <- var_cfg$var_name_verbose %||% var_name
+    study_level_values <- resolve_bpe_study_level_values(bma_data, context, var_name)
+
+    groups <- resolve_bpe_factor_groups(
+      var_label = var_label,
+      equal_val = var_cfg$bpe_equal,
+      gltl_val = var_cfg$bpe_gltl,
+      var_values = study_level_values,
+      round_to = round_to
+    )
+
+    plot_df <- build_bpe_density_plot_data(
+      groups = groups,
+      study_ids = names(study_level_values),
+      study_estimates = study_estimates
+    )
+
+    if (is.null(plot_df) || length(unique(plot_df$group)) < 2) {
+      next
+    }
+
+    plots[[paste0("bpe_density_", var_name)]] <- create_bpe_density_plot(
+      var_label = var_label,
+      group_estimates = plot_df,
+      theme_name = theme_name
+    )
+  }
+
+  plots
+}
+
+#' @title Study-Level Values for a BPE Grouping Variable
+#' @description
+#' Averages a predictor's observation-level values within each study,
+#' returning a named numeric vector keyed by study id.
+#' @keywords internal
+resolve_bpe_study_level_values <- function(bma_data, context, var_name) {
+  study_ids <- unique(context$study_id)
+  values <- vapply(study_ids, function(sid) {
+    row_idx <- which(context$study_id == sid)
+    mean(as.numeric(bma_data[[var_name]][row_idx]), na.rm = TRUE)
+  }, numeric(1))
+  stats::setNames(values, as.character(study_ids))
+}
+
+#' @title Assemble Per-Group Density Plot Data
+#' @description
+#' Maps study-level group membership (indices into `study_ids`) back to each
+#' study's best-practice estimate, producing a long-format data frame with
+#' `estimate` and `group` columns.
+#' @keywords internal
+build_bpe_density_plot_data <- function(groups, study_ids, study_estimates) {
+  if (!length(groups)) {
+    return(NULL)
+  }
+
+  rows <- lapply(groups, function(group) {
+    if (!length(group$row_idx)) {
+      return(NULL)
+    }
+    matched_ids <- study_ids[group$row_idx]
+    estimates <- study_estimates$estimate[as.character(study_estimates$study_id) %in% matched_ids]
+    estimates <- estimates[is.finite(estimates)]
+    if (length(estimates) < 2) {
+      return(NULL)
+    }
+    data.frame(estimate = estimates, group = group$label, stringsAsFactors = FALSE)
+  })
+
+  do.call(rbind, Filter(Negate(is.null), rows))
+}
+
+#' @title Create a Per-Factor BPE Density Plot
+#' @keywords internal
+create_bpe_density_plot <- function(var_label, group_estimates, theme_name) {
+  box::use(
+    artma / visualization / colors[get_colors],
+    artma / visualization / theme[get_theme]
+  )
+
+  palette <- get_colors(theme_name, "bpe", submethod = "density")
+  plot_theme <- get_theme(theme_name)
+
+  ggplot2::ggplot(
+    data = group_estimates,
+    ggplot2::aes(x = .data$estimate, color = .data$group)
+  ) +
+    ggplot2::geom_density(alpha = 0.2, linewidth = 1) +
+    ggplot2::scale_color_brewer(palette = palette, name = var_label) +
+    ggplot2::labs(x = "Best-practice estimate", y = "Density") +
+    plot_theme
+}
+
+#' @title Whether a Config Entry is Flagged for BPE Factor Grouping
+#' @keywords internal
+is_bpe_factor_var <- function(var_cfg) {
+  if (!is.list(var_cfg)) {
+    return(FALSE)
+  }
+
+  flag <- var_cfg$bpe_sum_stats
+  equal <- var_cfg$bpe_equal
+  gltl <- var_cfg$bpe_gltl
+
+  any(c(isTRUE(flag), !is_bpe_override_na(equal), !is_bpe_override_na(gltl)))
+}
+
+#' @title Split a Variable's Values into BPE Factor-Level Groups
+#' @description
+#' Mirrors the equal/gltl split used by `effect_summary_stats`: an exact-match
+#' group when `equal_val` is set, greater/less-than groups when `gltl_val` is
+#' set (accepting "mean"/"median" as well as a literal threshold), and,
+#' absent both, one group per distinct level for variables with a small
+#' number of unique values.
+#' @return *\[list\]* A list of `list(label, row_idx)` entries, where `row_idx`
+#'   indexes into `var_values`.
+#' @keywords internal
+resolve_bpe_factor_groups <- function(var_label, equal_val, gltl_val, var_values, round_to) {
+  groups <- list()
+
+  if (!is_bpe_override_na(equal_val)) {
+    row_idx <- which(!is.na(var_values) & var_values == equal_val)
+    groups[[length(groups) + 1]] <- list(
+      label = paste0(var_label, " = ", format_bpe_group_value(equal_val, round_to)),
+      row_idx = row_idx
+    )
+  }
+
+  if (!is_bpe_override_na(gltl_val)) {
+    threshold <- resolve_bpe_gltl_threshold(gltl_val, var_values)
+    if (!is.na(threshold)) {
+      groups[[length(groups) + 1]] <- list(
+        label = paste0(var_label, " >= ", format_bpe_group_value(threshold, round_to)),
+        row_idx = which(!is.na(var_values) & var_values >= threshold)
+      )
+      groups[[length(groups) + 1]] <- list(
+        label = paste0(var_label, " < ", format_bpe_group_value(threshold, round_to)),
+        row_idx = which(!is.na(var_values) & var_values < threshold)
+      )
+    }
+  }
+
+  if (length(groups)) {
+    return(groups)
+  }
+
+  max_auto_levels <- 12L
+  levels_present <- sort(unique(stats::na.omit(var_values)))
+  if (length(levels_present) < 2 || length(levels_present) > max_auto_levels) {
+    return(list())
+  }
+
+  lapply(levels_present, function(level_value) {
+    list(
+      label = paste0(var_label, " = ", format_bpe_group_value(level_value, round_to)),
+      row_idx = which(!is.na(var_values) & var_values == level_value)
+    )
+  })
+}
+
+#' @title Resolve a gltl Threshold to a Numeric Value
+#' @keywords internal
+resolve_bpe_gltl_threshold <- function(gltl_val, var_values) {
+  if (!is.character(gltl_val)) {
+    return(as.numeric(gltl_val))
+  }
+
+  filtered <- var_values[!is.na(var_values)]
+  switch(gltl_val,
+    mean = if (length(filtered)) mean(filtered) else NA_real_,
+    median = if (length(filtered)) stats::median(filtered) else NA_real_,
+    suppressWarnings(as.numeric(gltl_val))
+  )
+}
+
+#' @title Format a Group Boundary Value for Display
+#' @keywords internal
+format_bpe_group_value <- function(value, round_to) {
+  if (is.numeric(value)) {
+    return(as.character(round(value, round_to)))
+  }
+  as.character(value)
+}
+
+#' @title Export BPE Plots to Files
+#' @keywords internal
+export_bpe_plots <- function(plots, export_path, graph_scale) {
+  box::use(
+    artma / visualization / export[save_plot, build_export_filename, ensure_export_dir]
+  )
+
+  ensure_export_dir(export_path)
+
+  for (plot_name in names(plots)) {
+    filename <- build_export_filename("best_practice_estimate", plot_name)
+    full_path <- file.path(export_path, filename)
+
+    save_plot(
+      plot = plots[[plot_name]],
+      path = full_path,
+      width = 800,
+      height = 600,
+      scale = graph_scale
+    )
+  }
+
+  invisible(NULL)
 }
 
 compute_context_values <- function(bma_data, row_idx, predictors, overrides) {

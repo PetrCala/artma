@@ -11,6 +11,8 @@ box::use(
   withr[local_options]
 )
 
+box::use(ggplot2[is_ggplot])
+
 box::use(
   artma / methods / bma[bma],
   artma / methods / best_practice_estimate[best_practice_estimate]
@@ -185,4 +187,81 @@ test_that("best_practice_estimate accepts logical BPE overrides from config", {
   expect_equal(overrides[["top_journal"]], "1")
   expect_equal(overrides[["first_lag_instrument"]], "0")
   expect_false(is.na(overrides[["se"]]))
+})
+
+test_that("best_practice_estimate produces a sorted scatter plot highlighting the author's BPE", {
+  skip_if_not_installed("BMS")
+
+  df <- make_bpe_demo_data()
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = make_bpe_demo_config(),
+    artma.visualization.export_graphics = FALSE,
+    artma.methods.bma.burn = 50L,
+    artma.methods.bma.iter = 300L,
+    artma.methods.bma.nmodel = 20L,
+    artma.methods.bma.g = "UIP",
+    artma.methods.bma.mprior = "uniform",
+    artma.methods.bma.mcmc = "bd"
+  ))
+
+  bma_result <- bma(df)
+  result <- best_practice_estimate(df, bma_result = bma_result)
+
+  expect_true("bpe_scatter" %in% names(result$plots))
+  expect_true(is_ggplot(result$plots$bpe_scatter))
+})
+
+test_that("best_practice_estimate produces per-factor density plots for bpe_sum_stats variables", {
+  skip_if_not_installed("BMS")
+
+  df <- make_bpe_demo_data()
+  config <- make_bpe_demo_config()
+  config$top_journal$bpe_sum_stats <- TRUE
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = config,
+    artma.visualization.export_graphics = FALSE,
+    artma.methods.bma.burn = 50L,
+    artma.methods.bma.iter = 300L,
+    artma.methods.bma.nmodel = 20L,
+    artma.methods.bma.g = "UIP",
+    artma.methods.bma.mprior = "uniform",
+    artma.methods.bma.mcmc = "bd"
+  ))
+
+  bma_result <- bma(df)
+  result <- best_practice_estimate(df, bma_result = bma_result)
+
+  expect_true("bpe_density_top_journal" %in% names(result$plots))
+  expect_true(is_ggplot(result$plots$bpe_density_top_journal))
+})
+
+test_that("best_practice_estimate skips plots that would need no flagged BPE grouping variables", {
+  skip_if_not_installed("BMS")
+
+  df <- make_bpe_demo_data()
+  config <- make_bpe_demo_config()
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = config,
+    artma.visualization.export_graphics = FALSE,
+    artma.methods.bma.burn = 50L,
+    artma.methods.bma.iter = 300L,
+    artma.methods.bma.nmodel = 20L,
+    artma.methods.bma.g = "UIP",
+    artma.methods.bma.mprior = "uniform",
+    artma.methods.bma.mcmc = "bd"
+  ))
+
+  bma_result <- bma(df)
+  result <- best_practice_estimate(df, bma_result = bma_result)
+
+  expect_false(any(grepl("^bpe_density_", names(result$plots))))
 })
