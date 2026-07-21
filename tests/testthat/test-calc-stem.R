@@ -6,9 +6,9 @@ box::use(
   ],
   artma / calc / methods / stem[
     weighted_mean,
+    weighted_mean_squared,
     variance_b,
     variance_0,
-    compute_submatrix_sums,
     stem
   ]
 )
@@ -52,12 +52,26 @@ test_that("variance_0 matches its closed form with excess dispersion", {
   expect_equal(variance_0(3, beta, se, mean_val), 3)
 })
 
-# compute_submatrix_sums ----------------------------------------------------
+# weighted_mean_squared ------------------------------------------------------
 
-test_that("compute_submatrix_sums returns leading principal block sums", {
-  m <- matrix(1:9, nrow = 3)
-  # top-left 1x1 = 1; 2x2 = 1+2+4+5 = 12; 3x3 = sum(1:9) = 45
-  expect_equal(compute_submatrix_sums(m), c(1, 12, 45))
+test_that("weighted_mean_squared matches the outer-product reference", {
+  set.seed(7)
+  n <- 25
+  se <- runif(n, 0.05, 0.5)
+  beta <- 0.3 + rnorm(n, 0, se)
+  sigma <- 0.1
+
+  weights <- 1 / (se^2 + sigma^2)
+  weighted_beta <- beta * weights
+  submatrix_sums <- function(m) {
+    vapply(seq_len(nrow(m)), function(i) sum(m[1:i, 1:i]), numeric(1))
+  }
+  numerator <- submatrix_sums(outer(weighted_beta, weighted_beta)) - cumsum(weighted_beta^2)
+  denominator <- submatrix_sums(outer(weights, weights)) - cumsum(weights^2)
+  expected <- numerator / denominator
+  expected[1] <- 0
+
+  expect_equal(weighted_mean_squared(beta, se, sigma), expected)
 })
 
 # stem ----------------------------------------------------------------------

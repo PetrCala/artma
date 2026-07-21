@@ -18,28 +18,14 @@ weighted_mean <- function(beta, se, sigma) {
 #' @param sigma [numeric] Heterogeneity parameter.
 #' @return Numeric vector of weighted second moments.
 weighted_mean_squared <- function(beta, se, sigma) {
-  n <- length(beta)
   weights <- 1 / (se^2 + sigma^2)
-  weight_matrix <- outer(weights, weights)
   weighted_beta <- beta * weights
-  beta_matrix <- outer(weighted_beta, weighted_beta)
-  cumulative_matrix <- compute_submatrix_sums(weight_matrix)
-  cumulative_beta <- compute_submatrix_sums(beta_matrix)
-  numerator <- cumulative_beta - cumsum(weighted_beta^2)
-  denominator <- cumulative_matrix - cumsum(weights^2)
+  # The leading-submatrix sums of outer(x, x) are cumsum(x)^2.
+  numerator <- cumsum(weighted_beta)^2 - cumsum(weighted_beta^2)
+  denominator <- cumsum(weights)^2 - cumsum(weights^2)
   out <- numerator / denominator
   out[1] <- 0
   out
-}
-
-#' Compute cumulative sums for each leading principal submatrix
-#'
-#' @param matrix_input [matrix] Square matrix.
-#' @return Numeric vector with cumulative sums.
-compute_submatrix_sums <- function(matrix_input) {
-  cumulative_cols <- apply(matrix_input, 2, cumsum)
-  cumulative_rows <- t(apply(cumulative_cols, 1, cumsum))
-  diag(cumulative_rows)
 }
 
 #' Variance component for a given number of studies
@@ -239,7 +225,6 @@ data_median <- function(data, id_var, main_var, additional_var) {
 box::export(
   weighted_mean,
   weighted_mean_squared,
-  compute_submatrix_sums,
   variance_0,
   variance_b,
   stem_compute,
