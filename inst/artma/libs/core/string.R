@@ -8,14 +8,18 @@ box::use(artma / libs / core / validation[validate, assert])
 pluralize <- function(word, count = NULL) {
   validate(is.character(word))
 
-  if (is.null(count)) {
+  apply_plural <- function(word) {
     if (grepl("[sxz]$", word) || grepl("[sc]h$", word)) {
       return(paste0(word, "es"))
     }
     if (grepl("[^aeiou]y$", word)) {
       return(sub("y$", "ies", word))
     }
-    return(paste0(word, "s"))
+    paste0(word, "s")
+  }
+
+  if (is.null(count)) {
+    return(apply_plural(word))
   }
 
   validate(is.numeric(count))
@@ -24,13 +28,7 @@ pluralize <- function(word, count = NULL) {
     return(word)
   }
 
-  if (grepl("[sxz]$", word) || grepl("[sc]h$", word)) {
-    return(paste0(word, "es"))
-  }
-  if (grepl("[^aeiou]y$", word)) {
-    return(sub("y$", "ies", word))
-  }
-  paste0(word, "s")
+  apply_plural(word)
 }
 #' @title Trim quotes
 #' @description Removes single or double quotes from the beggining and end of a string. Preserves these quotes elsewhere in the string.

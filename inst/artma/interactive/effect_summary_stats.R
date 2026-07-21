@@ -4,6 +4,24 @@
 #' for effect summary statistics analysis. Supports both automatic suggestion
 #' and manual variable selection with specification of split methods.
 
+#' Convert suggested variable rows into variable configurations
+#'
+#' @param suggested_vars *\[data.frame\]* Rows of accepted suggestions
+#' @return *\[list\]* Named list of per-variable split configurations
+#' @keywords internal
+suggestions_to_var_configs <- function(suggested_vars) {
+  var_configs <- list()
+  for (i in seq_len(nrow(suggested_vars))) {
+    var <- suggested_vars[i, ]
+    var_configs[[var$var_name]] <- list(
+      var_name = var$var_name,
+      split_method = var$split_method,
+      split_value = var$split_value
+    )
+  }
+  var_configs
+}
+
 #' Prompt user to select variables for effect summary statistics
 #'
 #' @description
@@ -43,15 +61,7 @@ prompt_effect_summary_var_selection <- function(df, config) {
     )
     suggested_vars <- suggestions[suggestions$suggested, ]
     if (nrow(suggested_vars) > 0) {
-      var_configs <- list()
-      for (i in seq_len(nrow(suggested_vars))) {
-        var <- suggested_vars[i, ]
-        var_configs[[var$var_name]] <- list(
-          var_name = var$var_name,
-          split_method = var$split_method,
-          split_value = var$split_value
-        )
-      }
+      var_configs <- suggestions_to_var_configs(suggested_vars)
       return(update_config_with_selections(config, var_configs))
     }
     return(config)
@@ -241,15 +251,7 @@ auto_select_effect_summary_vars <- function(df, config) {
 
   box::use(artma / libs / core / autonomy[should_prompt_user])
   if (!should_prompt_user(required_level = "autonomous")) {
-    var_configs <- list()
-    for (i in seq_len(nrow(suggested_vars))) {
-      var <- suggested_vars[i, ]
-      var_configs[[var$var_name]] <- list(
-        var_name = var$var_name,
-        split_method = var$split_method,
-        split_value = var$split_value
-      )
-    }
+    var_configs <- suggestions_to_var_configs(suggested_vars)
     cli::cli_alert_success("Using {length(var_configs)} suggested variable{?s} (autonomy level: high)")
     return(var_configs)
   }
@@ -271,15 +273,7 @@ auto_select_effect_summary_vars <- function(df, config) {
   }
 
   # Convert suggestions to variable configurations
-  var_configs <- list()
-  for (i in seq_len(nrow(suggested_vars))) {
-    var <- suggested_vars[i, ]
-    var_configs[[var$var_name]] <- list(
-      var_name = var$var_name,
-      split_method = var$split_method,
-      split_value = var$split_value
-    )
-  }
+  var_configs <- suggestions_to_var_configs(suggested_vars)
 
   cli::cli_alert_success("Using {length(var_configs)} suggested variable{?s}")
 

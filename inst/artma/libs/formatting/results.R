@@ -86,9 +86,30 @@ format_ci <- function(lower, upper, digits) {
   formatted
 }
 
+#' Print a method summary table through cli
+#'
+#' @description
+#' Prints a summary data frame via cli_verbatim (so cached runs replay the
+#' output), hiding synthetic row indices when the first column already
+#' duplicates the row names.
+#'
+#' @param summary *\[data.frame\]* The summary table to print
+#' @keywords internal
+print_summary_table <- function(summary) {
+  duplicated_metric <- identical(rownames(summary), summary[[1]])
+  if (duplicated_metric) {
+    rownames(summary) <- NULL
+  }
+  lines <- utils::capture.output(
+    print(summary, row.names = !duplicated_metric) # nolint: undesirable_function_linter.
+  )
+  cli::cli_verbatim(lines)
+}
+
 box::export(
   significance_mark,
   format_number,
   format_se,
-  format_ci
+  format_ci,
+  print_summary_table
 )

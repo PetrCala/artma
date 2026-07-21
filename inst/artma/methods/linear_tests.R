@@ -7,6 +7,7 @@ linear_tests <- function(df) {
   box::use(
     artma / libs / core / validation[assert, validate, validate_columns],
     artma / libs / core / utils[get_verbosity],
+    artma / libs / formatting / results[print_summary_table],
     artma / econometric / linear[run_linear_models],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
@@ -50,18 +51,7 @@ linear_tests <- function(df) {
     cli::cli_h2("Linear model tests")
 
     if (nrow(results$summary) > 0) {
-      summary <- results$summary
-
-      duplicated_metric <- identical(rownames(summary), summary[[1]])
-      if (duplicated_metric) {
-        rownames(summary) <- NULL
-      }
-
-      # Hide synthetic row indices when the metric names already capture the labels.
-      lines <- utils::capture.output(
-        print(summary, row.names = !duplicated_metric) # nolint: undesirable_function_linter.
-      )
-      cli::cli_verbatim(lines) # print through cli for cache capture
+      print_summary_table(results$summary)
     } else {
       cli::cli_alert_warning("No linear models were successfully estimated.")
     }

@@ -311,7 +311,8 @@ determine_tick_interval <- function(range_size) {
 create_funnel_plot <- function(df, tick_info, theme_name, precision_to_log, use_study_medians) {
   box::use(
     artma / visualization / colors[get_colors, get_vline_color],
-    artma / visualization / theme[get_theme]
+    artma / visualization / theme[get_theme],
+    artma / visualization / ticks[format_colored_tick_labels]
   )
 
   point_color <- get_colors(theme_name, "funnel_plot")
@@ -364,53 +365,6 @@ create_funnel_plot <- function(df, tick_info, theme_name, precision_to_log, use_
     plot_theme
 
   p
-}
-
-
-#' Format tick values as integers or decimals appropriately
-#'
-#' @description
-#' Displays integer values without decimal points and floats with
-#' minimal necessary precision for cleaner axis labels.
-#'
-#' @param x *\[numeric\]* Tick values
-#' @return *\[character\]* Formatted labels
-#' @keywords internal
-format_tick_labels <- function(x) {
-  vapply(x, function(val) {
-    if (is.na(val)) {
-      return(NA_character_)
-    }
-    if (val == floor(val)) {
-      as.character(as.integer(val))
-    } else {
-      format(round(val, 2), nsmall = 0, trim = TRUE)
-    }
-  }, character(1))
-}
-
-
-#' Format tick labels with HTML color spans
-#'
-#' @description
-#' Wraps tick labels in HTML span elements with color styling for use with
-#' ggtext::element_markdown(). This enables per-tick coloring (e.g., highlighting
-#' the mean tick in a different color).
-#'
-#' @param ticks *\[numeric\]* Tick values
-#' @param colors *\[character\]* Color for each tick (same length as ticks)
-#'
-#' @return *\[character\]* HTML-formatted labels
-#' @keywords internal
-format_colored_tick_labels <- function(ticks, colors) {
-  labels <- format_tick_labels(ticks)
-
-  mapply(function(label, color) { # nolint: undesirable_function_linter.
-    if (is.na(label)) {
-      return(NA_character_)
-    }
-    sprintf("<span style='color:%s'>%s</span>", color, label)
-  }, labels, colors, USE.NAMES = FALSE)
 }
 
 
