@@ -150,13 +150,15 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     z_value = z_value
   )
 
-  study_rows <- list()
-  unique_ids <- unique(context$study_id)
-  for (study_id in unique_ids) {
-    row_idx <- which(context$study_id == study_id)
-    if (!length(row_idx)) {
-      next
-    }
+  # First-appearance level order keeps summary rows in data order; NA study
+  # ids drop out of the factor, matching the previous which()-based skip.
+  study_index_groups <- split(
+    seq_along(context$study_id),
+    factor(context$study_id, levels = unique(context$study_id))
+  )
+  study_rows <- vector("list", length(study_index_groups))
+  for (i in seq_along(study_index_groups)) {
+    row_idx <- study_index_groups[[i]]
 
     study_values <- compute_context_values(
       bma_data = bma_data,
@@ -165,11 +167,10 @@ best_practice_estimate <- function(df, bma_result = NULL) {
       overrides = resolved_overrides
     )
 
-    study_label <- context$study_label[match(study_id, context$study_id)]
-    study_rows[[length(study_rows) + 1]] <- build_bpe_row(
+    study_rows[[i]] <- build_bpe_row(
       scope = "study",
-      study_id = as.character(study_id),
-      study_label = as.character(study_label),
+      study_id = names(study_index_groups)[[i]],
+      study_label = as.character(context$study_label[row_idx[[1]]]),
       predictor_values = study_values,
       coef_post_mean = coef_post_mean,
       include_intercept = include_intercept,
@@ -255,7 +256,7 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     predictors = predictors,
     config = config,
     bma_data = bma_data,
-    context = context,
+    study_index_groups = study_index_groups,
     round_to = round_to,
     theme_name = vis$theme
   )
@@ -994,7 +995,7 @@ compute_bpe_factor_summary <- function(predictors, config, bma_data, coef_post_m
 #' plot of the per-study estimates split by factor level.
 #' @keywords internal
 build_bpe_plots <- function(study_rows, author_estimate, predictors, config, bma_data,
-                            context, round_to, theme_name) {
+                            study_index_groups, round_to, theme_name) {
   plots <- list()
 
   study_estimates <- if (length(study_rows)) do.call(rbind, study_rows) else NULL
@@ -1013,7 +1014,7 @@ build_bpe_plots <- function(study_rows, author_estimate, predictors, config, bma
       predictors = predictors,
       config = config,
       bma_data = bma_data,
-      context = context,
+      study_index_groups = study_index_groups,
       study_estimates = study_estimates,
       round_to = round_to,
       theme_name = theme_name
@@ -1103,8 +1104,8 @@ create_bpe_scatter_plot <- function(study_estimates, author_estimate, theme_name
 #' the data config, split studies into groups by that variable's study-level
 #' value and plot the density of their best-practice estimates per group.
 #' @keywords internal
-build_bpe_density_plots <- function(predictors, config, bma_data, context, study_estimates,
-                                    round_to, theme_name) {
+build_bpe_density_plots <- function(predictors, config, bma_data, study_index_groups,
+                                    study_estimates, round_to, theme_name) {
   plots <- list()
 
   for (var_name in predictors) {
@@ -1119,7 +1120,7 @@ build_bpe_density_plots <- function(predictors, config, bma_data, context, study
     }
 
     var_label <- var_cfg$var_name_verbose %||% var_name
-    study_level_values <- resolve_bpe_study_level_values(bma_data, context, var_name)
+    study_level_values <- resolve_bpe_study_level_values(bma_data, study_index_groups, var_name)
 
     groups <- resolve_bpe_factor_groups(
       var_label = var_label,
@@ -1152,15 +1153,16 @@ build_bpe_density_plots <- function(predictors, config, bma_data, context, study
 #' @title Study-Level Values for a BPE Grouping Variable
 #' @description
 #' Averages a predictor's observation-level values within each study,
-#' returning a named numeric vector keyed by study id.
+#' returning a named numeric vector keyed by study id. `study_index_groups`
+#' is the precomputed split of row indices by study id.
 #' @keywords internal
-resolve_bpe_study_level_values <- function(bma_data, context, var_name) {
-  study_ids <- unique(context$study_id)
-  values <- vapply(study_ids, function(sid) {
-    row_idx <- which(context$study_id == sid)
-    mean(as.numeric(bma_data[[var_name]][row_idx]), na.rm = TRUE)
-  }, numeric(1))
-  stats::setNames(values, as.character(study_ids))
+resolve_bpe_study_level_values <- function(bma_data, study_index_groups, var_name) {
+  var_values <- as.numeric(bma_data[[var_name]])
+  vapply(
+    study_index_groups,
+    function(row_idx) mean(var_values[row_idx], na.rm = TRUE),
+    numeric(1)
+  )
 }
 
 #' @title Assemble Per-Group Density Plot Data
