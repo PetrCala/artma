@@ -24,7 +24,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          needs: check
+          needs: e2e
 
       - name: Run E2E tests
         run: make test-e2e

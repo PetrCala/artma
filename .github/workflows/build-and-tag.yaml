@@ -83,7 +83,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::remotes, any::devtools
+          needs: release
 
       - name: Check for R CMD check
         id: rcmdCheck
@@ -203,7 +203,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::remotes, any::devtools
+          needs: release
 
       - name: Download prebuild artifacts
         uses: actions/download-artifact@v4
