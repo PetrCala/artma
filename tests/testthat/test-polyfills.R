@@ -1,3 +1,10 @@
+box::use(
+  testthat[
+    expect_equal,
+    test_that
+  ]
+)
+
 test_that("str_remove removes first match", {
   box::use(artma / libs / infrastructure / polyfills[str_remove])
 

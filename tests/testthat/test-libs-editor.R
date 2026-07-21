@@ -1,3 +1,13 @@
+box::use(
+  testthat[
+    expect_equal,
+    expect_false,
+    expect_null,
+    expect_true,
+    test_that
+  ]
+)
+
 test_that("extract_editor_exe parses common editor command formats", {
   box::use(artma / interactive / editor[extract_editor_exe])
 
