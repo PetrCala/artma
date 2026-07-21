@@ -77,6 +77,24 @@ options configuration. This is useful when you already have data loaded in R or
 want to analyze data programmatically.
 }
 
+\subsection{Parallel Execution}{
+
+Methods that do not depend on one another form a dependency layer and run
+concurrently in forked workers, so a run costs roughly the slowest method per
+layer rather than the sum of all of them. Each method's CLI output is
+captured and replayed in discovery order once the layer finishes, so the
+console reads like a sequential run.
+
+Set \code{general.parallel} to \code{FALSE} in the options file to disable this.
+Execution also falls back to sequential automatically on Windows, on
+single-core machines, and in interactive sessions whose autonomy level still
+allows methods to prompt.
+
+Every method receives its own L'Ecuyer-CMRG stream derived from the
+\code{general.seed} option, so stochastic methods (bootstrap, MCMC) draw the same
+numbers whether the run was parallel or sequential.
+}
+
 \subsection{Method Failures}{
 
 A method that throws an error does not abort the run. The failing method is

@@ -53,6 +53,23 @@
 #' options configuration. This is useful when you already have data loaded in R or
 #' want to analyze data programmatically.
 #'
+#' ## Parallel Execution
+#'
+#' Methods that do not depend on one another form a dependency layer and run
+#' concurrently in forked workers, so a run costs roughly the slowest method per
+#' layer rather than the sum of all of them. Each method's CLI output is
+#' captured and replayed in discovery order once the layer finishes, so the
+#' console reads like a sequential run.
+#'
+#' Set `general.parallel` to `FALSE` in the options file to disable this.
+#' Execution also falls back to sequential automatically on Windows, on
+#' single-core machines, and in interactive sessions whose autonomy level still
+#' allows methods to prompt.
+#'
+#' Every method receives its own L'Ecuyer-CMRG stream derived from the
+#' `general.seed` option, so stochastic methods (bootstrap, MCMC) draw the same
+#' numbers whether the run was parallel or sequential.
+#'
 #' ## Method Failures
 #'
 #' A method that throws an error does not abort the run. The failing method is
@@ -237,6 +254,13 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
     artma / const[CONST],
     artma / libs / core / string[pluralize],
     artma / libs / core / utils[get_verbosity],
+    artma / modules / method_execution[
+      build_rng_streams,
+      execute_method_layer,
+      group_methods_into_layers,
+      replay_captured_output,
+      resolve_worker_count
+    ],
     artma / modules / runtime_methods[
       get_method_metadata,
       get_runtime_method_modules,
@@ -342,84 +366,119 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
 
   extra_args <- list(...)
 
-  for (method_name in methods) {
-    meta <- method_meta[[method_name]]
+  # Methods that do not depend on one another form a layer and can run
+  # concurrently. Every method gets its own RNG stream up front, so a run is
+  # reproducible given the seed whether it executed in forks or sequentially.
+  layers <- group_methods_into_layers(methods, deps_map)
+  rng_streams <- build_rng_streams(methods, seed = getOption("artma.general.seed", 20240101L))
 
-    # Gate on declared required columns: skip (do not abort) when any are absent.
-    missing_cols <- missing_required_columns(df, meta$required_columns)
-    if (length(missing_cols) > 0L) {
-      reason <- sprintf(
-        "missing required %s: %s",
-        pluralize("column", length(missing_cols)),
-        paste(missing_cols, collapse = ", ")
-      )
-      skipped_methods[[method_name]] <- reason
-      if (get_verbosity() >= 2) {
-        cli::cli_alert_warning("Skipping {.code {method_name}}: {reason}")
+  for (layer in layers) {
+    runnable <- character()
+    layer_args <- list()
+
+    for (method_name in layer) {
+      meta <- method_meta[[method_name]]
+
+      # Gate on declared required columns: skip (do not abort) when any are absent.
+      missing_cols <- missing_required_columns(df, meta$required_columns)
+      if (length(missing_cols) > 0L) {
+        reason <- sprintf(
+          "missing required %s: %s",
+          pluralize("column", length(missing_cols)),
+          paste(missing_cols, collapse = ", ")
+        )
+        skipped_methods[[method_name]] <- reason
+        if (get_verbosity() >= 2) {
+          cli::cli_alert_warning("Skipping {.code {method_name}}: {reason}")
+        }
+        next
       }
+
+      # Gate on declared optional-package dependencies. Soft-skip everywhere, with
+      # an interactive install offer. The one hard-abort case: a non-interactive
+      # run that requested exactly this single method, so a script gets a clear
+      # signal rather than silently producing nothing. Both gates stay in the
+      # parent process: a forked child cannot prompt.
+      missing_pkgs <- missing_suggested_packages(meta$suggests)
+      if (length(missing_pkgs) > 0L && interactive()) {
+        missing_pkgs <- prompt_install_missing_packages(missing_pkgs, method_name)
+      }
+      if (length(missing_pkgs) > 0L) {
+        reason <- sprintf(
+          "missing suggested %s: %s",
+          pluralize("package", length(missing_pkgs)),
+          paste(missing_pkgs, collapse = ", ")
+        )
+        if (!interactive() && length(methods) == 1L) {
+          cli::cli_abort(c(
+            "x" = "Method {.code {method_name}} cannot run: {reason}.",
+            "i" = "Install with: {.code install.packages({deparse(missing_pkgs)})}"
+          ))
+        }
+        skipped_methods[[method_name]] <- reason
+        if (get_verbosity() >= 2) {
+          cli::cli_alert_warning("Skipping {.code {method_name}}: {reason}")
+        }
+        next
+      }
+
+      method_args <- c(list(df = df), extra_args)
+
+      # Pass each upstream dependency's result to the dependent as
+      # `<dependency>_result`, unless the caller already supplied it. Every
+      # dependency sits in an earlier layer, so its result is already available.
+      for (dep in meta$depends_on) {
+        dep_arg <- paste0(dep, "_result")
+        if (!(dep_arg %in% names(extra_args)) && !is.null(results[[dep]])) {
+          method_args[[dep_arg]] <- results[[dep]]
+        }
+      }
+
+      runnable <- c(runnable, method_name)
+      layer_args[[method_name]] <- method_args
+    }
+
+    if (length(runnable) == 0L) {
       next
     }
 
-    # Gate on declared optional-package dependencies. Soft-skip everywhere, with
-    # an interactive install offer. The one hard-abort case: a non-interactive
-    # run that requested exactly this single method, so a script gets a clear
-    # signal rather than silently producing nothing.
-    missing_pkgs <- missing_suggested_packages(meta$suggests)
-    if (length(missing_pkgs) > 0L && interactive()) {
-      missing_pkgs <- prompt_install_missing_packages(missing_pkgs, method_name)
-    }
-    if (length(missing_pkgs) > 0L) {
-      reason <- sprintf(
-        "missing suggested %s: %s",
-        pluralize("package", length(missing_pkgs)),
-        paste(missing_pkgs, collapse = ", ")
-      )
-      if (!interactive() && length(methods) == 1L) {
-        cli::cli_abort(c(
-          "x" = "Method {.code {method_name}} cannot run: {reason}.",
-          "i" = "Install with: {.code install.packages({deparse(missing_pkgs)})}"
-        ))
-      }
-      skipped_methods[[method_name]] <- reason
-      if (get_verbosity() >= 2) {
-        cli::cli_alert_warning("Skipping {.code {method_name}}: {reason}")
-      }
-      next
-    }
+    workers <- resolve_worker_count(length(runnable))
 
     if (get_verbosity() >= 3) {
-      cli::cli_inform("{cli::symbol$bullet} Running the {.code {method_name}} method...")
-    }
-
-    method_args <- c(list(df = df), extra_args)
-
-    # Pass each upstream dependency's result to the dependent as
-    # `<dependency>_result`, unless the caller already supplied it.
-    for (dep in meta$depends_on) {
-      dep_arg <- paste0(dep, "_result")
-      if (!(dep_arg %in% names(extra_args)) && !is.null(results[[dep]])) {
-        method_args[[dep_arg]] <- results[[dep]]
+      for (method_name in runnable) {
+        cli::cli_inform("{cli::symbol$bullet} Running the {.code {method_name}} method...")
       }
     }
 
-    method_failed <- FALSE
-    method_result <- tryCatch(
-      do.call(RUNTIME_METHOD_MODULES[[method_name]]$run, method_args),
-      error = function(e) {
-        method_failed <<- TRUE
-        failed_methods[[method_name]] <<- conditionMessage(e)
-        if (get_verbosity() >= 2) {
-          cli::cli_warn(
-            "Method {.code {method_name}} failed and was skipped: {conditionMessage(e)}"
-          )
-        }
-        NULL
-      }
+    outcomes <- execute_method_layer(
+      runnable,
+      run_one = function(method_name) {
+        do.call(RUNTIME_METHOD_MODULES[[method_name]]$run, layer_args[[method_name]])
+      },
+      streams = rng_streams,
+      workers = workers
     )
 
-    if (!method_failed) {
+    # Replay each method's output in discovery order, so concurrent execution
+    # reads exactly like a sequential run.
+    for (i in seq_along(runnable)) {
+      method_name <- runnable[[i]]
+      outcome <- outcomes[[i]]
+
+      replay_captured_output(outcome$output)
+
+      if (!is.null(outcome$error)) {
+        failed_methods[[method_name]] <- outcome$error
+        if (get_verbosity() >= 2) {
+          cli::cli_warn(
+            "Method {.code {method_name}} failed and was skipped: {outcome$error}"
+          )
+        }
+        next
+      }
+
       succeeded_methods <- c(succeeded_methods, method_name)
-      results[[method_name]] <- method_result
+      results[[method_name]] <- outcome$value
     }
   }
 
