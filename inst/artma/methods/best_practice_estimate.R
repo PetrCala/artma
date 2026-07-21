@@ -100,12 +100,20 @@ best_practice_estimate <- function(df, bma_result = NULL) {
   autonomy_level <- resolve_effective_autonomy_level(get_autonomy_level())
   current_overrides <- get_existing_bpe_overrides(predictors, config)
   recommended_overrides <- get_bpe_recommendations(predictors, config)
+  # A recommendation of NA is ambiguous between "we recommend the mean" and "we
+  # have no idea": has_recommendation makes the latter an explicit, reportable
+  # outcome instead of silently blending into the mean fallback.
+  has_recommendation <- stats::setNames(
+    vapply(predictors, function(var_name) !is_bpe_override_na(recommended_overrides[[var_name]]), logical(1)),
+    predictors
+  )
 
   override_resolution <- resolve_bpe_overrides(
     predictor_names = predictors,
     autonomy_level = autonomy_level,
     current_overrides = current_overrides,
-    recommended_overrides = recommended_overrides
+    recommended_overrides = recommended_overrides,
+    has_recommendation = has_recommendation
   )
   resolved_overrides <- override_resolution$overrides
 
@@ -191,6 +199,14 @@ best_practice_estimate <- function(df, bma_result = NULL) {
       function(var_name) format_bpe_override(resolved_overrides[[var_name]]),
       character(1)
     ),
+    recommended = vapply(
+      predictors,
+      function(var_name) {
+        format_bpe_recommendation(recommended_overrides[[var_name]], has_recommendation[[var_name]])
+      },
+      character(1)
+    ),
+    has_recommendation = as.logical(has_recommendation[predictors]),
     author_value = round_if_finite(as.numeric(author_values[predictors]), round_to),
     stringsAsFactors = FALSE
   )
@@ -379,7 +395,8 @@ resolve_effective_autonomy_level <- function(level) {
   level %||% CONST$AUTONOMY$DEFAULT
 }
 
-resolve_bpe_overrides <- function(predictor_names, autonomy_level, current_overrides, recommended_overrides) {
+resolve_bpe_overrides <- function(predictor_names, autonomy_level, current_overrides, recommended_overrides,
+                                  has_recommendation) {
   box::use(
     artma / const[CONST],
     artma / libs / core / validation[validate]
@@ -391,7 +408,8 @@ resolve_bpe_overrides <- function(predictor_names, autonomy_level, current_overr
     length(autonomy_level) == 1,
     autonomy_level %in% CONST$AUTONOMY$LEVELS,
     is.list(current_overrides),
-    is.list(recommended_overrides)
+    is.list(recommended_overrides),
+    is.logical(has_recommendation)
   )
 
   if (autonomy_level == "autonomous") {
@@ -420,6 +438,7 @@ resolve_bpe_overrides <- function(predictor_names, autonomy_level, current_overr
     predictor_names = predictor_names,
     current_overrides = current_overrides,
     recommended_overrides = recommended_overrides,
+    has_recommendation = has_recommendation,
     show_recommendations = TRUE
   )
 
@@ -446,14 +465,14 @@ prompt_use_bpe_recommendations <- function() {
 }
 
 prompt_manual_bpe_overrides <- function(predictor_names, current_overrides, recommended_overrides,
-                                        show_recommendations) {
+                                        has_recommendation, show_recommendations) {
   box::use(artma / libs / core / utils[get_verbosity])
 
   overrides <- current_overrides
 
   choice_labels <- vapply(predictor_names, function(var_name) {
     current_label <- format_bpe_override(overrides[[var_name]])
-    rec_label <- format_bpe_override(recommended_overrides[[var_name]])
+    rec_label <- format_bpe_recommendation(recommended_overrides[[var_name]], has_recommendation[[var_name]])
     if (show_recommendations) {
       sprintf("%s (current: %s, recommended: %s)", var_name, current_label, rec_label)
     } else {
@@ -484,6 +503,7 @@ prompt_manual_bpe_overrides <- function(predictor_names, current_overrides, reco
       var_name = var_name,
       current_value = overrides[[var_name]],
       recommended_value = recommended_overrides[[var_name]],
+      has_recommendation = isTRUE(has_recommendation[[var_name]]),
       show_recommendations = show_recommendations
     )
   }
@@ -491,8 +511,9 @@ prompt_manual_bpe_overrides <- function(predictor_names, current_overrides, reco
   overrides
 }
 
-prompt_single_bpe_override <- function(var_name, current_value, recommended_value, show_recommendations) {
-  default_value <- if (show_recommendations && !is_bpe_override_na(recommended_value)) {
+prompt_single_bpe_override <- function(var_name, current_value, recommended_value, has_recommendation,
+                                       show_recommendations) {
+  default_value <- if (show_recommendations && has_recommendation) {
     recommended_value
   } else {
     current_value
@@ -500,7 +521,7 @@ prompt_single_bpe_override <- function(var_name, current_value, recommended_valu
 
   default_label <- format_bpe_override(default_value)
   recommendation_note <- if (show_recommendations) {
-    sprintf(" (recommended: %s)", format_bpe_override(recommended_value))
+    sprintf(" (recommended: %s)", format_bpe_recommendation(recommended_value, has_recommendation))
   } else {
     ""
   }
@@ -1442,6 +1463,20 @@ format_bpe_override <- function(value) {
   as.character(value)
 }
 
+#' @title Format a BPE Recommendation for Display
+#' @description
+#' Distinguishes "no recommendation" (nothing matched, so the mean fallback
+#' is not a genuine recommendation) from an actual recommended value, which
+#' `format_bpe_override()` alone cannot express since both currently share
+#' the same NA representation.
+#' @keywords internal
+format_bpe_recommendation <- function(value, has_recommendation) {
+  if (!isTRUE(has_recommendation)) {
+    return("no recommendation")
+  }
+  format_bpe_override(value)
+}
+
 is_bpe_override_na <- function(value) {
   is.null(value) || length(value) == 0 || (length(value) == 1 && is.na(value))
 }
@@ -1502,4 +1537,4 @@ run <- register_runtime_method(
   suggests = "BMS"
 )
 
-box::export(best_practice_estimate, run)
+box::export(best_practice_estimate, run, infer_bpe_recommendation, format_bpe_recommendation)

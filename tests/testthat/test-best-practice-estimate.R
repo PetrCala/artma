@@ -15,7 +15,11 @@ box::use(ggplot2[is_ggplot])
 
 box::use(
   artma / methods / bma[bma],
-  artma / methods / best_practice_estimate[best_practice_estimate]
+  artma / methods / best_practice_estimate[
+    best_practice_estimate,
+    infer_bpe_recommendation,
+    format_bpe_recommendation
+  ]
 )
 
 make_bpe_demo_data <- function() {
@@ -328,4 +332,46 @@ test_that("best_practice_estimate returns an empty factor summary table with no 
   result <- best_practice_estimate(df, bma_result = bma_result)
 
   expect_equal(nrow(result$tables$summary_by_factor), 0L)
+})
+
+test_that("infer_bpe_recommendation returns NA (no recommendation) for unmatched variables", {
+  expect_equal(infer_bpe_recommendation("se"), 0)
+  expect_equal(infer_bpe_recommendation("citations"), "max")
+  expect_true(is.na(infer_bpe_recommendation("gdp_growth_rate_at_purchase")))
+  expect_true(is.na(infer_bpe_recommendation("x1")))
+})
+
+test_that("format_bpe_recommendation reports no recommendation explicitly instead of default(mean)", {
+  expect_equal(format_bpe_recommendation(NA, FALSE), "no recommendation")
+  expect_equal(format_bpe_recommendation(0, TRUE), "0")
+  expect_equal(format_bpe_recommendation(NA, TRUE), "default(mean)")
+})
+
+test_that("best_practice_estimate reports has_recommendation explicitly in the overrides table", {
+  skip_if_not_installed("BMS")
+
+  df <- make_bpe_demo_data()
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = make_bpe_demo_config(),
+    artma.visualization.export_graphics = FALSE,
+    artma.methods.bma.burn = 50L,
+    artma.methods.bma.iter = 300L,
+    artma.methods.bma.nmodel = 20L,
+    artma.methods.bma.g = "UIP",
+    artma.methods.bma.mprior = "uniform",
+    artma.methods.bma.mcmc = "bd",
+    artma.methods.best_practice_estimate.include_study_rows = FALSE
+  ))
+
+  bma_result <- bma(df)
+  result <- best_practice_estimate(df, bma_result = bma_result)
+
+  overrides <- result$meta$overrides
+  expect_true(all(c("recommended", "has_recommendation") %in% colnames(overrides)))
+  # Every demo predictor matches a keyword rule, so all have a genuine recommendation.
+  expect_true(all(overrides$has_recommendation))
+  expect_false(any(overrides$recommended == "no recommendation"))
 })
