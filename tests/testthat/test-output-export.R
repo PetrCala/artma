@@ -127,6 +127,62 @@ test_that("export_results ignores plots and meta and skips NULL results", {
   expect_equal(length(files), 1L)
 })
 
+# table formats -------------------------------------------------------------
+
+test_that("export_results writes CSV only by default", {
+  dir <- setup_output_dir()
+
+  export_results(list(bma = list(tables = list(summary = data.frame(a = 1)))), dir)
+
+  expect_equal(list.files(file.path(dir, "tables")), "bma.csv")
+})
+
+test_that("export_results writes LaTeX alongside CSV when both formats are set", {
+  dir <- setup_output_dir()
+  local_options(artma.output.table_formats = c("csv", "tex"))
+
+  export_results(list(bma = list(tables = list(summary = data.frame(term = "a", est = 1)))), dir)
+
+  tex_path <- file.path(dir, "tables", "bma.tex")
+  expect_true(file.exists(file.path(dir, "tables", "bma.csv")))
+  expect_true(file.exists(tex_path))
+
+  contents <- readLines(tex_path)
+  expect_true(any(grepl("\\begin{tabular}", contents, fixed = TRUE)))
+  expect_true("\\label{tab:bma}" %in% contents)
+})
+
+test_that("export_results writes LaTeX only when tex is the sole format", {
+  dir <- setup_output_dir()
+  local_options(artma.output.table_formats = "tex")
+
+  export_results(list(bma = list(tables = list(summary = data.frame(a = 1)))), dir)
+
+  expect_equal(list.files(file.path(dir, "tables")), "bma.tex")
+})
+
+test_that("export_results falls back to CSV for unrecognised formats", {
+  dir <- setup_output_dir()
+  local_options(artma.output.table_formats = "docx")
+
+  export_results(list(bma = list(tables = list(summary = data.frame(a = 1)))), dir)
+
+  expect_equal(list.files(file.path(dir, "tables")), "bma.csv")
+})
+
+test_that("export_results applies the sub-table naming rule to LaTeX files", {
+  dir <- setup_output_dir()
+  local_options(artma.output.table_formats = "tex")
+
+  export_results(
+    list(p_hacking_tests = list(tables = list(caliper = data.frame(x = 1), elliott = data.frame(y = 2)))),
+    dir
+  )
+
+  expect_true(file.exists(file.path(dir, "tables", "p_hacking_tests_caliper.tex")))
+  expect_true(file.exists(file.path(dir, "tables", "p_hacking_tests_elliott.tex")))
+})
+
 test_that("export_results skips non-data-frame entries in the tables slot", {
   dir <- setup_output_dir()
 

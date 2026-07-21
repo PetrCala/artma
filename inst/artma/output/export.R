@@ -96,14 +96,75 @@ ensure_output_dirs <- function(output_dir) {
   }
 }
 
-#' Save a data frame as CSV
+SUPPORTED_TABLE_FORMATS <- c("csv", "tex")
+
+#' Resolve the table export formats
+#'
+#' @description
+#' Reads the `artma.output.table_formats` option and normalises it: values are
+#' lowercased and de-duplicated, unsupported ones are dropped with a warning,
+#' and an empty result falls back to CSV so a run never silently produces no
+#' tables.
+#'
+#' @return *\[character\]* The requested formats, a subset of `csv` and `tex`.
+#' @keywords internal
+resolve_table_formats <- function() {
+  box::use(artma / libs / core / utils[get_verbosity])
+
+  requested <- getOption("artma.output.table_formats", "csv")
+  formats <- unique(tolower(as.character(requested)))
+  formats <- formats[!is.na(formats)]
+
+  unsupported <- setdiff(formats, SUPPORTED_TABLE_FORMATS)
+  if (length(unsupported) > 0 && get_verbosity() >= 2) {
+    cli::cli_alert_warning(
+      "Ignoring unsupported table format{?s}: {.val {unsupported}}."
+    )
+  }
+
+  formats <- intersect(SUPPORTED_TABLE_FORMATS, formats)
+  if (length(formats) == 0) "csv" else formats
+}
+
+#' Turn a table basename into a human-readable caption
+#'
+#' @param name *\[character\]* The table basename.
+#' @return *\[character\]* The caption text.
+#' @keywords internal
+table_caption <- function(name) {
+  words <- strsplit(gsub("_", " ", name), " ", fixed = TRUE)[[1]]
+  words <- words[nzchar(words)]
+  if (length(words) == 0) {
+    return(name)
+  }
+  substr(words, 1, 1) <- toupper(substr(words, 1, 1))
+  paste(words, collapse = " ")
+}
+
+#' Save a data frame in the configured table formats
 #'
 #' @param df *\[data.frame\]* The data frame to save.
 #' @param name *\[character\]* File name (without extension).
 #' @param output_dir *\[character\]* The base output directory.
-save_table <- function(df, name, output_dir) {
-  path <- file.path(output_dir, "tables", paste0(name, ".csv"))
-  utils::write.csv(df, file = path, row.names = FALSE)
+#' @param formats *\[character\]* The formats to write, from `resolve_table_formats()`.
+save_table <- function(df, name, output_dir, formats = resolve_table_formats()) {
+  tables_dir <- file.path(output_dir, "tables")
+
+  if ("csv" %in% formats) {
+    utils::write.csv(df, file = file.path(tables_dir, paste0(name, ".csv")), row.names = FALSE)
+  }
+
+  if ("tex" %in% formats) {
+    box::use(artma / output / latex[write_latex_table])
+    write_latex_table(
+      df,
+      path = file.path(tables_dir, paste0(name, ".tex")),
+      caption = table_caption(name),
+      label = paste0("tab:", name)
+    )
+  }
+
+  invisible()
 }
 
 #' Export all results to the output directory
@@ -160,25 +221,31 @@ resolve_table_basename <- function(method_name, key) {
 #'
 #' @description
 #' A generic walk over the standard return contract. Every `data.frame` in the
-#' result's `tables` slot is written as a CSV; everything else (`plots`, `meta`)
-#' is ignored here. There are no per-method branches.
+#' result's `tables` slot is written in each configured table format (see
+#' `resolve_table_formats()`); everything else (`plots`, `meta`) is ignored
+#' here. There are no per-method branches.
 #'
 #' @param result The method's return value (a `list` with a `tables` slot).
 #' @param method_name *\[character\]* The method name.
 #' @param output_dir *\[character\]* The base output directory.
 #' @keywords internal
 export_method_result <- function(result, method_name, output_dir) {
-  if (!is.list(result)) return(invisible())
+  if (!is.list(result)) {
+    return(invisible())
+  }
 
   tables <- result$tables
-  if (!is.list(tables) || length(tables) == 0L) return(invisible())
+  if (!is.list(tables) || length(tables) == 0L) {
+    return(invisible())
+  }
 
+  formats <- resolve_table_formats()
   table_names <- names(tables)
   for (i in seq_along(tables)) {
     tbl <- tables[[i]]
     if (!is.data.frame(tbl)) next
     key <- if (is.null(table_names)) NULL else table_names[[i]]
-    save_table(tbl, resolve_table_basename(method_name, key), output_dir)
+    save_table(tbl, resolve_table_basename(method_name, key), output_dir, formats = formats)
   }
 
   invisible()

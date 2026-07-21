@@ -121,8 +121,10 @@ Method-specific parameters for each analysis method:
 
 Controls output formatting:
 
-- `round_to`: Number of decimal places for numeric output
-- `format`: Output format options
+- `dir`: Directory where tables and graphics are saved (`auto` for a temporary directory)
+- `save_results`: Whether to export tables and graphics after each run
+- `table_formats`: Formats used when exporting tables (`csv`, `tex`, or both)
+- `number_of_decimals`: Number of decimal places for numeric output
 
 ### 6. `cli`
 
