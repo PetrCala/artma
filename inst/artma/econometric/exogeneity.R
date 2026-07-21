@@ -305,10 +305,89 @@ puniform_star_nll <- function(params, yi, vi, ni, alpha = 0.05) {
   -ll
 }
 
+#' @title Conditional p-value transform for the p-uniform selection model
+#' @description
+#' Computes, for each significant study, the CDF of its (sign-folded) z-score
+#' conditional on being selected for statistical significance, evaluated at a
+#' hypothesized true effect theta. Under the correctly specified theta these
+#' values are distributed Uniform(0, 1) (van Assen, van Aert & Wicherts, 2015).
+#' @param theta *[numeric]* Hypothesized true effect size.
+#' @param yi *[numeric]* Effect sizes, restricted to significant studies.
+#' @param vi *[numeric]* Variances.
+#' @param alpha *[numeric]* Significance level used for selection.
+#' @return *[numeric]* Conditional p-values, one per study, in (0, 1).
+puniform_transform <- function(theta, yi, vi, alpha) {
+  sei <- sqrt(vi)
+  z_crit <- stats::qnorm(1 - alpha / 2)
+  sign_i <- sign(yi)
+  zi <- sign_i * yi / sei
+  ncp <- sign_i * theta / sei
+
+  denom <- pmax(1 - stats::pnorm(z_crit - ncp), .Machine$double.eps)
+  qi <- (stats::pnorm(zi - ncp) - stats::pnorm(z_crit - ncp)) / denom
+
+  pmin(pmax(qi, .Machine$double.eps), 1 - .Machine$double.eps)
+}
+
+#' @title Method-of-moments estimation for p-uniform
+#' @description
+#' Estimates the true effect magnitude theta as the value for which the mean
+#' conditional p-value (see puniform_transform) across significant studies
+#' equals its expected value of 0.5, following the original p-uniform method
+#' of van Assen, van Aert & Wicherts (2015). Standard errors use the delta
+#' method; the publication-bias test statistic is Fisher's combined
+#' probability test applied to the transform evaluated at theta = 0.
+#' Because puniform_transform folds each study onto the sign of its own
+#' effect, the objective is unimodal in theta with its peak near the data;
+#' theta is therefore searched over non-negative values only, from the peak
+#' (theta = 0) out to where the conditional p-value has decayed.
+#' @param yi *[numeric]* Effect sizes, restricted to significant studies.
+#' @param vi *[numeric]* Variances.
+#' @param alpha *[numeric]* Significance level used for selection.
+#' @return *[list]* theta_est, theta_se, l_stat, l_pval.
+run_puniform_mm <- function(yi, vi, alpha) {
+  objective <- function(theta) mean(puniform_transform(theta, yi, vi, alpha)) - 0.5
+
+  search_upper <- 2 * max(abs(yi)) + 10 * max(sqrt(vi))
+  bounds_ok <- tryCatch(
+    objective(0) * objective(search_upper) < 0,
+    error = function(e) FALSE
+  )
+
+  theta_est <- if (isTRUE(bounds_ok)) {
+    tryCatch(
+      stats::uniroot(objective, lower = 0, upper = search_upper)$root,
+      error = function(e) NA_real_
+    )
+  } else {
+    NA_real_
+  }
+
+  theta_se <- if (is.finite(theta_est)) {
+    tryCatch(
+      {
+        eps <- max(abs(theta_est), 1) * 1e-4
+        deriv <- (objective(theta_est + eps) - objective(theta_est - eps)) / (2 * eps)
+        sqrt(1 / (12 * length(yi))) / abs(deriv)
+      },
+      error = function(e) NA_real_
+    )
+  } else {
+    NA_real_
+  }
+
+  qi_null <- puniform_transform(0, yi, vi, alpha)
+  l_stat <- -2 * sum(log(qi_null))
+  l_pval <- stats::pchisq(l_stat, df = 2 * length(yi), lower.tail = FALSE)
+
+  list(theta_est = theta_est, theta_se = theta_se, l_stat = l_stat, l_pval = l_pval)
+}
+
 #' @title Run p-uniform* estimation
 #' @description
 #' Estimates publication bias and effect size using the p-uniform* method.
-#' This is a local implementation based on van Aert & van Assen (2019).
+#' This is a local implementation based on van Aert & van Assen (2019),
+#' supporting maximum likelihood ("ML") and method-of-moments ("P") estimation.
 #' @param df *[data.frame]* Data frame with effect, se, study_id, study_size, n_obs.
 #' @param add_significance_marks *[logical]* Whether to add significance asterisks.
 #' @param round_to *[integer]* Number of decimal places for rounding.
@@ -323,6 +402,7 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
     is.numeric(alpha),
     is.character(method)
   )
+  assert(method %in% c("ML", "P"), "method must be one of 'ML' or 'P'.")
 
   required_cols <- c("effect", "se", "study_id", "study_size", "n_obs")
   validate(all(required_cols %in% colnames(df)))
@@ -364,57 +444,21 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
   vi_sig <- med_vi[sig_mask]
   ni_sig <- med_ni[sig_mask]
 
-  # Optimize
-  start_theta <- mean(yi_sig)
-  start_tau <- stats::sd(yi_sig)
-
-  opt_result <- tryCatch(
-    {
-      stats::optim(
-        par = c(start_theta, start_tau),
-        fn = puniform_star_nll,
-        yi = yi_sig,
-        vi = vi_sig,
-        ni = ni_sig,
-        alpha = alpha,
-        method = "BFGS"
-      )
-    },
-    error = function(e) {
-      list(par = c(NA_real_, NA_real_), value = NA_real_, convergence = 1)
-    }
-  )
-
-  if (opt_result$convergence != 0 || any(is.na(opt_result$par))) {
-    theta_est <- NA_real_
-    theta_se <- NA_real_
-    l_stat <- NA_real_
-    l_pval <- NA_real_
+  if (method == "P") {
+    mm_result <- run_puniform_mm(yi_sig, vi_sig, alpha)
+    theta_est <- mm_result$theta_est
+    theta_se <- mm_result$theta_se
+    l_stat <- mm_result$l_stat
+    l_pval <- mm_result$l_pval
   } else {
-    theta_est <- opt_result$par[1]
+    # Optimize
+    start_theta <- mean(yi_sig)
+    start_tau <- stats::sd(yi_sig)
 
-    # Approximate standard error using Hessian
-    theta_se <- tryCatch(
+    opt_result <- tryCatch(
       {
-        hess <- stats::optimHess(
-          par = opt_result$par,
-          fn = puniform_star_nll,
-          yi = yi_sig,
-          vi = vi_sig,
-          ni = ni_sig,
-          alpha = alpha
-        )
-        sqrt(solve(hess)[1, 1])
-      },
-      error = function(e) NA_real_
-    )
-
-    # Likelihood ratio test for publication bias (H0: theta = 0)
-    ll_full <- -opt_result$value
-    ll_null <- tryCatch(
-      {
-        opt_null <- stats::optim(
-          par = c(0, start_tau),
+        stats::optim(
+          par = c(start_theta, start_tau),
           fn = puniform_star_nll,
           yi = yi_sig,
           vi = vi_sig,
@@ -422,13 +466,57 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
           alpha = alpha,
           method = "BFGS"
         )
-        -opt_null$value
       },
-      error = function(e) NA_real_
+      error = function(e) {
+        list(par = c(NA_real_, NA_real_), value = NA_real_, convergence = 1)
+      }
     )
 
-    l_stat <- 2 * (ll_full - ll_null)
-    l_pval <- if (is.finite(l_stat) && l_stat > 0) stats::pchisq(l_stat, df = 1, lower.tail = FALSE) else NA_real_
+    if (opt_result$convergence != 0 || any(is.na(opt_result$par))) {
+      theta_est <- NA_real_
+      theta_se <- NA_real_
+      l_stat <- NA_real_
+      l_pval <- NA_real_
+    } else {
+      theta_est <- opt_result$par[1]
+
+      # Approximate standard error using Hessian
+      theta_se <- tryCatch(
+        {
+          hess <- stats::optimHess(
+            par = opt_result$par,
+            fn = puniform_star_nll,
+            yi = yi_sig,
+            vi = vi_sig,
+            ni = ni_sig,
+            alpha = alpha
+          )
+          sqrt(solve(hess)[1, 1])
+        },
+        error = function(e) NA_real_
+      )
+
+      # Likelihood ratio test for publication bias (H0: theta = 0)
+      ll_full <- -opt_result$value
+      ll_null <- tryCatch(
+        {
+          opt_null <- stats::optim(
+            par = c(0, start_tau),
+            fn = puniform_star_nll,
+            yi = yi_sig,
+            vi = vi_sig,
+            ni = ni_sig,
+            alpha = alpha,
+            method = "BFGS"
+          )
+          -opt_null$value
+        },
+        error = function(e) NA_real_
+      )
+
+      l_stat <- 2 * (ll_full - ll_null)
+      l_pval <- if (is.finite(l_stat) && l_stat > 0) stats::pchisq(l_stat, df = 1, lower.tail = FALSE) else NA_real_
+    }
   }
 
   # Format coefficients
