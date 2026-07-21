@@ -109,6 +109,59 @@ save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units =
     cli::cli_alert_success("Exported plot to {.file {path}}")
   }
 
+  if (isTRUE(getOption("artma.visualization.export_html", FALSE))) {
+    html_path <- sub("\\.[^.]*$", ".html", path)
+    save_plot_html(plot, html_path)
+  }
+
+  invisible(path)
+}
+
+
+#' Save a ggplot2 plot as an interactive HTML widget
+#'
+#' @description
+#' Converts a ggplot2 plot to an interactive plotly widget and saves it as a
+#' standalone HTML file via htmlwidgets. Requires the optional `plotly` and
+#' `htmlwidgets` packages; if either is unavailable, the export is skipped
+#' with a warning instead of aborting.
+#'
+#' @param plot *\[ggplot\]* The plot to export
+#' @param path *\[character\]* Full file path (including filename, e.g. ending in ".html")
+#'
+#' @return *\[character\]* The path where the widget was saved, or `NULL` (invisibly) if skipped
+#' @keywords internal
+save_plot_html <- function(plot, path) {
+  box::use(
+    artma / libs / core / validation[validate],
+    artma / libs / core / utils[get_verbosity]
+  )
+
+  validate(ggplot2::is_ggplot(plot), is.character(path))
+
+  if (!requireNamespace("plotly", quietly = TRUE) || !requireNamespace("htmlwidgets", quietly = TRUE)) {
+    if (get_verbosity() >= 2) {
+      cli::cli_alert_warning(
+        "Skipping interactive HTML export: install {.pkg plotly} and {.pkg htmlwidgets} to enable it."
+      )
+    }
+    return(invisible(NULL))
+  }
+
+  dir_path <- dirname(path)
+  ensure_export_dir(dir_path)
+
+  if (file.exists(path)) {
+    file.remove(path)
+  }
+
+  widget <- plotly::ggplotly(plot)
+  htmlwidgets::saveWidget(widget, file = path, selfcontained = TRUE)
+
+  if (get_verbosity() >= 4) {
+    cli::cli_alert_success("Exported interactive plot to {.file {path}}")
+  }
+
   invisible(path)
 }
 
@@ -116,5 +169,6 @@ save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units =
 box::export(
   ensure_export_dir,
   build_export_filename,
-  save_plot
+  save_plot,
+  save_plot_html
 )

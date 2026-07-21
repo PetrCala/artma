@@ -16,7 +16,8 @@ box::use(
   artma / visualization / export[
     ensure_export_dir,
     build_export_filename,
-    save_plot
+    save_plot,
+    save_plot_html
   ],
   artma / visualization / options[get_visualization_options, set_visualization_option, get_valid_themes]
 )
@@ -33,6 +34,7 @@ box::export(
   ensure_export_dir,
   build_export_filename,
   save_plot,
+  save_plot_html,
   get_visualization_options,
   set_visualization_option,
   get_valid_themes
