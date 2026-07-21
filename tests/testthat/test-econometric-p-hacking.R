@@ -177,6 +177,7 @@ base_p_hacking_options <- function(...) {
     include_elliott = FALSE,
     lcm_iterations = 50L,
     lcm_grid_points = 50L,
+    simulate_cdfs_chunk_size = 512L,
     include_discontinuity = FALSE,
     discontinuity_bandwidth = 0.05,
     include_cox_shi = FALSE,
