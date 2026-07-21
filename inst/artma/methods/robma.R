@@ -38,6 +38,7 @@ robma <- function(df) {
   parallel <- opt$parallel %||% FALSE
   autofit <- opt$autofit %||% TRUE
   seed <- opt$seed %||% NA_integer_
+  measure <- opt$measure %||% "SMD"
   effect_prior_scale <- opt$effect_prior_scale %||% 0.707
   heterogeneity_shape <- opt$heterogeneity_shape %||% 1
   heterogeneity_scale <- opt$heterogeneity_scale %||% 0.15
@@ -51,11 +52,16 @@ robma <- function(df) {
     is.logical(parallel),
     is.logical(autofit),
     is.numeric(seed) || is.na(seed),
+    is.character(measure),
     is.numeric(effect_prior_scale),
     is.numeric(heterogeneity_shape),
     is.numeric(heterogeneity_scale)
   )
 
+  assert(
+    measure %in% c("SMD", "ZCOR", "RR", "OR", "HR", "RD", "IRR", "GEN"),
+    "measure must be one of: SMD, ZCOR, RR, OR, HR, RD, IRR, GEN"
+  )
   assert(chains > 0, "chains must be positive")
   assert(samples > 0, "samples must be positive")
   assert(burnin > 0, "burnin must be positive")
@@ -98,10 +104,11 @@ robma <- function(df) {
   )
 
   fit <- RoBMA::RoBMA(
-    d = fit_data$effect,
-    se = fit_data$se,
-    priors_effect = effect_prior,
-    priors_heterogeneity = heterogeneity_prior,
+    yi = fit_data$effect,
+    sei = fit_data$se,
+    measure = measure,
+    prior_effect = effect_prior,
+    prior_heterogeneity = heterogeneity_prior,
     chains = as.integer(chains),
     sample = as.integer(samples),
     burnin = as.integer(burnin),
@@ -113,11 +120,11 @@ robma <- function(df) {
   )
 
   ensemble <- summary(fit)
-  models <- summary(fit, type = "models")
+  models <- RoBMA::summary_models(fit, type = "individual")
 
   estimates <- as_robma_table(ensemble$estimates, "parameter", round_to)
-  components <- as_robma_table(ensemble$components, "component", round_to)
-  model_table <- as_robma_table(models$summary, "model", round_to)
+  components <- as_robma_table(ensemble$inclusion_components, "component", round_to)
+  model_table <- as_robma_table(models$individual, "model", round_to)
 
   if (get_verbosity() >= 3) {
     cli::cli_h3("RoBMA: model-averaged estimates")
