@@ -3,11 +3,12 @@ box::use(
     expect_equal,
     expect_gt,
     expect_named,
+    expect_s3_class,
     expect_setequal,
     expect_true,
     test_that
   ],
-  withr[local_options]
+  withr[local_options, local_tempdir]
 )
 
 box::use(
@@ -44,6 +45,7 @@ test_that("nonlinear tests return tidy coefficients and summary", {
     "artma.methods.nonlinear_tests.selection_model" = "normal",
     "artma.methods.nonlinear_tests.hierarchical_iterations" = 50L,
     "artma.output.number_of_decimals" = 3L,
+    "artma.visualization.export_graphics" = FALSE,
     "artma.verbose" = 0L
   )
 
@@ -51,6 +53,9 @@ test_that("nonlinear tests return tidy coefficients and summary", {
 
   expect_named(res, c("tables", "plots", "meta"))
   expect_named(res$tables, "summary")
+  expect_named(res$plots, c("stem_funnel", "stem_mse"))
+  expect_s3_class(res$plots$stem_funnel, "recordedplot")
+  expect_s3_class(res$plots$stem_mse, "recordedplot")
   expect_named(
     res$meta,
     c("coefficients", "skipped", "options"),
@@ -78,6 +83,26 @@ test_that("nonlinear tests return tidy coefficients and summary", {
   )
   expect_equal(res$tables$summary$Metric, rownames(res$tables$summary))
   expect_equal(res$meta$options$round_to, 2L)
+})
+
+test_that("nonlinear tests writes STEM diagnostic plot files when export is enabled", {
+  df <- make_demo_data()
+  dir <- local_tempdir()
+
+  local_options(
+    "artma.methods.nonlinear_tests.stem_representative_sample" = "medians",
+    "artma.visualization.export_graphics" = TRUE,
+    "artma.visualization.export_path" = dir,
+    "artma.output.save_results" = FALSE,
+    "artma.verbose" = 0L
+  )
+
+  res <- suppressWarnings(nonlinear_tests(df))
+
+  expect_true(file.exists(file.path(dir, "stem_funnel.png")))
+  expect_true(file.exists(file.path(dir, "stem_mse.png")))
+  expect_s3_class(res$plots$stem_funnel, "recordedplot")
+  expect_s3_class(res$plots$stem_mse, "recordedplot")
 })
 
 test_that("nonlinear methods record skipped models when input is insufficient", {
