@@ -138,7 +138,8 @@ update_data_config <- function(changes) {
 #'   it does not exist. Defaults to `TRUE`.
 #' @return *\[list\]* The fixed data config.
 fix_data_config <- function(
-    create_if_missing = TRUE) {
+  create_if_missing = TRUE
+) {
   box::use(
     artma / libs / core / utils[get_verbosity],
     artma / data / utils[get_colnames_map],

@@ -9,9 +9,10 @@
 #' @param options_dir *\[character, optional\]* Path to the directory that contains user options. Defaults to the directory specified in PATHS.
 #' @keywords internal
 runtime_setup <- function(
-    FUN,
-    options_file_name = NULL,
-    options_dir = NULL) {
+  FUN,
+  options_file_name = NULL,
+  options_dir = NULL
+) {
   if (is.null(options_file_name) && !interactive()) {
     if (getOption("artma.verbose", 3) >= 2) {
       cli::cli_alert_warning("Running in non-interactive mode without providing an options file name. Please provide an options file name or run in interactive mode.")

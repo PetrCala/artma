@@ -65,10 +65,11 @@
 #'
 #' @export
 data.preview <- function(
-    data = NULL,
-    options = NULL,
-    options_dir = NULL,
-    preprocess = TRUE) {
+  data = NULL,
+  options = NULL,
+  options_dir = NULL,
+  preprocess = TRUE
+) {
   box::use(
     artma / data / read[read_data],
     artma / data / index[prepare_data],

@@ -27,10 +27,11 @@ format_mapping_display <- function(mapping, required_cols, all_std_cols = NULL) 
 #' @param all_std_cols *\[character\]* All standard column names
 #' @return *\[character\]* User's choice: "accept", "modify", or "skip_optional"
 present_detected_mapping <- function(
-    auto_mapping,
-    df,
-    required_cols,
-    all_std_cols = NULL) {
+  auto_mapping,
+  df,
+  required_cols,
+  all_std_cols = NULL
+) {
   box::use(artma / libs / core / utils[get_verbosity])
 
   if (length(auto_mapping) == 0) {
@@ -518,11 +519,12 @@ save_column_mapping_to_options <- function(mapping, options_file_name = NULL) {
 #' @param force_interactive *\[logical\]* Force interactive mapping even if all columns recognized
 #' @return *\[list\]* Final column mapping
 column_mapping_workflow <- function(
-    df,
-    auto_mapping = NULL,
-    options_file_name = NULL,
-    min_confidence = 0.7,
-    force_interactive = FALSE) {
+  df,
+  auto_mapping = NULL,
+  options_file_name = NULL,
+  min_confidence = 0.7,
+  force_interactive = FALSE
+) {
   box::use(
     artma / data / column_recognition[
       recognize_columns,
