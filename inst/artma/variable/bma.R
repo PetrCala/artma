@@ -286,12 +286,13 @@ remove_dummy_trap_variables <- function(df, var_names, priority_vars = character
 #' @param priority_vars *\[character, optional\]* Additional priority variables
 #' @return *\[data.frame\]* Suggested variables with metadata
 suggest_variables_for_bma <- function(
-    df,
-    config = NULL,
-    min_obs_per_split = 5,
-    min_variance_ratio = 0.01,
-    exclude_reference = TRUE,
-    priority_vars = NULL) {
+  df,
+  config = NULL,
+  min_obs_per_split = 5,
+  min_variance_ratio = 0.01,
+  exclude_reference = TRUE,
+  priority_vars = NULL
+) {
   box::use(
     artma / libs / core / validation[validate],
     artma / variable / suggestion[suggest_variables_for_effect_summary],

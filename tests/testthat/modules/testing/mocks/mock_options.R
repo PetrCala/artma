@@ -3,7 +3,8 @@
 #' @param colnames *\[list, optional\]* A list of colnames to mock.
 #' @return *\[list\]* A list of mock colnames.
 create_mock_options_colnames <- function(
-    colnames = NULL) {
+  colnames = NULL
+) {
   box::use(artma / data / utils[get_standardized_colnames])
 
   colnames <- if (is.null(colnames)) list() else colnames

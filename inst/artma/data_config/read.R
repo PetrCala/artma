@@ -8,8 +8,9 @@
 #'   invalid. Defaults to `FALSE`.
 #' @return *\[list\]* The fully-resolved data config.
 get_data_config <- function(
-    create_if_missing = TRUE,
-    fix_if_invalid = FALSE) {
+  create_if_missing = TRUE,
+  fix_if_invalid = FALSE
+) {
   box::use(
     artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity],
