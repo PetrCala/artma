@@ -142,12 +142,10 @@ artma <- function(
       # User provided data directly - still need to preprocess and compute.
       # Mirror prepare_data's phases: decide the NA strategy (configure), run
       # the pure preprocess + compute, then persist the computed columns.
-      # nolint start: object_usage_linter.
       box::use(
         artma / data / preprocess[clean_data, preprocess_data, resolve_na_handling],
         artma / data / compute[compute_optional_columns, update_config_with_computed_columns]
       )
-      # nolint end
 
       if (get_verbosity() >= 3) {
         cli::cli_inform("Using provided data frame (skipping file read step).")
@@ -169,7 +167,7 @@ artma <- function(
 
     if (isTRUE(save_results) && isTRUE(open_results) && interactive()) {
       tryCatch(
-        results.open(),
+        results.open(), # nolint: box_usage_linter. # Package function from R/results.R
         error = function(e) {
           if (get_verbosity() >= 2) {
             cli::cli_alert_warning(
@@ -310,9 +308,7 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
     invalid_methods <- setdiff(deduped_methods, supported_methods)
 
     if (length(invalid_methods) > 0L) {
-      # nolint start: object_usage_linter.
       selected_methods <- paste(as.character(invalid_methods), collapse = ", ")
-      # nolint end
       cli::cli_abort(c(
         "x" = "Invalid runtime methods selected: {.val {selected_methods}}",
         "i" = "To see a list of available methods, run {.code artma::methods.list()}"

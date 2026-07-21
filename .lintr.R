@@ -4,19 +4,26 @@ custom_linters_env <- new.env()
 
 # Locate the repository root without the here package, which is not a
 # package dependency and may not be installed in the linting session.
+repo_root <- local({
+  path <- getwd()
+  while (!file.exists(file.path(path, "DESCRIPTION")) && dirname(path) != path) {
+    path <- dirname(path)
+  }
+  path
+})
+
 # The custom linters live under scripts/ so that the installed package does
 # not carry lintr as a runtime dependency.
 source(
-  local({
-    path <- getwd()
-    while (!file.exists(file.path(path, "DESCRIPTION")) && dirname(path) != path) {
-      path <- dirname(path)
-    }
-    file.path(path, "scripts", "linters.R")
-  }),
+  file.path(repo_root, "scripts", "linters.R"),
   local = custom_linters_env,
   chdir = TRUE
 )
+
+# Resolve box modules against the checkout being linted, overriding any
+# box.path inherited from .Rprofile that may point at a different checkout
+# (e.g. when linting inside a worktree). Required by box_usage_linter.
+options(box.path = file.path(repo_root, "inst"))
 
 linters <- c(
   lintr::linters_with_defaults(
@@ -65,18 +72,25 @@ linters <- c(
   # Disable the usage of 'dir.create' in favor of 'fs::dir_create'
   dir_create_linter = custom_linters_env$dir_create_linter(),
   # Flag literal '<U+XXXX>' escape text left behind by C-locale rewrites
-  unicode_escape_linter = custom_linters_env$unicode_escape_linter()
+  unicode_escape_linter = custom_linters_env$unicode_escape_linter(),
+  # Flag calls to functions neither defined in the file nor imported via
+  # box::use(); replaces object_usage_linter for the box module system
+  box_usage_linter = box.linters::box_usage_linter()
 )
 
 exclusions <- list(
   "local/",
   "scripts/",
-  ".githooks/"
+  ".githooks/",
+  # Test files import packages and modules in a single box::use() call, a
+  # style box_usage_linter cannot parse (it drops the package attachments and
+  # flags every use). Missing imports in tests fail at runtime anyway.
+  "tests/" = list(box_usage_linter = Inf)
 )
 
-# Clean up imported linters
+# Clean up helper objects so lintr does not report them as unused settings
 rm(list = ls(custom_linters_env), envir = custom_linters_env)
-rm(custom_linters_env)
+rm(custom_linters_env, repo_root)
 gc() # Clean up memory
 
 # nolint end.

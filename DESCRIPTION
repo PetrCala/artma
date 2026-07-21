@@ -68,7 +68,7 @@ VignetteBuilder:
 Config/Needs/coverage: covr, xml2
 Config/Needs/dev: box.linters, devtools, languageserver, remotes
 Config/Needs/e2e: remotes
-Config/Needs/lint: devtools, remotes
+Config/Needs/lint: box.linters, devtools, remotes
 Config/Needs/release: devtools, optparse, pkgbuild, remotes
 Config/Needs/website: pkgdown
 Config/testthat/edition: 3

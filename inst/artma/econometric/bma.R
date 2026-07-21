@@ -471,14 +471,14 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
 
     main_plot_call <- bquote(
       graphics::image(bma_model,
-        col = .(color_spectrum), yprop2pip = FALSE, order.by.pip = TRUE,
+        col = .(color_spectrum), yprop2pip = FALSE, order.by.pip = TRUE, # nolint: box_usage_linter. # bquote substitution
         do.par = TRUE, do.grid = TRUE, do.axis = TRUE, xlab = "", main = ""
       )
     )
 
     dist_color_spectrum <- color_spectrum[color_spectrum != "white"]
     bma_dist_call <- bquote(
-      base::plot(bma_model, col = .(dist_color_spectrum))
+      base::plot(bma_model, col = .(dist_color_spectrum)) # nolint: box_usage_linter. # bquote substitution
     )
 
     has_corrplot <- requireNamespace("corrplot", quietly = TRUE)
