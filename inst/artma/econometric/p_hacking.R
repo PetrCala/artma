@@ -6,7 +6,7 @@
 NULL
 
 box::use(
-  stats[pchisq, ecdf, lm, coef],
+  stats[pchisq, ecdf, coef],
   artma / libs / core / validation[validate, assert],
   artma / libs / formatting / results[
     format_number,
@@ -29,69 +29,42 @@ box::use(
 
 #' @title Run single Caliper test
 #' @description
-#' Performs a Caliper test to detect selective reporting around significance thresholds.
+#' Performs the Gerber and Malhotra (2008) Caliper test to detect selective
+#' reporting around a significance threshold: within a narrow window around
+#' the threshold, an exact binomial test checks whether the share of
+#' observations just above the threshold departs from 50%.
 #' @param t_stats *[numeric]* T-statistics.
-#' @param study_id *[vector]* Study identifiers for clustering.
 #' @param threshold *[numeric]* T-statistic threshold (default 1.96).
 #' @param width *[numeric]* Caliper interval width (default 0.05).
-#' @param add_significance_marks *[logical]* Whether to add significance asterisks.
-#' @return *[list]* Contains estimate, SE, n_above, n_below.
-run_single_caliper <- function(t_stats, study_id, threshold = 1.96, width = 0.05, add_significance_marks = TRUE) {
+#' @return *[list]* Contains share_above, p_value, n_above, n_below.
+run_single_caliper <- function(t_stats, threshold = 1.96, width = 0.05) {
   validate(
     is.numeric(t_stats),
     is.numeric(threshold),
     is.numeric(width)
   )
 
-  # Identify significant observations
-  significant_obs <- if (threshold >= 0) {
-    t_stats > threshold
-  } else {
-    t_stats < threshold
-  }
-
   # Subset to caliper interval
   lower_bound <- t_stats > (threshold - width)
   upper_bound <- t_stats < (threshold + width)
   in_interval <- lower_bound & upper_bound
 
-  if (sum(in_interval) == 0) {
+  n_above <- sum(t_stats[in_interval] > threshold)
+  n_below <- sum(t_stats[in_interval] < threshold)
+  n_total <- n_above + n_below
+
+  if (n_total == 0) {
     return(list(
-      estimate = NA_real_,
-      std_error = NA_real_,
+      share_above = NA_real_,
+      p_value = NA_real_,
       n_above = 0,
       n_below = 0
     ))
   }
 
-  # Prepare data for regression
-  df_subset <- data.frame(
-    significant = as.numeric(significant_obs[in_interval]),
-    t_stat = t_stats[in_interval],
-    study_id = study_id[in_interval]
-  )
-
-  # Run regression (suppress clubSandwich override messages)
-  model <- stats::lm(significant ~ t_stat - 1, data = df_subset)
-  model_coefs <- suppressPackageStartupMessages(suppressMessages({
-    tryCatch(
-      {
-        lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const", cluster = df_subset$study_id))
-      },
-      error = function(e) {
-        lmtest::coeftest(model, vcov = sandwich::vcovHC(model, type = "const"))
-      }
-    )
-  }))
-
-  estimate <- model_coefs["t_stat", "Estimate"]
-  std_error <- model_coefs["t_stat", "Std. Error"]
-  n_above <- sum(t_stats[in_interval] > threshold)
-  n_below <- sum(t_stats[in_interval] < threshold)
-
   list(
-    estimate = estimate,
-    std_error = std_error,
+    share_above = n_above / n_total,
+    p_value = stats::binom.test(n_above, n_total, p = 0.5)$p.value,
     n_above = n_above,
     n_below = n_below
   )
@@ -99,14 +72,13 @@ run_single_caliper <- function(t_stats, study_id, threshold = 1.96, width = 0.05
 
 #' @title Run Caliper tests across multiple thresholds and widths
 #' @param t_stats *[numeric]* T-statistics.
-#' @param study_id *[vector]* Study identifiers.
 #' @param thresholds *[numeric]* Vector of thresholds to test.
 #' @param widths *[numeric]* Vector of caliper widths to test.
 #' @param add_significance_marks *[logical]* Whether to add significance marks.
 #' @param round_to *[integer]* Number of decimal places.
 #' @param show_progress *[logical]* Whether to show progress indicator.
 #' @return *[data.frame]* Caliper test results.
-run_caliper_tests <- function(t_stats, study_id, thresholds = c(0, 1.96, 2.58),
+run_caliper_tests <- function(t_stats, thresholds = c(1.645, 1.96, 2.58),
                               widths = c(0.05, 0.1, 0.2),
                               add_significance_marks = TRUE, round_to = 3L,
                               show_progress = TRUE) {
@@ -116,18 +88,9 @@ run_caliper_tests <- function(t_stats, study_id, thresholds = c(0, 1.96, 2.58),
     is.numeric(widths)
   )
 
-  # Preload packages to suppress clubSandwich S3 override messages
-  # clubSandwich is loaded when sandwich is loaded and overrides methods
-  invisible(suppressPackageStartupMessages({
-    suppressMessages({
-      requireNamespace("sandwich", quietly = TRUE)
-      requireNamespace("lmtest", quietly = TRUE)
-      # Force clubSandwich to load if available (so override happens quietly)
-      if (requireNamespace("clubSandwich", quietly = TRUE)) {
-        loadNamespace("clubSandwich")
-      }
-    })
-  }))
+  # Dedupe so each threshold-width pair is computed (and later looked up) once
+  thresholds <- unique(thresholds)
+  widths <- unique(widths)
 
   results <- list()
   total_tests <- length(thresholds) * length(widths)
@@ -146,27 +109,21 @@ run_caliper_tests <- function(t_stats, study_id, thresholds = c(0, 1.96, 2.58),
 
   for (thresh in thresholds) {
     for (w in widths) {
-      res <- run_single_caliper(t_stats, study_id, thresh, w, add_significance_marks)
+      res <- run_single_caliper(t_stats, thresh, w)
 
       if (show_pb) {
         cli::cli_progress_update()
       }
 
-      est_formatted <- if (is.finite(res$estimate)) {
-        est_str <- format_number(res$estimate, round_to)
-        if (add_significance_marks && is.finite(res$std_error)) {
-          p_val <- 2 * stats::pnorm(-abs(res$estimate / res$std_error))
-          mark <- significance_mark(p_val)
-          paste0(est_str, mark)
-        } else {
-          est_str
-        }
+      share_formatted <- if (is.finite(res$share_above)) {
+        format_number(res$share_above, round_to)
       } else {
         NA_character_
       }
 
-      se_formatted <- if (is.finite(res$std_error)) {
-        paste0("(", format_number(res$std_error, round_to), ")")
+      p_value_formatted <- if (is.finite(res$p_value)) {
+        p_str <- format_number(res$p_value, round_to)
+        if (add_significance_marks) paste0(p_str, significance_mark(res$p_value)) else p_str
       } else {
         NA_character_
       }
@@ -174,8 +131,8 @@ run_caliper_tests <- function(t_stats, study_id, thresholds = c(0, 1.96, 2.58),
       results[[length(results) + 1]] <- list(
         threshold = thresh,
         width = w,
-        estimate = est_formatted,
-        std_error = se_formatted,
+        share_above = share_formatted,
+        p_value = p_value_formatted,
         n_above = res$n_above,
         n_below = res$n_below
       )
@@ -210,7 +167,7 @@ build_caliper_summary <- function(caliper_results, options) {
   display_ratios <- options$display_ratios %||% TRUE
 
   # Initialize result matrix
-  n_rows <- length(widths) * 3 # 3 rows per width: Estimate, SE, n count
+  n_rows <- length(widths) * 3 # 3 rows per width: share above, p-value, n count
   result <- matrix("", nrow = n_rows, ncol = length(thresholds) + 1)
 
   # Column names
@@ -219,22 +176,22 @@ build_caliper_summary <- function(caliper_results, options) {
   # Build matrix
   row_idx <- 1
   for (w in widths) {
-    # Row 1: Estimates
-    result[row_idx, 1] <- paste0("Caliper width ", w, " - Estimate")
-    # Row 2: SEs
-    result[row_idx + 1, 1] <- paste0("Caliper width ", w, " - SE")
+    # Row 1: Share above the threshold
+    result[row_idx, 1] <- paste0("Caliper width ", w, " - Share above")
+    # Row 2: Binomial test p-value
+    result[row_idx + 1, 1] <- paste0("Caliper width ", w, " - p-value")
     # Row 3: n count (ratio or total)
     result[row_idx + 2, 1] <- paste0("Caliper width ", w, if (display_ratios) " - n above/below" else " - n total")
 
     for (col_idx in seq_along(thresholds)) {
       thresh <- thresholds[col_idx]
-      # Find matching result
+      # Find matching result (thresholds/widths are deduped upstream, so exactly one match)
       res <- caliper_results[[which(
         vapply(caliper_results, function(x) x$width == w && x$threshold == thresh, logical(1))
       )]]
 
-      result[row_idx, col_idx + 1] <- res$estimate
-      result[row_idx + 1, col_idx + 1] <- res$std_error
+      result[row_idx, col_idx + 1] <- res$share_above
+      result[row_idx + 1, col_idx + 1] <- res$p_value
       # Display ratio or total based on option
       result[row_idx + 2, col_idx + 1] <- if (display_ratios) {
         paste0(res$n_above, "/", res$n_below)
@@ -293,7 +250,10 @@ format_maive_results <- function(maive_output, options) {
 
   rd <- options$round_to
   rows <- list()
-  add <- function(stat, val) rows[[length(rows) + 1L]] <<- list(stat = stat, val = val)
+  self_env <- environment()
+  add <- function(stat, val) {
+    self_env$rows[[length(self_env$rows) + 1L]] <- list(stat = stat, val = val)
+  }
   sep <- function() add("", "")
 
   # --- Estimates ---
@@ -562,7 +522,6 @@ run_p_hacking_tests <- function(df, options) {
       {
         run_caliper_tests(
           t_stats = t_stats,
-          study_id = study_id,
           thresholds = options$caliper_thresholds,
           widths = options$caliper_widths,
           add_significance_marks = options$add_significance_marks,
