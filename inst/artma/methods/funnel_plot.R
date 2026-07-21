@@ -206,13 +206,14 @@ aggregate_study_medians <- function(df) {
   validate("study_id" %in% names(df))
 
   studies <- unique(df$study_id)
+  study_rows <- unname(split(seq_len(nrow(df)), match(df$study_id, studies)))
 
-  result <- lapply(studies, function(sid) {
-    study_data <- df[df$study_id == sid, , drop = FALSE]
-    median_effect <- stats::median(study_data$effect, na.rm = TRUE)
+  result <- lapply(study_rows, function(rows) {
+    study_effects <- df$effect[rows]
+    median_effect <- stats::median(study_effects, na.rm = TRUE)
 
-    closest_idx <- which.min(abs(study_data$effect - median_effect))
-    median_precision <- study_data$precision[closest_idx]
+    closest_idx <- which.min(abs(study_effects - median_effect))
+    median_precision <- df$precision[rows][closest_idx]
 
     data.frame(
       effect = median_effect,
