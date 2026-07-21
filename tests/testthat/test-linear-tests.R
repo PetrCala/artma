@@ -382,6 +382,92 @@ test_that("random effects fast path fails on degenerate resamples exactly like p
   expect_true(is.null(fast))
 })
 
+test_that("two-cluster data skips RE and BE with a plain-language reason", {
+  skip_if_not_installed("plm")
+
+  set.seed(7)
+  df <- make_demo_data()
+  df <- df[df$study_id %in% c("S1", "S2"), , drop = FALSE]
+
+  res <- run_linear_models(
+    df,
+    options = list(
+      add_significance_marks = FALSE,
+      bootstrap_replications = 0L,
+      conf_level = 0.95,
+      round_to = 3L
+    )
+  )
+
+  expect_true(all(c("re", "be") %in% names(res$skipped)))
+  expect_true(grepl("Not enough clusters to fit", res$skipped$re$reason))
+  expect_true(grepl("Random Effects", res$skipped$re$reason))
+  expect_true(grepl("found 2", res$skipped$re$reason))
+  expect_true(grepl("Not enough clusters to fit", res$skipped$be$reason))
+  expect_true(grepl("Between Effects", res$skipped$be$reason))
+  expect_false(grepl("not estimable", res$skipped$re$reason))
+
+  expect_true(all(c("ols", "fe") %in% res$coefficients$model))
+})
+
+test_that("singleton-cluster data skips FE and RE with a plain-language reason", {
+  skip_if_not_installed("plm")
+
+  set.seed(7)
+  n_studies <- 6L
+  se_vals <- runif(n_studies, min = 0.05, max = 0.15)
+  df <- data.frame(
+    study_id = paste0("S", seq_len(n_studies)),
+    effect = rnorm(n_studies, mean = 0.2, sd = 0.05),
+    se = se_vals,
+    study_size = sample(20:80, n_studies, replace = TRUE),
+    precision = 1 / se_vals,
+    check.names = FALSE
+  )
+
+  res <- run_linear_models(
+    df,
+    options = list(
+      add_significance_marks = FALSE,
+      bootstrap_replications = 0L,
+      conf_level = 0.95,
+      round_to = 3L
+    )
+  )
+
+  expect_true(all(c("fe", "re") %in% names(res$skipped)))
+  expect_true(grepl("does not vary within any", res$skipped$fe$reason))
+  expect_true(grepl("Fixed Effects", res$skipped$fe$reason))
+  expect_true(grepl("Not enough observations to fit", res$skipped$re$reason))
+  expect_true(grepl("Random Effects", res$skipped$re$reason))
+  expect_false(grepl("empty model", res$skipped$fe$reason))
+
+  expect_true(all(c("ols", "be") %in% res$coefficients$model))
+})
+
+test_that("constant within-cluster se skips FE and RE even with many clusters", {
+  skip_if_not_installed("plm")
+
+  df <- make_demo_data()
+  df$se <- stats::ave(df$se, df$study_id)
+
+  res <- run_linear_models(
+    df,
+    options = list(
+      add_significance_marks = FALSE,
+      bootstrap_replications = 0L,
+      conf_level = 0.95,
+      round_to = 3L
+    )
+  )
+
+  expect_true(all(c("fe", "re") %in% names(res$skipped)))
+  expect_true(grepl("does not vary within any", res$skipped$fe$reason))
+  expect_true(grepl("does not vary within any", res$skipped$re$reason))
+
+  expect_true(all(c("ols", "be") %in% res$coefficients$model))
+})
+
 test_that("panel models are skipped with a clear message when plm is unavailable", {
   df <- make_demo_data()
 
