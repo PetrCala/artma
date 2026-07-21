@@ -106,6 +106,62 @@ test_that("linear tests gracefully skip models with missing columns", {
   expect_true(grepl("Missing required columns", res$meta$skipped$ols_precision_weighted$reason))
 })
 
+test_that("bootstrap CIs are deterministic and seed-identical to the tidy-path implementation", {
+  skip_if_not_installed("plm")
+
+  df <- make_demo_data()
+  opts <- list(
+    add_significance_marks = FALSE,
+    bootstrap_replications = 50L,
+    conf_level = 0.9,
+    round_to = 3L
+  )
+
+  set.seed(123)
+  res <- run_linear_models(df, options = opts)
+
+  set.seed(123)
+  res_repeat <- run_linear_models(df, options = opts)
+
+  ci_cols <- c("model", "term", "bootstrap_lower", "bootstrap_upper")
+  ci <- res$coefficients[, ci_cols]
+  rownames(ci) <- NULL
+  expect_equal(ci, res_repeat$coefficients[, ci_cols], ignore_attr = TRUE)
+
+  finite_rows <- is.finite(ci$bootstrap_lower) & is.finite(ci$bootstrap_upper)
+  expect_true(all(ci$bootstrap_lower[finite_rows] <= ci$bootstrap_upper[finite_rows]))
+
+  # Reference values computed with the pre-optimization implementation, which
+  # ran the full clustered-vcov tidy path in every bootstrap replication. The
+  # fast boot_coefs path must stay seed-identical to it.
+  expected <- data.frame(
+    model = rep(
+      c("ols", "fe", "be", "re", "ols_study_weighted", "ols_precision_weighted"),
+      each = 2L
+    ),
+    term = rep(c("effect", "publication_bias"), times = 6L),
+    bootstrap_lower = c(
+      0.160739545997458, -0.601087904579698,
+      0.140819890400399, -0.600311615629511,
+      NA, NA,
+      0.155088688976474, -0.649012667394041,
+      0.162905232119029, -0.812806189499674,
+      0.120950452943169, -0.593431488826163
+    ),
+    bootstrap_upper = c(
+      0.237035405467370, 0.165658257380718,
+      0.243966037478644, 0.440057444128715,
+      NA, NA,
+      0.251343193299353, 0.228828857125176,
+      0.259964458196330, 0.177322819406577,
+      0.249764223666147, 0.467372767218415
+    ),
+    stringsAsFactors = FALSE
+  )
+
+  expect_equal(ci, expected, tolerance = 1e-8, ignore_attr = TRUE)
+})
+
 test_that("panel models are skipped with a clear message when plm is unavailable", {
   df <- make_demo_data()
 

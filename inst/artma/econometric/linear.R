@@ -115,6 +115,10 @@ resample_by_cluster <- function(df, cluster_column, cluster_splits = NULL) {
 }
 
 #' @title Compute bootstrap confidence intervals
+#' @description Only point estimates are needed per replication, so the spec's
+#'   cheap `boot_coefs` extractor is used instead of the full `tidy` path, and
+#'   the data is trimmed to the columns the fit actually touches before
+#'   resampling.
 #' @param spec *[list]* Linear model specification.
 #' @param data *[data.frame]* Prepared dataset.
 #' @param replications *[integer]* Number of bootstrap replications.
@@ -124,6 +128,12 @@ bootstrap_confidence <- function(spec, data, replications, conf_level) {
   if (replications <= 0) {
     return(matrix(NA_real_, nrow = 0, ncol = 2))
   }
+
+  keep_columns <- intersect(
+    unique(c(spec$required_columns, spec$weight_column, spec$cluster_column)),
+    colnames(data)
+  )
+  data <- data[, keep_columns, drop = FALSE]
 
   samples <- matrix(NA_real_, nrow = replications, ncol = length(spec$terms))
   colnames(samples) <- spec$terms
@@ -137,9 +147,10 @@ bootstrap_confidence <- function(spec, data, replications, conf_level) {
     boot_data <- resample_by_cluster(data, cluster_column, cluster_splits)
     fit <- tryCatch(spec$fit(boot_data), error = function(e) NULL)
     if (is.null(fit)) next
-    tidy <- tryCatch(spec$tidy(fit, boot_data), error = function(e) NULL)
-    if (is.null(tidy)) next
-    samples[i, tidy$term] <- tidy$estimate
+    coefs <- tryCatch(spec$boot_coefs(fit), error = function(e) NULL)
+    if (is.null(coefs)) next
+    coefs <- coefs[intersect(names(coefs), spec$terms)]
+    samples[i, names(coefs)] <- coefs
   }
 
   ci <- matrix(NA_real_, nrow = length(spec$terms), ncol = 2, dimnames = list(spec$terms, c("lower", "upper")))
@@ -255,6 +266,39 @@ tidy_plm_within <- function(model, data) {
   rbind(intercept_row, slope[c("term", "estimate", "std_error", "statistic", "p_value")])
 }
 
+#' Extract bootstrap point estimates from an intercept + `se` slope model.
+#'
+#' Cheap counterpart of the `tidy` functions for use inside the bootstrap:
+#' no clustered vcov, no coeftest, just the coefficients.
+#'
+#' @param model A fitted `lm` or `plm` model with an explicit intercept.
+#' @return A named numeric vector with `effect` and `publication_bias`.
+boot_coefs_intercept_slope <- function(model) {
+  coefs <- stats::coef(model)
+  c(
+    effect = unname(coefs["(Intercept)"]),
+    publication_bias = unname(coefs["se"])
+  )
+}
+
+#' Extract bootstrap point estimates from a within (FE) plm model.
+#'
+#' `plm::within_intercept` is called without a custom vcov: the default is far
+#' cheaper than `plm::vcovHC` and only the point estimate is used.
+#'
+#' @param model A fitted `plm` model with `model = "within"`.
+#' @return A named numeric vector with `effect` and `publication_bias`.
+boot_coefs_within <- function(model) {
+  intercept <- tryCatch(
+    plm::within_intercept(model),
+    error = function(e) NA_real_
+  )
+  c(
+    effect = if (is.numeric(intercept)) intercept[[1]] else NA_real_,
+    publication_bias = unname(stats::coef(model)["se"])
+  )
+}
+
 linear_model_specs <- function() {
   list(
     list(
@@ -266,6 +310,7 @@ linear_model_specs <- function() {
       terms = c("effect", "publication_bias"),
       fit = function(df) stats::lm(effect ~ se, data = df),
       tidy = function(model, data) tidy_lm_model(model, data, "study_id"),
+      boot_coefs = boot_coefs_intercept_slope,
       supports_bootstrap = TRUE
     ),
     list(
@@ -278,6 +323,7 @@ linear_model_specs <- function() {
       required_packages = "plm",
       fit = function(df) plm::plm(effect ~ se, data = df, model = "within", index = "study_id"),
       tidy = tidy_plm_within,
+      boot_coefs = boot_coefs_within,
       supports_bootstrap = TRUE
     ),
     list(
@@ -290,6 +336,7 @@ linear_model_specs <- function() {
       required_packages = "plm",
       fit = function(df) plm::plm(effect ~ se, data = df, model = "between", index = "study_id"),
       tidy = tidy_plm_generic,
+      boot_coefs = boot_coefs_intercept_slope,
       supports_bootstrap = FALSE
     ),
     list(
@@ -302,6 +349,7 @@ linear_model_specs <- function() {
       required_packages = "plm",
       fit = function(df) plm::plm(effect ~ se, data = df, model = "random", index = "study_id"),
       tidy = tidy_plm_generic,
+      boot_coefs = boot_coefs_intercept_slope,
       supports_bootstrap = TRUE
     ),
     list(
@@ -314,6 +362,7 @@ linear_model_specs <- function() {
       terms = c("effect", "publication_bias"),
       fit = function(df) stats::lm(effect ~ se, data = df, weights = (df$study_size^2)),
       tidy = function(model, data) tidy_lm_model(model, data, "study_id"),
+      boot_coefs = boot_coefs_intercept_slope,
       supports_bootstrap = TRUE
     ),
     list(
@@ -326,6 +375,7 @@ linear_model_specs <- function() {
       terms = c("effect", "publication_bias"),
       fit = function(df) stats::lm(effect ~ se, data = df, weights = (df$precision^2)),
       tidy = function(model, data) tidy_lm_model(model, data, "study_id"),
+      boot_coefs = boot_coefs_intercept_slope,
       supports_bootstrap = TRUE
     )
   )
