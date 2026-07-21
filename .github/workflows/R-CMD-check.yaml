@@ -46,6 +46,23 @@ jobs:
           r-version: ${{ matrix.config.r }}
           use-public-rspm: true
 
+      # RoBMA (Suggests) needs the JAGS system library. On Linux
+      # setup-r-dependencies installs it from the declared sysreqs; macOS and
+      # Windows need it installed explicitly.
+      - name: Install JAGS (macOS)
+        if: runner.os == 'macOS'
+        run: brew install jags
+
+      - name: Install JAGS (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          curl -L -o jags-installer.exe \
+            https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Windows/JAGS-4.3.1.exe/download
+          ./jags-installer.exe //S
+          echo "JAGS_HOME=C:/Program Files/JAGS/JAGS-4.3.1" >> "$GITHUB_ENV"
+          echo "C:/Program Files/JAGS/JAGS-4.3.1/x64/bin" >> "$GITHUB_PATH"
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck
