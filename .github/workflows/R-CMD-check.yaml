@@ -1,5 +1,10 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
 # Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+#
+# PR gate: release R on the three major platforms, without vignettes.
+# The full matrix (plus R-devel and oldrel, with vignettes) runs after
+# merges in R-CMD-check-extended.yaml, which also saves the dependency
+# caches on master so every PR branch can restore them.
 name: R CMD Check
 
 on:
@@ -7,6 +12,10 @@ on:
     types: [opened, synchronize]
 
 permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   R-CMD-check:
@@ -20,9 +29,7 @@ jobs:
         config:
           - { os: macos-latest, r: "release" }
           - { os: windows-latest, r: "release" }
-          - { os: ubuntu-latest, r: "devel", http-user-agent: "release" }
           - { os: ubuntu-latest, r: "release" }
-          - { os: ubuntu-latest, r: "oldrel-1" }
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -36,7 +43,6 @@ jobs:
       - uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ matrix.config.r }}
-          http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v2
@@ -44,10 +50,8 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
-      - name: Document the package
-        run: Rscript -e "devtools::document()"
-
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
-          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+          args: 'c("--no-manual", "--as-cran", "--ignore-vignettes")'
+          build_args: 'c("--no-manual", "--no-build-vignettes")'
