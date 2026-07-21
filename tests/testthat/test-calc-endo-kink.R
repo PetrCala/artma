@@ -2,6 +2,7 @@ box::use(
   testthat[
     expect_equal,
     expect_false,
+    expect_length,
     expect_named,
     expect_true,
     test_that

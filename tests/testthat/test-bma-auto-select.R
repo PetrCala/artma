@@ -1,6 +1,7 @@
 box::use(
   testthat[
     expect_equal,
+    expect_error,
     expect_false,
     expect_gt,
     expect_true,
