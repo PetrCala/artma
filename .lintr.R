@@ -22,7 +22,7 @@ linters <- c(
     lintr::linters_with_defaults(
         # https://lintr.r-lib.org/reference/index.html#individual-linters
         #
-        # All default box linters
+        # All default lintr linters (resolved from the lintr namespace)
         defaults = default_linters,
         # Set indentation to 2 spaces
         indentation_linter = custom_linters_env$indentation_guard_clause_linter(indent = 2),
