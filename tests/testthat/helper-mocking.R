@@ -37,3 +37,35 @@ local_pretend_packages_absent <- function(pkgs, .local_envir = parent.frame()) {
   )
   invisible(NULL)
 }
+
+#' Pretend a package reports a specific version for the duration of the caller.
+#'
+#' @param pkg *[character]* Package name that `utils::packageVersion` should report
+#'   `version` for. Every other package resolves normally.
+#' @param version *[character]* Version string to report for `pkg`.
+#' @param .local_envir *[environment]* Frame whose exit restores the original
+#'   binding. Defaults to the calling frame.
+#' @return Invisibly `NULL`. Registers a `withr::defer` cleanup.
+local_pretend_package_version <- function(pkg, version, .local_envir = parent.frame()) {
+  ns <- getNamespace("utils")
+  original <- get("packageVersion", envir = ns)
+  unlockBinding("packageVersion", ns)
+  assign(
+    "packageVersion", # nolint: object_name_linter.
+    function(package, ...) {
+      if (identical(package, pkg)) {
+        return(package_version(version))
+      }
+      original(package, ...)
+    },
+    envir = ns
+  )
+  withr::defer(
+    {
+      assign("packageVersion", original, envir = ns) # nolint: object_name_linter.
+      lockBinding("packageVersion", ns)
+    },
+    envir = .local_envir
+  )
+  invisible(NULL)
+}

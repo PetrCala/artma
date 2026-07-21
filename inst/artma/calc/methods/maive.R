@@ -1,3 +1,13 @@
+MAIVE_MIN_VERSION <- "0.2.4"
+
+#' @title Check whether the installed MAIVE version meets the minimum requirement
+#' @param installed_version *[character]* Version string to check, e.g. from `packageVersion("MAIVE")`.
+#' @param min_version *[character]* Minimum required version.
+#' @return *[logical]* TRUE if `installed_version >= min_version`.
+maive_version_ok <- function(installed_version, min_version = MAIVE_MIN_VERSION) {
+  package_version(installed_version) >= package_version(min_version)
+}
+
 #' @title MAIVE wrapper
 #' @description
 #' Wrapper for the MAIVE (Meta-Analysis Instrumental Variable Estimator) method
@@ -9,9 +19,9 @@
 #' @param weight *[integer]* Weighting scheme: 0=none (default), 1=weights, 2=adjusted.
 #' @param instrument *[integer]* Instrument SEs: 0=no, 1=yes (default).
 #' @param studylevel *[integer]* Study-level correlation: 0=none, 1=fixed, 2=cluster (default).
-#' @param SE *[integer]* SE estimation: 1=Asymptotic, 2=Pairs cluster boot, 3=Wild boot (default),
+#' @param SE *[integer]* SE estimation: 1=Asymptotic (default), 2=Pairs cluster boot, 3=Wild boot,
 #'   4=Wild cluster boot, 5=Pairs boot.
-#' @param AR *[integer]* Anderson-Rubin CI: 0=no, 1=yes (default).
+#' @param AR *[integer]* Anderson-Rubin CI: 0=no (default), 1=yes.
 #' @param first_stage *[integer]* First stage option (default 0).
 #' @param seed *[integer]* RNG seed for bootstrap SE modes (SE = 2..5), so
 #'   repeated runs on the same data reproduce identical results (default 123).
@@ -36,6 +46,14 @@ maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2
     cli::cli_abort(c(
       "Package {.pkg MAIVE} is required for MAIVE estimation.",
       "i" = "Install with: install.packages('MAIVE')"
+    ))
+  }
+
+  installed_version <- as.character(utils::packageVersion("MAIVE"))
+  if (!maive_version_ok(installed_version)) {
+    cli::cli_abort(c(
+      "Package {.pkg MAIVE} {MAIVE_MIN_VERSION} or higher is required for MAIVE estimation.",
+      "i" = "Installed version: {installed_version}. Upgrade with: install.packages('MAIVE')"
     ))
   }
 
@@ -70,4 +88,4 @@ maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2
   result
 }
 
-box::export(maive)
+box::export(maive, maive_version_ok)

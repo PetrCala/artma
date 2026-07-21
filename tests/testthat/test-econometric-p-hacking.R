@@ -185,6 +185,16 @@ test_that("run_caliper_tests dedupes duplicated thresholds and widths", {
   expect_equal(length(results), 1L)
 })
 
+test_that("run_caliper_tests defaults thresholds to match the options template", {
+  set.seed(103)
+  t_stats <- rnorm(30)
+
+  results <- run_caliper_tests(t_stats, widths = c(0.1), show_progress = FALSE)
+
+  thresholds_seen <- sort(unique(vapply(results, function(x) x$threshold, numeric(1))))
+  expect_equal(thresholds_seen, c(1.645, 1.96, 2.58))
+})
+
 # Elliott wrappers ----------------------------------------------------------
 
 test_that("run_binomial matches the upper-tail binomial p-value", {
@@ -317,6 +327,8 @@ test_that("run_p_hacking_tests runs the Elliott suite when requested", {
   expect_true(is.data.frame(result$elliott))
   expect_true("Binomial [0, 0.05]" %in% result$elliott$Test)
   expect_true("Fisher [0, 0.05]" %in% result$elliott$Test)
+  expect_equal(sum(result$elliott$Test == "Observations in [0, 0.1]"), 1L)
+  expect_false("Observations <= 0.1" %in% result$elliott$Test)
 })
 
 # Skip reasons ---------------------------------------------------------------

@@ -427,7 +427,7 @@ run_lcm <- function(pvalues, p_min, p_max, cdfs) {
   }
 
   tryCatch(
-    lcm_test(pvalues, p_min, p_max, norm = 8, cdfs),
+    lcm_test(pvalues, p_min, p_max, cdfs),
     error = function(e) skipped_result(e$message)
   )
 }
@@ -691,7 +691,7 @@ run_p_hacking_tests <- function(df, options) {
           )
         },
         error = function(e) {
-          skipped[["maive"]] <<- paste("MAIVE estimation failed:", e$message)
+          skipped[["maive"]] <<- e$message
           NULL
         }
       )
@@ -744,15 +744,12 @@ build_elliott_summary <- function(elliott_tests, pvalues, options) {
   )
 
   # Add observation count rows
-  n_total <- length(pvalues)
-  n_010 <- sum(pvalues <= 0.1, na.rm = TRUE)
-  n_005 <- sum(pvalues <= 0.05, na.rm = TRUE)
   n_01_range <- sum(pvalues >= 0 & pvalues <= 0.1, na.rm = TRUE)
   n_005_range <- sum(pvalues >= 0 & pvalues <= 0.05, na.rm = TRUE)
 
   obs_rows <- data.frame(
-    Test = c("Observations in [0, 0.1]", "Observations in [0, 0.05]", "Observations <= 0.1"),
-    `P-value` = c(as.character(n_01_range), as.character(n_005_range), as.character(n_010)),
+    Test = c("Observations in [0, 0.1]", "Observations in [0, 0.05]"),
+    `P-value` = c(as.character(n_01_range), as.character(n_005_range)),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )

@@ -145,7 +145,6 @@ simulate_cdfs_parallel <- function(
       hky <- hull$y.knots
       hks <- hull$slope.knots
 
-      # keep interpolation logic aligned with your original code
       for (s in 2:length(hkx)) {
         a <- hky[s] - hks[s - 1L] * hkx[s]
         b_slope <- hks[s - 1L]
@@ -258,7 +257,7 @@ binomial_test <- function(P, p_min, p_max, type) {
 }
 
 #' LCM-based test for shape restrictions
-lcm_test <- function(P, p_min, p_max, norm, cdfs) {
+lcm_test <- function(P, p_min, p_max, cdfs) {
   filtered <- P[P <= p_max & P >= p_min]
   nn <- length(filtered)
   f <- stats::ecdf(filtered)
@@ -441,6 +440,7 @@ build_constraint_vector <- function(B0, B1, B2, bnd_adj, use_bounds, J, K, p_min
   c(unlist(lapply(bounds, as.vector)), zeros)
 }
 
+#' Adapted from pracma::fmincon (GPL-3, compatible with this package's license)
 fmincon <- function(x0, fn, gr = NULL, ..., method = "SQP",
                     A = NULL, b = NULL, Aeq = NULL, beq = NULL, # nolint: object_name_linter.
                     lb = NULL, ub = NULL, hin = NULL, heq = NULL,
