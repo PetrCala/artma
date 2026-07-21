@@ -26,6 +26,8 @@ best_practice_estimate <- function(df, bma_result = NULL) {
   include_author_row <- opt$include_author_row %||% TRUE
   include_study_rows <- opt$include_study_rows %||% TRUE
   run_bma_if_missing <- opt$run_bma_if_missing %||% TRUE
+  include_economic_significance <- opt$include_economic_significance %||% TRUE
+  economic_significance_pip_threshold <- as.numeric(opt$economic_significance_pip_threshold %||% NA_real_)
   round_to <- as.integer(getOption("artma.output.number_of_decimals", 3))
 
   validate(
@@ -39,6 +41,10 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     length(include_study_rows) == 1,
     is.logical(run_bma_if_missing),
     length(run_bma_if_missing) == 1,
+    is.logical(include_economic_significance),
+    length(include_economic_significance) == 1,
+    is.numeric(economic_significance_pip_threshold),
+    length(economic_significance_pip_threshold) == 1,
     is.numeric(round_to),
     length(round_to) == 1
   )
@@ -47,6 +53,11 @@ best_practice_estimate <- function(df, bma_result = NULL) {
   assert(
     include_author_row || include_study_rows,
     "At least one of include_author_row or include_study_rows must be TRUE."
+  )
+  assert(
+    is.na(economic_significance_pip_threshold) ||
+      (economic_significance_pip_threshold >= 0 && economic_significance_pip_threshold <= 1),
+    "economic_significance_pip_threshold must be between 0 and 1."
   )
 
   resolved_bma <- resolve_bma_input_for_bpe(
@@ -67,6 +78,8 @@ best_practice_estimate <- function(df, bma_result = NULL) {
   )
   coef_post_mean <- as.numeric(bma_coef_matrix[, "Post Mean"])
   names(coef_post_mean) <- rownames(bma_coef_matrix)
+  pip_values <- as.numeric(bma_coef_matrix[, "PIP"])
+  names(pip_values) <- rownames(bma_coef_matrix)
 
   predictors <- setdiff(names(coef_post_mean), "(Intercept)")
   missing_predictors <- predictors[!predictors %in% colnames(bma_data)]
@@ -178,6 +191,26 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     round_to = round_to
   )
 
+  tables <- list(summary = summary)
+
+  if (include_economic_significance) {
+    bpe_reference_estimate <- compute_bpe_point_estimate(
+      predictor_values = author_values,
+      coef_post_mean = coef_post_mean,
+      include_intercept = include_intercept
+    )
+    tables$economic_significance <- compute_bpe_economic_significance(
+      predictors = predictors,
+      bma_data = bma_data,
+      coef_post_mean = coef_post_mean,
+      bpe_reference_estimate = bpe_reference_estimate,
+      pip_values = pip_values,
+      config = config,
+      round_to = round_to,
+      pip_threshold = economic_significance_pip_threshold
+    )
+  }
+
   if (get_verbosity() >= 3) {
     cli::cli_h3("Best-Practice Estimate")
     cli::cli_alert_info("BMA source: {.val {resolved_bma$source}}")
@@ -188,7 +221,7 @@ best_practice_estimate <- function(df, bma_result = NULL) {
   }
 
   invisible(new_method_result(
-    tables = list(summary = summary),
+    tables = tables,
     meta = list(
       formula = formula,
       overrides = override_table,
@@ -669,8 +702,7 @@ resolve_bpe_vcov <- function(ols_model, cluster_ids = NULL) {
   )
 }
 
-build_bpe_row <- function(scope, study_id, study_label, predictor_values, coef_post_mean,
-                          include_intercept, vcov_matrix, z_value) {
+compute_bpe_point_estimate <- function(predictor_values, coef_post_mean, include_intercept) {
   intercept <- if (include_intercept && "(Intercept)" %in% names(coef_post_mean)) {
     as.numeric(coef_post_mean["(Intercept)"])
   } else {
@@ -678,7 +710,16 @@ build_bpe_row <- function(scope, study_id, study_label, predictor_values, coef_p
   }
 
   predictor_coefs <- coef_post_mean[names(predictor_values)]
-  estimate <- intercept + sum(predictor_coefs * predictor_values, na.rm = TRUE)
+  intercept + sum(predictor_coefs * predictor_values, na.rm = TRUE)
+}
+
+build_bpe_row <- function(scope, study_id, study_label, predictor_values, coef_post_mean,
+                          include_intercept, vcov_matrix, z_value) {
+  estimate <- compute_bpe_point_estimate(
+    predictor_values = predictor_values,
+    coef_post_mean = coef_post_mean,
+    include_intercept = include_intercept
+  )
   standard_error <- compute_linear_combo_se(
     predictor_values = predictor_values,
     include_intercept = include_intercept,
@@ -734,6 +775,72 @@ compute_linear_combo_se <- function(predictor_values, include_intercept, vcov_ma
   }
 
   sqrt(variance)
+}
+
+#' @title Economic Significance of BMA Variables
+#' @description
+#' For each BMA variable, compute the change in the best-practice estimate
+#' from a 1-SD change and from a min-to-max change in that variable, both as
+#' a level and as a percentage of the reference best-practice estimate.
+#' @keywords internal
+compute_bpe_economic_significance <- function(predictors, bma_data, coef_post_mean,
+                                              bpe_reference_estimate, pip_values, config,
+                                              round_to, pip_threshold) {
+  empty <- data.frame(
+    variable = character(0),
+    var_label = character(0),
+    pip = numeric(0),
+    sd_change = numeric(0),
+    sd_change_pct = numeric(0),
+    range_change = numeric(0),
+    range_change_pct = numeric(0),
+    stringsAsFactors = FALSE
+  )
+
+  if (!length(predictors)) {
+    return(empty)
+  }
+
+  has_reference <- is.finite(bpe_reference_estimate) && bpe_reference_estimate != 0
+
+  rows <- lapply(predictors, function(var_name) {
+    values <- as.numeric(bma_data[[var_name]])
+    values <- values[is.finite(values)]
+    beta <- coef_post_mean[[var_name]]
+
+    sd_change <- if (length(values) > 1) beta * stats::sd(values) else NA_real_
+    range_change <- if (length(values)) beta * (max(values) - min(values)) else NA_real_
+
+    config_key <- find_config_key_for_var(var_name, config)
+    var_label <- var_name
+    if (!is.null(config_key)) {
+      var_label <- config[[config_key]]$var_name_verbose %||% var_name
+    }
+
+    data.frame(
+      variable = var_name,
+      var_label = var_label,
+      pip = as.numeric(pip_values[[var_name]]),
+      sd_change = sd_change,
+      sd_change_pct = if (has_reference) sd_change / bpe_reference_estimate * 100 else NA_real_,
+      range_change = range_change,
+      range_change_pct = if (has_reference) range_change / bpe_reference_estimate * 100 else NA_real_,
+      stringsAsFactors = FALSE
+    )
+  })
+
+  out <- do.call(rbind, rows)
+
+  if (!is.na(pip_threshold)) {
+    out <- out[!is.na(out$pip) & out$pip >= pip_threshold, , drop = FALSE]
+  }
+
+  for (col in c("pip", "sd_change", "sd_change_pct", "range_change", "range_change_pct")) {
+    out[[col]] <- round_if_finite(out[[col]], round_to)
+  }
+
+  rownames(out) <- NULL
+  out
 }
 
 compute_context_values <- function(bma_data, row_idx, predictors, overrides) {

@@ -84,7 +84,7 @@ test_that("best_practice_estimate uses provided BMA result and returns structure
   result <- best_practice_estimate(df, bma_result = bma_result)
 
   expect_named(result, c("tables", "plots", "meta"))
-  expect_named(result$tables, "summary")
+  expect_named(result$tables, c("summary", "economic_significance"), ignore.order = TRUE)
   expect_named(
     result$meta,
     c("formula", "overrides", "bma_formula", "bma_source", "autonomy_level"),
@@ -100,6 +100,42 @@ test_that("best_practice_estimate uses provided BMA result and returns structure
   expect_equal(overrides[["se"]], "0")
   expect_equal(overrides[["citations"]], "max")
   expect_equal(overrides[["first_lag_instrument"]], "0")
+
+  econ_sig <- result$tables$economic_significance
+  expect_true(is.data.frame(econ_sig))
+  expect_named(
+    econ_sig,
+    c("variable", "var_label", "pip", "sd_change", "sd_change_pct", "range_change", "range_change_pct")
+  )
+  expect_equal(sort(econ_sig$variable), sort(c("citations", "first_lag_instrument", "se", "top_journal")))
+})
+
+test_that("best_practice_estimate filters economic significance by PIP threshold", {
+  skip_if_not_installed("BMS")
+
+  df <- make_bpe_demo_data()
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = make_bpe_demo_config(),
+    artma.visualization.export_graphics = FALSE,
+    artma.methods.bma.burn = 50L,
+    artma.methods.bma.iter = 300L,
+    artma.methods.bma.nmodel = 20L,
+    artma.methods.bma.g = "UIP",
+    artma.methods.bma.mprior = "uniform",
+    artma.methods.bma.mcmc = "bd",
+    artma.methods.best_practice_estimate.include_study_rows = FALSE,
+    artma.methods.best_practice_estimate.economic_significance_pip_threshold = 0.999
+  ))
+
+  bma_result <- bma(df)
+  result <- best_practice_estimate(df, bma_result = bma_result)
+
+  econ_sig <- result$tables$economic_significance
+  expect_true(nrow(econ_sig) <= 4L)
+  expect_true(all(econ_sig$pip >= 0.999))
 })
 
 test_that("best_practice_estimate fails early when BMA is missing and auto-run is disabled", {
