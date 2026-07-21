@@ -61,6 +61,42 @@ build_export_filename <- function(base_name, factor_by, index = NULL, extension 
 }
 
 
+#' Open a raster graphics device for writing a PNG file
+#'
+#' @description
+#' Opens `ragg::agg_png` when the `ragg` package is available, since it renders
+#' substantially faster than the base `grDevices::png` device. Falls back to
+#' `grDevices::png` when `ragg` is not installed.
+#'
+#' @param path *\[character\]* Full file path (including filename)
+#' @param width *\[numeric\]* Device width, in `units`
+#' @param height *\[numeric\]* Device height, in `units`
+#' @param units *\[character\]* Units for width/height. Defaults to "px".
+#' @param res *\[numeric\]* Resolution in pixels per inch. Defaults to 90.
+#'
+#' @return NULL (invisibly). Called for its side effect of opening a graphics device.
+#' @keywords internal
+open_png_device <- function(path, width, height, units = "px", res = 90) {
+  box::use(artma / libs / core / validation[validate])
+
+  validate(
+    is.character(path),
+    is.numeric(width), width > 0,
+    is.numeric(height), height > 0,
+    is.character(units),
+    is.numeric(res), res > 0
+  )
+
+  if (requireNamespace("ragg", quietly = TRUE)) {
+    ragg::agg_png(filename = path, width = width, height = height, units = units, res = res)
+  } else {
+    grDevices::png(filename = path, width = width, height = height, units = units, res = res)
+  }
+
+  invisible(NULL)
+}
+
+
 #' Save a ggplot2 plot to file
 #'
 #' @description
@@ -96,13 +132,16 @@ save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units =
     file.remove(path)
   }
 
+  device <- if (requireNamespace("ragg", quietly = TRUE)) ragg::agg_png else NULL
+
   ggplot2::ggsave(
     filename = path,
     plot = plot,
     width = width * scale,
     height = height * scale,
     units = units,
-    dpi = dpi
+    dpi = dpi,
+    device = device
   )
 
   if (get_verbosity() >= 4) {
@@ -169,6 +208,7 @@ save_plot_html <- function(plot, path) {
 box::export(
   ensure_export_dir,
   build_export_filename,
+  open_png_device,
   save_plot,
   save_plot_html
 )

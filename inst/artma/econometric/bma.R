@@ -535,7 +535,7 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
   }
 
   if (export_graphics) {
-    box::use(artma / visualization / export[ensure_export_dir])
+    box::use(artma / visualization / export[ensure_export_dir, open_png_device])
 
     gprior <- bma_model$gprior.info$gtype
     mprior <- bma_model$mprior.info$origargs$mpmode
@@ -553,7 +553,7 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
     }
 
     if (image_supported) {
-      grDevices::png(main_path,
+      open_png_device(main_path,
         width = 933 * graph_scale, height = 894 * graph_scale, units = "px",
         res = 70 * graph_scale
       )
@@ -565,7 +565,7 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
       )
     }
 
-    grDevices::png(dist_path,
+    open_png_device(dist_path,
       width = 528 * graph_scale, height = 506 * graph_scale, units = "px",
       res = 90 * graph_scale
     )
@@ -573,7 +573,7 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
     grDevices::dev.off()
 
     if (has_corrplot) {
-      grDevices::png(corrplot_path,
+      open_png_device(corrplot_path,
         width = 700 * graph_scale, height = 669 * graph_scale, units = "px",
         res = 90 * graph_scale
       )
@@ -656,7 +656,7 @@ render_bma_comparison_plot <- function(bma_models, comp = "PIP", export_graphics
                                        print_plot = FALSE) {
   box::use(
     artma / libs / core / validation[validate],
-    artma / visualization / export[ensure_export_dir]
+    artma / visualization / export[ensure_export_dir, open_png_device]
   )
 
   validate(
@@ -689,7 +689,7 @@ render_bma_comparison_plot <- function(bma_models, comp = "PIP", export_graphics
     if (file.exists(comparison_path)) {
       file.remove(comparison_path)
     }
-    grDevices::png(comparison_path,
+    open_png_device(comparison_path,
       width = 800 * graph_scale, height = 600 * graph_scale, units = "px",
       res = 90 * graph_scale
     )
