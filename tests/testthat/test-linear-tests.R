@@ -185,7 +185,7 @@ test_that("bootstrap fast paths match slow-path refits on resampled data", {
 
   specs <- linear_model_specs()
   names(specs) <- vapply(specs, function(spec) spec$name, character(1))
-  fast_path_specs <- c("ols", "fe", "ols_study_weighted", "ols_precision_weighted")
+  fast_path_specs <- c("ols", "fe", "re", "ols_study_weighted", "ols_precision_weighted")
   compared <- stats::setNames(integer(length(fast_path_specs)), fast_path_specs)
 
   set.seed(1234)
@@ -252,6 +252,134 @@ test_that("within fast path merges duplicated resampled clusters like plm", {
     unname(plm::within_intercept(model)[[1L]]),
     tolerance = 1e-12
   )
+})
+
+test_that("random effects fast path matches plm on duplicated resampled clusters", {
+  skip_if_not_installed("plm")
+
+  df <- make_demo_data()
+  df$study_id <- droplevels(factor(df$study_id))
+  cluster_splits <- split(seq_len(nrow(df)), df$study_id)
+
+  specs <- linear_model_specs()
+  names(specs) <- vapply(specs, function(spec) spec$name, character(1))
+  re_spec <- specs[["re"]]
+
+  # Force duplicated clusters so the merge semantics are actually exercised.
+  rows <- unlist(
+    cluster_splits[c("S1", "S1", "S2", "S3", "S3", "S3", "S5")],
+    use.names = FALSE
+  )
+  boot_data <- df[rows, , drop = FALSE]
+
+  fast <- re_spec$boot_estimate(df, rows)
+  model <- plm::plm(effect ~ se, data = boot_data, model = "random", index = "study_id")
+
+  expect_equal(
+    fast[["effect"]],
+    unname(stats::coef(model)[["(Intercept)"]]),
+    tolerance = 1e-12
+  )
+  expect_equal(
+    fast[["publication_bias"]],
+    unname(stats::coef(model)[["se"]]),
+    tolerance = 1e-12
+  )
+})
+
+test_that("random effects fast path matches plm on unbalanced clusters", {
+  skip_if_not_installed("plm")
+
+  set.seed(7)
+  sizes <- c(2L, 3L, 5L, 8L, 13L, 21L, 4L, 30L, 2L, 9L)
+  study_ids <- rep(paste0("U", seq_along(sizes)), times = sizes)
+  se_vals <- runif(sum(sizes), min = 0.05, max = 0.15)
+  df <- data.frame(
+    study_id = droplevels(factor(study_ids)),
+    effect = rnorm(sum(sizes), mean = 0.2, sd = 0.05),
+    se = se_vals
+  )
+  cluster_splits <- split(seq_len(nrow(df)), df$study_id)
+
+  specs <- linear_model_specs()
+  names(specs) <- vapply(specs, function(spec) spec$name, character(1))
+  re_spec <- specs[["re"]]
+
+  set.seed(99)
+  for (replication in seq_len(5L)) {
+    rows <- resample_cluster_rows(nrow(df), cluster_splits)
+    boot_data <- df[rows, , drop = FALSE]
+
+    fast <- tryCatch(re_spec$boot_estimate(df, rows), error = function(e) NULL)
+    model <- tryCatch(
+      plm::plm(effect ~ se, data = boot_data, model = "random", index = "study_id"),
+      error = function(e) NULL
+    )
+
+    if (is.null(model)) {
+      expect_true(is.null(fast), info = paste("replication", replication))
+      next
+    }
+
+    expect_equal(
+      fast[c("effect", "publication_bias")],
+      stats::setNames(
+        unname(stats::coef(model)[c("(Intercept)", "se")]),
+        c("effect", "publication_bias")
+      ),
+      tolerance = 1e-12,
+      info = paste("replication", replication)
+    )
+  }
+})
+
+test_that("random effects fast path fails on degenerate resamples exactly like plm", {
+  skip_if_not_installed("plm")
+
+  df <- make_demo_data()
+  df$study_id <- droplevels(factor(df$study_id))
+  cluster_splits <- split(seq_len(nrow(df)), df$study_id)
+
+  specs <- linear_model_specs()
+  names(specs) <- vapply(specs, function(spec) spec$name, character(1))
+  re_spec <- specs[["re"]]
+
+  degenerate_draws <- list(
+    single_cluster = c("S2", "S2", "S2"),
+    two_clusters = c("S2", "S5")
+  )
+
+  for (case in names(degenerate_draws)) {
+    rows <- unlist(cluster_splits[degenerate_draws[[case]]], use.names = FALSE)
+    boot_data <- df[rows, , drop = FALSE]
+
+    fast <- tryCatch(re_spec$boot_estimate(df, rows), error = function(e) NULL)
+    # plm warns about a perfect between fit before erroring on these draws.
+    model <- suppressWarnings(tryCatch(
+      plm::plm(effect ~ se, data = boot_data, model = "random", index = "study_id"),
+      error = function(e) NULL
+    ))
+
+    expect_true(is.null(model), info = case)
+    expect_true(is.null(fast), info = case)
+  }
+
+  # All-singleton clusters: plm rejects the within model as empty.
+  singleton_df <- data.frame(
+    study_id = droplevels(factor(paste0("P", 1:8))),
+    effect = rnorm(8, mean = 0.2, sd = 0.05),
+    se = runif(8, min = 0.05, max = 0.15)
+  )
+  rows <- seq_len(nrow(singleton_df))
+
+  fast <- tryCatch(re_spec$boot_estimate(singleton_df, rows), error = function(e) NULL)
+  model <- tryCatch(
+    plm::plm(effect ~ se, data = singleton_df, model = "random", index = "study_id"),
+    error = function(e) NULL
+  )
+
+  expect_true(is.null(model))
+  expect_true(is.null(fast))
 })
 
 test_that("panel models are skipped with a clear message when plm is unavailable", {

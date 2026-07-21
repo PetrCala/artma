@@ -135,9 +135,6 @@ make_boot_estimate_weighted_ols <- function(weight_column) {
 # original id, so they merge into one group during demeaning, exactly as plm
 # treats the resampled frame. The overall intercept is what
 # plm::within_intercept() returns: mean(y) - slope * mean(x).
-#
-# Random effects has no fast path: Swamy-Arora variance components must be
-# recomputed per resample, so it stays on the `fit` + `boot_coefs` fallback.
 boot_estimate_within <- function(data, rows) {
   y <- data$effect[rows]
   x <- data$se[rows]
@@ -146,6 +143,77 @@ boot_estimate_within <- function(data, rows) {
   x_demeaned <- x - stats::ave(x, group)
   slope <- stats::.lm.fit(cbind(x_demeaned), y_demeaned)$coefficients[[1L]]
   c(effect = mean(y) - slope * mean(x), publication_bias = slope)
+}
+
+# Random effects estimator: feasible GLS via the theta (quasi-demeaning)
+# transformation with Swamy-Arora variance components, replicating
+# plm::plm(model = "random") exactly. With one regressor plus intercept,
+# plm's ercomp (method "swar", effect "individual") reduces to:
+#   sigma_nu^2  = within SSR / (O - N - 1)
+#   sigma_eta^2 = (sum_i T_i e_Bi^2 - (N - 2) sigma_nu^2) / (O - tr(A^-1 B))
+# where O is the observation count, N the group count, e_Bi the residuals of
+# the T_i-weighted between regression, A = sum_i T_i m_i m_i' and
+# B = sum_i T_i^2 m_i m_i' with m_i = (1, xbar_i). plm's balanced-panel
+# branch (dfcor = c(2, 2)) is the algebraic special case of these formulas,
+# so no separate branch is needed. Negative components clamp to zero, then
+# theta_i = 1 - sqrt(sigma_nu^2 / (T_i sigma_eta^2 + sigma_nu^2)) and OLS on
+# the quasi-demeaned data yields the GLS estimates.
+#
+# The guards mirror the conditions under which plm errors, so degenerate
+# resamples fail identically on both paths: plm's swar_Between_check rejects
+# fewer than three distinct groups, and its within fit rejects a regressor
+# with no within-group variation ("empty model").
+boot_estimate_re <- function(data, rows) {
+  y <- data$effect[rows]
+  x <- data$se[rows]
+  group <- droplevels(data$study_id[rows])
+
+  n_obs <- length(y)
+  n_groups <- nlevels(group)
+  if (n_groups < 3L) {
+    cli::cli_abort("Swamy-Arora needs at least three distinct clusters")
+  }
+  if (n_obs - n_groups < 2L) {
+    cli::cli_abort("Not enough within-group observations for Swamy-Arora")
+  }
+
+  y_mean <- stats::ave(y, group)
+  x_mean <- stats::ave(x, group)
+  y_demeaned <- y - y_mean
+  x_demeaned <- x - x_mean
+  if (sum(x_demeaned^2) == 0) {
+    cli::cli_abort("No within-group variation in se")
+  }
+
+  within_slope <- stats::.lm.fit(cbind(x_demeaned), y_demeaned)$coefficients[[1L]]
+  within_ssr <- sum((y_demeaned - within_slope * x_demeaned)^2)
+  idios_var <- within_ssr / (n_obs - n_groups - 1)
+
+  group_codes <- as.integer(group)
+  sizes_by_obs <- tabulate(group_codes, nbins = n_groups)[group_codes]
+  first_in_group <- !duplicated(group_codes)
+  group_sizes <- sizes_by_obs[first_in_group]
+  group_x <- x_mean[first_in_group]
+  group_y <- y_mean[first_in_group]
+
+  between_fit <- stats::lm.wfit(cbind(1, group_x), group_y, group_sizes)
+  between_quad <- sum(group_sizes * between_fit$residuals^2)
+
+  m <- cbind(1, group_x)
+  a_mat <- crossprod(m * sqrt(group_sizes))
+  b_mat <- crossprod(m * group_sizes)
+  id_eta_weight <- n_obs - sum(diag(solve(a_mat, b_mat)))
+  id_var <- (between_quad - (n_groups - 2) * idios_var) / id_eta_weight
+
+  sigma2 <- c(idios_var, id_var)
+  sigma2[sigma2 < 0] <- 0
+
+  theta <- 1 - sqrt(sigma2[[1L]] / (sizes_by_obs * sigma2[[2L]] + sigma2[[1L]]))
+  fit <- stats::lm.fit(
+    cbind(1 - theta, x - theta * x_mean),
+    y - theta * y_mean
+  )
+  c(effect = fit$coefficients[[1L]], publication_bias = fit$coefficients[[2L]])
 }
 
 #' @title Compute bootstrap confidence intervals
@@ -395,6 +463,7 @@ linear_model_specs <- function() {
       fit = function(df) plm::plm(effect ~ se, data = df, model = "random", index = "study_id"),
       tidy = tidy_plm_generic,
       boot_coefs = boot_coefs_intercept_slope,
+      boot_estimate = boot_estimate_re,
       supports_bootstrap = TRUE
     ),
     list(
