@@ -333,48 +333,6 @@ generate_histogram_ticks <- function(bounds,
 }
 
 
-#' Format tick values as integers or decimals
-#'
-#' @param x *\[numeric\]* Tick values
-#' @return *\[character\]* Formatted labels
-#' @keywords internal
-format_tick_labels <- function(x) {
-  vapply(x, function(val) {
-    if (is.na(val)) {
-      return(NA_character_)
-    }
-    if (val == floor(val)) {
-      as.character(as.integer(val))
-    } else {
-      format(round(val, 2), nsmall = 0, trim = TRUE)
-    }
-  }, FUN.VALUE = character(1))
-}
-
-
-#' Format tick labels with HTML color spans
-#'
-#' @description
-#' Wraps tick labels in HTML span elements with color styling for use
-#' with ggtext::element_markdown().
-#'
-#' @param ticks *\[numeric\]* Tick values
-#' @param colors *\[character\]* Color for each tick
-#'
-#' @return *\[character\]* HTML-formatted labels
-#' @keywords internal
-format_colored_tick_labels <- function(ticks, colors) {
-  labels <- format_tick_labels(ticks)
-
-  vapply(seq_along(labels), function(i) {
-    if (is.na(labels[i])) {
-      return(NA_character_)
-    }
-    sprintf("<span style='color:%s'>%s</span>", colors[i], labels[i])
-  }, FUN.VALUE = character(1))
-}
-
-
 #' Build a single t-statistic histogram
 #'
 #' @param t_values *\[numeric\]* All t-statistic values (pre-filtering)
@@ -402,7 +360,8 @@ build_histogram <- function(t_values,
   box::use(
     artma / libs / core / utils[get_verbosity],
     artma / visualization / colors[get_colors],
-    artma / visualization / theme[get_theme]
+    artma / visualization / theme[get_theme],
+    artma / visualization / ticks[format_colored_tick_labels]
   )
 
   filter_result <- filter_by_cutoff(t_values, lower_cutoff, upper_cutoff)

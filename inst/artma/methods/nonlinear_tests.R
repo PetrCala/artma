@@ -4,6 +4,7 @@ nonlinear_tests <- function(df) {
   box::use(
     artma / libs / core / validation[validate, validate_columns, assert],
     artma / libs / core / utils[get_verbosity],
+    artma / libs / formatting / results[print_summary_table],
     artma / econometric / nonlinear[run_nonlinear_methods],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
@@ -65,15 +66,7 @@ nonlinear_tests <- function(df) {
     cli::cli_h2("Non-linear model tests")
 
     if (nrow(results$summary) > 0) {
-      summary <- results$summary
-      duplicated_metric <- identical(rownames(summary), summary[[1]])
-      if (duplicated_metric) {
-        rownames(summary) <- NULL
-      }
-      lines <- utils::capture.output(
-        print(summary, row.names = !duplicated_metric) # nolint: undesirable_function_linter.
-      )
-      cli::cli_verbatim(lines)
+      print_summary_table(results$summary)
     } else {
       cli::cli_alert_warning("No non-linear models were successfully estimated.")
     }

@@ -3,6 +3,16 @@ box::use(
   artma / libs / core / utils[get_verbosity]
 )
 
+#' @title Format columns with NA counts
+#' @description Format a named count vector as "col (n), col (n)" for messages.
+#' @param counts *\[integer\]* Named vector of NA counts per column
+#' @return *\[character\]* Single formatted string
+#' @keywords internal
+format_cols_with_counts <- function(counts) {
+  paste0(names(counts), " (", counts, ")", collapse = ", ")
+}
+
+
 #' @title Detect missing values
 #' @description Analyze the data frame for missing values and return a summary.
 #' @param df *\[data.frame\]* The data frame to analyze
@@ -55,67 +65,56 @@ handle_na_remove <- function(df) {
 }
 
 
-#' @title Handle missing values with median imputation
-#' @description Replace missing values with the column's median. Works on all numeric columns (both required and optional).
+#' @title Impute missing values with a column summary statistic
+#' @description Replace missing values in every numeric column with `stat_fun`
+#' of that column. Works on all numeric columns (both required and optional).
 #' @param df *\[data.frame\]* The data frame to process
+#' @param stat_fun *\[function\]* Summary function applied with `na.rm = TRUE`
+#' @param strategy *\[character\]* Strategy label used in messages
 #' @return *\[data.frame\]* The data frame with imputed values
 #' @keywords internal
-handle_na_median <- function(df) {
+impute_with_column_stat <- function(df, stat_fun, strategy) {
   imputed_count <- 0
 
   for (col in colnames(df)) {
     if (is.numeric(df[[col]]) && any(is.na(df[[col]]))) {
       na_indices <- is.na(df[[col]])
-      median_val <- stats::median(df[[col]], na.rm = TRUE)
+      stat_val <- stat_fun(df[[col]], na.rm = TRUE)
 
-      if (!is.na(median_val)) {
-        df[[col]][na_indices] <- median_val
+      if (!is.na(stat_val)) {
+        df[[col]][na_indices] <- stat_val
         imputed_count <- imputed_count + sum(na_indices)
 
         if (get_verbosity() >= 4) {
-          cli::cli_alert_info("Imputed {.val {sum(na_indices)}} values in {.field {col}} with median: {.val {round(median_val, 3)}}")
+          cli::cli_alert_info("Imputed {.val {sum(na_indices)}} values in {.field {col}} with {strategy}: {.val {round(stat_val, 3)}}")
         }
       }
     }
   }
 
   if (imputed_count > 0 && get_verbosity() >= 3) {
-    cli::cli_alert_success("Imputed {.val {imputed_count}} missing value{?s} using median strategy")
+    cli::cli_alert_success("Imputed {.val {imputed_count}} missing value{?s} using {strategy} strategy")
   }
 
   df
 }
 
 
+#' @title Handle missing values with median imputation
+#' @param df *\[data.frame\]* The data frame to process
+#' @return *\[data.frame\]* The data frame with imputed values
+#' @keywords internal
+handle_na_median <- function(df) {
+  impute_with_column_stat(df, stats::median, "median")
+}
+
+
 #' @title Handle missing values with mean imputation
-#' @description Replace missing values with the column's mean. Works on all numeric columns (both required and optional).
 #' @param df *\[data.frame\]* The data frame to process
 #' @return *\[data.frame\]* The data frame with imputed values
 #' @keywords internal
 handle_na_mean <- function(df) {
-  imputed_count <- 0
-
-  for (col in colnames(df)) {
-    if (is.numeric(df[[col]]) && any(is.na(df[[col]]))) {
-      na_indices <- is.na(df[[col]])
-      mean_val <- mean(df[[col]], na.rm = TRUE)
-
-      if (!is.na(mean_val)) {
-        df[[col]][na_indices] <- mean_val
-        imputed_count <- imputed_count + sum(na_indices)
-
-        if (get_verbosity() >= 4) {
-          cli::cli_alert_info("Imputed {.val {sum(na_indices)}} values in {.field {col}} with mean: {.val {round(mean_val, 3)}}")
-        }
-      }
-    }
-  }
-
-  if (imputed_count > 0 && get_verbosity() >= 3) {
-    cli::cli_alert_success("Imputed {.val {imputed_count}} missing value{?s} using mean strategy")
-  }
-
-  df
+  impute_with_column_stat(df, mean, "mean")
 }
 
 
@@ -389,11 +388,7 @@ handle_missing_values <- function(df) {
 
     # Non-numeric required columns (like study_id) cannot be imputed - always error
     if (length(non_numeric_required_with_na) > 0) {
-      non_numeric_msg <- paste0(
-        non_numeric_required_with_na,
-        " (", na_summary$required_cols_with_na[non_numeric_required_with_na], ")",
-        collapse = ", "
-      )
+      non_numeric_msg <- format_cols_with_counts(na_summary$required_cols_with_na[non_numeric_required_with_na])
       cli::cli_abort(c(
         "x" = "Missing values found in non-numeric required columns: {non_numeric_msg}",
         "i" = "Non-numeric required columns (e.g., study_id) cannot be imputed and must be complete.",
@@ -404,11 +399,7 @@ handle_missing_values <- function(df) {
     # For numeric required columns, check if strategy allows imputation
     if (length(numeric_required_with_na) > 0) {
       if (na_handling == "stop") {
-        numeric_msg <- paste0(
-          numeric_required_with_na,
-          " (", na_summary$required_cols_with_na[numeric_required_with_na], ")",
-          collapse = ", "
-        )
+        numeric_msg <- format_cols_with_counts(na_summary$required_cols_with_na[numeric_required_with_na])
         cli::cli_abort(c(
           "x" = "Missing values found in required columns: {numeric_msg}",
           "i" = "Current strategy is {.val stop}. Change {.field artma.data.na_handling} to handle missing values automatically.",
@@ -417,11 +408,7 @@ handle_missing_values <- function(df) {
       }
       # If strategy is not "stop", allow processing to continue (will be handled by imputation functions)
       if (get_verbosity() >= 3) {
-        numeric_msg <- paste0(
-          numeric_required_with_na,
-          " (", na_summary$required_cols_with_na[numeric_required_with_na], ")",
-          collapse = ", "
-        )
+        numeric_msg <- format_cols_with_counts(na_summary$required_cols_with_na[numeric_required_with_na])
         cli::cli_alert_warning("Missing values detected in numeric required columns: {numeric_msg}. Will apply {.val {na_handling}} strategy.")
       }
     }
@@ -448,22 +435,14 @@ handle_missing_values <- function(df) {
 
   # Report missing values in optional columns
   if (get_verbosity() >= 3 && na_summary$has_optional_na) {
-    optional_cols_msg <- paste0(
-      names(na_summary$optional_cols_with_na),
-      " (", na_summary$optional_cols_with_na, ")",
-      collapse = ", "
-    )
+    optional_cols_msg <- format_cols_with_counts(na_summary$optional_cols_with_na)
     cli::cli_alert_warning("Missing values detected in optional columns: {optional_cols_msg}")
   }
 
   # Apply the selected strategy
   df_processed <- switch(na_handling,
     "stop" = {
-      optional_cols_msg <- paste0(
-        names(na_summary$optional_cols_with_na),
-        " (", na_summary$optional_cols_with_na, ")",
-        collapse = ", "
-      )
+      optional_cols_msg <- format_cols_with_counts(na_summary$optional_cols_with_na)
       cli::cli_abort(c(
         "x" = "Missing values found in optional columns: {optional_cols_msg}",
         "i" = "Current strategy is {.val stop}. Change {.field artma.data.na_handling} to handle missing values automatically.",
