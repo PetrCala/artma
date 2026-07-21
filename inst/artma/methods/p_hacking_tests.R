@@ -28,8 +28,9 @@ p_hacking_tests <- function(df) {
 
   # Elliott options
   include_elliott <- opt$include_elliott %||% TRUE
-  lcm_iterations <- opt$lcm_iterations %||% 10000L
-  lcm_grid_points <- opt$lcm_grid_points %||% 10000L
+  lcm_iterations <- opt$lcm_iterations %||% 3000L
+  lcm_grid_points <- opt$lcm_grid_points %||% 3000L
+  simulate_cdfs_chunk_size <- opt[["simulate_cdfs.chunk_size"]] %||% 512L
   include_discontinuity <- opt$include_discontinuity %||% TRUE
   discontinuity_bandwidth <- opt$discontinuity_bandwidth %||% 0.05
   include_cox_shi <- opt$include_cox_shi %||% TRUE
@@ -59,6 +60,7 @@ p_hacking_tests <- function(df) {
     is.logical(include_elliott),
     is.numeric(lcm_iterations),
     is.numeric(lcm_grid_points),
+    is.numeric(simulate_cdfs_chunk_size),
     is.logical(include_discontinuity),
     is.numeric(discontinuity_bandwidth),
     is.logical(include_cox_shi),
@@ -81,6 +83,7 @@ p_hacking_tests <- function(df) {
   assert(length(caliper_widths) > 0, "caliper_widths must not be empty")
   assert(lcm_iterations > 0, "lcm_iterations must be positive")
   assert(lcm_grid_points > 0, "lcm_grid_points must be positive")
+  assert(simulate_cdfs_chunk_size > 0, "simulate_cdfs.chunk_size must be positive")
   assert(discontinuity_bandwidth > 0, "discontinuity_bandwidth must be positive")
   assert(cox_shi_bins > 0, "cox_shi_bins must be positive")
   assert(cox_shi_order >= 0, "cox_shi_order must be non-negative")
@@ -101,6 +104,7 @@ p_hacking_tests <- function(df) {
     include_elliott = include_elliott,
     lcm_iterations = as.integer(lcm_iterations),
     lcm_grid_points = as.integer(lcm_grid_points),
+    simulate_cdfs_chunk_size = as.integer(simulate_cdfs_chunk_size),
     include_discontinuity = include_discontinuity,
     discontinuity_bandwidth = discontinuity_bandwidth,
     include_cox_shi = include_cox_shi,

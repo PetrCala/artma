@@ -583,7 +583,11 @@ run_p_hacking_tests <- function(df, options) {
 
     # Pre-simulate CDFs for LCM test
     cdfs <- tryCatch(
-      simulate_cdfs_parallel(iterations = options$lcm_iterations, grid_points = options$lcm_grid_points),
+      simulate_cdfs_parallel(
+        iterations = options$lcm_iterations,
+        grid_points = options$lcm_grid_points,
+        block_size = options$simulate_cdfs_chunk_size
+      ),
       error = function(e) {
         cli::cli_warn("Failed to simulate CDFs for LCM test: {e$message}")
         numeric(0)
