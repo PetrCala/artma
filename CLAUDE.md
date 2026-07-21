@@ -132,7 +132,11 @@ This keeps the package functional when a user's options file predates newly adde
 
 ### Caching
 
-`cache_cli()` (`inst/artma/libs/infrastructure/cache.R`) memoises a function on disk via `memoise` while preserving its CLI output; `cache_cli_runner()` layers stage naming and cache signatures on top. Control behavior with the `invalidate_fun` and `max_age` arguments, or disable caching globally with `options(artma.cache.use_cache = FALSE)`.
+`cache_cli()` (`inst/artma/libs/infrastructure/cache.R`) memoises a function on disk via `memoise` while preserving its CLI output; `cache_cli_runner()` layers stage naming and cache signatures on top. Caching is on by default. Control behavior with the `invalidate_fun` and `max_age` arguments, or disable it globally with `options(artma.cache.use_cache = FALSE)` (read on every call, so it takes effect immediately).
+
+The cache key must cover every input. `memoise` hashes the call arguments (the data frame, any `<dependency>_result`); `build_data_cache_signature()` (`inst/artma/data/cache_signatures.R`) adds the data source path and mtime, the user-authored data config, the whole user-authored `artma.*` option group, the package version, and `package_source_fingerprint()` (a hash of every R file under `inst/artma`). `register_runtime_method()` appends the method's own source hash. When adding a cached workflow, route new inputs through the signature rather than relying on the argument hash alone.
+
+Graphics are written during method execution, so they are not replayed by a cache hit. Writers call `record_output_file()` (`inst/artma/libs/infrastructure/output_files.R`); `cache_cli()` stores the recorded paths on the artifact and reruns the implementation when any of them have since disappeared. Any new file-writing side effect in a cached path needs the same call.
 
 ### Data Pipeline
 

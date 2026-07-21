@@ -995,10 +995,22 @@ verbose:
 cache:
   use_cache:
     type: "logical"
-    default: false
+    default: true
     help: |
-      If `TRUE`, use caching to speed up the package.
-      If `FALSE`, do not use caching.
+      If `TRUE` (the default), reuse results from previous runs so that
+      rerunning an analysis with unchanged inputs is near-instant.
+      If `FALSE`, recompute everything on every run.
+
+      A cached result is reused only when all of the following match the run
+      that produced it:
+        {cli::symbol$bullet} the data frame handed to the method, and the results of the methods it depends on
+        {cli::symbol$bullet} the data source path and its modification time
+        {cli::symbol$bullet} every user-authored {.code artma.*} option and data config entry
+        {cli::symbol$bullet} the {.emph artma} version and the package source code
+      Cached graphics are also checked: if a plot file a run produced is no
+      longer on disk, the method is rerun so the file is written again.
+
+      Clear the cache at any time with {.code make clear-cache}.
 
   max_age:
     type: "integer"
@@ -1007,6 +1019,9 @@ cache:
       Maximum age of cached artifacts in seconds.
       Defaults to 3600 seconds (1 hour).
       Cached entries older than this are recomputed on access.
+      This is a backstop for inputs that change without the cache key
+      noticing (for example a data file edited in place with its modification
+      time preserved). Set it to a larger value to keep results longer.
 
 temp:
   # A set of options that are only set at runtime but never stored in the options file.

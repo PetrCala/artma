@@ -1,5 +1,6 @@
 box::use(
-  artma / options / index[get_option_group]
+  artma / options / index[get_option_group],
+  artma / libs / infrastructure / source_fingerprint[package_source_fingerprint]
 )
 
 # Option keys under the "artma." prefix that the data pipeline itself writes
@@ -89,10 +90,21 @@ user_authored_config_entries <- function(config) {
 #' Construct a deterministic list of the user-controlled inputs that influence
 #' data preparation: the configured data source (normalized path plus file
 #' modification time), the user-authored part of the data config, the
-#' remaining user-authored `artma.*` options, and the installed package
-#' version. The list is forwarded to `cache_cli()` wrappers as the
-#' `cache_signature` argument and `memoise` hashes it as part of the cache
-#' key, so no explicit hashing happens here.
+#' remaining user-authored `artma.*` options, the installed package version,
+#' and a fingerprint of the package's own source tree. The list is forwarded to
+#' `cache_cli()` wrappers as the `cache_signature` argument and `memoise`
+#' hashes it as part of the cache key, so no explicit hashing happens here.
+#'
+#' The `artma.*` options are taken as a whole group rather than as a
+#' per-consumer subset, so an option a workflow reads indirectly (through a
+#' shared formatter or calculation helper) cannot be missed. That is coarser
+#' than necessary, which is the safe direction: a needless recomputation costs
+#' time, a stale hit costs correctness.
+#'
+#' The source fingerprint covers every R file under the package's module root,
+#' so editing a method (or anything it calls) invalidates the caches built from
+#' it. Callers that key on a single method add its own source hash on top; see
+#' `register_runtime_method()`.
 #'
 #' Options that the pipeline itself writes while running (computed column
 #' entries in `data.columns`, the `data.expected_schema_columns` baseline, and
@@ -129,7 +141,8 @@ build_data_cache_signature <- function() {
     source_mtime = source_mtime,
     data_config = data_config,
     artma_options = artma_options,
-    package_version = as.character(utils::packageVersion("artma"))
+    package_version = as.character(utils::packageVersion("artma")),
+    source_fingerprint = package_source_fingerprint()
   )
 }
 

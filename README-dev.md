@@ -314,16 +314,42 @@ artifact$meta  # timestamp, extra keys, and cache settings
 
 ## Invalidation and configuration
 
-Several mechanisms keep cached artefacts fresh:
+Caching is on by default (`artma.cache.use_cache`), so the cache key has to be
+exhaustive. `memoise` hashes the arguments of the memoised call, which covers
+the data frame and any upstream `<dependency>_result` the orchestrator injects.
+Everything else reaches the key through the `cache_signature` that
+`build_data_cache_signature()` builds:
+
+- the data source path and its modification time;
+- the user-authored data config entries;
+- the whole user-authored `artma.*` option group, not a per-method subset, so
+  an option read indirectly through a shared helper cannot be missed;
+- the installed package version;
+- `package_source_fingerprint()`, a hash of every R file under `inst/artma`.
+
+`register_runtime_method()` appends `method_source_hash(stage)` on top, so
+editing one method file invalidates that method alone. Fingerprints are
+memoised per session, which matches when a source edit actually takes effect
+(`box` caches loaded modules for the session too).
+
+Several further mechanisms keep cached artefacts fresh:
 
 - `invalidate_fun` (optional) receives the call arguments and should return
   `TRUE` when the cache must be bypassed (e.g. negative inputs). When triggered
   the memoised store is cleared before recomputing so subsequent calls rebuild
   fresh artefacts.
 - `max_age` enforces a time-to-live in seconds. Set it explicitly when
-  wrapping a function or globally via the `artma.cache.max_age` option.
+  wrapping a function or globally via the `artma.cache.max_age` option. It is a
+  backstop for inputs that change without the signature noticing, such as a
+  data file edited in place with its modification time preserved.
+- Output files recorded during a cold run (graphics, via `save_plot()` and
+  `record_output_file()`) are re-checked on every hit. If one has gone missing,
+  the artefact is dropped and the implementation reruns, so a cache hit never
+  reports success with its plots absent.
 - Disable caching entirely with `options(artma.cache.use_cache = FALSE)` when
-  debugging or benchmarking; the original function is returned untouched.
+  debugging or benchmarking. The option is read on every call, so toggling it
+  mid-session takes effect immediately.
+- Wipe the on-disk cache with `make clear-cache`.
 
 Combine `invalidate_fun`, `max_age`, and `extra_keys` to model domain-specific
 refresh rules without manually clearing the cache.

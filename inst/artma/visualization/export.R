@@ -114,7 +114,8 @@ open_png_device <- function(path, width, height, units = "px", res = 90) {
 save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units = "px", dpi = 150) {
   box::use(
     artma / libs / core / validation[validate],
-    artma / libs / core / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / infrastructure / output_files[record_output_file]
   )
 
   validate(
@@ -143,6 +144,11 @@ save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units =
     dpi = dpi,
     device = device
   )
+
+  # Graphics are a side effect of the method run, not part of its return value,
+  # so record them: a cache hit that replays the value must not leave the
+  # results directory without its plots.
+  record_output_file(path)
 
   if (get_verbosity() >= 4) {
     cli::cli_alert_success("Exported plot to {.file {path}}")
@@ -173,7 +179,8 @@ save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units =
 save_plot_html <- function(plot, path) {
   box::use(
     artma / libs / core / validation[validate],
-    artma / libs / core / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / infrastructure / output_files[record_output_file]
   )
 
   validate(ggplot2::is_ggplot(plot), is.character(path))
@@ -196,6 +203,8 @@ save_plot_html <- function(plot, path) {
 
   widget <- plotly::ggplotly(plot)
   htmlwidgets::saveWidget(widget, file = path, selfcontained = TRUE)
+
+  record_output_file(path)
 
   if (get_verbosity() >= 4) {
     cli::cli_alert_success("Exported interactive plot to {.file {path}}")

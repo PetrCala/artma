@@ -5,6 +5,24 @@
 # injection on top so callers stay free of caching boilerplate. On a cache
 # hit a single notice is printed; the wrapped function's own CLI output is
 # not replayed.
+#
+# What ends up in a cache key
+# ---------------------------
+# `memoise` hashes the arguments of the memoised call, so the key covers:
+#
+# * every argument the caller passes, including the data frame and any
+#   upstream `<dependency>_result` the orchestrator injects;
+# * the `cache_signature` that `cache_cli_runner()` builds via `key_builder`,
+#   which for runtime methods carries the stage label, the user-authored
+#   `artma.*` options, the data source path and mtime, the package version,
+#   the package source fingerprint, and the method's own source hash.
+#
+# `memoise` also folds in the memoised function's body, but that body is the
+# fixed `worker` closure below and is identical for every stage, so stage
+# isolation comes from the signature rather than from `memoise`.
+#
+# Beyond the key, a cached artifact is rejected when it has outlived `max_age`
+# or when the output files it recorded on the cold run are no longer on disk.
 
 #' @title Construct a cached artifact
 #' @description Bundle a computed value with the metadata required to reason
@@ -104,6 +122,21 @@ artifact_expired <- function(art, max_age) {
   !is.na(age) && age > max_age
 }
 
+#' @title Test whether a cached artifact's output files are gone
+#' @description Report whether any file the artifact recorded when it was
+#'   produced has since disappeared. Runtime methods write graphics during
+#'   execution, so replaying only the returned value would leave a run claiming
+#'   success with its plots missing.
+#' @param art *\[cached_artifact\]* The artifact to test.
+#' @return *\[logical\]* `TRUE` when a recorded output file is missing.
+#' @keywords internal
+artifact_files_missing <- function(art) {
+  box::use(
+    artma / libs / infrastructure / output_files[recorded_output_files_missing]
+  )
+  recorded_output_files_missing(art$meta$output_files)
+}
+
 #' @title Announce a cache hit
 #' @description Print a single short notice when cached results are reused,
 #'   respecting the configured verbosity level.
@@ -139,12 +172,13 @@ notify_cache_hit <- function(extra_keys) {
 #' @param max_age *\[numeric\]* Maximum age of cached artifacts in seconds. Use
 #'   `Inf` to disable time-based invalidation. When `NULL` (the default) the
 #'   value is sourced from the `artma.cache.max_age` option, falling back to
-#'   3600 seconds (1 hour). The fallback is deliberately finite: cache keys
-#'   include the package version but not the source code, so two development
-#'   builds sharing a version would otherwise serve each other's stale
-#'   artifacts indefinitely.
-#' @return *\[function\]* The wrapped function. When caching is disabled via the
-#'   `artma.cache.use_cache` option, `fun` is returned unchanged.
+#'   3600 seconds (1 hour). Time-based invalidation is a backstop rather than
+#'   the primary guard: cache keys cover the inputs, the options, and the
+#'   package source, so the TTL only catches inputs that changed without the
+#'   signature noticing (an edited data file whose mtime was preserved, say).
+#' @return *\[function\]* The wrapped function. It consults
+#'   `artma.cache.use_cache` on every call, so disabling caching mid-session
+#'   takes effect immediately and calls through to `fun` unchanged.
 #' @examples
 #' \dontrun{
 #' .run_models_impl <- function(df, formula, seed = 123) {
@@ -162,43 +196,75 @@ cache_cli <- function(fun,
                       cache = NULL,
                       invalidate_fun = NULL,
                       max_age = NULL) {
+  box::use(
+    artma / libs / infrastructure / output_files[
+      begin_output_file_capture, end_output_file_capture
+    ]
+  )
+
   base::force(fun) # lock the original function inside the closure
 
-  max_age <- resolve_max_age(max_age)
-
-  if (!getOption("artma.cache.use_cache", TRUE)) {
-    return(fun)
-  }
-
-  if (is.null(cache)) {
-    cache <- default_cache()
-  }
+  requested_max_age <- max_age
+  supplied_cache <- cache
 
   # Tracks whether the worker actually ran, so the wrapper can tell a genuine
-  # cache hit (worker skipped by memoise) from a cold computation.
+  # cache hit (worker skipped by memoise) from a cold computation. It also
+  # carries the TTL in force for the current call into the worker.
   worker_state <- new.env(parent = emptyenv())
+  worker_state$max_age <- resolve_max_age(requested_max_age)
 
   worker <- function(...) {
     worker_state$executed <- TRUE
+
+    # Bracket the run so any file the implementation writes (graphics, in
+    # practice) is recorded on the artifact and can be re-checked on a hit.
+    capture_id <- begin_output_file_capture()
+    on.exit(end_output_file_capture(capture_id), add = TRUE)
     value <- fun(...)
+    output_files <- end_output_file_capture(capture_id)
+
     meta <- list(
       timestamp = Sys.time(),
       extra = extra_keys,
-      cache = list(max_age = max_age)
+      output_files = output_files,
+      cache = list(max_age = worker_state$max_age)
     )
     new_artifact(value, meta)
   }
 
-  worker_memoised <- memoise::memoise(worker, cache = cache)
-  drop_worker_cache <- memoise::drop_cache(worker_memoised)
+  # The memoised layer is built on first use rather than at wrap time: runtime
+  # methods are wrapped when their module loads, which is well before the
+  # options file has settled, and building it lazily also keeps the cache
+  # directory from being created for sessions that never cache anything.
+  memo_state <- new.env(parent = emptyenv())
+
+  resolve_memoised <- function() {
+    if (is.null(memo_state$memoised)) {
+      resolved_cache <- if (is.null(supplied_cache)) default_cache() else supplied_cache
+      memo_state$memoised <- memoise::memoise(worker, cache = resolved_cache)
+      memo_state$drop <- memoise::drop_cache(memo_state$memoised)
+    }
+    memo_state
+  }
 
   function(...) {
     dots <- rlang::list2(...)
+
+    # Read at call time so toggling `artma.cache.use_cache` takes effect
+    # immediately, rather than being frozen at module load.
+    if (!getOption("artma.cache.use_cache", TRUE)) {
+      return(rlang::exec(fun, !!!dots))
+    }
+
+    max_age <- resolve_max_age(requested_max_age)
+    worker_state$max_age <- max_age
     worker_state$executed <- FALSE
+
+    memo <- resolve_memoised()
 
     if (is.function(invalidate_fun) && should_invalidate(invalidate_fun, dots)) {
       tryCatch(
-        memoise::forget(worker_memoised),
+        memoise::forget(memo$memoised),
         error = function(err) {
           cli::cli_warn(
             sprintf("cache invalidator failed to reset memoised state: %s", conditionMessage(err))
@@ -207,12 +273,15 @@ cache_cli <- function(fun,
       )
     }
 
-    art <- rlang::exec(worker_memoised, !!!dots)
+    art <- rlang::exec(memo$memoised, !!!dots)
     cache_hit <- !isTRUE(worker_state$executed)
 
-    if (cache_hit && is.finite(max_age) && artifact_expired(art, max_age)) {
+    stale <- cache_hit &&
+      ((is.finite(max_age) && artifact_expired(art, max_age)) || artifact_files_missing(art))
+
+    if (stale) {
       tryCatch(
-        rlang::exec(drop_worker_cache, !!!dots),
+        rlang::exec(memo$drop, !!!dots),
         error = function(err) {
           cli::cli_warn(
             sprintf("Failed to evict stale cache entry: %s", conditionMessage(err))
@@ -220,7 +289,7 @@ cache_cli <- function(fun,
         }
       )
       worker_state$executed <- FALSE
-      art <- rlang::exec(worker_memoised, !!!dots)
+      art <- rlang::exec(memo$memoised, !!!dots)
       cache_hit <- !isTRUE(worker_state$executed)
     }
 
