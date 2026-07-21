@@ -261,7 +261,7 @@ decide_variable_suggestion <- function(var_data, effect_data, data_type,
       # Suggest if there's at least some difference (not requiring significance)
       if (is.finite(mean_diff) && is.finite(pooled_sd) && pooled_sd > 0) {
         effect_size <- mean_diff / pooled_sd
-        if (effect_size > 0.1) {  # Small effect threshold
+        if (effect_size > 0.1) { # Small effect threshold
           return(suggest_split("equal", "1", "informative_dummy"))
         }
       }
