@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+
+# Pre-commit hook: styles and lints staged .R files only.
+#
+# Installed via `make hooks` (git config core.hooksPath .githooks). See
+# CLAUDE.md's Pre-commit Checklist for the manual equivalent of this check.
+
+set -u
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+HOOK_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+STAGED_FILES=()
+while IFS= read -r line; do
+  [ -n "$line" ] && STAGED_FILES+=("$line")
+done < <(git diff --cached --name-only --diff-filter=ACMR -- '*.R')
+
+if [ "${#STAGED_FILES[@]}" -eq 0 ]; then
+  exit 0
+fi
+
+if ! command -v Rscript >/dev/null 2>&1; then
+  echo "warning: Rscript not found on PATH, skipping pre-commit style/lint checks" >&2
+  exit 0
+fi
+
+# Never touch a file that has unstaged changes on top of what is staged: we
+# cannot safely auto-style/re-add it without pulling unstaged edits into the
+# commit, so ask the user to fully stage (or stash) it instead.
+PARTIAL_FILES=()
+FULL_FILES=()
+for f in "${STAGED_FILES[@]}"; do
+  if [ -n "$(git diff --name-only -- "$f")" ]; then
+    PARTIAL_FILES+=("$f")
+  else
+    FULL_FILES+=("$f")
+  fi
+done
+
+if [ "${#PARTIAL_FILES[@]}" -gt 0 ]; then
+  echo "" >&2
+  echo "error: the following staged .R files also have unstaged changes:" >&2
+  printf '  %s\n' "${PARTIAL_FILES[@]}" >&2
+  echo "Stage the rest of the changes (or stash them separately) and re-commit;" >&2
+  echo "the pre-commit hook cannot safely auto-style a partially staged file." >&2
+  exit 1
+fi
+
+if [ "${#FULL_FILES[@]}" -eq 0 ]; then
+  exit 0
+fi
+
+OUTPUT=$(cd "$REPO_ROOT" && Rscript "$HOOK_DIR/pre-commit-lint.R" "$REPO_ROOT" "${FULL_FILES[@]}" 2>&1)
+STATUS=$?
+
+if [ "$STATUS" -eq 2 ]; then
+  echo "warning: pre-commit style/lint check hit an internal error, skipping:" >&2
+  echo "$OUTPUT" >&2
+  exit 0
+fi
+
+STYLED_FILES=$(printf '%s\n' "$OUTPUT" | awk '/::STYLED::/{f=1;next} /::END_STYLED::/{f=0} f')
+if [ -n "$STYLED_FILES" ]; then
+  while IFS= read -r sf; do
+    [ -n "$sf" ] && (cd "$REPO_ROOT" && git add -- "$sf")
+  done <<<"$STYLED_FILES"
+  echo "note: styler reformatted and re-staged the following file(s):" >&2
+  printf '%s\n' "$STYLED_FILES" | sed 's/^/  /' >&2
+fi
+
+if [ "$STATUS" -eq 1 ]; then
+  echo "" >&2
+  echo "error: lintr found issues in staged .R files; commit blocked." >&2
+  printf '%s\n' "$OUTPUT" | grep -v '^::' >&2
+  exit 1
+fi
+
+exit 0

@@ -8,7 +8,7 @@
 #   make build      - Build package tarball
 #   make clean      - Clean build artifacts
 
-.PHONY: help install test test-file test-filter test-e2e check check-fast lint document generate-check-manifest build clean coverage coverage-report style desc-normalize all dev quick setup vignettes preview-vignette fix-options clear-cache stats
+.PHONY: help install test test-file test-filter test-e2e check check-fast lint document generate-check-manifest build clean coverage coverage-report style desc-normalize all dev quick setup hooks vignettes preview-vignette fix-options clear-cache stats
 
 # Default target
 help:
@@ -17,6 +17,7 @@ help:
 	@echo "  make install          Install package locally"
 	@echo "  make deps             Install package dependencies"
 	@echo "  make setup            Setup the development environment"
+	@echo "  make hooks            Install local git hooks (style/lint/commit-msg checks)"
 	@echo "  make test             Run test suite"
 	@echo "  make test-file        Run specific test file (FILE=test-name.R)"
 	@echo "  make test-filter      Run tests matching pattern (FILTER=pattern)"
@@ -48,9 +49,16 @@ deps:
 	@Rscript -e "devtools::install_deps(dependencies = TRUE, upgrade = 'never')"
 
 # Setup development environment
-setup:
+setup: hooks
 	@echo "Setting up development environment..."
 	@bash scripts/setup.sh
+
+# Install local git hooks (style/lint staged .R files, validate commit messages)
+hooks:
+	@echo "Installing git hooks..."
+	@git config core.hooksPath .githooks
+	@chmod +x .githooks/pre-commit .githooks/commit-msg .githooks/pre-commit-lint.R
+	@echo "Done. Hooks now run automatically on commit (see .githooks/)."
 
 # Install package locally
 install: deps

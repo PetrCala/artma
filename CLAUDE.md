@@ -174,6 +174,8 @@ The level is stored in the options file under `autonomy.level` and loaded with t
 
 ## Pre-commit Checklist
 
+Run `make hooks` once per clone; it installs git hooks (`.githooks/`) that then style, lint, and validate commit messages automatically on every commit.
+
 1. `styler::style_pkg()` (or style the changed files).
 2. If you changed `box::use()` imports in `R/*.R` or added an Imports package used only in `inst/artma`: `make document` (see Generated Check Manifest).
 3. `make lint` and `make test`.
