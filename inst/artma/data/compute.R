@@ -122,7 +122,7 @@ add_study_size_column <- function(df) {
   study_id_col <- df$study_id
 
   freq_table <- table(study_id_col)
-  study_size_col <- vapply(study_id_col, function(x) freq_table[as.character(x)], FUN.VALUE = integer(1))
+  study_size_col <- unname(as.integer(freq_table[as.character(study_id_col)]))
 
   if ("study_size" %in% colnames(df)) {
     invalid_or_missing_ids <- which(is.na(df$study_size) | df$study_size != study_size_col)

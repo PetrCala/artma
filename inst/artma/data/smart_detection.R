@@ -182,7 +182,7 @@ validate_df_structure <- function(df, path) {
   }
 
   # Remove trailing empty rows (common in Excel exports)
-  all_na_rows <- apply(df, 1, function(row) all(is.na(row)))
+  all_na_rows <- rowSums(is.na(df)) == ncol(df)
   if (any(all_na_rows)) {
     n_removed <- sum(all_na_rows)
     if (get_verbosity() >= 3) {

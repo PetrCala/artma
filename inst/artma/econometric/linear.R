@@ -409,18 +409,15 @@ run_linear_models <- function(df, options, is_pkg_available = NULL) {
 
   coefficients <- do.call(rbind, results)
 
-  coefficients$significance <- if (options$add_significance_marks) vapply(coefficients$p_value, significance_mark, character(1)) else ""
+  coefficients$significance <- if (options$add_significance_marks) significance_mark(coefficients$p_value) else ""
   coefficients$estimate_rounded <- round(coefficients$estimate, options$round_to)
   coefficients$std_error_rounded <- round(coefficients$std_error, options$round_to)
   coefficients$estimate_formatted <- paste0(format_number(coefficients$estimate, options$round_to), coefficients$significance)
-  coefficients$std_error_formatted <- vapply(coefficients$std_error, format_se, character(1), digits = options$round_to)
-  coefficients$bootstrap_formatted <- mapply( # nolint: undesirable_function_linter.
-    format_ci,
+  coefficients$std_error_formatted <- format_se(coefficients$std_error, options$round_to)
+  coefficients$bootstrap_formatted <- format_ci(
     coefficients$bootstrap_lower,
     coefficients$bootstrap_upper,
-    MoreArgs = list(digits = options$round_to),
-    SIMPLIFY = TRUE,
-    USE.NAMES = FALSE
+    digits = options$round_to
   )
 
   summary <- build_summary_table(coefficients, options$round_to)

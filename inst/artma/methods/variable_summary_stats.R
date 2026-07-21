@@ -37,13 +37,16 @@ variable_summary_stats <- function(df) {
   df_out <- data.frame(matrix(nrow = length(desired_vars), ncol = length(variable_stat_names)))
   colnames(df_out) <- variable_stat_names
 
+  round_to <- getOption("artma.output.number_of_decimals", 3)
+  assert(round_to >= 0, "Number of decimals must be greater than or equal to 0.")
+
   # Iterate over all desired variables and append summary statistics to the main DF
   missing_data_vars <- c()
-  for (var_name in desired_vars) {
+  for (row_idx in seq_along(desired_vars)) {
+    var_name <- desired_vars[[row_idx]]
     var_data <- as.vector(unlist(subset(df, select = var_name))) # Roundabout way, because types
     var_class <- config[[var_name]]$data_type
     var_name_display <- if (opt$use_verbose_names) config[[var_name]]$var_name_verbose else var_name
-    row_idx <- match(var_name, desired_vars) # Append data to this row
 
     # Missing all data
     if (!any(is.numeric(var_data), na.rm = TRUE) || all(is.na(var_data))) {
@@ -51,9 +54,6 @@ variable_summary_stats <- function(df) {
       df_out[row_idx, ] <- c(var_name_display, var_class, rep(NA, length(variable_stat_names) - 2))
       next
     }
-
-    round_to <- getOption("artma.output.number_of_decimals", 3)
-    assert(round_to >= 0, "Number of decimals must be greater than or equal to 0.")
 
     var_mean <- round(base::mean(var_data, na.rm = TRUE), round_to)
     var_median <- round(stats::median(var_data, na.rm = TRUE), round_to)

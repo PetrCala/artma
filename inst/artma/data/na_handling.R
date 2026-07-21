@@ -15,7 +15,6 @@ detect_missing_values <- function(df) {
 
   # Count missing values per column
   na_counts <- vapply(all_cols, function(col) sum(is.na(df[[col]])), integer(1))
-  names(na_counts) <- all_cols
 
   # Separate required and optional columns
   required_na <- na_counts[required_cols]
@@ -25,7 +24,7 @@ detect_missing_values <- function(df) {
   optional_na <- optional_na[optional_na > 0]
 
   # Count rows with any missing values
-  rows_with_any_na <- sum(apply(df, 1, function(row) any(is.na(row))))
+  rows_with_any_na <- sum(rowSums(is.na(df)) > 0)
 
   list(
     required_cols_with_na = required_na,
@@ -433,10 +432,6 @@ handle_missing_values <- function(df) {
   # 1. There are optional missing values, OR
   # 2. There are numeric required missing values and strategy is not "stop"
   has_numeric_required_na <- if (na_summary$has_required_na) {
-    required_cols_with_na <- names(na_summary$required_cols_with_na)
-    numeric_required_with_na <- required_cols_with_na[
-      vapply(required_cols_with_na, function(col) is.numeric(df[[col]]), logical(1))
-    ]
     length(numeric_required_with_na) > 0 && na_handling != "stop"
   } else {
     FALSE
