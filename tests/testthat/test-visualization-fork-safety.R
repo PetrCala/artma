@@ -38,10 +38,12 @@ png_dim <- function(path) {
 test_that("save_plot writes a valid PNG from inside a forked worker", {
   box::use(
     artma / modules / method_execution[execute_method_layer],
-    artma / visualization / export[save_plot]
+    artma / visualization / export[save_plot],
+    artma / visualization / fork_safety[fork_safe_png_available]
   )
 
   skip_if(!can_fork(), "forking is unavailable")
+  skip_if(!fork_safe_png_available(), "no fork-safe graphics device on this platform")
 
   export_dir <- withr::local_tempdir()
   plot <- ggplot2::ggplot(data.frame(x = 1:10, y = 1:10), ggplot2::aes(x, y)) +
@@ -73,10 +75,12 @@ test_that("save_plot writes a valid PNG from inside a forked worker", {
 test_that("open_png_device writes a valid PNG from inside a forked worker", {
   box::use(
     artma / modules / method_execution[execute_method_layer],
-    artma / visualization / export[open_png_device]
+    artma / visualization / export[open_png_device],
+    artma / visualization / fork_safety[fork_safe_png_available]
   )
 
   skip_if(!can_fork(), "forking is unavailable")
+  skip_if(!fork_safe_png_available(), "no fork-safe graphics device on this platform")
 
   export_dir <- withr::local_tempdir()
 
@@ -148,6 +152,36 @@ test_that("fork_safe_png_device sizes the raster in inches", {
   grDevices::dev.off()
 
   expect_equal(png_dim(path), c(400L, 300L))
+})
+
+test_that("fork_safe_png_available probes the device rather than the build flag", {
+  box::use(artma / visualization / fork_safety[fork_safe_png_available, probe_cairo_png])
+
+  # `capabilities("cairo")` reports how R was built; some headless macOS
+  # installations report TRUE while the device writes nothing, which is why the
+  # answer comes from an actual write.
+  expect_equal(fork_safe_png_available(refresh = TRUE), probe_cairo_png())
+  expect_true(is.logical(probe_cairo_png()))
+  expect_equal(length(probe_cairo_png()), 1L)
+})
+
+test_that("a platform without a working cairo device never forks its graphics", {
+  box::use(
+    artma / visualization / fork_safety[
+      fork_safe_png_available, graphics_fork_is_hostile, graphics_survive_fork,
+      use_fork_safe_png_device
+    ]
+  )
+
+  # Without a working cairo device there is nothing safe to swap in, so a
+  # hostile platform must report that graphics cannot survive a fork. That is
+  # what pushes `resolve_worker_count()` back to sequential execution.
+  if (graphics_fork_is_hostile() && !fork_safe_png_available()) {
+    expect_false(graphics_survive_fork())
+    expect_false(use_fork_safe_png_device())
+  } else {
+    expect_true(graphics_survive_fork())
+  }
 })
 
 test_that("resolve_worker_count stays sequential when a fork cannot draw", {
