@@ -30,6 +30,7 @@ best_practice_estimate <- function(df, bma_result = NULL) {
   run_bma_if_missing <- opt$run_bma_if_missing %||% TRUE
   include_economic_significance <- opt$include_economic_significance %||% TRUE
   economic_significance_pip_threshold <- as.numeric(opt$economic_significance_pip_threshold %||% NA_real_)
+  include_factor_summary <- opt$include_factor_summary %||% TRUE
   round_to <- as.integer(getOption("artma.output.number_of_decimals", 3))
 
   validate(
@@ -47,6 +48,8 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     length(include_economic_significance) == 1,
     is.numeric(economic_significance_pip_threshold),
     length(economic_significance_pip_threshold) == 1,
+    is.logical(include_factor_summary),
+    length(include_factor_summary) == 1,
     is.numeric(round_to),
     length(round_to) == 1
   )
@@ -211,6 +214,20 @@ best_practice_estimate <- function(df, bma_result = NULL) {
       config = config,
       round_to = round_to,
       pip_threshold = economic_significance_pip_threshold
+    )
+  }
+
+  if (include_factor_summary) {
+    tables$summary_by_factor <- compute_bpe_factor_summary(
+      predictors = predictors,
+      config = config,
+      bma_data = bma_data,
+      coef_post_mean = coef_post_mean,
+      include_intercept = include_intercept,
+      vcov_matrix = vcov_matrix,
+      z_value = z_value,
+      overrides = resolved_overrides,
+      round_to = round_to
     )
   }
 
@@ -859,6 +876,90 @@ compute_bpe_economic_significance <- function(predictors, bma_data, coef_post_me
     out[[col]] <- round_if_finite(out[[col]], round_to)
   }
 
+  rownames(out) <- NULL
+  out
+}
+
+#' @title Best-Practice Estimate Grouped by Factor Levels
+#' @description
+#' For every predictor flagged via `bpe_sum_stats`/`bpe_equal`/`bpe_gltl` in
+#' the data config, splits the BMA observations into factor-level groups
+#' (mirroring `effect_summary_stats`) and computes the best-practice estimate
+#' for each group, holding every other predictor at its configured/resolved
+#' override.
+#' @keywords internal
+compute_bpe_factor_summary <- function(predictors, config, bma_data, coef_post_mean, include_intercept,
+                                       vcov_matrix, z_value, overrides, round_to) {
+  empty <- data.frame(
+    scope = character(0),
+    study_id = character(0),
+    study_label = character(0),
+    estimate = numeric(0),
+    standard_error = numeric(0),
+    ci_lower = numeric(0),
+    ci_upper = numeric(0),
+    n_obs = integer(0),
+    stringsAsFactors = FALSE
+  )
+
+  rows <- list()
+
+  for (var_name in predictors) {
+    config_key <- find_config_key_for_var(var_name, config)
+    if (is.null(config_key)) {
+      next
+    }
+
+    var_cfg <- config[[config_key]]
+    if (!is_bpe_factor_var(var_cfg)) {
+      next
+    }
+
+    var_label <- var_cfg$var_name_verbose %||% var_name
+    groups <- resolve_bpe_factor_groups(
+      var_label = var_label,
+      equal_val = var_cfg$bpe_equal,
+      gltl_val = var_cfg$bpe_gltl,
+      var_values = bma_data[[var_name]],
+      round_to = round_to
+    )
+
+    for (group in groups) {
+      if (!length(group$row_idx)) {
+        next
+      }
+
+      group_values <- compute_context_values(
+        bma_data = bma_data,
+        row_idx = group$row_idx,
+        predictors = predictors,
+        overrides = overrides
+      )
+
+      row <- build_bpe_row(
+        scope = "factor",
+        study_id = NA_character_,
+        study_label = group$label,
+        predictor_values = group_values,
+        coef_post_mean = coef_post_mean,
+        include_intercept = include_intercept,
+        vcov_matrix = vcov_matrix,
+        z_value = z_value
+      )
+      row$n_obs <- length(group$row_idx)
+      rows[[length(rows) + 1]] <- row
+    }
+  }
+
+  if (!length(rows)) {
+    return(empty)
+  }
+
+  out <- do.call(rbind, rows)
+  out$estimate <- round_if_finite(out$estimate, round_to)
+  out$standard_error <- round_if_finite(out$standard_error, round_to)
+  out$ci_lower <- round_if_finite(out$ci_lower, round_to)
+  out$ci_upper <- round_if_finite(out$ci_upper, round_to)
   rownames(out) <- NULL
   out
 }
