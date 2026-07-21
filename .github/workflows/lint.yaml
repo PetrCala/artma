@@ -28,7 +28,11 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::lintr, local::.
+          # roxygen2 is pinned to the RoxygenNote version in DESCRIPTION so the
+          # docs-drift check below regenerates the exact same output as a
+          # contributor running `make document` locally with that version.
+          # Bump this alongside RoxygenNote if it ever changes.
+          extra-packages: any::lintr, roxygen2@7.3.3, local::.
           needs: lint
 
       - name: Lint
@@ -36,3 +40,15 @@ jobs:
           devtools::load_all()
           lintr::lint_package()
         shell: Rscript {0}
+
+      - name: Check generated docs are up to date
+        env:
+          LC_ALL: en_US.UTF-8
+          LANG: en_US.UTF-8
+        run: |
+          Rscript scripts/R/generate_check_manifest.R
+          Rscript -e "devtools::document()"
+          if ! git diff --exit-code -- man NAMESPACE R/generated_check_manifest.R; then
+            echo "::error::man/, NAMESPACE, or R/generated_check_manifest.R are out of date. Run 'make document' locally and commit the result. This job pins roxygen2 to the RoxygenNote version in DESCRIPTION, so a clean local diff with the same roxygen2 version means this is real drift, not version skew."
+            exit 1
+          fi
