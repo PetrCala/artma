@@ -750,6 +750,18 @@ data:
         {cli::symbol$bullet} {.strong 0.10}: Winsorize at 10% level
       Higher values provide stronger outlier protection but may distort the data more.
 
+  subset_conditions:
+    type: "character"
+    default: .na
+    allow_na: true
+    help: |
+      Optional user-defined filter conditions applied to the data frame before analysis.
+      Each element is an R expression evaluated against the data, e.g.:
+        {cli::symbol$bullet} {.emph country == 'USA'}
+        {cli::symbol$bullet} {.emph year >= 2000}
+      All conditions must hold for a row to be kept (conditions are combined with AND).
+      Leave unset (NA) to skip subsetting.
+
 
 output:
   dir:

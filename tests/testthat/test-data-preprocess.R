@@ -78,3 +78,88 @@ test_that("enforce_data_types skips entries without type information", {
   expect_true(is.numeric(result$x))
   expect_equal(result$y, df$y)
 })
+
+# -- apply_subset_conditions ---------------------------------------------------
+
+test_that("apply_subset_conditions returns the data frame unchanged when unset", {
+  box::use(artma / data / preprocess[apply_subset_conditions])
+
+  withr::local_options(list(
+    "artma.data.subset_conditions" = NA_character_,
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(country = c("USA", "UK"), year = c(1999, 2001))
+  expect_equal(apply_subset_conditions(df), df)
+})
+
+test_that("apply_subset_conditions filters rows matching a single condition", {
+  box::use(artma / data / preprocess[apply_subset_conditions])
+
+  withr::local_options(list(
+    "artma.data.subset_conditions" = "year >= 2000",
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(country = c("USA", "UK", "USA"), year = c(1999, 2001, 2005))
+  result <- apply_subset_conditions(df)
+
+  expect_equal(result$year, c(2001, 2005))
+})
+
+test_that("apply_subset_conditions combines multiple conditions with AND", {
+  box::use(artma / data / preprocess[apply_subset_conditions])
+
+  withr::local_options(list(
+    "artma.data.subset_conditions" = c("year >= 2000", "country == 'USA'"),
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(
+    country = c("USA", "UK", "USA"),
+    year = c(1999, 2001, 2005)
+  )
+  result <- apply_subset_conditions(df)
+
+  expect_equal(nrow(result), 1)
+  expect_equal(result$year, 2005)
+})
+
+test_that("apply_subset_conditions drops rows where the condition evaluates to NA", {
+  box::use(artma / data / preprocess[apply_subset_conditions])
+
+  withr::local_options(list(
+    "artma.data.subset_conditions" = "year >= 2000",
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(country = c("USA", "UK"), year = c(NA, 2001))
+  result <- apply_subset_conditions(df)
+
+  expect_equal(nrow(result), 1)
+  expect_equal(result$country, "UK")
+})
+
+test_that("apply_subset_conditions errors on an unparseable condition", {
+  box::use(artma / data / preprocess[apply_subset_conditions])
+
+  withr::local_options(list(
+    "artma.data.subset_conditions" = "year >=",
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(year = c(1999, 2001))
+  expect_error(apply_subset_conditions(df), "Invalid subset condition")
+})
+
+test_that("apply_subset_conditions errors when a condition targets a missing column", {
+  box::use(artma / data / preprocess[apply_subset_conditions])
+
+  withr::local_options(list(
+    "artma.data.subset_conditions" = "region == 'EU'",
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(country = c("USA", "UK"), year = c(1999, 2001))
+  expect_error(apply_subset_conditions(df), "Failed to evaluate subset condition")
+})

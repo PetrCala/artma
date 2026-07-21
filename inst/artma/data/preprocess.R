@@ -193,6 +193,71 @@ enforce_correct_values <- function(df) {
   df
 }
 
+#' @title Apply user-defined subset conditions
+#' @description Filter the data frame down to rows matching every user-defined
+#'   condition in `artma.data.subset_conditions`. Each condition is an R
+#'   expression (e.g. `"country == 'USA'"`, `"year >= 2000"`) evaluated against
+#'   the data frame; conditions are combined with logical AND. Rows for which a
+#'   condition evaluates to `NA` are dropped, matching base `subset()` semantics.
+#' @param df *\[data.frame\]* The data frame to subset
+#' @return *\[data.frame\]* The data frame restricted to rows matching every condition
+#' @keywords internal
+apply_subset_conditions <- function(df) {
+  box::use(
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / core / validation[assert]
+  )
+
+  conditions <- getOption("artma.data.subset_conditions", default = NA_character_)
+  conditions <- conditions[!is.na(conditions)]
+
+  if (length(conditions) == 0) {
+    return(df)
+  }
+
+  if (get_verbosity() >= 3) {
+    cli::cli_inform("Applying {length(conditions)} user-defined subset condition{?s}...")
+  }
+
+  n_before <- nrow(df)
+
+  for (condition in conditions) {
+    parsed <- tryCatch(str2lang(condition), error = function(err) NULL)
+    assert(!is.null(parsed), sprintf("Invalid subset condition: %s", condition))
+
+    keep <- tryCatch(
+      eval(parsed, envir = df, enclos = parent.frame()),
+      error = function(err) {
+        cli::cli_abort(c(
+          "x" = "Failed to evaluate subset condition {.val {condition}}.",
+          "i" = conditionMessage(err)
+        ))
+      }
+    )
+
+    assert(
+      is.logical(keep) && length(keep) == nrow(df),
+      sprintf(
+        "Subset condition '%s' must evaluate to a logical vector matching the number of rows",
+        condition
+      )
+    )
+
+    df <- df[!is.na(keep) & keep, , drop = FALSE]
+  }
+
+  if (get_verbosity() >= 3) {
+    n_removed <- n_before - nrow(df)
+    if (n_removed > 0) {
+      cli::cli_alert_success(
+        "Removed {n_removed} row{?s} via user-defined subset conditions ({nrow(df)} remaining)."
+      )
+    }
+  }
+
+  df
+}
+
 #' @title Winsorize data
 #' @description Winsorize effect and standard error columns at specified quantiles.
 #' @param df *\[data.frame\]* The data frame to winsorize
@@ -266,7 +331,8 @@ clean_data <- function(df) {
 
 #' @title Preprocess data
 #' @description Preprocess a standardized data frame: removes empty rows, handles
-#'   missing values, enforces data types, winsorizes, and validates values.
+#'   missing values, enforces data types, applies user-defined subset conditions,
+#'   winsorizes, and validates values.
 #'   Column presence validation is handled upstream by the schema reconciliation
 #'   step; this function assumes the dataframe columns already match the config.
 #'   It is pure: the missing-value strategy is resolved beforehand by
@@ -281,8 +347,15 @@ preprocess_data <- function(df) {
     clean_data() |>
     handle_missing_values() |>
     enforce_data_types() |>
+    apply_subset_conditions() |>
     winsorize_data() |>
     enforce_correct_values()
 }
 
-box::export(clean_data, enforce_data_types, preprocess_data, resolve_na_handling)
+box::export(
+  clean_data,
+  enforce_data_types,
+  apply_subset_conditions,
+  preprocess_data,
+  resolve_na_handling
+)
