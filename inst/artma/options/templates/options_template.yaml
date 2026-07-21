@@ -16,6 +16,28 @@ autonomy:
         {cli::symbol$bullet} {.strong balanced}: Prompt for important decisions only.
         {cli::symbol$bullet} {.strong autonomous} (default): Minimal prompts; use defaults and auto-detection for most decisions.
 
+general:
+  parallel:
+    type: "logical"
+    default: true
+    help: |
+      If `TRUE`, run independent runtime methods concurrently (forked workers via
+      the {.pkg parallel} package). Methods that depend on one another still run
+      in dependency order.
+
+      Parallel execution falls back to sequential automatically on Windows, on
+      single-core machines, and in interactive sessions whose autonomy level
+      still allows methods to prompt.
+
+  seed:
+    type: "integer"
+    default: 20240101
+    help: |
+      Seed for the random number streams handed to runtime methods. Each method
+      receives its own independent L'Ecuyer-CMRG stream derived from this seed,
+      so stochastic methods (bootstrap, MCMC) draw the same numbers whether the
+      run executed in parallel or sequentially.
+
 calc:
   precision_type:
     type: "enum: '1/SE'|'DoF'"

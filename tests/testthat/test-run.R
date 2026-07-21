@@ -379,3 +379,80 @@ test_that("invoke_runtime_methods aborts for a lone non-interactive method missi
     "artmaNoSuchPackage"
   )
 })
+
+test_that("invoke_runtime_methods produces the same results in parallel and sequentially", {
+  cores <- tryCatch(parallel::detectCores(), error = function(err) NA_integer_)
+  testthat::skip_if(
+    identical(.Platform$OS.type, "windows") || !is.numeric(cores) || is.na(cores) || cores < 2L,
+    "forking is unavailable"
+  )
+
+  fake_methods <- list(
+    method_a = list(run = function(df, ...) list(name = "a", draws = stats::runif(3))),
+    method_b = list(run = function(df, ...) list(name = "b", draws = stats::runif(3))),
+    method_c = list(run = function(df, ...) list(name = "c", rows = nrow(df)))
+  )
+  withr::local_options(list(artma.verbose = 0))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+  df <- data.frame(x = 1:5)
+  method_names <- c("method_a", "method_b", "method_c")
+
+  withr::local_options(list(artma.general.parallel = FALSE))
+  sequential <- artma:::invoke_runtime_methods(
+    methods = method_names, df = df, modules_dir = methods_dir
+  )
+
+  withr::local_options(list(artma.general.parallel = TRUE))
+  concurrent <- artma:::invoke_runtime_methods(
+    methods = method_names, df = df, modules_dir = methods_dir
+  )
+
+  expect_equal(names(concurrent), method_names)
+  # Per-method RNG streams make the stochastic draws identical either way.
+  expect_equal(concurrent, sequential)
+})
+
+test_that("invoke_runtime_methods records a failure from a forked method", {
+  cores <- tryCatch(parallel::detectCores(), error = function(err) NA_integer_)
+  testthat::skip_if(
+    identical(.Platform$OS.type, "windows") || !is.numeric(cores) || is.na(cores) || cores < 2L,
+    "forking is unavailable"
+  )
+
+  fake_methods <- list(
+    method_a = list(run = function(df, ...) "method_a"),
+    method_b = list(run = function(df, ...) stop("method_b exploded")),
+    method_c = list(run = function(df, ...) "method_c")
+  )
+  withr::local_options(list(artma.verbose = 0, artma.general.parallel = TRUE))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  results <- artma:::invoke_runtime_methods(
+    methods = c("method_a", "method_b", "method_c"), df = df, modules_dir = methods_dir
+  )
+
+  expect_setequal(names(results), c("method_a", "method_c"))
+  failed <- attr(results, "failed_methods")
+  expect_equal(names(failed), "method_b")
+  expect_match(failed[["method_b"]], "method_b exploded")
+})
+
+test_that("invoke_runtime_methods passes dependency results across layers", {
+  fake_methods <- list(
+    method_a = list(run = function(df, ...) "from_a"),
+    method_b = list(
+      run = function(df, method_a_result = NULL, ...) method_a_result,
+      meta = list(stage = "method_b", depends_on = "method_a")
+    )
+  )
+  withr::local_options(list(artma.verbose = 0, artma.general.parallel = TRUE))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  results <- artma:::invoke_runtime_methods(
+    methods = c("method_a", "method_b"), df = df, modules_dir = methods_dir
+  )
+
+  expect_equal(results$method_b, "from_a")
+})
