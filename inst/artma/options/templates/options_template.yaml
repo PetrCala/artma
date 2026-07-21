@@ -632,6 +632,16 @@ methods:
           during LCM critical-value simulation. Larger chunks reduce overhead
           but make the progress bar less responsive.
 
+      seed:
+        type: "integer"
+        allow_na: true
+        default: 123
+        help: |
+          RNG seed for the Brownian bridge simulations behind the LCM test's
+          critical values. Fixed by default so repeated runs on the same data
+          reproduce identical LCM p-values. Leave unset (`NA`) to use
+          whatever RNG state the caller is in instead.
+
     lcm_iterations:
       type: "integer"
       default: 3000
@@ -655,10 +665,12 @@ methods:
 
     discontinuity_bandwidth:
       type: "numeric"
-      default: 0.05
+      allow_na: true
+      default: .na
       help: |
-        Initial bandwidth for the discontinuity test.
-        The algorithm will adaptively adjust if needed.
+        Manual bandwidth override for the discontinuity test. Leave unset to
+        let {.pkg rddensity} select its bandwidth automatically, matching the
+        canonical Elliott et al. implementation.
 
     include_cox_shi:
       type: "logical"
@@ -756,6 +768,14 @@ methods:
       default: 0
       help: |
         MAIVE first stage option (default: 0).
+
+    maive_seed:
+      type: "integer"
+      default: 123
+      help: |
+        RNG seed passed to MAIVE's bootstrap standard error modes
+        (maive_se = 2..5), so repeated runs on the same data reproduce
+        identical results.
 
 data:
   source_path:

@@ -31,8 +31,15 @@ p_hacking_tests <- function(df) {
   lcm_iterations <- opt$lcm_iterations %||% 3000L
   lcm_grid_points <- opt$lcm_grid_points %||% 3000L
   simulate_cdfs_chunk_size <- opt[["simulate_cdfs.chunk_size"]] %||% 512L
+  simulate_cdfs_seed <- opt[["simulate_cdfs.seed"]] %||% 123L
+  if (length(simulate_cdfs_seed) == 1 && is.na(simulate_cdfs_seed)) {
+    simulate_cdfs_seed <- NULL
+  }
   include_discontinuity <- opt$include_discontinuity %||% TRUE
-  discontinuity_bandwidth <- opt$discontinuity_bandwidth %||% 0.05
+  discontinuity_bandwidth <- opt$discontinuity_bandwidth
+  if (length(discontinuity_bandwidth) == 1 && is.na(discontinuity_bandwidth)) {
+    discontinuity_bandwidth <- NULL
+  }
   include_cox_shi <- opt$include_cox_shi %||% TRUE
   cox_shi_bins <- opt$cox_shi_bins %||% 10L
   cox_shi_order <- opt$cox_shi_order %||% 2L
@@ -47,6 +54,7 @@ p_hacking_tests <- function(df) {
   maive_se <- opt$maive_se %||% 1L
   maive_ar <- opt$maive_ar %||% 0L
   maive_first_stage <- opt$maive_first_stage %||% 0L
+  maive_seed <- opt$maive_seed %||% 123L
 
   # General options
   add_significance_marks <- resolve_add_significance_marks()
@@ -61,8 +69,9 @@ p_hacking_tests <- function(df) {
     is.numeric(lcm_iterations),
     is.numeric(lcm_grid_points),
     is.numeric(simulate_cdfs_chunk_size),
+    is.null(simulate_cdfs_seed) || is.numeric(simulate_cdfs_seed),
     is.logical(include_discontinuity),
-    is.numeric(discontinuity_bandwidth),
+    is.null(discontinuity_bandwidth) || is.numeric(discontinuity_bandwidth),
     is.logical(include_cox_shi),
     is.numeric(cox_shi_bins),
     is.numeric(cox_shi_order),
@@ -75,6 +84,7 @@ p_hacking_tests <- function(df) {
     is.numeric(maive_se),
     is.numeric(maive_ar),
     is.numeric(maive_first_stage),
+    is.numeric(maive_seed),
     is.logical(add_significance_marks),
     is.numeric(round_to)
   )
@@ -84,7 +94,10 @@ p_hacking_tests <- function(df) {
   assert(lcm_iterations > 0, "lcm_iterations must be positive")
   assert(lcm_grid_points > 0, "lcm_grid_points must be positive")
   assert(simulate_cdfs_chunk_size > 0, "simulate_cdfs.chunk_size must be positive")
-  assert(discontinuity_bandwidth > 0, "discontinuity_bandwidth must be positive")
+  assert(
+    is.null(discontinuity_bandwidth) || discontinuity_bandwidth > 0,
+    "discontinuity_bandwidth must be positive"
+  )
   assert(cox_shi_bins > 0, "cox_shi_bins must be positive")
   assert(cox_shi_order >= 0, "cox_shi_order must be non-negative")
   assert(cox_shi_bounds %in% c(0, 1), "cox_shi_bounds must be 0 or 1")
@@ -105,6 +118,7 @@ p_hacking_tests <- function(df) {
     lcm_iterations = as.integer(lcm_iterations),
     lcm_grid_points = as.integer(lcm_grid_points),
     simulate_cdfs_chunk_size = as.integer(simulate_cdfs_chunk_size),
+    simulate_cdfs_seed = if (is.null(simulate_cdfs_seed)) NULL else as.integer(simulate_cdfs_seed),
     include_discontinuity = include_discontinuity,
     discontinuity_bandwidth = discontinuity_bandwidth,
     include_cox_shi = include_cox_shi,
@@ -119,6 +133,7 @@ p_hacking_tests <- function(df) {
     maive_se = as.integer(maive_se),
     maive_ar = as.integer(maive_ar),
     maive_first_stage = as.integer(maive_first_stage),
+    maive_seed = as.integer(maive_seed),
     add_significance_marks = add_significance_marks,
     round_to = round_to
   )
@@ -173,8 +188,8 @@ p_hacking_tests <- function(df) {
     }
 
     if (!is.null(results$skipped) && verbosity >= 2) {
-      for (msg in results$skipped) {
-        cli::cli_alert_warning("Skipped: {msg}")
+      for (key in names(results$skipped)) {
+        cli::cli_alert_warning("Skipped {key}: {results$skipped[[key]]}")
       }
     }
   }
