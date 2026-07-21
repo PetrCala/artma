@@ -27,8 +27,12 @@ is_legacy_options_format <- function(nested_options) {
 #' @param colnames_map *\[list\]* The legacy `data.colnames` mapping
 #'   (standard name -> source column name).
 #' @param config *\[list\]* The legacy `data.config` per-variable entries.
+#' @param existing *\[list, optional\]* Records already present in the unified
+#'   `data.columns` store. A file can carry all three stores at once when it was
+#'   partially written by a newer version; the unified store is the most recent
+#'   of the three, so its fields win over the legacy ones.
 #' @return *\[list\]* The unified per-column records.
-build_unified_columns <- function(colnames_map, config) {
+build_unified_columns <- function(colnames_map, config, existing = NULL) {
   records <- list()
 
   if (is.list(config)) {
@@ -49,6 +53,18 @@ build_unified_columns <- function(colnames_map, config) {
       if (!is.list(entry)) entry <- list()
       entry$source_name <- as.character(src)
       records[[std]] <- entry
+    }
+  }
+
+  if (is.list(existing)) {
+    for (key in names(existing)) {
+      entry <- existing[[key]]
+      if (!is.list(entry)) next
+      records[[key]] <- if (is.list(records[[key]])) {
+        utils::modifyList(records[[key]], entry)
+      } else {
+        entry
+      }
     }
   }
 
@@ -95,7 +111,8 @@ migrate_legacy_options <- function(options_file_name, options_dir = NULL) {
 
   records <- build_unified_columns(
     colnames_map = nested[["data"]][["colnames"]],
-    config = nested[["data"]][["config"]]
+    config = nested[["data"]][["config"]],
+    existing = nested[["data"]][["columns"]]
   )
 
   nested[["data"]][["colnames"]] <- NULL
