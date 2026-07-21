@@ -93,6 +93,17 @@ test_that("register_runtime_method attaches declarative metadata", {
   expect_equal(meta$required_columns, c("effect", "se"))
   expect_equal(meta$suggests, "BMS")
   expect_equal(meta$stage, "demo")
+  expect_equal(meta$opt_in, FALSE)
+})
+
+test_that("register_runtime_method records the opt-in flag", {
+  box::use(
+    artma / modules / runtime_methods[get_method_metadata, register_runtime_method]
+  )
+
+  run <- register_runtime_method(function(df, ...) df, stage = "pricey", opt_in = TRUE)
+
+  expect_true(get_method_metadata(run, name = "pricey")$opt_in)
 })
 
 test_that("get_method_metadata fills defaults for methods without metadata", {
@@ -105,6 +116,7 @@ test_that("get_method_metadata fills defaults for methods without metadata", {
   expect_equal(meta$required_columns, character())
   expect_equal(meta$suggests, character())
   expect_equal(meta$stage, "bare")
+  expect_equal(meta$opt_in, FALSE)
 })
 
 test_that("get_runtime_method_modules ignores helper modules", {

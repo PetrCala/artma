@@ -93,6 +93,34 @@ test_that("invoke_runtime_methods expands the all keyword", {
   expect_setequal(names(results), names(fake_methods))
 })
 
+test_that("invoke_runtime_methods leaves opt-in methods out of the all keyword", {
+  fake_methods <- mock_methods()
+  fake_methods$method_c$meta <- list(stage = "method_c", opt_in = TRUE)
+  withr::local_options(list(artma.verbose = 0))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  df <- data.frame()
+  results <- artma:::invoke_runtime_methods(methods = "all", df = df, modules_dir = methods_dir)
+
+  expect_setequal(names(results), c("method_a", "method_b"))
+})
+
+test_that("invoke_runtime_methods still runs opt-in methods when named", {
+  fake_methods <- mock_methods()
+  fake_methods$method_c$meta <- list(stage = "method_c", opt_in = TRUE)
+  withr::local_options(list(artma.verbose = 0))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  results <- artma:::invoke_runtime_methods(
+    methods = "method_c",
+    df = df,
+    modules_dir = methods_dir
+  )
+
+  expect_equal(names(results), "method_c")
+})
+
 test_that("invoke_runtime_methods surfaces invalid inputs early", {
   fake_methods <- mock_methods()
   withr::local_options(list(artma.verbose = 0))

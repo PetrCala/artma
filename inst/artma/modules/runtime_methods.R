@@ -64,6 +64,8 @@ METHOD_META_ATTR <- "artma_method_meta"
 #' * `suggests`: optional packages the method needs. A method whose suggested
 #'   packages are not installed is skipped (with an interactive install offer);
 #'   this is the single, declarative gate for optional-package dependencies.
+#' * `opt_in`: when `TRUE`, the method is left out of `methods = "all"` and must
+#'   be requested by name. Use it for methods too expensive to run by default.
 #'
 #' @param impl *\[function\]* The method implementation (its `run` worker).
 #' @param stage *\[character\]* Stage label used for cache keys and the cache
@@ -74,6 +76,9 @@ METHOD_META_ATTR <- "artma_method_meta"
 #'   the data frame. Defaults to none.
 #' @param suggests *\[character, optional\]* Optional packages the method needs.
 #'   Defaults to none.
+#' @param opt_in *\[logical, optional\]* If `TRUE`, exclude the method from
+#'   `methods = "all"`; it then runs only when named explicitly. Defaults to
+#'   `FALSE`.
 #' @param label *\[character, optional\]* Human-readable display label. Defaults
 #'   to `stage`.
 #' @param key_builder *\[function, optional\]* Cache signature builder. Defaults
@@ -85,6 +90,7 @@ register_runtime_method <- function(impl, stage,
                                     depends_on = character(),
                                     required_columns = character(),
                                     suggests = character(),
+                                    opt_in = FALSE,
                                     label = NULL,
                                     key_builder = NULL, ...) {
   box::use(
@@ -103,7 +109,8 @@ register_runtime_method <- function(impl, stage,
     label = if (is.null(label)) stage else label,
     depends_on = as.character(depends_on),
     required_columns = as.character(required_columns),
-    suggests = as.character(suggests)
+    suggests = as.character(suggests),
+    opt_in = isTRUE(opt_in)
   )
 
   run
@@ -116,7 +123,7 @@ register_runtime_method <- function(impl, stage,
 #' @param name *\[character, optional\]* Method name, used as the default stage
 #'   and label when the wrapper carries no metadata.
 #' @return *\[list\]* A list with `stage`, `label`, `depends_on`,
-#'   `required_columns`, and `suggests`.
+#'   `required_columns`, `suggests`, and `opt_in`.
 get_method_metadata <- function(run_fn, name = NULL) {
   meta <- attr(run_fn, METHOD_META_ATTR, exact = TRUE)
   if (is.null(meta)) {
@@ -128,7 +135,8 @@ get_method_metadata <- function(run_fn, name = NULL) {
     label = name %||% NA_character_,
     depends_on = character(),
     required_columns = character(),
-    suggests = character()
+    suggests = character(),
+    opt_in = FALSE
   )
 
   utils::modifyList(defaults, meta)
@@ -236,9 +244,10 @@ module_should_be_runtime_method <- function(module, module_name = NULL, marker =
 }
 
 gather_runtime_modules <- function(
-    modules,
-    include_predicate,
-    excluded_modules = NULL) {
+  modules,
+  include_predicate,
+  excluded_modules = NULL
+) {
   if (length(modules) == 0) {
     return(list(runtime = modules, skipped = character()))
   }
@@ -265,9 +274,10 @@ gather_runtime_modules <- function(
 }
 
 get_runtime_method_modules <- function(
-    modules_dir = PATHS$DIR_METHODS,
-    include_predicate = module_should_be_runtime_method,
-    excluded_modules = NULL) {
+  modules_dir = PATHS$DIR_METHODS,
+  include_predicate = module_should_be_runtime_method,
+  excluded_modules = NULL
+) {
   modules <- crawl_and_import_modules(modules_dir)
   split_modules <- gather_runtime_modules(modules, include_predicate, excluded_modules)
   runtime_modules <- split_modules$runtime

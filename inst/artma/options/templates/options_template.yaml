@@ -489,6 +489,71 @@ methods:
         the factor levels of variables flagged with `bpe_sum_stats`,
         `bpe_equal`, or `bpe_gltl` in the data configuration.
 
+  robma:
+    chains:
+      type: "integer"
+      default: 3
+      help: |
+        Number of MCMC chains used to fit each model in the RoBMA ensemble.
+
+    samples:
+      type: "integer"
+      default: 5000
+      help: |
+        Number of posterior samples drawn per chain after burn-in.
+
+    burnin:
+      type: "integer"
+      default: 2000
+      help: |
+        Number of burn-in iterations discarded before sampling.
+
+    adapt:
+      type: "integer"
+      default: 500
+      help: |
+        Number of adaptation iterations run before burn-in.
+
+    parallel:
+      type: "logical"
+      default: false
+      help: |
+        If `TRUE`, fit the models of the RoBMA ensemble in parallel.
+
+    autofit:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, keep extending the sampling until the convergence checks
+        pass. Set to `FALSE` to cap the run at the requested sample count.
+
+    seed:
+      type: "integer"
+      allow_na: true
+      default: .na
+      help: |
+        Random seed for the RoBMA sampler, for reproducible fits.
+        Leave unset (NA) to let the sampler pick its own seed.
+
+    effect_prior_scale:
+      type: "numeric"
+      default: 0.707
+      help: |
+        Scale of the Cauchy prior on the effect, truncated to (0, Inf).
+        The default (1 / sqrt(2)) is the conventional Cohen's d prior scale.
+
+    heterogeneity_shape:
+      type: "numeric"
+      default: 1
+      help: |
+        Shape parameter of the inverse-gamma prior on the heterogeneity.
+
+    heterogeneity_scale:
+      type: "numeric"
+      default: 0.15
+      help: |
+        Scale parameter of the inverse-gamma prior on the heterogeneity.
+
   fma:
     round_to:
       type: "integer"

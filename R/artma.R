@@ -275,7 +275,14 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
 
   resolve_methods <- function(methods_input) {
     if (rlang::is_string(methods_input) && methods_input == "all") {
-      return(supported_methods)
+      # Opt-in methods (typically too expensive to run by default) are excluded
+      # from "all" and must be requested by name.
+      is_opt_in <- vapply(
+        method_meta[supported_methods],
+        function(meta) isTRUE(meta$opt_in),
+        logical(1)
+      )
+      return(supported_methods[!is_opt_in])
     }
 
     if (is.factor(methods_input)) {
