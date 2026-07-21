@@ -16,7 +16,7 @@ options.load(
 )
 }
 \arguments{
-\item{options_file_name}{\emph{[character, optional]} Name of the options to load, including the .yaml suffix. Defaults to \code{NULL}.}
+\item{options_file_name}{\emph{[character, optional]} Name of the options to load. The \code{.yaml} suffix is appended automatically if missing. Defaults to \code{NULL}.}
 
 \item{options_dir}{\emph{[character, optional]} Path to the folder in which to look for user options files. Defaults to \code{NULL}.}
 
