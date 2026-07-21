@@ -2,6 +2,12 @@
 #' @description Helper functions used by the exogeneity testing method.
 NULL
 
+# Not referenced directly: model fitters (e.g. ivreg) evaluate these in the
+# formula environment, which is this module's environment.
+box::use(
+  stats[model.frame, pnorm, quantile]
+)
+
 box::use(
   artma / libs / formatting / results[
     significance_mark,
