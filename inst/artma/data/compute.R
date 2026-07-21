@@ -69,11 +69,11 @@ add_study_id_column <- function(df) {
   }
 
   if ("study_id" %in% colnames(df)) {
-    invalid_or_missing_ids <- which(is.na(df$study_id) | df$study_id != valid_ids)
+    invalid_or_missing_ids <- which(is.na(study_src) | trimws(as.character(study_src)) == "")
     if (length(invalid_or_missing_ids) > 0) {
       if (get_verbosity() >= 2) {
         cli::cli_alert_warning(c(
-          "!" = "Found {length(invalid_or_missing_ids)} invalid or missing study IDs in the column {.val study_id}.",
+          "!" = "Found {length(invalid_or_missing_ids)} invalid or missing study IDs in the column {.val study_id}. ",
           "i" = "Resetting them to sequential integers."
         ))
       }

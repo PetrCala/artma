@@ -1,5 +1,5 @@
 box::use(
-  testthat[expect_equal, expect_true, test_that]
+  testthat[expect_equal, expect_message, expect_no_message, expect_true, test_that]
 )
 
 box::use(
@@ -109,6 +109,30 @@ test_that("compute_optional_columns keeps a user-supplied precision column when 
   result <- compute_optional_columns(df)
 
   expect_equal(result$precision, c(999, 999, 999))
+})
+
+
+test_that("compute_optional_columns does not warn about study_id for valid string labels", {
+  df <- sample_study_df()
+  local_compute_options()
+  withr::local_options(list("artma.verbose" = 2))
+
+  expect_no_message(compute_optional_columns(df))
+})
+
+
+test_that("compute_optional_columns warns about study_id only for genuinely missing values", {
+  df <- data.frame(
+    study_id = c("Study A", NA, "", "Study B"),
+    effect = c(0.2, 0.5, 0.1, 0.3),
+    se = c(0.1, 0.2, 0.1, 0.2),
+    n_obs = c(120, 150, 120, 130),
+    stringsAsFactors = FALSE
+  )
+  local_compute_options()
+  withr::local_options(list("artma.verbose" = 2))
+
+  expect_message(compute_optional_columns(df), "Found 2 invalid or missing study IDs")
 })
 
 
