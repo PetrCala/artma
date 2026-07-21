@@ -77,7 +77,10 @@ build_export_filename <- function(base_name, factor_by, index = NULL, extension 
 #' @return NULL (invisibly). Called for its side effect of opening a graphics device.
 #' @keywords internal
 open_png_device <- function(path, width, height, units = "px", res = 90) {
-  box::use(artma / libs / core / validation[validate])
+  box::use(
+    artma / libs / core / validation[validate],
+    artma / libs / infrastructure / output_files[record_output_file]
+  )
 
   validate(
     is.character(path),
@@ -92,6 +95,11 @@ open_png_device <- function(path, width, height, units = "px", res = 90) {
   } else {
     grDevices::png(filename = path, width = width, height = height, units = units, res = res)
   }
+
+  # Base-graphics plots (BMA correlation and model-size charts, the non-linear
+  # diagnostics) never pass through `save_plot()`, so record them here instead.
+  # Without this a cached rerun cannot tell that these files went missing.
+  record_output_file(path)
 
   invisible(NULL)
 }
