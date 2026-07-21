@@ -535,6 +535,14 @@ methods:
         Random seed for the RoBMA sampler, for reproducible fits.
         Leave unset (NA) to let the sampler pick its own seed.
 
+    measure:
+      type: "character"
+      default: "SMD"
+      help: |
+        Effect size measure passed to RoBMA. "SMD" (standardized mean
+        difference) matches the thesis specification. Use "GEN" for generic
+        effect sizes, or one of "ZCOR", "RR", "OR", "HR", "RD", "IRR".
+
     effect_prior_scale:
       type: "numeric"
       default: 0.707
