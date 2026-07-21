@@ -57,13 +57,21 @@ jobs:
           echo "SKIP_VERSION_BUMP=$skip_version_bump" >> "$GITHUB_OUTPUT"
         shell: bash
 
-  preBuild:
+  # Single job covering what preBuild and build used to do separately, so the
+  # checkout / pandoc / R / dependency setup runs once instead of twice.
+  #
+  # Step order is load-bearing: the bumpVersion and updateNews composite
+  # actions re-run actions/checkout, which wipes the workspace (clean: true is
+  # the default). Everything that has to survive into the artifacts is
+  # therefore produced after those two composites.
+  build:
     runs-on: ubuntu-latest
     needs: [labelChecks]
     if: ${{ needs.labelChecks.outputs.READY_TO_BUILD == 'true' && github.event.pull_request.merged == true }}
     outputs:
       NEW_VERSION: ${{ steps.getNewVersion.outputs.NEW_VERSION }}
-      ARTIFACTS: ${{ steps.getPrebuildArtifacts.outputs.ARTIFACTS }}
+      PREBUILD_ARTIFACTS: ${{ steps.getPrebuildArtifacts.outputs.ARTIFACTS }}
+      BUILD_ARTIFACTS: ${{ steps.getBuildArtifacts.outputs.ARTIFACTS }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -85,22 +93,37 @@ jobs:
         with:
           needs: release
 
-      - name: Check for R CMD check
+      # Structural check only. Correctness is already gated elsewhere: every PR
+      # must pass R CMD check on three platforms before it can merge
+      # (R-CMD-check.yaml), and every push to master runs the full five-config
+      # matrix with vignettes (R-CMD-check-extended.yaml), which is the matrix
+      # cran-comments.md reports on. Re-running tests, examples and vignettes
+      # here bought nothing but wall time.
+      #
+      # What those runs do NOT cover is the release-specific view of the merge
+      # commit: --as-cran metadata, package structure and documentation. That is
+      # what this step keeps, and it is what CHECK_STATUS now attests to.
+      #
+      # It runs before the version bump on purpose: a failure has to leave
+      # master unmutated, exactly as it did when the full check ran first.
+      - name: Structural R CMD check (--as-cran)
         id: rcmdCheck
         run: |
           Rscript -e '
-            results <- devtools::check(args = c("--as-cran", "--no-manual", "--no-build-vignettes"))
+            results <- devtools::check(
+              document = FALSE,
+              vignettes = FALSE,
+              args = c(
+                "--as-cran", "--no-manual", "--no-build-vignettes",
+                "--no-tests", "--no-examples", "--no-vignettes"
+              ),
+              build_args = c("--no-build-vignettes"),
+              error_on = "warning"
+            )
             status <- ifelse(length(results$errors) == 0 && length(results$warnings) == 0, "success", "failure")
             cat("CHECK_STATUS=", status, "\n", file = Sys.getenv("GITHUB_OUTPUT"), sep="")
           '
         continue-on-error: false
-
-      # - name: Check reverse dependencies
-      #   id: rcmdCheckReverse
-      #   run: |
-      #     # The library must be added and loaded first
-      #     Rscript -e 'revdepcheck::revdep_check(num_workers = 4)'
-      #   continue-on-error: false
 
       - name: Get current versions
         id: getCurrentVersions
@@ -136,7 +159,30 @@ jobs:
             NEW_VERSION="${{ steps.getCurrentVersions.outputs.OLD_VERSION }}"
           fi
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "BUILD_ARTIFACT=artma_${NEW_VERSION}.tar.gz" >> $GITHUB_OUTPUT
 
+      # build_pkg() calls devtools::document() itself (scripts/R/release.R), so
+      # the separate documentation step that used to live here was a no-op.
+      - name: Build the .tar.gz
+        run: |
+          pkg_version <- devtools::as.package('.')$version
+          if (pkg_version != Sys.getenv("NEW_VERSION")) {
+            # This means the version was not bumped
+            cli::cli_abort("Version mismatch: {pkg_version} != {Sys.getenv('NEW_VERSION')}")
+          }
+          source("./scripts/R/release.R")
+          build_pkg(
+            pkg = ".",
+            path = "./${{ steps.getNewVersion.outputs.BUILD_ARTIFACT }}"
+          )
+        env:
+          NEW_VERSION: ${{ steps.getNewVersion.outputs.NEW_VERSION }}
+        shell: Rscript {0}
+
+      # cran-comments.md, release-notes.md and metadata.json are all
+      # .Rbuildignore'd, and they are generated after the tarball is built so
+      # the shipped tarball is byte-for-byte what it was when these lived in a
+      # separate job.
       - name: Create release notes
         run: |
           Rscript ./scripts/R/get_release_notes.R \
@@ -159,7 +205,7 @@ jobs:
             --arg CRAN_VERSION "${{ steps.getCurrentVersions.outputs.CRAN_VERSION }}" \
             --arg NEW_VERSION "${{ steps.getNewVersion.outputs.NEW_VERSION }}" \
             --arg TAG_NAME "v${{ steps.getNewVersion.outputs.NEW_VERSION }}" \
-            --arg BUILD_ARTIFACT "artma_${{ steps.getNewVersion.outputs.NEW_VERSION }}.tar.gz" \
+            --arg BUILD_ARTIFACT "${{ steps.getNewVersion.outputs.BUILD_ARTIFACT }}" \
             --arg SKIP_CRAN "${{ needs.labelChecks.outputs.SKIP_CRAN }}" \
             '{$OLD_VERSION, $CRAN_VERSION, $NEW_VERSION, $TAG_NAME, $BUILD_ARTIFACT, $SKIP_CRAN}' > metadata.json
 
@@ -179,70 +225,12 @@ jobs:
           name: prebuild-artifacts
           path: ${{ steps.getPrebuildArtifacts.outputs.ARTIFACTS }}
 
-  build:
-    runs-on: ubuntu-latest
-    needs: [labelChecks, preBuild]
-    outputs:
-      ARTIFACTS: ${{ steps.getBuildArtifacts.outputs.ARTIFACTS }}
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-        with:
-          ref: master
-          # The ARTMA_BOT_COMMIT_TOKEN is a personal access token tied to ArtmaBot
-          # This is a workaround to allow pushes to a protected branch
-          token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
-
-      - name: Set up pandoc
-        uses: r-lib/actions/setup-pandoc@v2
-
-      - name: Set up R
-        uses: r-lib/actions/setup-r@v2
-        with:
-          use-public-rspm: true
-
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          needs: release
-
-      - name: Download prebuild artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: prebuild-artifacts
-
-      - name: Set job metadata
-        id: setJobMetadata
-        run: |
-          while IFS="=" read -r key value; do
-            echo "$key=$value" >> $GITHUB_OUTPUT
-          done < <(jq -r 'to_entries[] | "\(.key)=\(.value)"' metadata.json)
-
-      - name: Build documentation
-        run: |
-          Rscript -e 'devtools::document()'
-
-      - name: Build the .tar.gz
-        run: |
-          pkg_version <- devtools::as.package('.')$version
-          if (pkg_version != Sys.getenv("NEW_VERSION")) {
-            # This means the version was not bumped
-            cli::cli_abort("Version mismatch: {pkg_version} != {Sys.getenv('NEW_VERSION')}")
-          }
-          source("./scripts/R/release.R")
-          build_pkg(
-            pkg = ".",
-            path = "./${{ steps.setJobMetadata.outputs.BUILD_ARTIFACT }}"
-          )
-        env:
-          NEW_VERSION: ${{ needs.preBuild.outputs.NEW_VERSION }}
-        shell: Rscript {0}
-
       - name: Get build artifacts
         id: getBuildArtifacts
         run: |
           {
             echo 'ARTIFACTS<<EOF'
-            echo ${{ steps.setJobMetadata.outputs.BUILD_ARTIFACT }}
+            echo ${{ steps.getNewVersion.outputs.BUILD_ARTIFACT }}
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
@@ -255,7 +243,7 @@ jobs:
 
   postBuild:
     runs-on: ubuntu-latest
-    needs: [preBuild, build]
+    needs: [build]
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -275,7 +263,7 @@ jobs:
           ./.github/scripts/checkArtifacts.sh 'prebuild-artifacts.txt'
 
           # Rename the build artifact to include .gz extension as expected
-          mv build-artifacts/* "${{ needs.build.outputs.ARTIFACTS }}"
+          mv build-artifacts/* "${{ needs.build.outputs.BUILD_ARTIFACTS }}"
           ./.github/scripts/checkArtifacts.sh 'build-artifacts.txt'
 
       - name: Unpack the metadata
@@ -296,8 +284,8 @@ jobs:
         with:
           tag_name: ${{ steps.unpackMetadata.outputs.TAG_NAME }}
           files: |
-            ${{ needs.preBuild.outputs.ARTIFACTS }}
-            ${{ needs.build.outputs.ARTIFACTS }}
+            ${{ needs.build.outputs.PREBUILD_ARTIFACTS }}
+            ${{ needs.build.outputs.BUILD_ARTIFACTS }}
           body_path: ./release-notes.md
           draft: false
           prerelease: false
