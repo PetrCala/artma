@@ -801,6 +801,12 @@ data:
       var_name_verbose, var_name_description, data_type, group_category,
       variable_summary, effect_sum_stats, equal, gltl, bma, bma_reference_var,
       bma_to_log, bpe, bpe_sum_stats, bpe_equal, and bpe_gltl.
+      {.strong group_category} sets the display label used to group variables together
+      (e.g. in BMA plots); it does not change whether a variable is structurally
+      detected as a dummy/categorical/transformation group, which is still inferred
+      from the data and column names. Methods like prima_facie_graphs rely on that
+      structural detection, so setting group_category on dummy columns will not hide
+      them from it.
       For more details, read the 'data_config' vignette.
 
   expected_schema_columns:

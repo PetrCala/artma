@@ -301,6 +301,28 @@ test_that("detect_variable_groups uses existing config groups when available", {
   expect_equal(result$group_id[result$var_name == "var2"], "my_custom_group")
 })
 
+test_that("detect_variable_groups still detects dummy type when group_category is set from config", {
+  df <- data.frame(
+    effect = rnorm(10),
+    region_asia = sample(c(0, 1), 10, replace = TRUE),
+    region_americas = sample(c(0, 1), 10, replace = TRUE),
+    region_africa = sample(c(0, 1), 10, replace = TRUE),
+    stringsAsFactors = FALSE
+  )
+
+  config <- list(
+    region_asia = list(var_name = "region_asia", group_category = "region"),
+    region_americas = list(var_name = "region_americas", group_category = "region"),
+    region_africa = list(var_name = "region_africa", group_category = "region")
+  )
+
+  result <- detect_variable_groups(df, config = config)
+  region_rows <- result[result$var_name %in% names(config), ]
+
+  expect_true(all(region_rows$group_id == "region"))
+  expect_true(all(region_rows$group_type == "dummy"))
+})
+
 
 # Tests for decide_variable_suggestion ---------------------------------------
 
