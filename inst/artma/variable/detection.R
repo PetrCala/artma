@@ -53,7 +53,12 @@ bind_group_rows <- function(results) {
 #' @param var_names *\[character, optional\]* Vector of variable names to analyze.
 #' If NULL, all columns except reserved names are analyzed.
 #' @param config *\[list, optional\]* Data configuration list. If provided,
-#' uses existing group_category values where available.
+#' uses existing group_category values as the group_id/group_base for variables
+#' that set it, instead of a detected group name. Structural type detection
+#' (dummy, transformation, power, categorical) still runs and populates
+#' group_type even for these variables, so setting group_category only
+#' overrides the group's display label, not whether it is detected as a
+#' structural group.
 #'
 #' @return A data frame with columns:
 #' - var_name: Variable name
@@ -140,11 +145,17 @@ detect_variable_groups <- function(df, var_names = NULL, config = NULL) {
   for (i in seq_len(nrow(all_detected))) {
     var_idx <- which(groups$var_name == all_detected$var_name[i])
     if (length(var_idx)) {
-      # Only override if not already set from config
       if (is.na(groups$group_id[var_idx])) {
+        # Not set from config: adopt the detected group wholesale
         groups$group_id[var_idx] <- all_detected$group_id[i]
         groups$group_type[var_idx] <- all_detected$group_type[i]
         groups$group_base[var_idx] <- all_detected$group_base[i]
+        groups$is_reference[var_idx] <- all_detected$is_reference[i]
+      } else if (groups$group_type[var_idx] == "singleton") {
+        # group_id/group_base came from config (group_category): keep them as
+        # the display grouping, but still record the structural type detected
+        # from the data so methods like prima_facie_graphs can find the group.
+        groups$group_type[var_idx] <- all_detected$group_type[i]
         groups$is_reference[var_idx] <- all_detected$is_reference[i]
       }
     }
