@@ -6,9 +6,10 @@ box::use(
     expect_named,
     expect_true,
     expect_type,
+    skip_if_not_installed,
     test_that
   ],
-  withr[local_options]
+  withr[local_options, local_tempdir]
 )
 
 box::use(
@@ -160,4 +161,133 @@ test_that("run_bma executes without errors", {
 
   expect_true(inherits(result, "bma"))
   expect_true(!is.null(result$topmod))
+})
+
+test_that("build_bma_model_labels labels only the varying parameters", {
+  box::use(artma / econometric / bma[build_bma_model_labels])
+
+  params_list <- list(
+    list(burn = 100L, iter = 500L, g = "UIP", mprior = "uniform"),
+    list(burn = 100L, iter = 500L, g = "BRIC", mprior = "uniform")
+  )
+
+  labels <- build_bma_model_labels(params_list)
+
+  expect_equal(labels, c("g=UIP", "g=BRIC"))
+})
+
+test_that("build_bma_model_labels falls back to generic names when nothing varies", {
+  box::use(artma / econometric / bma[build_bma_model_labels])
+
+  params_list <- list(
+    list(burn = 100L, g = "UIP"),
+    list(burn = 100L, g = "UIP")
+  )
+
+  labels <- build_bma_model_labels(params_list)
+
+  expect_equal(labels, c("Model 1", "Model 2"))
+})
+
+test_that("build_bma_model_labels returns a single label for one model", {
+  box::use(artma / econometric / bma[build_bma_model_labels])
+
+  labels <- build_bma_model_labels(list(list(burn = 100L, g = "UIP")))
+
+  expect_equal(labels, "Model 1")
+})
+
+test_that("render_bma_comparison_plot exports a comparison png for multiple models", {
+  skip_if_not_installed("BMS")
+  box::use(
+    artma / econometric / bma[run_bma, render_bma_comparison_plot]
+  )
+
+  df <- make_demo_bma_data()
+  bma_data <- df[c("effect", "se", "moderator1", "moderator2")]
+
+  params <- list(burn = 100L, iter = 500L, nmodel = 10L, g = "UIP", mprior = "uniform", mcmc = "bd")
+
+  local_options("artma.verbose" = 1)
+
+  model_1 <- run_bma(bma_data, params)
+  model_2 <- run_bma(bma_data, utils::modifyList(params, list(mprior = "random")))
+
+  export_dir <- local_tempdir()
+
+  render_bma_comparison_plot(
+    list(`mprior=uniform` = model_1, `mprior=random` = model_2),
+    export_graphics = TRUE,
+    export_path = export_dir
+  )
+
+  expect_true(file.exists(file.path(export_dir, "bma_comparison.png")))
+})
+
+test_that("bma exports a comparison plot when multiple parameter sets are run", {
+  skip_if_not_installed("BMS")
+
+  df <- make_demo_bma_data()
+  config <- list(
+    effect = list(var_name = "effect", var_name_verbose = "Effect", bma = FALSE),
+    se = list(var_name = "se", var_name_verbose = "SE", bma = TRUE),
+    moderator1 = list(var_name = "moderator1", var_name_verbose = "Mod1", bma = TRUE),
+    moderator2 = list(var_name = "moderator2", var_name_verbose = "Mod2", bma = TRUE)
+  )
+
+  export_dir <- local_tempdir()
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = config,
+    artma.output.save_results = FALSE,
+    artma.visualization.export_graphics = TRUE,
+    artma.visualization.export_path = export_dir,
+    artma.methods.bma.burn = 100L,
+    artma.methods.bma.iter = 500L,
+    artma.methods.bma.nmodel = 10L,
+    artma.methods.bma.g = "UIP",
+    artma.methods.bma.mprior = c("uniform", "random"),
+    artma.methods.bma.mcmc = "bd"
+  ))
+
+  result <- bma(df)
+
+  expect_length(result$meta$all, 2)
+  expect_true(file.exists(file.path(export_dir, "bma_comparison.png")))
+})
+
+test_that("bma does not export a comparison plot for a single parameter set", {
+  skip_if_not_installed("BMS")
+
+  df <- make_demo_bma_data()
+  config <- list(
+    effect = list(var_name = "effect", var_name_verbose = "Effect", bma = FALSE),
+    se = list(var_name = "se", var_name_verbose = "SE", bma = TRUE),
+    moderator1 = list(var_name = "moderator1", var_name_verbose = "Mod1", bma = TRUE),
+    moderator2 = list(var_name = "moderator2", var_name_verbose = "Mod2", bma = TRUE)
+  )
+
+  export_dir <- local_tempdir()
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = config,
+    artma.output.save_results = FALSE,
+    artma.visualization.export_graphics = TRUE,
+    artma.visualization.export_path = export_dir,
+    artma.methods.bma.burn = 100L,
+    artma.methods.bma.iter = 500L,
+    artma.methods.bma.nmodel = 10L,
+    artma.methods.bma.g = "UIP",
+    artma.methods.bma.mprior = "uniform",
+    artma.methods.bma.mcmc = "bd"
+  ))
+
+  result <- bma(df)
+
+  expect_length(result$meta$all, 1)
+  expect_false(file.exists(file.path(export_dir, "bma_comparison.png")))
 })
