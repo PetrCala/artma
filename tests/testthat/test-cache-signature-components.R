@@ -218,6 +218,33 @@ test_that("a cache hit whose recorded plot file vanished recomputes", {
   expect_true(file.exists(plot_path))
 })
 
+test_that("base-graphics plots are recorded too, not just ggplot exports", {
+  box::use(
+    artma / visualization / export[open_png_device],
+    artma / libs / infrastructure / output_files[
+      begin_output_file_capture, end_output_file_capture
+    ]
+  )
+
+  # BMA and the non-linear diagnostics write PNGs through a graphics device
+  # rather than save_plot(). A real run showed those files staying missing
+  # after a cache hit because nothing recorded them.
+  plot_path <- file.path(withr::local_tempdir(), "device_plot.png")
+
+  capture_id <- begin_output_file_capture()
+  open_png_device(plot_path, width = 800, height = 600)
+  graphics::plot(1:3)
+  grDevices::dev.off()
+  recorded <- end_output_file_capture(capture_id)
+
+  expect_equal(length(recorded), 1L)
+  expect_true(file.exists(recorded))
+  expect_identical(
+    normalizePath(recorded, mustWork = FALSE),
+    normalizePath(plot_path, mustWork = FALSE)
+  )
+})
+
 test_that("use_cache is honoured at call time, not at wrap time", {
   box::use(artma / libs / infrastructure / cache[cache_cli_runner])
 
