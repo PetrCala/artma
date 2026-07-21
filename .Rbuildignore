@@ -6,6 +6,11 @@
 ^\.\.Rcheck$
 ^\.artma$
 ^\.github$
+^\.git$
+^\.githooks$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
 ^\.covrignore$
 ^README\.md$
 ^README-dev\.md$

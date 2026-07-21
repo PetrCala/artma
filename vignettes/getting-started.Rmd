@@ -85,7 +85,7 @@ Methods are the analytical functions that perform specific meta-analysis tasks. 
 - `p_hacking_tests` - Detect p-hacking patterns
 - `variable_summary_stats` - Summary statistics for variables
 
-You can run one method, multiple methods, or all methods in a single call.
+You can run one method, multiple methods, or all methods in a single call. For a full description of every method, see the [Methods Overview](methods-overview.html) vignette.
 
 ## Common Workflows
 

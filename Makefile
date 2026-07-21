@@ -8,7 +8,7 @@
 #   make build      - Build package tarball
 #   make clean      - Clean build artifacts
 
-.PHONY: help install test test-file test-filter test-e2e check check-fast lint document generate-check-manifest build clean coverage coverage-report style desc-normalize all dev quick setup hooks vignettes preview-vignette fix-options clear-cache stats
+.PHONY: help install test test-file test-filter test-e2e check check-fast lint document generate-check-manifest build clean coverage coverage-report style desc-normalize all dev quick setup hooks vignettes preview-vignette fix-options clear-cache stats site
 
 # Default target
 help:
@@ -28,6 +28,7 @@ help:
 	@echo "  make document         Generate documentation with roxygen2"
 	@echo "  make build            Build source package"
 	@echo "  make vignettes        Build vignettes"
+	@echo "  make site             Build the pkgdown site"
 	@echo "  make preview-vignette Render and open a vignette (VIGNETTE=name)"
 	@echo "  make clean            Remove build artifacts"
 	@echo "  make coverage         Generate test coverage report"
@@ -135,6 +136,15 @@ ifeq ($(strip $(VIGNETTE)),)
 else
 	@bash scripts/previewVignette.sh $(VIGNETTE)
 endif
+
+# Build the pkgdown site
+# pkgdown auto-publishes every root-level *.md file it doesn't recognize as
+# README/LICENSE/NEWS; strip the agent-instruction files it would otherwise
+# expose (they aren't user-facing package documentation).
+site:
+	@echo "Building pkgdown site..."
+	@Rscript -e "pkgdown::build_site()"
+	@rm -f docs/CLAUDE.html docs/CLAUDE.md docs/AGENTS.html docs/AGENTS.md
 
 # Clean build artifacts
 clean:

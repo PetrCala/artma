@@ -1,0 +1,80 @@
+---
+title: "Methods Overview"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Methods Overview}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Introduction
+
+**artma** ships a set of runtime methods: the analytical functions that `artma()` runs on your data. This vignette describes what each method does, what it depends on, and what it returns, so you can pick the right ones for your analysis. For a hands-on introduction to running methods, see the [Getting Started](getting-started.html) vignette.
+
+List the methods available in your installed version at any time with:
+
+```r
+artma::methods.list()
+```
+
+## How methods execute
+
+Each method is a plain function registered with `register_runtime_method()`, which attaches declarative metadata: a `depends_on` list of upstream methods, a `required_columns` list of data columns it needs, and a `suggests` list of optional packages it needs.
+
+When you call `artma(methods = ...)`, the requested methods are topologically sorted by their `depends_on` edges, so a method that builds on another method's output (for example, `best_practice_estimate` builds on `bma`) always runs after it and receives its result as a `<dependency>_result` argument. Ties preserve discovery order; dependency cycles abort the run.
+
+Before each method runs, its `required_columns` are checked against your data and its `suggests` packages against what's installed. A method that fails either check is skipped with an explanation instead of aborting the whole run, the only exception being a non-interactive run that requested exactly that one method with a missing suggested package, which aborts with a clear error. A method that throws an error is likewise caught and skipped; the run continues, and skipped/failed methods are reported at the end (as the `failed_methods` attribute on the returned list).
+
+Every method returns a `tables`/`plots`/`meta` triple: `tables` are exported as CSV, `plots` are available for programmatic access and printing, and `meta` holds anything else (fitted models, fit parameters, skip reasons).
+
+## Descriptive and exploratory methods
+
+These methods summarize or visualize the data; none depend on another method.
+
+| Method | What it does | Required columns |
+| --- | --- | --- |
+| `effect_summary_stats` | Summary statistics (mean, weighted mean, CIs, median, SD) of the main effect, grouped by variables flagged in the data config | `effect`, `study_size` |
+| `variable_summary_stats` | Descriptive statistics (mean, median, min, max, SD, missingness) for each variable flagged for summary in the data config | none |
+| `funnel_plot` | Funnel plot of effect against precision, for spotting publication bias/asymmetry, with configurable outlier filtering | `effect`, `precision` |
+| `box_plot` | Box plots of the effect grouped by a categorical variable, auto-splitting into multiple plots when there are many groups | `effect` |
+| `prima_facie_graphs` | Density/histogram overlays of the effect distribution split by detected categorical groups (e.g. published vs. unpublished) | `effect` |
+| `t_stat_histogram` | Histograms of the t-statistic distribution, with a full-range and a zoomed-in view, plus significance reference lines | `t_stat` |
+
+## Publication-bias diagnostics
+
+These methods test for publication bias and selective reporting; none depend on another method.
+
+| Method | What it does | Required columns |
+| --- | --- | --- |
+| `linear_tests` | Linear funnel-asymmetry regressions of effect on standard error (FAT-PET): OLS, panel Fixed/Between/Random Effects, and study-size/precision-weighted variants | `effect`, `se`, `study_id` |
+| `nonlinear_tests` | Non-linear publication-bias corrections: WAAP, Top10, STEM (funnel and MSE variants), a hierarchical Bayesian model, a selection-model (p-uniform-style) estimator, and the endogenous kink test | `effect`, `se`, `study_id` |
+| `exogeneity_tests` | Diagnostics that relax the exogeneity assumption: instrumental-variable regression and the p-uniform* test | `effect`, `se`, `study_id`, `n_obs`, `study_size` |
+| `p_hacking_tests` | Caliper tests around significance thresholds, the Elliott et al. (2022) battery, and the MAIVE estimator | `effect`, `se`, `t_stat`, `study_id` |
+
+`exogeneity_tests` needs the `AER` and `ivmodel` packages; the others in this group work with the package's own dependencies.
+
+## Moderator and heterogeneity analysis
+
+These methods examine how the effect varies with moderator variables. `fma` and `best_practice_estimate` both build on `bma`.
+
+| Method | What it does | Depends on | Required columns |
+| --- | --- | --- | --- |
+| `bma` | Bayesian Model Averaging over moderator variables, estimating posterior inclusion probability and posterior mean/SD for each candidate moderator | none | `effect`, `se` |
+| `fma` | Frequentist Model Averaging over the same moderators, using the BMA model (computed on demand if not already available) to order and select predictors | `bma` | `effect`, `se` |
+| `best_practice_estimate` | A "best-practice" point estimate and CI for the effect, plugging literature-informed or user-supplied moderator values into the BMA coefficients; also computes economic-significance metrics | `bma` | `effect`, `study_id` |
+
+`bma`, `fma`, and `best_practice_estimate` all need the `BMS` package; `fma` additionally needs `quadprog`. If you request both `bma` and `fma` (directly or via a dependency) and both produce coefficient tables, artma adds a unified `ma_table` entry to the results combining them.
+
+## Choosing methods
+
+Methods whose required columns are missing from your data, or whose suggested packages aren't installed, are skipped with an explanation rather than aborting the run, so it's safe to request `methods = "all"` even if your data or R environment doesn't support every method:
+
+```r
+# Run everything artma supports for your data
+results <- artma(methods = "all", options = "my_analysis.yaml")
+
+# Run a specific combination
+results <- artma(methods = c("funnel_plot", "bma", "fma"), options = "my_analysis.yaml")
+```
+
+See the [Getting Started](getting-started.html) vignette for the full workflow, and the [Understanding Options Files](options-files.html) vignette for how to configure each method's parameters.

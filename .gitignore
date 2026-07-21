@@ -3,6 +3,8 @@ inst/doc
 /doc/
 /Meta/
 cran-comments.md
+/docs/
+/pkgdown/
 
 # Local
 .artma/*
