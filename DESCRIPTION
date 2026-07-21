@@ -17,7 +17,7 @@ License: GPL-3
 URL: https://github.com/PetrCala/artma
 BugReports: https://github.com/PetrCala/artma/issues
 Depends:
-    R (>= 4.0.0)
+    R (>= 4.4.0)
 Imports:
     box (>= 1.2.0),
     cli (>= 3.6.5),
