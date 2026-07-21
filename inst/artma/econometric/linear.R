@@ -432,6 +432,56 @@ boot_coefs_within <- function(model) {
   )
 }
 
+# Spec prechecks -------------------------------------------------------------
+#
+# Each panel spec carries a `precheck(prepared)` function evaluated after
+# `prepare_linear_data()`. It returns NULL when the prepared data can support
+# the estimator, or a plain-language skip reason. This turns raw plm errors
+# (e.g. "empty model", "model not estimable") into actionable messages; the
+# tryCatch around `spec$fit` remains as a fallback for anything missed here.
+
+has_within_cluster_variation <- function(data, value_column, cluster_column) {
+  groups <- split(data[[value_column]], data[[cluster_column]])
+  any(vapply(groups, function(x) length(unique(x)) > 1L, logical(1)))
+}
+
+precheck_fe <- function(prepared) {
+  if (!has_within_cluster_variation(prepared$data, "se", "study_id")) {
+    return(cli::format_inline(
+      "Cannot fit {.emph Fixed Effects}: {.field se} does not vary within any {.field study_id} cluster"
+    ))
+  }
+  NULL
+}
+
+precheck_be <- function(prepared) {
+  if (prepared$n_clusters < 3L) {
+    return(cli::format_inline(
+      "Not enough clusters to fit {.emph Between Effects}: at least 3 distinct {.field study_id} values are needed, found {prepared$n_clusters}"
+    ))
+  }
+  NULL
+}
+
+precheck_re <- function(prepared) {
+  if (prepared$n_clusters < 3L) {
+    return(cli::format_inline(
+      "Not enough clusters to fit {.emph Random Effects}: at least 3 distinct {.field study_id} values are needed, found {prepared$n_clusters}"
+    ))
+  }
+  if (prepared$n_obs <= prepared$n_clusters + 1L) {
+    return(cli::format_inline(
+      "Not enough observations to fit {.emph Random Effects}: more than {prepared$n_clusters + 1L} rows are needed with {prepared$n_clusters} {.field study_id} clusters, found {prepared$n_obs}"
+    ))
+  }
+  if (!has_within_cluster_variation(prepared$data, "se", "study_id")) {
+    return(cli::format_inline(
+      "Cannot fit {.emph Random Effects}: {.field se} does not vary within any {.field study_id} cluster"
+    ))
+  }
+  NULL
+}
+
 linear_model_specs <- function() {
   list(
     list(
@@ -455,6 +505,7 @@ linear_model_specs <- function() {
       cluster_column = "study_id",
       terms = c("effect", "publication_bias"),
       required_packages = "plm",
+      precheck = precheck_fe,
       fit = function(df) plm::plm(effect ~ se, data = df, model = "within", index = "study_id"),
       tidy = tidy_plm_within,
       boot_coefs = boot_coefs_within,
@@ -469,6 +520,7 @@ linear_model_specs <- function() {
       cluster_column = "study_id",
       terms = c("effect", "publication_bias"),
       required_packages = "plm",
+      precheck = precheck_be,
       fit = function(df) plm::plm(effect ~ se, data = df, model = "between", index = "study_id"),
       tidy = tidy_plm_generic,
       boot_coefs = boot_coefs_intercept_slope,
@@ -483,6 +535,7 @@ linear_model_specs <- function() {
       cluster_column = "study_id",
       terms = c("effect", "publication_bias"),
       required_packages = "plm",
+      precheck = precheck_re,
       fit = function(df) plm::plm(effect ~ se, data = df, model = "random", index = "study_id"),
       tidy = tidy_plm_generic,
       boot_coefs = boot_coefs_intercept_slope,
@@ -554,6 +607,14 @@ run_linear_models <- function(df, options, is_pkg_available = NULL) {
     if (prepared$skipped) {
       skipped[[spec$name]] <- list(label = spec$label, reason = prepared$reason)
       next
+    }
+
+    if (!is.null(spec$precheck)) {
+      precheck_reason <- spec$precheck(prepared)
+      if (!is.null(precheck_reason)) {
+        skipped[[spec$name]] <- list(label = spec$label, reason = precheck_reason)
+        next
+      }
     }
 
     model <- tryCatch(spec$fit(prepared$data), error = function(e) {
