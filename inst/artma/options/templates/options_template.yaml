@@ -481,6 +481,14 @@ methods:
         posterior inclusion probability (PIP) is at least this value.
         Leave unset (NA) to include every BMA variable.
 
+    include_factor_summary:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, include a best-practice estimate summary table grouped by
+        the factor levels of variables flagged with `bpe_sum_stats`,
+        `bpe_equal`, or `bpe_gltl` in the data configuration.
+
   fma:
     round_to:
       type: "integer"
