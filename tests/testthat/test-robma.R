@@ -1,10 +1,19 @@
 box::use(
   testthat[
     expect_equal, expect_false, expect_null, expect_s3_class, expect_true,
-    skip_if_not_installed, test_that
+    skip, skip_if_not_installed, test_that
   ],
   withr[local_options]
 )
+
+# RoBMA fits through JAGS, a system library. rjags only loads when JAGS is
+# present, which makes it a reliable probe for a machine that can actually fit.
+skip_if_no_jags <- function() {
+  skip_if_not_installed("RoBMA")
+  if (!requireNamespace("rjags", quietly = TRUE)) {
+    skip("JAGS is not available")
+  }
+}
 
 box::use(
   artma / methods / robma[robma]
@@ -38,7 +47,7 @@ test_that("robma skips when too few usable observations remain", {
 })
 
 test_that("robma fits the ensemble and returns estimates and components", {
-  skip_if_not_installed("RoBMA")
+  skip_if_no_jags()
 
   df <- make_demo_robma_data()
 
