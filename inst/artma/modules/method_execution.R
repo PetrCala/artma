@@ -64,6 +64,28 @@ group_methods_into_layers <- function(method_names, deps = list()) {
   layers
 }
 
+#' @title Hard ceiling on simultaneous forked workers
+#' @description
+#' `R CMD check` refuses a run that spawns more than two simultaneous processes
+#' (it sets `_R_CHECK_LIMIT_CORES_`), and `mc.cores` is the conventional way for
+#' a user to cap concurrency. Both are respected here so a layer never spawns
+#' more workers than the environment allows.
+#' @return *\[numeric\]* The ceiling, or `Inf` when unconstrained.
+#' @keywords internal
+max_parallel_workers <- function() {
+  check_limit <- Sys.getenv("_R_CHECK_LIMIT_CORES_", "")
+  if (nzchar(check_limit) && !identical(tolower(check_limit), "false")) {
+    return(2L)
+  }
+
+  mc_cores <- getOption("mc.cores", NULL)
+  if (is.numeric(mc_cores) && length(mc_cores) == 1L && !is.na(mc_cores)) {
+    return(max(1L, as.integer(mc_cores)))
+  }
+
+  Inf
+}
+
 #' @title Number of workers to use for a layer
 #' @description
 #' Decide how many forked workers a layer of `n_tasks` methods may use. Returns
@@ -78,11 +100,14 @@ group_methods_into_layers <- function(method_names, deps = list()) {
 #'   testing; defaults to `.Platform$OS.type`.
 #' @param n_cores *\[integer, optional\]* Detected core count. Injectable for
 #'   testing; defaults to `parallel::detectCores()`.
+#' @param max_workers *\[numeric, optional\]* Hard ceiling on the worker count.
+#'   Injectable for testing; defaults to `max_parallel_workers()`.
 #' @return *\[integer\]* The number of workers, at least `1`.
 resolve_worker_count <- function(n_tasks,
                                  is_interactive = NULL,
                                  os_type = NULL,
-                                 n_cores = NULL) {
+                                 n_cores = NULL,
+                                 max_workers = NULL) {
   n_tasks <- as.integer(n_tasks)
   if (is.na(n_tasks) || n_tasks < 2L) {
     return(1L)
@@ -112,7 +137,9 @@ resolve_worker_count <- function(n_tasks,
     return(1L)
   }
 
-  min(n_tasks, max(1L, as.integer(n_cores) - 1L))
+  max_workers <- max_workers %||% max_parallel_workers()
+
+  as.integer(min(n_tasks, max(1L, as.integer(n_cores) - 1L), max_workers))
 }
 
 #' @title Pre-assign an RNG stream to every method
@@ -293,6 +320,7 @@ box::export(
   build_rng_streams,
   execute_method_layer,
   group_methods_into_layers,
+  max_parallel_workers,
   replay_captured_output,
   resolve_worker_count,
   with_captured_output

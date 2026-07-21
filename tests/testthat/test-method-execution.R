@@ -12,6 +12,21 @@ box::use(
   ]
 )
 
+# `resolve_worker_count()` reads its environment; pin every input so the
+# assertions hold regardless of the machine, and lift the R CMD check core cap
+# (`_R_CHECK_LIMIT_CORES_`) that would otherwise clamp the result to 2.
+worker_count <- function(n_tasks, is_interactive = FALSE, os_type = "unix", n_cores = 8L) {
+  box::use(artma / modules / method_execution[resolve_worker_count])
+
+  resolve_worker_count(
+    n_tasks,
+    is_interactive = is_interactive,
+    os_type = os_type,
+    n_cores = n_cores,
+    max_workers = Inf
+  )
+}
+
 can_fork <- function() {
   cores <- tryCatch(parallel::detectCores(), error = function(err) NA_integer_)
   !identical(.Platform$OS.type, "windows") && is.numeric(cores) && !is.na(cores) && cores >= 2L
@@ -84,42 +99,56 @@ test_that("group_methods_into_layers flattens to a valid topological order", {
 })
 
 test_that("resolve_worker_count falls back to sequential execution", {
-  box::use(artma / modules / method_execution[resolve_worker_count])
-
   withr::local_options(list(artma.general.parallel = TRUE))
 
   # A single task never forks.
-  expect_equal(resolve_worker_count(1L, is_interactive = FALSE, os_type = "unix", n_cores = 8L), 1L)
+  expect_equal(worker_count(1L, n_cores = 8L), 1L)
   # Windows has no fork().
-  expect_equal(resolve_worker_count(4L, is_interactive = FALSE, os_type = "windows", n_cores = 8L), 1L)
+  expect_equal(worker_count(4L, os_type = "windows", n_cores = 8L), 1L)
   # A single core leaves nothing to parallelise over.
-  expect_equal(resolve_worker_count(4L, is_interactive = FALSE, os_type = "unix", n_cores = 1L), 1L)
+  expect_equal(worker_count(4L, n_cores = 1L), 1L)
   # An unknown core count is treated as unusable.
-  expect_equal(
-    resolve_worker_count(4L, is_interactive = FALSE, os_type = "unix", n_cores = NA_integer_),
-    1L
-  )
+  expect_equal(worker_count(4L, n_cores = NA_integer_), 1L)
 })
 
 test_that("resolve_worker_count honours the artma.general.parallel flag", {
-  box::use(artma / modules / method_execution[resolve_worker_count])
-
   withr::local_options(list(artma.general.parallel = FALSE))
-  expect_equal(resolve_worker_count(4L, is_interactive = FALSE, os_type = "unix", n_cores = 8L), 1L)
+  expect_equal(worker_count(4L, n_cores = 8L), 1L)
 
   withr::local_options(list(artma.general.parallel = TRUE))
-  expect_equal(resolve_worker_count(4L, is_interactive = FALSE, os_type = "unix", n_cores = 8L), 4L)
-  expect_equal(resolve_worker_count(9L, is_interactive = FALSE, os_type = "unix", n_cores = 4L), 3L)
+  expect_equal(worker_count(4L, n_cores = 8L), 4L)
+  expect_equal(worker_count(9L, n_cores = 4L), 3L)
 })
 
 test_that("resolve_worker_count stays sequential when methods may still prompt", {
-  box::use(artma / modules / method_execution[resolve_worker_count])
-
   withr::local_options(list(artma.general.parallel = TRUE, artma.autonomy.level = "balanced"))
-  expect_equal(resolve_worker_count(4L, is_interactive = TRUE, os_type = "unix", n_cores = 8L), 1L)
+  expect_equal(worker_count(4L, is_interactive = TRUE, n_cores = 8L), 1L)
 
   withr::local_options(list(artma.autonomy.level = "autonomous"))
-  expect_equal(resolve_worker_count(4L, is_interactive = TRUE, os_type = "unix", n_cores = 8L), 4L)
+  expect_equal(worker_count(4L, is_interactive = TRUE, n_cores = 8L), 4L)
+})
+
+test_that("resolve_worker_count respects the environment's process ceiling", {
+  box::use(artma / modules / method_execution[max_parallel_workers, resolve_worker_count])
+
+  withr::local_options(list(artma.general.parallel = TRUE))
+
+  # R CMD check refuses more than two simultaneous processes.
+  withr::local_envvar(list("_R_CHECK_LIMIT_CORES_" = "TRUE"))
+  expect_equal(max_parallel_workers(), 2L)
+  expect_equal(
+    resolve_worker_count(8L, is_interactive = FALSE, os_type = "unix", n_cores = 16L),
+    2L
+  )
+
+  # Outside a check, mc.cores is the user-facing cap.
+  withr::local_envvar(list("_R_CHECK_LIMIT_CORES_" = NA))
+  withr::local_options(list(mc.cores = 3L))
+  expect_equal(max_parallel_workers(), 3L)
+  expect_equal(
+    resolve_worker_count(8L, is_interactive = FALSE, os_type = "unix", n_cores = 16L),
+    3L
+  )
 })
 
 test_that("with_captured_output captures output instead of printing it", {
@@ -225,7 +254,7 @@ test_that("execute_method_layer gives identical results in parallel and sequenti
   run_one <- function(name) list(name = name, draws = stats::runif(3))
 
   sequential <- execute_method_layer(names, run_one, streams = streams, workers = 1L)
-  concurrent <- execute_method_layer(names, run_one, streams = streams, workers = 3L)
+  concurrent <- execute_method_layer(names, run_one, streams = streams, workers = 2L)
 
   expect_equal(
     lapply(sequential, function(o) o$value),
