@@ -12,7 +12,11 @@ box::use(
 )
 
 box::use(
-  artma / econometric / linear[run_linear_models],
+  artma / econometric / linear[
+    linear_model_specs,
+    resample_cluster_rows,
+    run_linear_models
+  ],
   artma / methods / linear_tests[linear_tests]
 )
 
@@ -160,6 +164,94 @@ test_that("bootstrap CIs are deterministic and seed-identical to the tidy-path i
   )
 
   expect_equal(ci, expected, tolerance = 1e-8, ignore_attr = TRUE)
+})
+
+test_that("bootstrap fast paths match slow-path refits on resampled data", {
+  skip_if_not_installed("plm")
+
+  set.seed(42)
+  n_studies <- 12L
+  per_study <- 5L
+  study_ids <- rep(paste0("S", seq_len(n_studies)), each = per_study)
+  se_vals <- runif(n_studies * per_study, min = 0.05, max = 0.15)
+  df <- data.frame(
+    study_id = droplevels(factor(study_ids)),
+    effect = rnorm(n_studies * per_study, mean = 0.2, sd = 0.05),
+    se = se_vals,
+    study_size = sample(20:80, n_studies * per_study, replace = TRUE),
+    precision = 1 / se_vals
+  )
+  cluster_splits <- split(seq_len(nrow(df)), df$study_id)
+
+  specs <- linear_model_specs()
+  names(specs) <- vapply(specs, function(spec) spec$name, character(1))
+  fast_path_specs <- c("ols", "fe", "ols_study_weighted", "ols_precision_weighted")
+  compared <- stats::setNames(integer(length(fast_path_specs)), fast_path_specs)
+
+  set.seed(1234)
+  for (replication in seq_len(5L)) {
+    rows <- resample_cluster_rows(nrow(df), cluster_splits)
+    boot_data <- df[rows, , drop = FALSE]
+
+    for (spec_name in fast_path_specs) {
+      spec <- specs[[spec_name]]
+      fast <- tryCatch(spec$boot_estimate(df, rows), error = function(e) NULL)
+      slow_model <- tryCatch(spec$fit(boot_data), error = function(e) NULL)
+
+      if (is.null(slow_model)) {
+        # A degenerate resample (e.g. too few distinct clusters) must fail
+        # identically on both paths.
+        expect_true(is.null(fast), info = paste(spec_name, "replication", replication))
+        next
+      }
+
+      slow_tidy <- spec$tidy(slow_model, boot_data)
+      slow <- stats::setNames(slow_tidy$estimate, slow_tidy$term)
+
+      expect_equal(
+        fast[c("effect", "publication_bias")],
+        slow[c("effect", "publication_bias")],
+        tolerance = 1e-12,
+        info = paste(spec_name, "replication", replication)
+      )
+      compared[spec_name] <- compared[spec_name] + 1L
+    }
+  }
+
+  expect_true(all(compared > 0L))
+})
+
+test_that("within fast path merges duplicated resampled clusters like plm", {
+  skip_if_not_installed("plm")
+
+  df <- make_demo_data()
+  df$study_id <- droplevels(factor(df$study_id))
+  cluster_splits <- split(seq_len(nrow(df)), df$study_id)
+
+  specs <- linear_model_specs()
+  names(specs) <- vapply(specs, function(spec) spec$name, character(1))
+  fe_spec <- specs[["fe"]]
+
+  # Force duplicated clusters so the merge semantics are actually exercised.
+  rows <- unlist(
+    cluster_splits[c("S1", "S1", "S2", "S3", "S3", "S3")],
+    use.names = FALSE
+  )
+  boot_data <- df[rows, , drop = FALSE]
+
+  fast <- fe_spec$boot_estimate(df, rows)
+  model <- plm::plm(effect ~ se, data = boot_data, model = "within", index = "study_id")
+
+  expect_equal(
+    fast[["publication_bias"]],
+    unname(stats::coef(model)[["se"]]),
+    tolerance = 1e-12
+  )
+  expect_equal(
+    fast[["effect"]],
+    unname(plm::within_intercept(model)[[1L]]),
+    tolerance = 1e-12
+  )
 })
 
 test_that("panel models are skipped with a clear message when plm is unavailable", {
