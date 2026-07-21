@@ -137,6 +137,43 @@ test_that("run_puniform_star returns a finite estimate with significant studies"
   expect_true(is.finite(res$coefficients$estimate[1]))
 })
 
+test_that("run_puniform_star with method = 'P' returns a finite, positive estimate with significant studies", {
+  set.seed(11)
+  n <- 120
+  # A large effect relative to the per-observation SD (se * sqrt(n_obs)) so that
+  # studies are significant on the same scale the p-uniform transform uses.
+  df <- data.frame(
+    effect = rnorm(n, 3, 0.05),
+    se = rep(0.05, n),
+    study_id = rep(seq_len(30), each = 4),
+    study_size = rep(50, n),
+    n_obs = rep(50, n)
+  )
+
+  res_mm <- run_puniform_star(df, method = "P")
+
+  expect_true(is.finite(res_mm$coefficients$estimate[1]))
+  expect_true(res_mm$coefficients$estimate[1] > 0)
+  expect_true(is.finite(res_mm$test_p_value))
+})
+
+test_that("run_puniform_star with method = 'P' returns NA estimates without enough significant studies", {
+  set.seed(7)
+  n <- 40
+  df <- data.frame(
+    effect = rnorm(n, 0.001, 0.001),
+    se = rep(1, n),
+    study_id = rep(seq_len(10), length.out = n),
+    study_size = sample(20:50, n, replace = TRUE),
+    n_obs = sample(20:50, n, replace = TRUE)
+  )
+
+  res <- run_puniform_star(df, method = "P")
+
+  expect_true(is.na(res$coefficients$estimate[1]))
+  expect_true(is.na(res$test_p_value))
+})
+
 # run_exogeneity_tests ------------------------------------------------------
 
 test_that("run_exogeneity_tests assembles IV and p-uniform results", {
