@@ -116,7 +116,7 @@ Optional analysis features (installed on demand for specific methods):
 
 - `AER`, `ivmodel`: instrumental-variable estimators.
 - `bayesm`, `BMS`: Bayesian model averaging back-ends.
-- `car`, `clubSandwich`: additional regression diagnostics and clustered covariance.
+- `car`: additional regression diagnostics.
 - `corrplot`: correlation-matrix visualisation.
 - `fdrtool`, `rddensity`: p-hacking and density-discontinuity tests.
 - `haven`, `readxl`, `writexl`, `jsonlite`: reading and writing non-CSV data formats.

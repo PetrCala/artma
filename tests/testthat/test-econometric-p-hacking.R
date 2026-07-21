@@ -89,23 +89,43 @@ test_that("run_single_caliper counts observations on each side of the threshold"
   #   in-interval: 1.92, 1.93 (below), 1.97, 1.99 (above)
   #   excluded:    0.50, 3.00
   t_stats <- c(1.92, 1.93, 1.97, 1.99, 0.50, 3.00)
-  study_id <- seq_along(t_stats)
 
-  res <- run_single_caliper(t_stats, study_id, threshold = 1.96, width = 0.05)
+  res <- run_single_caliper(t_stats, threshold = 1.96, width = 0.05)
 
   expect_equal(res$n_above, 2)
   expect_equal(res$n_below, 2)
-  expect_true(is.finite(res$estimate))
-  expect_true(is.finite(res$std_error))
+  expect_equal(res$share_above, 0.5)
+  # binom.test(2, 4, p = 0.5)$p.value
+  expect_equal(res$p_value, 1, tolerance = 1e-12)
 })
 
 test_that("run_single_caliper returns NA estimate when the interval is empty", {
   t_stats <- c(0.1, 0.2, 0.3)
-  res <- run_single_caliper(t_stats, seq_along(t_stats), threshold = 1.96, width = 0.05)
+  res <- run_single_caliper(t_stats, threshold = 1.96, width = 0.05)
 
-  expect_true(is.na(res$estimate))
+  expect_true(is.na(res$share_above))
+  expect_true(is.na(res$p_value))
   expect_equal(res$n_above, 0)
   expect_equal(res$n_below, 0)
+})
+
+test_that("run_single_caliper does not flag clean data (no discontinuity)", {
+  # Uniform t-stats around the threshold: no excess mass above it.
+  set.seed(259)
+  t_stats <- stats::runif(400, 1.86, 2.06)
+
+  res <- run_single_caliper(t_stats, threshold = 1.96, width = 0.1)
+
+  expect_true(res$p_value > 0.05)
+})
+
+test_that("run_single_caliper flags hacked data (excess mass just above threshold)", {
+  # Almost everything in the window sits just above the threshold.
+  t_stats <- c(rep(1.97, 38), rep(1.94, 2))
+
+  res <- run_single_caliper(t_stats, threshold = 1.96, width = 0.05)
+
+  expect_true(res$p_value < 0.05)
 })
 
 # run_caliper_tests ---------------------------------------------------------
@@ -114,11 +134,9 @@ test_that("run_caliper_tests produces one cell per threshold-width pair", {
   local_options(artma.verbose = 1)
   set.seed(101)
   t_stats <- c(rnorm(50, 1.96, 0.1), rnorm(50, 0, 1))
-  study_id <- rep(seq_len(20), length.out = length(t_stats))
 
   results <- run_caliper_tests(
     t_stats = t_stats,
-    study_id = study_id,
     thresholds = c(1.96, 2.58),
     widths = c(0.05, 0.1),
     show_progress = FALSE
@@ -130,6 +148,21 @@ test_that("run_caliper_tests produces one cell per threshold-width pair", {
   expect_equal(sort(unique(thresholds_seen)), c(1.96, 2.58))
   expect_equal(sort(unique(widths_seen)), c(0.05, 0.1))
   expect_true(all(vapply(results, function(x) x$n_above >= 0, logical(1))))
+})
+
+test_that("run_caliper_tests dedupes duplicated thresholds and widths", {
+  local_options(artma.verbose = 1)
+  set.seed(102)
+  t_stats <- rnorm(100, 1.96, 0.2)
+
+  results <- run_caliper_tests(
+    t_stats = t_stats,
+    thresholds = c(1.96, 1.96),
+    widths = c(0.05, 0.05),
+    show_progress = FALSE
+  )
+
+  expect_equal(length(results), 1L)
 })
 
 # Elliott wrappers ----------------------------------------------------------
@@ -228,6 +261,22 @@ test_that("run_p_hacking_tests reports p-value counts and a caliper table", {
   expect_equal(result$n_significant_010, 3L)
   expect_true(is.data.frame(result$caliper))
   expect_true(nrow(result$caliper) > 0)
+  expect_true(any(grepl("Share above", result$caliper[[1]])))
+  expect_true(any(grepl("p-value", result$caliper[[1]])))
+})
+
+test_that("run_p_hacking_tests dedupes duplicated caliper thresholds/widths without crashing", {
+  local_options(artma.verbose = 1)
+  df <- make_p_hacking_df()
+
+  result <- run_p_hacking_tests(
+    df,
+    base_p_hacking_options(caliper_thresholds = c(1.96, 1.96), caliper_widths = c(0.1, 0.1))
+  )
+
+  expect_true(is.data.frame(result$caliper))
+  expect_equal(nrow(result$caliper), 3L)
+  expect_equal(ncol(result$caliper), 2L)
 })
 
 test_that("run_p_hacking_tests skips gracefully when required columns are missing", {
