@@ -135,9 +135,11 @@ test_that("bootstrap CIs are deterministic and seed-identical to the tidy-path i
   finite_rows <- is.finite(ci$bootstrap_lower) & is.finite(ci$bootstrap_upper)
   expect_true(all(ci$bootstrap_lower[finite_rows] <= ci$bootstrap_upper[finite_rows]))
 
-  # Reference values computed with the pre-optimization implementation, which
-  # ran the full clustered-vcov tidy path in every bootstrap replication. The
-  # fast boot_coefs path must stay seed-identical to it.
+  # Reference values pinned when the fast boot_estimate paths were verified
+  # against per-replication refits (see the fast-path tests below). The ols
+  # and fe values match the pre-optimization clustered-vcov tidy path;
+  # enabling the be bootstrap shifted the RNG stream for the specs after it,
+  # so those values were regenerated from the verified implementation.
   expected <- data.frame(
     model = rep(
       c("ols", "fe", "be", "re", "ols_study_weighted", "ols_precision_weighted"),
@@ -147,18 +149,18 @@ test_that("bootstrap CIs are deterministic and seed-identical to the tidy-path i
     bootstrap_lower = c(
       0.160739545997458, -0.601087904579698,
       0.140819890400399, -0.600311615629511,
-      NA, NA,
-      0.155088688976474, -0.649012667394041,
-      0.162905232119029, -0.812806189499674,
-      0.120950452943169, -0.593431488826163
+      -0.211101307249788, -2.575829691320434,
+      0.152547356054246, -0.570520287992651,
+      0.152639814703079, -0.689380694259938,
+      0.164684612181770, -0.583949862340950
     ),
     bootstrap_upper = c(
       0.237035405467370, 0.165658257380718,
       0.243966037478644, 0.440057444128715,
-      NA, NA,
-      0.251343193299353, 0.228828857125176,
-      0.259964458196330, 0.177322819406577,
-      0.249764223666147, 0.467372767218415
+      0.481753330561316, 3.827252082114144,
+      0.243411054603044, 0.301689687613106,
+      0.262852372824379, 0.247400389358160,
+      0.244794965444753, 0.172746267850587
     ),
     stringsAsFactors = FALSE
   )
@@ -185,7 +187,7 @@ test_that("bootstrap fast paths match slow-path refits on resampled data", {
 
   specs <- linear_model_specs()
   names(specs) <- vapply(specs, function(spec) spec$name, character(1))
-  fast_path_specs <- c("ols", "fe", "re", "ols_study_weighted", "ols_precision_weighted")
+  fast_path_specs <- c("ols", "fe", "be", "re", "ols_study_weighted", "ols_precision_weighted")
   compared <- stats::setNames(integer(length(fast_path_specs)), fast_path_specs)
 
   set.seed(1234)
@@ -250,6 +252,128 @@ test_that("within fast path merges duplicated resampled clusters like plm", {
   expect_equal(
     fast[["effect"]],
     unname(plm::within_intercept(model)[[1L]]),
+    tolerance = 1e-12
+  )
+})
+
+test_that("between effects fast path matches plm on duplicated resampled clusters", {
+  skip_if_not_installed("plm")
+
+  df <- make_demo_data()
+  df$study_id <- droplevels(factor(df$study_id))
+  cluster_splits <- split(seq_len(nrow(df)), df$study_id)
+
+  specs <- linear_model_specs()
+  names(specs) <- vapply(specs, function(spec) spec$name, character(1))
+  be_spec <- specs[["be"]]
+
+  # Force duplicated clusters so the merge semantics are actually exercised:
+  # duplicated ids collapse to one cluster-mean row with unchanged means.
+  rows <- unlist(
+    cluster_splits[c("S1", "S1", "S2", "S3", "S3", "S3", "S5")],
+    use.names = FALSE
+  )
+  boot_data <- df[rows, , drop = FALSE]
+
+  fast <- be_spec$boot_estimate(df, rows)
+  model <- plm::plm(effect ~ se, data = boot_data, model = "between", index = "study_id")
+
+  expect_equal(
+    fast[["effect"]],
+    unname(stats::coef(model)[["(Intercept)"]]),
+    tolerance = 1e-12
+  )
+  expect_equal(
+    fast[["publication_bias"]],
+    unname(stats::coef(model)[["se"]]),
+    tolerance = 1e-12
+  )
+})
+
+test_that("between effects fast path matches plm on unbalanced clusters", {
+  skip_if_not_installed("plm")
+
+  set.seed(7)
+  sizes <- c(2L, 3L, 5L, 8L, 13L, 21L, 4L, 30L, 2L, 9L)
+  study_ids <- rep(paste0("U", seq_along(sizes)), times = sizes)
+  se_vals <- runif(sum(sizes), min = 0.05, max = 0.15)
+  df <- data.frame(
+    study_id = droplevels(factor(study_ids)),
+    effect = rnorm(sum(sizes), mean = 0.2, sd = 0.05),
+    se = se_vals
+  )
+  cluster_splits <- split(seq_len(nrow(df)), df$study_id)
+
+  specs <- linear_model_specs()
+  names(specs) <- vapply(specs, function(spec) spec$name, character(1))
+  be_spec <- specs[["be"]]
+
+  set.seed(99)
+  for (replication in seq_len(5L)) {
+    rows <- resample_cluster_rows(nrow(df), cluster_splits)
+    boot_data <- df[rows, , drop = FALSE]
+
+    fast <- tryCatch(be_spec$boot_estimate(df, rows), error = function(e) NULL)
+    model <- tryCatch(
+      plm::plm(effect ~ se, data = boot_data, model = "between", index = "study_id"),
+      error = function(e) NULL
+    )
+
+    if (is.null(model)) {
+      expect_true(is.null(fast), info = paste("replication", replication))
+      next
+    }
+
+    expect_equal(
+      fast[c("effect", "publication_bias")],
+      stats::setNames(
+        unname(stats::coef(model)[c("(Intercept)", "se")]),
+        c("effect", "publication_bias")
+      ),
+      tolerance = 1e-12,
+      info = paste("replication", replication)
+    )
+  }
+})
+
+test_that("between effects fast path fails on degenerate resamples exactly like plm", {
+  skip_if_not_installed("plm")
+
+  df <- make_demo_data()
+  df$study_id <- droplevels(factor(df$study_id))
+  cluster_splits <- split(seq_len(nrow(df)), df$study_id)
+
+  specs <- linear_model_specs()
+  names(specs) <- vapply(specs, function(spec) spec$name, character(1))
+  be_spec <- specs[["be"]]
+
+  # A single distinct cluster leaves fewer mean rows than coefficients.
+  rows <- unlist(cluster_splits[c("S2", "S2", "S2")], use.names = FALSE)
+  boot_data <- df[rows, , drop = FALSE]
+
+  fast <- tryCatch(be_spec$boot_estimate(df, rows), error = function(e) NULL)
+  model <- tryCatch(
+    plm::plm(effect ~ se, data = boot_data, model = "between", index = "study_id"),
+    error = function(e) NULL
+  )
+
+  expect_true(is.null(model))
+  expect_true(is.null(fast))
+
+  # Two distinct clusters fit exactly (two mean rows, two coefficients) on
+  # both paths, so neither may error there.
+  rows <- unlist(cluster_splits[c("S2", "S5")], use.names = FALSE)
+  boot_data <- df[rows, , drop = FALSE]
+
+  fast <- be_spec$boot_estimate(df, rows)
+  model <- plm::plm(effect ~ se, data = boot_data, model = "between", index = "study_id")
+
+  expect_equal(
+    fast[c("effect", "publication_bias")],
+    stats::setNames(
+      unname(stats::coef(model)[c("(Intercept)", "se")]),
+      c("effect", "publication_bias")
+    ),
     tolerance = 1e-12
   )
 })
