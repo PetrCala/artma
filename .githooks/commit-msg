@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+# commit-msg hook: validates Conventional Commits formatting, matching the
+# repo's Commit Lint CI check where possible.
+#
+# Installed via `make hooks` (git config core.hooksPath .githooks).
+
+set -u
+
+COMMIT_MSG_FILE="$1"
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+fallback_check() {
+  local header
+  header=$(head -n1 "$COMMIT_MSG_FILE")
+
+  local types="build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test"
+  local pattern="^(${types})(\([a-zA-Z0-9_./-]+\))?!?: .+"
+
+  if ! echo "$header" | grep -Eq "$pattern"; then
+    echo "" >&2
+    echo "error: commit message does not follow Conventional Commits format." >&2
+    echo "  expected: type(scope)!: subject" >&2
+    echo "  types: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test" >&2
+    echo "  example: feat(cache): add memoise-backed CLI cache" >&2
+    return 1
+  fi
+
+  local len=${#header}
+  if [ "$len" -gt 100 ]; then
+    echo "warning: commit message header is $len characters; repo convention keeps it under 100, on a single line." >&2
+  fi
+
+  return 0
+}
+
+if command -v npx >/dev/null 2>&1; then
+  timeout 15 npx --yes -p commitlint@latest -p @commitlint/config-conventional \
+    -c 'commitlint --version' >/dev/null 2>&1
+  PROBE_STATUS=$?
+
+  if [ "$PROBE_STATUS" -eq 0 ]; then
+    COMMITLINT_OUTPUT=$(cd "$REPO_ROOT" && timeout 15 npx --yes -p commitlint@latest -p @commitlint/config-conventional \
+      -c "commitlint --config \"$REPO_ROOT/commitlint.config.js\" --edit \"$COMMIT_MSG_FILE\"" 2>&1)
+    COMMITLINT_STATUS=$?
+
+    if [ "$COMMITLINT_STATUS" -ne 0 ]; then
+      echo "" >&2
+      echo "error: commitlint rejected the commit message:" >&2
+      echo "$COMMITLINT_OUTPUT" >&2
+      exit 1
+    fi
+
+    exit 0
+  fi
+
+  echo "warning: commitlint via npx was unavailable (no network or resolution failure); falling back to a regex check." >&2
+fi
+
+fallback_check || exit 1
+exit 0
