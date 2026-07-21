@@ -3,6 +3,7 @@ box::use(
     expect_equal,
     expect_error,
     expect_false,
+    expect_match,
     expect_true,
     test_that
   ],
@@ -13,10 +14,12 @@ box::use(
     prepare_maive_data,
     run_single_caliper,
     run_binomial,
+    run_cox_shi,
     run_fisher,
     run_caliper_tests,
     run_p_hacking_tests
-  ]
+  ],
+  artma / calc / methods / elliott[cox_shi_test]
 )
 
 # compute_pvalues -----------------------------------------------------------
@@ -256,4 +259,124 @@ test_that("run_p_hacking_tests runs the Elliott suite when requested", {
   expect_true(is.data.frame(result$elliott))
   expect_true("Binomial [0, 0.05]" %in% result$elliott$Test)
   expect_true("Fisher [0, 0.05]" %in% result$elliott$Test)
+})
+
+# Cox-Shi ------------------------------------------------------------------
+
+# Golden values below were produced once with the authors' canonical `Tests.R`
+# (nvkudrin/Detecting-p-hacking-Code, Elliott, Kudrin & Wuthrich 2022) on the
+# panels built by `cox_shi_panel()`. They are hard-coded on purpose: the tests
+# must not reach out to GitHub.
+cox_shi_panel <- function(seed, n = 800L) {
+  set.seed(seed, kind = "Mersenne-Twister", normal.kind = "Inversion")
+  t_stats <- abs(stats::rnorm(n, mean = 1.5, sd = 1))
+  list(
+    pvalues = 2 * (1 - stats::pnorm(t_stats)),
+    t_stats = t_stats,
+    study_id = 1 + ((seq_len(n) - 1) %/% 20)
+  )
+}
+
+test_that("cox_shi_test matches the canonical implementation, unclustered", {
+  panel <- cox_shi_panel(101)
+
+  # ind of length 1 selects the multinomial (unclustered) covariance.
+  expect_equal(
+    cox_shi_test(panel$pvalues, 0, 0, 0.05, J = 10, K = 1, use_bounds = 0),
+    0.052081436460,
+    tolerance = 1e-6
+  )
+  expect_equal(
+    cox_shi_test(panel$pvalues, 0, 0, 0.10, J = 10, K = 2, use_bounds = 1),
+    0.019154644996,
+    tolerance = 1e-6
+  )
+})
+
+test_that("cox_shi_test matches the canonical implementation, clustered", {
+  panel <- cox_shi_panel(202)
+
+  expect_equal(
+    cox_shi_test(panel$pvalues, panel$study_id, 0, 0.05, J = 10, K = 1, use_bounds = 0),
+    0.558552296381,
+    tolerance = 1e-6
+  )
+  expect_equal(
+    cox_shi_test(panel$pvalues, panel$study_id, 0, 0.10, J = 10, K = 2, use_bounds = 1),
+    0.635590223696,
+    tolerance = 1e-6
+  )
+})
+
+test_that("cox_shi_test returns 1 for a monotone p-curve with no binding constraint", {
+  # Strictly decreasing bin counts: the interior solution leaves JX = 0, which
+  # canonically yields p = 1 rather than NA.
+  n_bins <- 10L
+  bins <- seq(0, 0.05, length.out = n_bins + 1)
+  counts <- c(200, 150, 110, 80, 60, 45, 34, 26, 20, 15)
+  pvalues <- unlist(lapply(
+    seq_len(n_bins),
+    function(j) rep(mean(c(bins[j], bins[j + 1])), counts[j])
+  ))
+
+  expect_equal(
+    cox_shi_test(pvalues, 0, 0, 0.05, J = n_bins, K = 1, use_bounds = 0),
+    1,
+    tolerance = 1e-12
+  )
+  expect_equal(
+    cox_shi_test(pvalues, 0, 0, 0.05, J = n_bins, K = 2, use_bounds = 0),
+    1,
+    tolerance = 1e-12
+  )
+})
+
+test_that("cox_shi_test skips with a reason when the covariance is singular", {
+  # Too few p-values in the window for 20 bins: empty bins make omega singular.
+  set.seed(404, kind = "Mersenne-Twister", normal.kind = "Inversion")
+  pvalues <- 2 * (1 - stats::pnorm(abs(stats::rnorm(300, mean = 1, sd = 1))))
+
+  result <- cox_shi_test(pvalues, seq_along(pvalues), 0, 0.05, J = 20L, K = 2L, use_bounds = 1L)
+
+  expect_true(is.na(result))
+  expect_match(attr(result, "reason"), "singular")
+})
+
+test_that("run_cox_shi turns a skip reason into a warning and a plain NA", {
+  set.seed(404, kind = "Mersenne-Twister", normal.kind = "Inversion")
+  pvalues <- 2 * (1 - stats::pnorm(abs(stats::rnorm(300, mean = 1, sd = 1))))
+
+  result <- suppressMessages(
+    run_cox_shi(pvalues, seq_along(pvalues), 0, 0.05, n_bins = 20L)
+  )
+
+  expect_true(is.na(result))
+  expect_true(is.null(attr(result, "reason")))
+})
+
+test_that("run_p_hacking_tests reports numeric Cox-Shi rows on clustered data", {
+  local_options(
+    artma.verbose = 1,
+    artma.methods.p_hacking_tests.simulate_cdfs.use_cpp = FALSE
+  )
+  panel <- cox_shi_panel(202)
+  df <- data.frame(
+    effect = panel$t_stats,
+    se = rep(1, length(panel$t_stats)),
+    study_id = panel$study_id
+  )
+
+  result <- run_p_hacking_tests(
+    df,
+    base_p_hacking_options(
+      include_caliper = FALSE,
+      include_elliott = TRUE,
+      include_cox_shi = TRUE,
+      cox_shi_bins = 10L
+    )
+  )
+
+  cox_rows <- result$elliott[grepl("^Cox-Shi", result$elliott$Test), ]
+  expect_equal(nrow(cox_rows), 2)
+  expect_false(any(grepl("NA", cox_rows$`P-value`)))
 })

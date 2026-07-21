@@ -20,7 +20,8 @@ box::use(
     lcm_test,
     fisher_test,
     run_discontinuity_test,
-    cox_shi_test
+    cox_shi_test,
+    skipped_result
   ],
   artma / calc / methods / maive[maive]
 )
@@ -493,7 +494,7 @@ run_discontinuity <- function(pvalues, cutoff = 0.05, bandwidth = 0.05) {
 #' @param monotonicity_order *[integer]* Order of monotonicity (K).
 #' @param use_bounds *[integer]* Whether to use bounds (0 or 1).
 #' @return *[numeric]* P-value from test.
-run_cox_shi <- function(pvalues, study_id = NULL, p_min, p_max, n_bins = 20L,
+run_cox_shi <- function(pvalues, study_id = NULL, p_min, p_max, n_bins = 10L,
                         monotonicity_order = 2L, use_bounds = 1L) {
   validate(
     is.numeric(pvalues),
@@ -513,7 +514,7 @@ run_cox_shi <- function(pvalues, study_id = NULL, p_min, p_max, n_bins = 20L,
     study_id <- seq_along(pvalues)
   }
 
-  tryCatch(
+  result <- tryCatch(
     cox_shi_test(
       Q = pvalues,
       ind = study_id,
@@ -523,8 +524,16 @@ run_cox_shi <- function(pvalues, study_id = NULL, p_min, p_max, n_bins = 20L,
       K = as.integer(monotonicity_order),
       use_bounds = as.integer(use_bounds)
     ),
-    error = function(e) NA_real_
+    error = function(e) skipped_result(e$message)
   )
+
+  reason <- attr(result, "reason")
+  if (!is.null(reason)) {
+    cli::cli_alert_warning(
+      "Cox-Shi test on [{p_min}, {p_max}] skipped: {reason}."
+    )
+  }
+  as.numeric(result)
 }
 
 #' @title Run suite of p-hacking tests
@@ -760,5 +769,6 @@ box::export(
   prepare_maive_data,
   maive_p_from_coef,
   run_binomial,
+  run_cox_shi,
   run_fisher
 )

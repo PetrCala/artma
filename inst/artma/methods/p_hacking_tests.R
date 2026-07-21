@@ -34,7 +34,7 @@ p_hacking_tests <- function(df) {
   include_discontinuity <- opt$include_discontinuity %||% TRUE
   discontinuity_bandwidth <- opt$discontinuity_bandwidth %||% 0.05
   include_cox_shi <- opt$include_cox_shi %||% TRUE
-  cox_shi_bins <- opt$cox_shi_bins %||% 20L
+  cox_shi_bins <- opt$cox_shi_bins %||% 10L
   cox_shi_order <- opt$cox_shi_order %||% 2L
   cox_shi_bounds <- opt$cox_shi_bounds %||% 1L
 
