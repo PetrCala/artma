@@ -16,7 +16,7 @@ box::use(
   artma / calc / methods / selection_model[metastudies_estimation],
   artma / calc / methods / endo_kink[run_endogenous_kink],
   artma / visualization / options[get_visualization_options],
-  artma / visualization / export[ensure_export_dir, build_export_filename]
+  artma / visualization / export[ensure_export_dir, build_export_filename, open_png_device]
 )
 
 # nocov start -----------------------------------------------------------------
@@ -261,7 +261,7 @@ export_stem_plot <- function(draw, path, graph_scale) {
   if (file.exists(path)) {
     file.remove(path)
   }
-  grDevices::png(path, width = 800 * graph_scale, height = 600 * graph_scale, units = "px", res = 90 * graph_scale)
+  open_png_device(path, width = 800 * graph_scale, height = 600 * graph_scale, units = "px", res = 90 * graph_scale)
   on.exit(grDevices::dev.off(), add = TRUE)
   draw()
   invisible(NULL)
