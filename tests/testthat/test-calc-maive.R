@@ -1,11 +1,12 @@
 box::use(
   testthat[
     expect_error,
+    expect_false,
     expect_true,
     skip_if_not_installed,
     test_that
   ],
-  artma / calc / methods / maive[maive]
+  artma / calc / methods / maive[maive, maive_version_ok]
 )
 
 make_maive_data <- function(seed = 9, n = 40) {
@@ -40,4 +41,24 @@ test_that("maive aborts when the MAIVE package is absent", {
   local_pretend_packages_absent("MAIVE")
   expect_error(maive(dat, SE = 1L), regexp = "MAIVE")
   expect_error(maive(dat, SE = 1L), regexp = "install\\.packages")
+})
+
+# maive_version_ok -----------------------------------------------------------
+
+test_that("maive_version_ok accepts versions at or above the floor", {
+  expect_true(maive_version_ok("0.2.4", min_version = "0.2.4"))
+  expect_true(maive_version_ok("0.3.0", min_version = "0.2.4"))
+})
+
+test_that("maive_version_ok rejects versions below the floor", {
+  expect_false(maive_version_ok("0.1.10", min_version = "0.2.4"))
+  expect_false(maive_version_ok("0.2.3", min_version = "0.2.4"))
+})
+
+test_that("maive aborts with an upgrade message when the installed MAIVE version is too old", {
+  skip_if_not_installed("MAIVE")
+  dat <- make_maive_data(n = 20)
+  local_pretend_package_version("MAIVE", "0.1.9")
+  expect_error(maive(dat, SE = 1L), regexp = "or higher is required")
+  expect_error(maive(dat, SE = 1L), regexp = "Upgrade with: install\\.packages")
 })

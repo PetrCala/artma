@@ -13,25 +13,33 @@ box::use(
 
 # p_hacking_tests wrapper ---------------------------------------------------
 
-test_that("p_hacking_tests returns the standard contract with a caliper table", {
+# Keep the run fast and dependency-light: caliper only.
+local_caliper_only_options <- function(.local_envir = parent.frame()) {
   local_options(
     artma.verbose = 1,
-    # Keep the run fast and dependency-light: caliper only.
     artma.methods.p_hacking_tests.include_elliott = FALSE,
     artma.methods.p_hacking_tests.include_discontinuity = FALSE,
     artma.methods.p_hacking_tests.include_cox_shi = FALSE,
-    artma.methods.p_hacking_tests.include_maive = FALSE
+    artma.methods.p_hacking_tests.include_maive = FALSE,
+    .local_envir = .local_envir
   )
-  set.seed(1)
-  n <- 60
+}
+
+make_p_hacking_df <- function(seed = 1, n = 60) {
+  set.seed(seed)
   df <- data.frame(
     effect = rnorm(n, 0.3, 0.1),
     se = runif(n, 0.05, 0.3),
     study_id = rep(seq_len(15), length.out = n)
   )
   df$t_stat <- df$effect / df$se
+  df
+}
 
-  result <- p_hacking_tests(df)
+test_that("p_hacking_tests returns the standard contract with a caliper table", {
+  local_caliper_only_options()
+
+  result <- p_hacking_tests(make_p_hacking_df())
 
   expect_true(is.list(result))
   expect_true(is.data.frame(result$tables$caliper))
@@ -42,6 +50,14 @@ test_that("p_hacking_tests aborts when a required column is missing", {
   local_options(artma.verbose = 1)
   # Missing t_stat and study_id.
   expect_error(p_hacking_tests(data.frame(effect = 1:3, se = rep(1, 3))))
+})
+
+test_that("p_hacking_tests prints a significance legend matching significance_mark thresholds", {
+  local_caliper_only_options()
+
+  output <- utils::capture.output(p_hacking_tests(make_p_hacking_df()), type = "message")
+
+  expect_true(any(grepl("Significance marks: \\* p <= 0.1, \\*\\* p <= 0.05, \\*\\*\\* p <= 0.01", output)))
 })
 
 # exogeneity_tests wrapper --------------------------------------------------

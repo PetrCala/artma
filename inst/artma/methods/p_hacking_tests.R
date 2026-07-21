@@ -182,7 +182,7 @@ p_hacking_tests <- function(df) {
     # Overall note
     if (!is.null(results$caliper) || !is.null(results$elliott) || !is.null(results$maive)) {
       cli::cli_text("Note: Low p-values indicate potential p-hacking or selective reporting.")
-      cli::cli_text("Significance marks: * p < 0.05, ** p < 0.01, *** p < 0.001")
+      cli::cli_text("Significance marks: * p <= 0.1, ** p <= 0.05, *** p <= 0.01")
     } else {
       cli::cli_alert_warning("No p-hacking tests were successfully completed.")
     }
