@@ -60,7 +60,7 @@ test_that("funnel_plot creates a plot with required columns", {
   expect_named(result$plots, "funnel_plot")
   expect_named(
     result$meta,
-    c("n_points", "n_outliers_removed", "used_study_medians"),
+    c("n_points", "n_outliers_removed", "pct_filtered", "used_study_medians"),
     ignore.order = TRUE
   )
   expect_true(ggplot2::is_ggplot(result$plots$funnel_plot))
@@ -97,6 +97,31 @@ test_that("funnel_plot filters outliers correctly", {
 
   expect_true(result$meta$n_outliers_removed > 0)
   expect_true(result$meta$n_points < nrow(df))
+  expect_true(result$meta$pct_filtered > 0)
+})
+
+
+test_that("funnel_plot reports filtered observation count in the plot subtitle", {
+  local_funnel_options(
+    "artma.methods.funnel_plot.effect_proximity" = 0.1,
+    "artma.methods.funnel_plot.maximum_precision" = 0.1
+  )
+
+  df <- data.frame(
+    effect = c(0, 0, 0, 0, 10),
+    precision = c(1, 1, 1, 1, 100),
+    study_id = 1:5
+  )
+
+  result <- funnel_plot(df)
+
+  expect_true(result$meta$n_outliers_removed > 0)
+  expect_true(result$meta$n_points > 0)
+  expect_equal(
+    result$meta$pct_filtered,
+    round(100 * result$meta$n_outliers_removed / nrow(df))
+  )
+  expect_true(grepl("filtered as outliers", result$plots$funnel_plot$labels$subtitle))
 })
 
 
@@ -108,6 +133,8 @@ test_that("funnel_plot with no outlier filtering keeps all points", {
 
   expect_equal(result$meta$n_outliers_removed, 0)
   expect_equal(result$meta$n_points, 50)
+  expect_equal(result$meta$pct_filtered, 0)
+  expect_null(result$plots$funnel_plot$labels$subtitle)
 })
 
 

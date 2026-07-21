@@ -27,7 +27,7 @@ print.artma_funnel_plot <- function(x, ...) {
   median_info <- if (isTRUE(x$meta$used_study_medians)) " (study medians)" else ""
 
   cli::cli_text(
-    "<funnel_plot result: {x$meta$n_points} points{median_info}, {x$meta$n_outliers_removed} outliers removed>"
+    "<funnel_plot result: {x$meta$n_points} points{median_info}, {x$meta$n_outliers_removed} outliers removed ({x$meta$pct_filtered}%)>"
   )
   cli::cli_text("Access plot via {.code $plots$funnel_plot}")
 

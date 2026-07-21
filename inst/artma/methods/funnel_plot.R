@@ -62,20 +62,29 @@ funnel_plot <- function(df) {
 
   filtered_df <- filter_result$data
   n_outliers <- filter_result$n_outliers
+  n_total <- nrow(df)
+  pct_filtered <- if (n_total > 0) round(100 * n_outliers / n_total) else 0L
 
   if (nrow(filtered_df) == 0) {
     if (get_verbosity() >= 2) {
-      cli::cli_alert_warning("All observations filtered as outliers. Skipping funnel plot.")
+      cli::cli_alert_warning("All {n_total} observations filtered as outliers. Skipping funnel plot.")
     }
     return(invisible(new_method_result(
       plots = list(funnel_plot = NULL),
       meta = list(
         n_points = 0L,
         n_outliers_removed = n_outliers,
+        pct_filtered = pct_filtered,
         used_study_medians = use_study_medians
       ),
       class = "artma_funnel_plot"
     )))
+  }
+
+  if (n_outliers > 0 && get_verbosity() >= 2) {
+    cli::cli_alert_info(
+      "{n_outliers} of {n_total} observations ({pct_filtered}%) filtered as outliers"
+    )
   }
 
   plot_data <- if (use_study_medians) {
@@ -91,19 +100,23 @@ funnel_plot <- function(df) {
     theme_name = theme_name
   )
 
+  subtitle_text <- if (n_outliers > 0) {
+    sprintf("%d of %d observations filtered as outliers (%d%%)", n_outliers, n_total, pct_filtered)
+  } else {
+    NULL
+  }
+
   plot <- create_funnel_plot(
     df = plot_data,
     tick_info = tick_info,
     theme_name = theme_name,
     precision_to_log = precision_to_log,
-    use_study_medians = use_study_medians
+    use_study_medians = use_study_medians,
+    subtitle_text = subtitle_text
   )
 
   if (get_verbosity() >= 3) {
     cli::cli_h3("Funnel Plot: Effect vs Precision")
-    if (n_outliers > 0) {
-      cli::cli_alert_info("{n_outliers} outlier{?s} removed")
-    }
     suppressWarnings(print(plot)) # nolint: undesirable_function_linter.
   }
 
@@ -120,6 +133,7 @@ funnel_plot <- function(df) {
     meta = list(
       n_points = nrow(plot_data),
       n_outliers_removed = n_outliers,
+      pct_filtered = pct_filtered,
       used_study_medians = use_study_medians
     ),
     class = "artma_funnel_plot"
@@ -305,10 +319,12 @@ determine_tick_interval <- function(range_size) {
 #' @param theme_name *\[character\]* Theme name
 #' @param precision_to_log *\[logical\]* Whether to log-transform precision
 #' @param use_study_medians *\[logical\]* For axis label text
+#' @param subtitle_text *\[character, optional\]* Subtitle noting filtered observations
 #'
 #' @return *\[ggplot\]* The plot object
 #' @keywords internal
-create_funnel_plot <- function(df, tick_info, theme_name, precision_to_log, use_study_medians) {
+create_funnel_plot <- function(df, tick_info, theme_name, precision_to_log, use_study_medians,
+                               subtitle_text = NULL) {
   box::use(
     artma / visualization / colors[get_colors, get_vline_color],
     artma / visualization / theme[get_theme],
@@ -355,6 +371,7 @@ create_funnel_plot <- function(df, tick_info, theme_name, precision_to_log, use_
     ) +
     ggplot2::labs(
       title = NULL,
+      subtitle = subtitle_text,
       x = x_label,
       y = y_label
     ) +
