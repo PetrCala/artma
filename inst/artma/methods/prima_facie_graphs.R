@@ -220,12 +220,16 @@ build_group_column <- function(df, group_vars, config) {
 
   # Filter to variables that exist in df
   group_vars <- intersect(group_vars, names(df))
-  if (length(group_vars) == 0) return(NULL)
+  if (length(group_vars) == 0) {
+    return(NULL)
+  }
 
   get_verbose <- function(var_name) {
     if (!is.null(config) && var_name %in% names(config)) {
       vn <- config[[var_name]]$var_name_verbose
-      if (!is.null(vn) && nzchar(vn)) return(vn)
+      if (!is.null(vn) && nzchar(vn)) {
+        return(vn)
+      }
     }
     gsub("_", " ", var_name)
   }
@@ -233,10 +237,12 @@ build_group_column <- function(df, group_vars, config) {
   if (length(group_vars) > 1) {
     # Multiple columns (dummy group): pick the column name with max value per row
     var_data <- df[, group_vars, drop = FALSE]
-    if (!all(vapply(var_data, is.numeric, logical(1)))) return(NULL)
+    if (!all(vapply(var_data, is.numeric, logical(1)))) {
+      return(NULL)
+    }
     verbose_names <- vapply(group_vars, get_verbose, character(1))
     colnames(var_data) <- verbose_names
-    group_col <- apply(var_data, 1, function(x) names(x)[which.max(x)])
+    group_col <- colnames(var_data)[max.col(as.matrix(var_data), ties.method = "first")]
     return(group_col)
   }
 
@@ -254,7 +260,7 @@ build_group_column <- function(df, group_vars, config) {
       return(paste(verbose_name, "=", as.integer(col)))
     }
     med <- stats::median(col, na.rm = TRUE)
-    direction <- vapply(col, function(x) if (x >= med) ">=" else "<", character(1))
+    direction <- c("<", ">=")[(col >= med) + 1L]
     return(paste(verbose_name, direction, round(med, 2)))
   }
 
