@@ -75,6 +75,43 @@ test_that("compute_optional_columns overwrites conflicting existing study_label"
 })
 
 
+test_that("compute_optional_columns recomputes a user-supplied precision column when winsorization is active", {
+  df <- data.frame(
+    study_id = c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)"),
+    effect = c(0.2, 0.5, 0.1),
+    se = c(0.1, 0.2, 0.1),
+    n_obs = c(120, 150, 120),
+    precision = c(999, 999, 999),
+    stringsAsFactors = FALSE
+  )
+
+  withr::local_options(list("artma.data.winsorization_level" = 0.01))
+  local_compute_options()
+
+  result <- compute_optional_columns(df)
+
+  expect_equal(result$precision, 1 / result$se)
+})
+
+
+test_that("compute_optional_columns keeps a user-supplied precision column when winsorization is disabled", {
+  df <- data.frame(
+    study_id = c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)"),
+    effect = c(0.2, 0.5, 0.1),
+    se = c(0.1, 0.2, 0.1),
+    n_obs = c(120, 150, 120),
+    precision = c(999, 999, 999),
+    stringsAsFactors = FALSE
+  )
+
+  local_compute_options()
+
+  result <- compute_optional_columns(df)
+
+  expect_equal(result$precision, c(999, 999, 999))
+})
+
+
 test_that("get_reserved_colnames covers every column compute_optional_columns can add", {
   df <- sample_study_df()
   local_compute_options()

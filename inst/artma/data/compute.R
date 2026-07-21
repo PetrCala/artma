@@ -206,9 +206,24 @@ add_precision_column <- function(df) {
     artma / libs / core / utils[get_verbosity]
   )
 
+  winsorization_level <- getOption("artma.data.winsorization_level", default = 0)
+  winsorization_active <- !is.null(winsorization_level) &&
+    !is.na(winsorization_level) && winsorization_level != 0
+
   if ("precision" %in% colnames(df)) {
-    # Validate existing precision column
-    if (any(is.na(df$precision))) {
+    if (!is.numeric(df$precision)) {
+      cli::cli_abort("The column {.val precision} must be numeric.")
+    }
+
+    if (winsorization_active) {
+      # se (and thus precision) was winsorized upstream; recompute precision
+      # from the winsorized se/reg_dof so it stays consistent with
+      # effect/se/t_stat instead of keeping stale pre-winsorization values.
+      if (get_verbosity() >= 3) {
+        cli::cli_alert_info("Recalculating {.field precision} from winsorized data.")
+      }
+      df$precision <- calc$precision(se = df$se, reg_dof = df$reg_dof)
+    } else if (any(is.na(df$precision))) {
       n_missing <- sum(is.na(df$precision))
       if (get_verbosity() >= 2) {
         cli::cli_alert_warning(c(
@@ -220,10 +235,6 @@ add_precision_column <- function(df) {
       missing_idx <- which(is.na(df$precision))
       calculated_precision <- calc$precision(se = df$se, reg_dof = df$reg_dof)
       df$precision[missing_idx] <- calculated_precision[missing_idx]
-    }
-
-    if (!is.numeric(df$precision)) {
-      cli::cli_abort("The column {.val precision} must be numeric.")
     }
   } else {
     # Calculate precision based on option
