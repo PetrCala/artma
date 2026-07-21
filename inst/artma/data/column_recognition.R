@@ -623,12 +623,12 @@ recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_con
     confidence_threshold <- if (is_required) min_confidence else MATCH_THRESHOLDS$optional_confidence
 
     # Find all columns that matched this standard column
-    candidates <- names(matches)[vapply(matches, function(m) {
+    all_candidates <- names(matches)[vapply(matches, function(m) {
       !is.na(m$match) && m$match == std_col && m$score >= confidence_threshold
     }, logical(1))]
 
     # Remove already used columns
-    candidates <- setdiff(candidates, used_cols)
+    candidates <- setdiff(all_candidates, used_cols)
 
     if (length(candidates) > 0) {
       # If multiple candidates, use value analysis to resolve
@@ -645,9 +645,7 @@ recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_con
         score <- matches[[best_candidate]]$score
         method <- matches[[best_candidate]]$method
         req_label <- if (is_required) "required" else "optional"
-        n_candidates <- length(candidates) + length(intersect(names(matches)[vapply(matches, function(m) {
-          !is.na(m$match) && m$match == std_col && m$score >= confidence_threshold
-        }, logical(1))], used_cols))
+        n_candidates <- length(candidates) + length(intersect(all_candidates, used_cols))
         multi_label <- if (n_candidates > 1) paste0(" [", n_candidates, " candidates]") else ""
         cli::cli_inform("Recognized {.field {best_candidate}} as {.field {std_col}} ({req_label}, score: {round(score, 2)}, method: {method}){multi_label}")
       }

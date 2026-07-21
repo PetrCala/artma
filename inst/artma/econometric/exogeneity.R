@@ -230,9 +230,9 @@ run_iv_regression <- function(df, iv_instrument = "automatic", add_significance_
     stringsAsFactors = FALSE
   )
 
-  coefficients$significance <- if (add_significance_marks) vapply(coefficients$p_value, significance_mark, character(1)) else ""
+  coefficients$significance <- if (add_significance_marks) significance_mark(coefficients$p_value) else ""
   coefficients$estimate_formatted <- paste0(format_number(coefficients$estimate, round_to), coefficients$significance)
-  coefficients$std_error_formatted <- vapply(coefficients$std_error, format_se, character(1), digits = round_to)
+  coefficients$std_error_formatted <- format_se(coefficients$std_error, round_to)
 
   list(
     coefficients = coefficients,
@@ -425,9 +425,9 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
     stringsAsFactors = FALSE
   )
 
-  coefficients$significance <- if (add_significance_marks) vapply(coefficients$p_value, significance_mark, character(1)) else ""
+  coefficients$significance <- if (add_significance_marks) significance_mark(coefficients$p_value) else ""
   coefficients$estimate_formatted <- paste0(format_number(coefficients$estimate, round_to), coefficients$significance)
-  coefficients$std_error_formatted <- vapply(coefficients$std_error, format_se, character(1), digits = round_to)
+  coefficients$std_error_formatted <- format_se(coefficients$std_error, round_to)
 
   list(
     coefficients = coefficients,
