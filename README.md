@@ -91,7 +91,7 @@ A call to `artma()` orchestrates four steps:
 
 Runs are fault tolerant. A method that errors is skipped with a warning while the rest continue, and results from successful methods are still exported. Failed method names and their error messages are attached to the returned list as the `failed_methods` attribute. Methods whose required columns are missing from your data, or whose optional packages aren't installed, are skipped with an explanation rather than aborting the run.
 
-Expensive computations are cached on disk between runs. Disable this with `options(artma.cache.use_cache = FALSE)` if you need fresh results every time.
+Expensive computations are cached on disk between runs, so rerunning an analysis with unchanged inputs is near-instant. A cached result is reused only when the data, the upstream method results, every user-authored `artma.*` option, the data source and its modification time, and the package source code all match the run that produced it; a method whose exported plot files have since been removed is rerun so the files come back. Disable caching with `options(artma.cache.use_cache = FALSE)`, and clear it with `make clear-cache`.
 
 # Available methods
 
