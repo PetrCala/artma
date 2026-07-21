@@ -11,7 +11,10 @@ bma <- function(df) {
     artma / econometric / bma[
       handle_bma_params,
       run_bma,
-      extract_bma_results
+      extract_bma_results,
+      rename_bma_model,
+      build_bma_model_labels,
+      render_bma_comparison_plot
     ],
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
@@ -159,6 +162,24 @@ bma <- function(df) {
       data = bma_data,
       params = bma_params[[i]],
       var_list = bma_var_list
+    )
+  }
+
+  if (length(results) > 1) {
+    comparison_labels <- build_bma_model_labels(bma_params)
+    comparison_models <- stats::setNames(
+      lapply(seq_along(results), function(i) {
+        rename_bma_model(results[[i]]$model, results[[i]]$var_list)
+      }),
+      comparison_labels
+    )
+
+    render_bma_comparison_plot(
+      comparison_models,
+      export_graphics = export_graphics,
+      export_path = export_path,
+      graph_scale = graph_scale,
+      print_plot = print_results == "all" && get_verbosity() >= 3
     )
   }
 
@@ -336,7 +357,7 @@ prepare_bma_inputs <- function(df, config, use_vif_optimization, max_groups_to_r
 
   # Check for rank deficiency and multicollinearity, and remove aliased variables
   if (ncol(bma_data) > 2) {
-    max_iterations <- 50  # Prevent infinite loop
+    max_iterations <- 50 # Prevent infinite loop
     iteration <- 0
 
     repeat {

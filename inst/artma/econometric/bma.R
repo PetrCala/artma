@@ -586,6 +586,121 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
 }
 
 
+#' Build human-readable labels distinguishing multiple BMA parameter sets
+#'
+#' @description
+#' Given the per-model parameter lists returned by `handle_bma_params()`, build a
+#' label for each model listing only the parameters that actually differ between
+#' them (e.g. "g=UIP, mprior=uniform"). Falls back to "Model N" if every parameter
+#' set is identical.
+#'
+#' @param bma_params_list *\[list\]* A list of per-model parameter lists, as returned
+#' by `handle_bma_params()`.
+#'
+#' @return *\[character\]* A vector of labels, one per entry in `bma_params_list`.
+#'
+#' @export
+build_bma_model_labels <- function(bma_params_list) {
+  box::use(
+    artma / libs / core / validation[validate]
+  )
+
+  validate(is.list(bma_params_list), length(bma_params_list) >= 1)
+
+  if (length(bma_params_list) == 1) {
+    return("Model 1")
+  }
+
+  param_names <- names(bma_params_list[[1]])
+  varying_params <- Filter(function(param_name) {
+    values <- vapply(bma_params_list, function(params) as.character(params[[param_name]]), character(1))
+    length(unique(values)) > 1
+  }, param_names)
+
+  if (!length(varying_params)) {
+    return(paste0("Model ", seq_along(bma_params_list)))
+  }
+
+  vapply(bma_params_list, function(params) {
+    paste(
+      vapply(varying_params, function(param_name) {
+        paste0(param_name, "=", params[[param_name]])
+      }, character(1)),
+      collapse = ", "
+    )
+  }, character(1))
+}
+
+
+#' Render a BMA prior-comparison plot across multiple parameter sets
+#'
+#' @description
+#' When more than one BMA parameter set is run (e.g. to compare priors), overlay
+#' their posterior statistics with `BMS::plotComp` so the effect of different
+#' configurations can be compared visually.
+#'
+#' @param bma_models *\[list\]* A named list of two or more fitted `bma` model objects
+#' to compare. The names are used as the plot legend labels.
+#' @param comp *\[character\]* The statistic to compare: "PIP", "Post Mean", "Post SD",
+#' "Std Mean", or "Std SD". Defaults to "PIP".
+#' @param export_graphics *\[logical\]* If TRUE, export the comparison plot to a file. Defaults to TRUE.
+#' @param export_path *\[character\]* Path to the export folder. Defaults to "graphics".
+#' @param graph_scale *\[numeric\]* Scale the plot by this number. Defaults to 1.
+#' @param print_plot *\[logical\]* If TRUE, also render the plot to the current graphics device. Defaults to FALSE.
+#'
+#' @return NULL (invisibly). Called for its plotting side effect.
+#'
+#' @export
+render_bma_comparison_plot <- function(bma_models, comp = "PIP", export_graphics = TRUE,
+                                       export_path = "graphics", graph_scale = 1,
+                                       print_plot = FALSE) {
+  box::use(
+    artma / libs / core / validation[validate],
+    artma / visualization / export[ensure_export_dir]
+  )
+
+  validate(
+    is.list(bma_models),
+    length(bma_models) >= 2,
+    all(vapply(bma_models, inherits, logical(1), what = "bma")),
+    is.character(comp),
+    is.logical(export_graphics),
+    is.character(export_path),
+    is.numeric(graph_scale),
+    is.logical(print_plot)
+  )
+
+  safe_render <- function() {
+    tryCatch(
+      do.call(BMS::plotComp, c(bma_models, list(comp = comp))),
+      error = function(e) {
+        cli::cli_warn("Could not render the BMA comparison plot: {conditionMessage(e)}")
+      }
+    )
+  }
+
+  if (print_plot) {
+    safe_render()
+  }
+
+  if (export_graphics) {
+    ensure_export_dir(export_path)
+    comparison_path <- file.path(export_path, "bma_comparison.png")
+    if (file.exists(comparison_path)) {
+      file.remove(comparison_path)
+    }
+    grDevices::png(comparison_path,
+      width = 800 * graph_scale, height = 600 * graph_scale, units = "px",
+      res = 90 * graph_scale
+    )
+    safe_render()
+    grDevices::dev.off()
+  }
+
+  invisible(NULL)
+}
+
+
 box::export(
   handle_bma_params,
   get_bma_formula,
@@ -593,5 +708,7 @@ box::export(
   get_bma_data,
   run_bma,
   rename_bma_model,
-  extract_bma_results
+  extract_bma_results,
+  build_bma_model_labels,
+  render_bma_comparison_plot
 )
