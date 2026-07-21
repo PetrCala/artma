@@ -39,4 +39,5 @@ test_that("maive aborts when the MAIVE package is absent", {
   dat <- make_maive_data(n = 20)
   local_pretend_packages_absent("MAIVE")
   expect_error(maive(dat, SE = 1L), regexp = "MAIVE")
+  expect_error(maive(dat, SE = 1L), regexp = "install\\.packages")
 })
