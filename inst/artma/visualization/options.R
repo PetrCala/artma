@@ -9,13 +9,14 @@
 #' All visualization methods should use this function instead of reading theme/export
 #' options from their own method-specific option groups.
 #'
-#' @return *\[list\]* A list with elements: theme, export_graphics, export_path, graph_scale
+#' @return *\[list\]* A list with elements: theme, export_graphics, export_html, export_path, graph_scale
 #'
 #' @examples
 #' \dontrun{
 #' vis <- get_visualization_options()
 #' vis$theme # "blue"
 #' vis$export_graphics # FALSE
+#' vis$export_html # FALSE
 #' vis$export_path # "graphics"
 #' vis$graph_scale # 2
 #' }
@@ -28,6 +29,7 @@ get_visualization_options <- function() {
 
   theme <- opt$theme %||% "blue"
   export_graphics <- opt$export_graphics %||% TRUE
+  export_html <- opt$export_html %||% FALSE
   export_path <- opt$export_path %||% "graphics"
   graph_scale <- opt$graph_scale %||% 2
 
@@ -36,6 +38,7 @@ get_visualization_options <- function() {
     paste0("theme must be one of: ", paste(VALID_THEMES, collapse = ", "))
   )
   assert(is.logical(export_graphics), "export_graphics must be logical")
+  assert(is.logical(export_html), "export_html must be logical")
   assert(is.character(export_path), "export_path must be a character string")
   assert(is.numeric(graph_scale) && graph_scale > 0, "graph_scale must be a positive number")
 
@@ -50,6 +53,7 @@ get_visualization_options <- function() {
   list(
     theme = theme,
     export_graphics = export_graphics,
+    export_html = export_html,
     export_path = export_path,
     graph_scale = graph_scale
   )
@@ -64,12 +68,13 @@ get_visualization_options <- function() {
 #'
 #' @param theme *\[character, optional\]* Theme name
 #' @param export_graphics *\[logical, optional\]* Whether to export plots
+#' @param export_html *\[logical, optional\]* Whether to additionally export plots as interactive HTML
 #' @param export_path *\[character, optional\]* Directory for exported plots
 #' @param graph_scale *\[numeric, optional\]* Scale factor for exports
 #'
 #' @return *\[list\]* Previous values (invisibly)
 #' @keywords internal
-set_visualization_option <- function(theme = NULL, export_graphics = NULL,
+set_visualization_option <- function(theme = NULL, export_graphics = NULL, export_html = NULL,
                                      export_path = NULL, graph_scale = NULL) {
   box::use(artma / visualization / colors[VALID_THEMES])
   box::use(artma / libs / core / validation[assert])
@@ -87,6 +92,11 @@ set_visualization_option <- function(theme = NULL, export_graphics = NULL,
   if (!is.null(export_graphics)) {
     assert(is.logical(export_graphics), "export_graphics must be logical")
     options("artma.visualization.export_graphics" = export_graphics)
+  }
+
+  if (!is.null(export_html)) {
+    assert(is.logical(export_html), "export_html must be logical")
+    options("artma.visualization.export_html" = export_html)
   }
 
   if (!is.null(export_path)) {
