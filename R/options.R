@@ -17,11 +17,12 @@
 #' @return *\[list\]* The validation errors
 #' @export
 options.validate <- function(
-    options_file_name = NULL,
-    options_dir = NULL,
-    should_flag_redundant = FALSE,
-    template_path = NULL,
-    failure_action = "abort_verbose") {
+  options_file_name = NULL,
+  options_dir = NULL,
+  should_flag_redundant = FALSE,
+  template_path = NULL,
+  failure_action = "abort_verbose"
+) {
   box::use(
     artma / const[CONST],
     artma / options / ask[ask_for_existing_options_file_name],
@@ -147,10 +148,11 @@ options.validate <- function(
 #' @return `NULL`
 #' @export
 options.copy <- function(
-    options_file_name_from = NULL,
-    options_file_name_to = NULL,
-    options_dir = NULL,
-    should_overwrite = NULL) {
+  options_file_name_from = NULL,
+  options_file_name_to = NULL,
+  options_dir = NULL,
+  should_overwrite = NULL
+) {
   box::use(
     artma / options / ask[ask_for_options_file_name, ask_for_existing_options_file_name],
     artma / options / files[
@@ -191,9 +193,10 @@ options.copy <- function(
 #' @return `NULL`
 #' @export
 options.delete <- function(
-    options_file_name = NULL,
-    options_dir = NULL,
-    skip_confirmation = FALSE) {
+  options_file_name = NULL,
+  options_dir = NULL,
+  skip_confirmation = FALSE
+) {
   box::use(
     artma / options / ask[ask_for_existing_options_file_name],
     artma / options / files[
@@ -257,7 +260,7 @@ options.list <- function(options_dir = NULL, should_return_verbose_names = FALSE
 #' @title Load user options
 #' @description Load user options by their name and return them as a list.
 #' @details In case the options name is not passed, the function will attempt to load the current options configuration. If none is found, it will then attempt to load the default options. If that fails too, an error is raised.
-#' @param options_file_name *\[character, optional\]* Name of the options to load, including the .yaml suffix. Defaults to `NULL`.
+#' @param options_file_name *\[character, optional\]* Name of the options to load. The `.yaml` suffix is appended automatically if missing. Defaults to `NULL`.
 #' @param options_dir *\[character, optional\]* Path to the folder in which to look for user options files. Defaults to `NULL`.
 #' @param create_options_if_null *\[logical, optional\]* If set to TRUE and the options file name is set to NULL, the function will prompt the user to create a new options file. Defaults to TRUE.
 #' @param load_with_prefix *\[logical, optional\]* Whether the options should be loaded with the package prefix. Defaults to TRUE.
@@ -268,14 +271,15 @@ options.list <- function(options_dir = NULL, should_return_verbose_names = FALSE
 #' @return *\[list|NULL\]* The loaded options as a list or `NULL`.
 #' @export
 options.load <- function(
-    options_file_name = NULL,
-    options_dir = NULL,
-    create_options_if_null = TRUE,
-    load_with_prefix = TRUE,
-    template_path = NULL,
-    should_validate = TRUE,
-    should_add_temp_options = FALSE,
-    should_return = TRUE) {
+  options_file_name = NULL,
+  options_dir = NULL,
+  create_options_if_null = TRUE,
+  load_with_prefix = TRUE,
+  template_path = NULL,
+  should_validate = TRUE,
+  should_add_temp_options = FALSE,
+  should_return = TRUE
+) {
   box::use(
     artma / const[CONST],
     artma / options / files[
@@ -290,8 +294,8 @@ options.load <- function(
       get_option_defs,
       get_template_defaults
     ],
-    artma / options / utils[get_expected_type, validate_option_value],
-    artma / libs / core / validation[validate, assert],
+    artma / options / utils[get_expected_type, validate_option_value, parse_options_file_name],
+    artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity]
   )
 
@@ -344,10 +348,7 @@ options.load <- function(
     }
   }
 
-  assert(
-    grepl(".yaml$|.yml$", options_file_name),
-    sprintf("Please pass the name of the options to load with the .yaml suffix. Got: %s.", options_file_name)
-  )
+  options_file_name <- parse_options_file_name(options_file_name)
 
   options_path <- options_file_path(options_dir, options_file_name)
   nested_options <- read_options_file(options_path)
@@ -435,11 +436,12 @@ options.load <- function(
 #' @return `NULL`
 #' @export
 options.modify <- function(
-    options_file_name = NULL,
-    options_dir = NULL,
-    template_path = NULL,
-    user_input = list(),
-    should_validate = TRUE) {
+  options_file_name = NULL,
+  options_dir = NULL,
+  template_path = NULL,
+  user_input = list(),
+  should_validate = TRUE
+) {
   box::use(
     artma / options / ask[
       ask_for_existing_options_file_name,
@@ -500,8 +502,9 @@ options.modify <- function(
 #' @return `NULL` Opens the file for editing
 #' @export
 options.open <- function(
-    options_file_name = NULL,
-    options_dir = NULL) {
+  options_file_name = NULL,
+  options_dir = NULL
+) {
   box::use(
     artma / options / files[resolve_options_dir],
     artma / options / ask[ask_for_existing_options_file_name],
@@ -554,8 +557,9 @@ options.open <- function(
 #'   to the console.
 #' @export
 options.help <- function(
-    options = NULL,
-    template_path = NULL) {
+  options = NULL,
+  template_path = NULL
+) {
   box::use(
     artma / const[CONST],
     artma / options / files[resolve_template_path],
@@ -655,10 +659,11 @@ options.print_default_dir <- function(...) { # nolint: object_name_linter.
 #' @return `NULL` Fixes the user options file.
 #' @export
 options.fix <- function(
-    options_file_name = NULL,
-    options_dir = NULL,
-    template_path = NULL,
-    force_default_overwrites = TRUE) {
+  options_file_name = NULL,
+  options_dir = NULL,
+  template_path = NULL,
+  force_default_overwrites = TRUE
+) {
   box::use(
     artma / const[CONST],
     artma / options / ask[ask_for_existing_options_file_name, ask_for_option_value],
@@ -804,13 +809,14 @@ options.fix <- function(
 #' @return `NULL`
 #' @export
 options.create <- function(
-    options_file_name = NULL,
-    options_dir = NULL,
-    template_path = NULL,
-    user_input = list(),
-    should_validate = TRUE,
-    should_overwrite = FALSE,
-    action_name = "creating") {
+  options_file_name = NULL,
+  options_dir = NULL,
+  template_path = NULL,
+  user_input = list(),
+  should_validate = TRUE,
+  should_overwrite = FALSE,
+  action_name = "creating"
+) {
   box::use(
     artma / options / ask[ask_for_options_file_name],
     artma / options / template[parse_options_from_template, flatten_user_options, collect_leaf_paths],

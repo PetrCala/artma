@@ -129,6 +129,36 @@ test_that("options lifecycle helpers operate on user files", {
   expect_false(file.exists(file.path(tmp_dir, "copied.yaml")))
 })
 
+test_that("options.load accepts a file name without the .yaml suffix", {
+  box::use(artma[options.load])
+
+  tmp_dir <- withr::local_tempdir()
+  template_path <- file.path(tmp_dir, "template.yaml")
+
+  template <- list(
+    general = list(
+      name = list(
+        type = "character",
+        default = "Default Config",
+        help = "Friendly name for the configuration"
+      )
+    )
+  )
+  yaml::write_yaml(template, template_path)
+  yaml::write_yaml(list(general = list(name = "Primary")), file.path(tmp_dir, "dummy_run.yaml"))
+
+  loaded <- options.load(
+    options_file_name = "dummy_run",
+    options_dir = tmp_dir,
+    template_path = template_path,
+    should_validate = TRUE,
+    should_add_temp_options = TRUE,
+    should_return = TRUE
+  )
+  expect_equal(loaded$`artma.general.name`, "Primary")
+  expect_equal(loaded$`artma.temp.file_name`, "dummy_run.yaml")
+})
+
 test_that("options.load backfills missing and invalid values with template defaults", {
   box::use(artma[options.load])
 
