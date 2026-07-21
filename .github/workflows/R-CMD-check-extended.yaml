@@ -18,6 +18,14 @@ on:
 
 permissions: read-all
 
+# Grouped by workflow name only, not ref: push, schedule, and dispatch
+# runs of this workflow all target master anyway, and only the newest
+# run (repo tip) needs to validate and refresh the dependency caches,
+# so a merge burst collapses to one run instead of queuing several.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
 jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
@@ -58,3 +66,41 @@ jobs:
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+
+  # Runs once per run regardless of how many matrix legs failed, since
+  # nobody watches master CI and a failure here (e.g. against a moving
+  # R-devel) would otherwise go unnoticed until the next PR.
+  notify-on-failure:
+    needs: R-CMD-check
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: File or update a CI failure issue
+        run: |
+          set -euo pipefail
+          MARKER="ci: extended check failing"
+          REPO="${{ github.repository }}"
+          RUN_URL="${{ github.server_url }}/${REPO}/actions/runs/${{ github.run_id }}"
+          FAILED_CONFIGS=$(gh run view "${{ github.run_id }}" --repo "$REPO" --json jobs \
+            --jq '[.jobs[] | select(.conclusion=="failure") | .name] | join(", ")')
+
+          {
+            echo "Extended R CMD check failed."
+            echo ""
+            echo "Run: $RUN_URL"
+            echo "Failing configs: ${FAILED_CONFIGS:-unknown}"
+          } > /tmp/issue-body.md
+
+          EXISTING=$(gh issue list --repo "$REPO" --state open --search "\"$MARKER\" in:title" \
+            --json number --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$REPO" --body-file /tmp/issue-body.md
+          else
+            gh issue create --repo "$REPO" --title "$MARKER" --body-file /tmp/issue-body.md
+          fi

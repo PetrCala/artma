@@ -11,7 +11,6 @@ permissions:
 jobs:
   test-e2e:
     runs-on: ubuntu-latest
-    continue-on-error: true
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
@@ -28,3 +27,37 @@ jobs:
 
       - name: Run E2E tests
         run: make test-e2e
+
+  # Runs once per run; nightly E2E failures otherwise go unnoticed since
+  # nobody watches the schedule tab.
+  notify-on-failure:
+    needs: test-e2e
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: File or update a CI failure issue
+        run: |
+          set -euo pipefail
+          MARKER="ci: e2e test failing"
+          REPO="${{ github.repository }}"
+          RUN_URL="${{ github.server_url }}/${REPO}/actions/runs/${{ github.run_id }}"
+
+          {
+            echo "E2E test run failed."
+            echo ""
+            echo "Run: $RUN_URL"
+          } > /tmp/issue-body.md
+
+          EXISTING=$(gh issue list --repo "$REPO" --state open --search "\"$MARKER\" in:title" \
+            --json number --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$REPO" --body-file /tmp/issue-body.md
+          else
+            gh issue create --repo "$REPO" --title "$MARKER" --body-file /tmp/issue-body.md
+          fi
