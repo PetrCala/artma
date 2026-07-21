@@ -60,7 +60,7 @@ variable_summary_stats <- function(df) {
     var_sd <- round(stats::sd(var_data, na.rm = TRUE), round_to)
     var_min <- round(base::min(var_data, na.rm = TRUE), round_to)
     var_max <- round(base::max(var_data, na.rm = TRUE), round_to)
-    var_obs <- sum(!is.na(var_data) & var_data != 0)
+    var_obs <- sum(!is.na(var_data))
     var_missing <- round((sum(is.na(var_data)) / length(var_data)) * 100, 1)
     var_missing_verbose <- paste0(as.character(var_missing), "%")
 
