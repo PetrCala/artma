@@ -2,6 +2,12 @@
 #' @description Helper functions used by the linear testing method.
 NULL
 
+# Not referenced directly: model fitters (e.g. plm) evaluate model.frame in the
+# formula environment, which is this module's environment.
+box::use(
+  stats[model.frame]
+)
+
 box::use(
   artma / libs / formatting / results[
     significance_mark,
