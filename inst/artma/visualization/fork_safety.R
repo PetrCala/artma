@@ -13,6 +13,11 @@
 # Objective-C runtime and renders correctly in a fork, so it stands in for the
 # faster ragg device for the duration of a forked method run. Output dimensions
 # are unchanged; only the rasteriser differs.
+#
+# That device is not universally usable: some headless macOS installations
+# report `capabilities("cairo") == TRUE` yet write no file at all. It is
+# therefore probed once per session, and when the probe fails the layer falls
+# back to sequential execution rather than losing every method that draws.
 
 box::use(
   artma / libs / core / validation[validate]
@@ -39,14 +44,63 @@ graphics_fork_is_hostile <- function(sysname = NULL) {
   identical(sysname, "Darwin")
 }
 
+#' @title Cached result of the cairo probe
+#' @keywords internal
+cairo_probe <- new.env(parent = emptyenv())
+
+#' @title Whether the cairo device actually writes a PNG here
+#' @description
+#' `capabilities("cairo")` reports how R was built, which is not the same as the
+#' device working: on some headless macOS installations it returns `TRUE` while
+#' the device silently produces no file. Since the whole fork-safety strategy
+#' rests on this device, verify it by writing a throwaway PNG rather than
+#' trusting the capability flag.
+#' @return *\[logical\]* `TRUE` when a cairo PNG was written successfully.
+#' @keywords internal
+probe_cairo_png <- function() {
+  if (!isTRUE(capabilities("cairo"))) {
+    return(FALSE)
+  }
+
+  path <- tempfile(fileext = ".png")
+  on.exit(unlink(path), add = TRUE)
+
+  opened <- FALSE
+  ok <- tryCatch(
+    {
+      grDevices::png(
+        filename = path, width = 200, height = 200, units = "px", res = 72, type = "cairo"
+      )
+      opened <- TRUE
+      graphics::plot.new()
+      grDevices::dev.off()
+      opened <- FALSE
+      TRUE
+    },
+    error = function(err) FALSE,
+    warning = function(cond) FALSE
+  )
+
+  if (opened) {
+    try(grDevices::dev.off(), silent = TRUE)
+  }
+
+  isTRUE(ok) && file.exists(path) && file.info(path)$size > 0L
+}
+
 #' @title Whether a fork-safe PNG device is available
 #' @description
-#' The cairo device is a build-time capability of R, not a package, so it can
-#' legitimately be missing.
+#' Probes once per session and caches the answer; the probe opens a device, so
+#' repeating it per plot would be wasteful.
+#' @param refresh *\[logical, optional\]* Re-run the probe instead of reusing the
+#'   cached answer. Injectable for testing.
 #' @return *\[logical\]* `TRUE` when `grDevices::png(type = "cairo")` can be used.
 #' @keywords internal
-fork_safe_png_available <- function() {
-  isTRUE(capabilities("cairo"))
+fork_safe_png_available <- function(refresh = FALSE) {
+  if (isTRUE(refresh) || is.null(cairo_probe$ok)) {
+    cairo_probe$ok <- probe_cairo_png()
+  }
+  cairo_probe$ok
 }
 
 #' @title Whether the current process is a forked method worker
@@ -128,6 +182,7 @@ box::export(
   graphics_fork_is_hostile,
   graphics_survive_fork,
   in_forked_worker,
+  probe_cairo_png,
   use_fork_safe_png_device,
   with_forked_worker_flag
 )
