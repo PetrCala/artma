@@ -438,6 +438,34 @@ test_that("invoke_runtime_methods records a failure from a forked method", {
   expect_match(failed[["method_b"]], "method_b exploded")
 })
 
+test_that("invoke_runtime_methods explains a forked method that was killed", {
+  cores <- tryCatch(parallel::detectCores(), error = function(err) NA_integer_)
+  testthat::skip_if(
+    identical(.Platform$OS.type, "windows") || !is.numeric(cores) || is.na(cores) || cores < 2L,
+    "forking is unavailable"
+  )
+
+  # A worker that dies without signalling (a segfault in a graphics device is
+  # the real-world case) used to be recorded as a failure with an empty message.
+  fake_methods <- list(
+    method_a = list(run = function(df, ...) "method_a"),
+    method_b = list(run = function(df, ...) tools::pskill(Sys.getpid())),
+    method_c = list(run = function(df, ...) "method_c")
+  )
+  withr::local_options(list(artma.verbose = 0, artma.general.parallel = TRUE))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  df <- data.frame(x = 1:3)
+  results <- suppressWarnings(artma:::invoke_runtime_methods(
+    methods = c("method_a", "method_b", "method_c"), df = df, modules_dir = methods_dir
+  ))
+
+  failed <- attr(results, "failed_methods")
+  expect_equal(names(failed), "method_b")
+  expect_true(nzchar(failed[["method_b"]]))
+  expect_match(failed[["method_b"]], "method_b")
+})
+
 test_that("invoke_runtime_methods passes dependency results across layers", {
   fake_methods <- list(
     method_a = list(run = function(df, ...) "from_a"),
