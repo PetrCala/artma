@@ -92,33 +92,68 @@ prepare_linear_data <- function(df, spec) {
   )
 }
 
-#' @title Cluster bootstrap sample
-#' @description Resample the data by clusters.
-#' @param df *[data.frame]* Data to resample.
-#' @param cluster_column *[character]* Column name holding the cluster ids.
-#' @param cluster_splits *[list, optional]* Precomputed row indices split by
-#'   cluster, as returned by `split(seq_len(nrow(df)), df[[cluster_column]])`.
-#'   Pass this when resampling repeatedly so the split is not recomputed.
-#' @return A resampled data frame with replacement at the cluster level.
-resample_by_cluster <- function(df, cluster_column, cluster_splits = NULL) {
+#' @title Draw bootstrap row indices
+#' @description Resample row indices with replacement at the cluster level, or
+#'   plain rows when no cluster split is available.
+#' @param n_rows *[integer]* Number of rows in the data being resampled.
+#' @param cluster_splits *[list, optional]* Row indices split by cluster, as
+#'   returned by `split(seq_len(n_rows), cluster)`. `NULL` resamples rows.
+#' @return An integer vector of resampled row indices.
+resample_cluster_rows <- function(n_rows, cluster_splits = NULL) {
   if (is.null(cluster_splits)) {
-    if (is.null(cluster_column) || !cluster_column %in% colnames(df)) {
-      rows <- sample.int(nrow(df), nrow(df), replace = TRUE)
-      return(df[rows, , drop = FALSE])
-    }
-    cluster_splits <- split(seq_len(nrow(df)), df[[cluster_column]])
+    return(sample.int(n_rows, n_rows, replace = TRUE))
   }
-
   sampled_clusters <- sample(names(cluster_splits), length(cluster_splits), replace = TRUE)
-  sampled_indices <- unlist(cluster_splits[sampled_clusters], use.names = FALSE)
-  df[sampled_indices, , drop = FALSE]
+  unlist(cluster_splits[sampled_clusters], use.names = FALSE)
+}
+
+# Fast-path bootstrap estimators ---------------------------------------------
+#
+# The bootstrap only needs point estimates per replication, so specs may
+# provide a `boot_estimate(data, rows)` function that computes them directly
+# on the resampled rows, skipping model-object construction and vcov work.
+# Each fast path must reproduce the estimates of the corresponding
+# `spec$fit` + `spec$tidy` refit on `data[rows, ]` to near machine precision;
+# this is asserted in tests. `data` is the prepared frame from
+# `prepare_linear_data()` (finite columns, factor cluster ids).
+
+boot_estimate_ols <- function(data, rows) {
+  fit <- stats::lm.fit(cbind(1, data$se[rows]), data$effect[rows])
+  c(effect = fit$coefficients[[1L]], publication_bias = fit$coefficients[[2L]])
+}
+
+make_boot_estimate_weighted_ols <- function(weight_column) {
+  force(weight_column)
+  function(data, rows) {
+    weights <- data[[weight_column]][rows]^2
+    fit <- stats::lm.wfit(cbind(1, data$se[rows]), data$effect[rows], weights)
+    c(effect = fit$coefficients[[1L]], publication_bias = fit$coefficients[[2L]])
+  }
+}
+
+# Within (fixed effects) estimator. Duplicated resampled clusters keep their
+# original id, so they merge into one group during demeaning, exactly as plm
+# treats the resampled frame. The overall intercept is what
+# plm::within_intercept() returns: mean(y) - slope * mean(x).
+#
+# Random effects has no fast path: Swamy-Arora variance components must be
+# recomputed per resample, so it stays on the `fit` + `boot_coefs` fallback.
+boot_estimate_within <- function(data, rows) {
+  y <- data$effect[rows]
+  x <- data$se[rows]
+  group <- data$study_id[rows]
+  y_demeaned <- y - stats::ave(y, group)
+  x_demeaned <- x - stats::ave(x, group)
+  slope <- stats::.lm.fit(cbind(x_demeaned), y_demeaned)$coefficients[[1L]]
+  c(effect = mean(y) - slope * mean(x), publication_bias = slope)
 }
 
 #' @title Compute bootstrap confidence intervals
-#' @description Only point estimates are needed per replication, so the spec's
-#'   cheap `boot_coefs` extractor is used instead of the full `tidy` path, and
-#'   the data is trimmed to the columns the fit actually touches before
-#'   resampling.
+#' @description Only point estimates are needed per replication. Specs with a
+#'   `boot_estimate` fast path compute them directly on the resampled rows;
+#'   the rest refit via `spec$fit` and extract coefficients with the cheap
+#'   `boot_coefs` extractor instead of the full `tidy` path. The data is
+#'   trimmed to the columns the fit actually touches before resampling.
 #' @param spec *[list]* Linear model specification.
 #' @param data *[data.frame]* Prepared dataset.
 #' @param replications *[integer]* Number of bootstrap replications.
@@ -142,15 +177,23 @@ bootstrap_confidence <- function(spec, data, replications, conf_level) {
   cluster_splits <- if (!is.null(cluster_column) && cluster_column %in% colnames(data)) {
     split(seq_len(nrow(data)), data[[cluster_column]])
   }
+  boot_estimate <- spec$boot_estimate
 
   for (i in seq_len(replications)) {
-    boot_data <- resample_by_cluster(data, cluster_column, cluster_splits)
-    fit <- tryCatch(spec$fit(boot_data), error = function(e) NULL)
-    if (is.null(fit)) next
-    coefs <- tryCatch(spec$boot_coefs(fit), error = function(e) NULL)
-    if (is.null(coefs)) next
-    coefs <- coefs[intersect(names(coefs), spec$terms)]
-    samples[i, names(coefs)] <- coefs
+    rows <- resample_cluster_rows(nrow(data), cluster_splits)
+    if (!is.null(boot_estimate)) {
+      estimates <- tryCatch(boot_estimate(data, rows), error = function(e) NULL)
+      if (is.null(estimates)) next
+      samples[i, names(estimates)] <- estimates
+    } else {
+      boot_data <- data[rows, , drop = FALSE]
+      fit <- tryCatch(spec$fit(boot_data), error = function(e) NULL)
+      if (is.null(fit)) next
+      coefs <- tryCatch(spec$boot_coefs(fit), error = function(e) NULL)
+      if (is.null(coefs)) next
+      coefs <- coefs[intersect(names(coefs), spec$terms)]
+      samples[i, names(coefs)] <- coefs
+    }
   }
 
   ci <- matrix(NA_real_, nrow = length(spec$terms), ncol = 2, dimnames = list(spec$terms, c("lower", "upper")))
@@ -311,6 +354,7 @@ linear_model_specs <- function() {
       fit = function(df) stats::lm(effect ~ se, data = df),
       tidy = function(model, data) tidy_lm_model(model, data, "study_id"),
       boot_coefs = boot_coefs_intercept_slope,
+      boot_estimate = boot_estimate_ols,
       supports_bootstrap = TRUE
     ),
     list(
@@ -324,6 +368,7 @@ linear_model_specs <- function() {
       fit = function(df) plm::plm(effect ~ se, data = df, model = "within", index = "study_id"),
       tidy = tidy_plm_within,
       boot_coefs = boot_coefs_within,
+      boot_estimate = boot_estimate_within,
       supports_bootstrap = TRUE
     ),
     list(
@@ -363,6 +408,7 @@ linear_model_specs <- function() {
       fit = function(df) stats::lm(effect ~ se, data = df, weights = (df$study_size^2)),
       tidy = function(model, data) tidy_lm_model(model, data, "study_id"),
       boot_coefs = boot_coefs_intercept_slope,
+      boot_estimate = make_boot_estimate_weighted_ols("study_size"),
       supports_bootstrap = TRUE
     ),
     list(
@@ -376,6 +422,7 @@ linear_model_specs <- function() {
       fit = function(df) stats::lm(effect ~ se, data = df, weights = (df$precision^2)),
       tidy = function(model, data) tidy_lm_model(model, data, "study_id"),
       boot_coefs = boot_coefs_intercept_slope,
+      boot_estimate = make_boot_estimate_weighted_ols("precision"),
       supports_bootstrap = TRUE
     )
   )
@@ -553,7 +600,9 @@ build_summary_table <- function(coefficients, digits) {
 }
 
 box::export(
-  run_linear_models
+  run_linear_models,
+  linear_model_specs,
+  resample_cluster_rows
 )
 
 # nocov end -----------------------------------------------------------------
