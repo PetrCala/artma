@@ -123,11 +123,6 @@ artma <- function(
       artma / libs / core / utils[get_verbosity],
       artma / output / export[
         resolve_output_dir, ensure_output_dirs, export_results
-      ],
-      artma / interactive / welcome[
-        show_welcome_message,
-        is_first_time_user,
-        mark_welcome_as_shown
       ]
     )
 

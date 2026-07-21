@@ -1,7 +1,6 @@
 box::use(
   artma / data / utils[get_required_colnames],
   artma / data_config / read[get_data_config],
-  artma / data_config / utils[get_config_values],
   artma / data / smart_detection[normalize_whitespace_to_na]
 )
 

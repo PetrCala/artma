@@ -3,10 +3,6 @@
 NULL
 
 box::use(
-  stats[model.frame]
-)
-
-box::use(
   artma / libs / formatting / results[
     significance_mark,
     format_number,

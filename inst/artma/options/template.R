@@ -300,14 +300,10 @@ resolve_option_value <- function(
   }
 
   # 3) No user value, no default
-  if (is.null(opt$default)) {
-    if (!is_interactive) {
-      cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} not provided, and no default is available.")
-    }
-    return(prompt_user_for_option_value(opt))
+  if (!is_interactive) {
+    cli::cli_abort("Required option {CONST$STYLES$OPTIONS$NAME(opt$name)} not provided, and no default is available.")
   }
-
-  cli::cli_abort("Unreachable code reached.")
+  prompt_user_for_option_value(opt)
 }
 
 
