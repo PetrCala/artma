@@ -442,11 +442,15 @@ specify_variable_split <- function(var_name, df, config) {
     return(NULL)
   }
 
-  # Determine data type
-  data_type <- tryCatch(
-    determine_vector_type(var_data, CONST$DATA_CONFIG$DATA_TYPES),
-    error = function(e) "unknown"
-  )
+  # Determine data type, honoring an explicit config override
+  data_type <- if (!is.null(var_config$data_type) && !is.na(var_config$data_type)) {
+    var_config$data_type
+  } else {
+    tryCatch(
+      determine_vector_type(var_data, CONST$DATA_CONFIG$DATA_TYPES),
+      error = function(e) "unknown"
+    )
+  }
 
   # Display variable summary
   cli::cli_text("Data type: {.val {data_type}}")

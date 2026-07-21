@@ -129,11 +129,16 @@ suggest_variables_for_effect_summary <- function(df, config = NULL,
       next
     }
 
-    # Determine data type
-    data_type <- tryCatch(
-      determine_vector_type(var_data, CONST$DATA_CONFIG$DATA_TYPES),
-      error = function(e) "unknown"
-    )
+    # Determine data type, honoring an explicit config override
+    var_config <- config[[make.names(var_name)]]
+    data_type <- if (!is.null(var_config$data_type) && !is.na(var_config$data_type)) {
+      var_config$data_type
+    } else {
+      tryCatch(
+        determine_vector_type(var_data, CONST$DATA_CONFIG$DATA_TYPES),
+        error = function(e) "unknown"
+      )
+    }
 
     # Decision logic based on data type and values
     suggestion <- decide_variable_suggestion(

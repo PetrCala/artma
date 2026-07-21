@@ -663,6 +663,33 @@ test_that("suggest_variables_for_effect_summary uses config when provided", {
 
 # Integration tests -----------------------------------------------------------
 
+test_that("suggest_variables_for_effect_summary honors an explicit data_type override over auto-detection", {
+  # citation_count falls entirely within [0, 100], so auto-detection alone
+  # would classify it as "perc"; an explicit "int" override must win.
+  df <- data.frame(
+    effect = rnorm(100),
+    citation_count = sample(17:60, 100, replace = TRUE),
+    stringsAsFactors = FALSE
+  )
+
+  config <- list(
+    citation_count = list(
+      var_name = "citation_count",
+      data_type = "int"
+    )
+  )
+
+  result <- suggest_variables_for_effect_summary(df, config = config)
+
+  row <- result[result$var_name == "citation_count", ]
+  expect_true(nrow(row) > 0)
+  if (row$suggested) {
+    expect_equal(row$split_method, "gltl")
+    expect_true(row$split_value %in% c("mean", "median"))
+  }
+})
+
+
 test_that("full workflow: detect groups and suggest variables", {
   df <- make_test_data()
 
