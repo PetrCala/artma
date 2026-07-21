@@ -207,10 +207,13 @@ run_iv_regression <- function(df, iv_instrument = "automatic", add_significance_
   model_summary <- summary(model, vcov = get_robust_vcov(model, df$study_id), diagnostics = TRUE)
 
   # Extract Anderson-Rubin F-statistic
-  fstat <- tryCatch({
-    model_ar <- ivmodel::ivmodel(Y = df$effect, D = df$se, Z = df$instr_temp)
-    model_ar$AR$Fstat
-  }, error = function(e) NA_real_)
+  fstat <- tryCatch(
+    {
+      model_ar <- ivmodel::ivmodel(Y = df$effect, D = df$se, Z = df$instr_temp)
+      model_ar$AR$Fstat
+    },
+    error = function(e) NA_real_
+  )
 
   # Extract coefficients
   all_coefs <- model_summary$coefficients
@@ -365,19 +368,22 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
   start_theta <- mean(yi_sig)
   start_tau <- stats::sd(yi_sig)
 
-  opt_result <- tryCatch({
-    stats::optim(
-      par = c(start_theta, start_tau),
-      fn = puniform_star_nll,
-      yi = yi_sig,
-      vi = vi_sig,
-      ni = ni_sig,
-      alpha = alpha,
-      method = "BFGS"
-    )
-  }, error = function(e) {
-    list(par = c(NA_real_, NA_real_), value = NA_real_, convergence = 1)
-  })
+  opt_result <- tryCatch(
+    {
+      stats::optim(
+        par = c(start_theta, start_tau),
+        fn = puniform_star_nll,
+        yi = yi_sig,
+        vi = vi_sig,
+        ni = ni_sig,
+        alpha = alpha,
+        method = "BFGS"
+      )
+    },
+    error = function(e) {
+      list(par = c(NA_real_, NA_real_), value = NA_real_, convergence = 1)
+    }
+  )
 
   if (opt_result$convergence != 0 || any(is.na(opt_result$par))) {
     theta_est <- NA_real_
@@ -388,32 +394,38 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
     theta_est <- opt_result$par[1]
 
     # Approximate standard error using Hessian
-    theta_se <- tryCatch({
-      hess <- stats::optimHess(
-        par = opt_result$par,
-        fn = puniform_star_nll,
-        yi = yi_sig,
-        vi = vi_sig,
-        ni = ni_sig,
-        alpha = alpha
-      )
-      sqrt(solve(hess)[1, 1])
-    }, error = function(e) NA_real_)
+    theta_se <- tryCatch(
+      {
+        hess <- stats::optimHess(
+          par = opt_result$par,
+          fn = puniform_star_nll,
+          yi = yi_sig,
+          vi = vi_sig,
+          ni = ni_sig,
+          alpha = alpha
+        )
+        sqrt(solve(hess)[1, 1])
+      },
+      error = function(e) NA_real_
+    )
 
     # Likelihood ratio test for publication bias (H0: theta = 0)
     ll_full <- -opt_result$value
-    ll_null <- tryCatch({
-      opt_null <- stats::optim(
-        par = c(0, start_tau),
-        fn = puniform_star_nll,
-        yi = yi_sig,
-        vi = vi_sig,
-        ni = ni_sig,
-        alpha = alpha,
-        method = "BFGS"
-      )
-      -opt_null$value
-    }, error = function(e) NA_real_)
+    ll_null <- tryCatch(
+      {
+        opt_null <- stats::optim(
+          par = c(0, start_tau),
+          fn = puniform_star_nll,
+          yi = yi_sig,
+          vi = vi_sig,
+          ni = ni_sig,
+          alpha = alpha,
+          method = "BFGS"
+        )
+        -opt_null$value
+      },
+      error = function(e) NA_real_
+    )
 
     l_stat <- 2 * (ll_full - ll_null)
     l_pval <- if (is.finite(l_stat) && l_stat > 0) stats::pchisq(l_stat, df = 1, lower.tail = FALSE) else NA_real_

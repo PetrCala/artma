@@ -276,9 +276,9 @@ update_config_with_computed_columns <- function(df) {
           var_name = col_name,
           var_name_verbose = make_verbose_name(col_name),
           data_type = col_data_type,
-          variable_summary = !identical(col_name, "study_label"),  # Keep labels out of numeric summaries
-          effect_sum_stats = FALSE,  # Don't split by computed columns
-          is_computed = TRUE  # Mark as computed for clarity
+          variable_summary = !identical(col_name, "study_label"), # Keep labels out of numeric summaries
+          effect_sum_stats = FALSE, # Don't split by computed columns
+          is_computed = TRUE # Mark as computed for clarity
         )
 
         if (get_verbosity() >= 4) {

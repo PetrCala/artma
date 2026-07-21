@@ -283,8 +283,9 @@ prompt_user_for_option_value <- function(opt) {
 #' @param is_interactive [logical(1)] Whether to prompt the user for missing/required values.
 #' @keywords internal
 resolve_option_value <- function(
-    opt,
-    user_input) {
+  opt,
+  user_input
+) {
   is_interactive <- interactive()
 
   if (opt$name %in% names(user_input)) {
@@ -409,10 +410,11 @@ coerce_option_value <- function(val, opt) {
 #' @param add_prefix [logical(1)] Whether to add a package prefix to all. Defaults to FALSE.
 #' #' `list` A list of options
 parse_options_from_template <- function(
-    path,
-    user_input = list(),
-    interactive = TRUE,
-    add_prefix = FALSE) {
+  path,
+  user_input = list(),
+  interactive = TRUE,
+  add_prefix = FALSE
+) {
   box::use(
     artma / const[CONST],
     artma / libs / core / validation[assert_options_template_exists],

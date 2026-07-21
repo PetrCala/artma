@@ -182,7 +182,9 @@ detect_dummy_groups <- function(var_names, df) {
 
   # Check if variable is binary (0/1 or TRUE/FALSE)
   is_binary <- function(var_name) {
-    if (!var_name %in% names(df)) return(FALSE)
+    if (!var_name %in% names(df)) {
+      return(FALSE)
+    }
     vals <- unique(df[[var_name]][!is.na(df[[var_name]])])
     length(vals) == 2 && all(vals %in% c(0, 1, TRUE, FALSE))
   }
