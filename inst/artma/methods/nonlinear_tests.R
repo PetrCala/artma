@@ -85,8 +85,14 @@ nonlinear_tests <- function(df) {
     }
   }
 
+  stem_plots <- results$plots$stem %||% list()
+
   invisible(new_method_result(
     tables = list(summary = results$summary),
+    plots = list(
+      stem_funnel = stem_plots$stem_funnel,
+      stem_mse = stem_plots$stem_mse
+    ),
     meta = list(
       coefficients = results$coefficients,
       skipped = results$skipped,

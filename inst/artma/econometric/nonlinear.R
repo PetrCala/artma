@@ -12,9 +12,11 @@ box::use(
     format_number,
     format_se
   ],
-  artma / calc / methods / stem[stem],
+  artma / calc / methods / stem[stem, stem_funnel, stem_MSE],
   artma / calc / methods / selection_model[metastudies_estimation],
-  artma / calc / methods / endo_kink[run_endogenous_kink]
+  artma / calc / methods / endo_kink[run_endogenous_kink],
+  artma / visualization / options[get_visualization_options],
+  artma / visualization / export[ensure_export_dir, build_export_filename]
 )
 
 # nocov start -----------------------------------------------------------------
@@ -194,8 +196,75 @@ run_stem <- function(df, total_n, options) {
       std_error = std_error,
       p_value = normal_p_value(estimate, std_error)
     ),
-    n_model = n_included
+    n_model = n_included,
+    plots = build_stem_plots(effects, ses, estimates, stem_fit$MSE)
   )
+}
+
+#' Build the STEM funnel and MSE diagnostic plots
+#'
+#' @param effects *\[numeric\]* Effect sizes used to fit the STEM estimator.
+#' @param ses *\[numeric\]* Standard errors used to fit the STEM estimator.
+#' @param estimates *\[matrix\]* The `stem()` estimates matrix.
+#' @param mse_matrix *\[matrix\]* The `stem()` MSE matrix.
+#' @return *\[list\]* With elements `stem_funnel` and `stem_mse`, each either a
+#'   `recordedplot` object or `NULL` if the plot could not be built.
+#' @keywords internal
+build_stem_plots <- function(effects, ses, estimates, mse_matrix) {
+  tryCatch(
+    {
+      vis <- get_visualization_options()
+      stem_estimates <- as.numeric(estimates[1, c("estimate", "se", "sd of total heterogeneity", "n_stem")])
+
+      draw_funnel <- function() stem_funnel(effects, ses, stem_estimates, vis$theme)
+      draw_mse <- function() stem_MSE(mse_matrix)
+
+      if (isTRUE(vis$export_graphics)) {
+        ensure_export_dir(vis$export_path)
+        export_stem_plot(draw_funnel, file.path(vis$export_path, build_export_filename("stem", "funnel")), vis$graph_scale)
+        export_stem_plot(draw_mse, file.path(vis$export_path, build_export_filename("stem", "mse")), vis$graph_scale)
+      }
+
+      list(
+        stem_funnel = record_stem_plot(draw_funnel),
+        stem_mse = record_stem_plot(draw_mse)
+      )
+    },
+    error = function(e) {
+      cli::cli_warn("Could not build STEM diagnostic plots: {conditionMessage(e)}")
+      list(stem_funnel = NULL, stem_mse = NULL)
+    }
+  )
+}
+
+#' Render a base-graphics plotting function into a recorded plot object
+#'
+#' @param draw *\[function\]* Zero-argument function that draws the plot.
+#' @return *\[recordedplot\]* The recorded plot.
+#' @keywords internal
+record_stem_plot <- function(draw) {
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  grDevices::dev.control("enable")
+  draw()
+  grDevices::recordPlot()
+}
+
+#' Export a base-graphics plotting function to a PNG file
+#'
+#' @param draw *\[function\]* Zero-argument function that draws the plot.
+#' @param path *\[character\]* Full file path (including filename).
+#' @param graph_scale *\[numeric\]* Scale factor for the exported dimensions.
+#' @return NULL (invisibly)
+#' @keywords internal
+export_stem_plot <- function(draw, path, graph_scale) {
+  if (file.exists(path)) {
+    file.remove(path)
+  }
+  grDevices::png(path, width = 800 * graph_scale, height = 600 * graph_scale, units = "px", res = 90 * graph_scale)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  draw()
+  invisible(NULL)
 }
 
 run_hierarchical <- function(df, total_n, options) {
@@ -366,6 +435,7 @@ run_nonlinear_methods <- function(df, options) {
   specs <- nonlinear_method_specs(options)
   results <- list()
   skipped <- list()
+  plots <- list()
   for (spec in specs) {
     tryCatch(
       {
@@ -374,6 +444,9 @@ run_nonlinear_methods <- function(df, options) {
         pb <- method_result$publication_bias %||% list(estimate = NA_real_, std_error = NA_real_, p_value = NA_real_)
         effect <- method_result$effect
         n_model <- method_result$n_model %||% total_n
+        if (!is.null(method_result$plots)) {
+          plots[[spec$name]] <- method_result$plots
+        }
         coefficients[[1]] <- data.frame(
           model = spec$name,
           model_label = spec$label,
@@ -415,7 +488,7 @@ run_nonlinear_methods <- function(df, options) {
       n_obs_model = numeric(),
       stringsAsFactors = FALSE
     )
-    return(list(coefficients = empty, summary = empty, skipped = skipped, options = options))
+    return(list(coefficients = empty, summary = empty, skipped = skipped, options = options, plots = plots))
   }
   coefficients <- do.call(rbind, results)
   digits <- options$round_to %||% 3L
@@ -427,7 +500,8 @@ run_nonlinear_methods <- function(df, options) {
     coefficients = coefficients,
     summary = summary,
     skipped = skipped,
-    options = options
+    options = options,
+    plots = plots
   )
 }
 
