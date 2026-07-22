@@ -386,6 +386,38 @@ test_that("run_p_hacking_tests records a skip reason when MAIVE lacks n_obs", {
   expect_true(is.null(result$maive))
 })
 
+test_that("the MAIVE skip reason keeps the install hint when the package is absent", {
+  local_options(artma.verbose = 1)
+  local_pretend_packages_absent("MAIVE")
+
+  result <- run_p_hacking_tests(
+    make_p_hacking_df(),
+    base_p_hacking_options(include_caliper = FALSE, include_maive = TRUE)
+  )
+
+  expect_true(is.null(result$maive))
+  expect_match(result$skipped$maive, "MAIVE")
+  # The actionable half lives in a cli bullet, which e$message would drop.
+  expect_match(result$skipped$maive, "install.packages")
+})
+
+test_that("the MAIVE skip reason reports the installed version when it is too old", {
+  # Without the package the absence check fires first and never reaches the
+  # version branch under test.
+  skip_if_not_installed("MAIVE")
+  local_options(artma.verbose = 1)
+  local_pretend_package_version("MAIVE", "0.0.2.11")
+
+  result <- run_p_hacking_tests(
+    make_p_hacking_df(),
+    base_p_hacking_options(include_caliper = FALSE, include_maive = TRUE)
+  )
+
+  expect_true(is.null(result$maive))
+  expect_match(result$skipped$maive, "0\\.2\\.4 or higher")
+  expect_match(result$skipped$maive, "0\\.0\\.2\\.11")
+})
+
 test_that("run_lcm skips with a reason instead of failing silently", {
   local_pretend_packages_absent("fdrtool")
 
