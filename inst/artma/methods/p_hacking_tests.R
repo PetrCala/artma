@@ -38,7 +38,7 @@ p_hacking_tests <- function(df) {
     simulate_cdfs_seed <- NULL
   }
   include_discontinuity <- opt$include_discontinuity %||% TRUE
-  discontinuity_bandwidth <- opt$discontinuity_bandwidth
+  discontinuity_bandwidth <- opt$discontinuity_bandwidth %||% NA
   if (length(discontinuity_bandwidth) == 1 && is.na(discontinuity_bandwidth)) {
     discontinuity_bandwidth <- NULL
   }

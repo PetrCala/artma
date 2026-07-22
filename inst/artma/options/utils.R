@@ -35,7 +35,9 @@ flat_to_nested <- function(flat_option_list) {
   insert_nested <- function(lst, keys, value) {
     key <- keys[1]
     if (length(keys) == 1) {
-      lst[[key]] <- value
+      # Single-bracket assignment so a NULL value is stored as a NULL element
+      # rather than deleting the key.
+      lst[key] <- list(value)
     } else {
       if (is.null(lst[[key]])) {
         lst[[key]] <- list()

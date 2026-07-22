@@ -113,8 +113,25 @@ get_template_defaults <- function(template_path, prefix = NULL) {
   defaults
 }
 
+#' @title Check whether a value can be descended into
+#' @description A value is only worth recursing into when it is a list that
+#'   carries a name for every element. Unnamed lists (YAML sequences), partially
+#'   named lists and empty mappings have nothing to key a flat path on, so
+#'   descending would silently discard them; they are taken whole instead.
+#' @param value *\[any\]* The value to test.
+#' @return *\[logical\]* Whether the value should be descended into.
+is_descendable <- function(value) {
+  if (!is.list(value) || length(value) == 0) {
+    return(FALSE)
+  }
+  nms <- names(value)
+  !is.null(nms) && all(nzchar(nms))
+}
+
 #' @title Flatten user options
 #' @description Flattens a nested user-supplied YAML object *but* stops at template leaves
+#' @details Values are assigned with single-bracket indexing so an explicit
+#'   YAML `null` is preserved as a `NULL` element rather than deleting the key.
 #' @param user_options *\[list\]* A nested list returned by yaml::read_yaml()
 #' @param leaf_set *\[character\]* A character vector with the leaf paths
 #' @param parent *\[character\]* The current parent path
@@ -123,16 +140,17 @@ flatten_user_options <- function(user_options, leaf_set, parent = NULL) {
 
   for (nm in names(user_options)) {
     path <- if (is.null(parent)) nm else paste(parent, nm, sep = ".")
+    value <- user_options[[nm]]
 
     # --> If we've reached a declared template leaf, take the whole value as-is
-    if (path %in% leaf_set || !is.list(user_options[[nm]])) {
-      flat[[path]] <- user_options[[nm]]
+    if (path %in% leaf_set || !is_descendable(value)) {
+      flat[path] <- list(value)
       next
     }
 
     # Otherwise keep descending
     flat <- c(flat, flatten_user_options(
-      user_options = user_options[[nm]],
+      user_options = value,
       leaf_set = leaf_set,
       parent = path
     ))
@@ -469,6 +487,7 @@ box::export(
   collect_leaf_paths,
   flatten_template_options,
   flatten_user_options,
+  is_descendable,
   get_template_defaults,
   get_option_defs,
   parse_options_from_template,

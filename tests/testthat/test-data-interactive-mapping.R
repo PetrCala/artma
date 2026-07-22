@@ -223,3 +223,93 @@ test_that("format_mapping_display handles empty optional columns", {
   expect_equal(length(result$optional), 0)
   expect_equal(length(result$required), 4)
 })
+
+
+test_that("read_stored_columns seeds from the options file, not the session", {
+  box::use(
+    artma / data / interactive_mapping[read_stored_columns],
+    artma / options / files[write_options_file]
+  )
+
+  tmp_dir <- withr::local_tempdir()
+  file_name <- "seed-test.yaml"
+
+  write_options_file(
+    file.path(tmp_dir, file_name),
+    list(data = list(columns = list(gdp_growth = list(bma = TRUE))))
+  )
+
+  # The session store is empty, as it is during options file creation.
+  withr::local_options(list(
+    "artma.verbose" = 1,
+    "artma.data.columns" = list()
+  ))
+
+  store <- read_stored_columns(file_name, options_dir = tmp_dir)
+
+  expect_true(store$gdp_growth$bma)
+})
+
+
+test_that("save_column_mapping_to_options keeps records already in the file", {
+  box::use(
+    artma / data / interactive_mapping[save_column_mapping_to_options],
+    artma / options / files[options_file_path, read_options_file, write_options_file]
+  )
+
+  tmp_dir <- withr::local_tempdir()
+  file_name <- "keep-records.yaml"
+  path <- options_file_path(tmp_dir, file_name)
+
+  # Build a file valid against the real template, then seed it with records
+  # a user would have configured before the mapping flow runs.
+  artma::options.create(
+    options_file_name = file_name,
+    options_dir = tmp_dir,
+    user_input = list("data.source_path" = "some-data.csv"),
+    should_validate = FALSE,
+    should_overwrite = TRUE
+  )
+
+  seeded <- read_options_file(path)
+  seeded$data$columns <- list(
+    gdp_growth = list(bma = TRUE),
+    effect = list(bma = FALSE)
+  )
+  write_options_file(path, seeded)
+
+  # Empty session store, as during options file creation.
+  withr::local_options(list(
+    "artma.verbose" = 1,
+    "artma.data.columns" = list()
+  ))
+
+  save_column_mapping_to_options(
+    list(effect = "effect_size"),
+    options_file_name = file_name,
+    options_dir = tmp_dir
+  )
+
+  written <- read_options_file(path)$data$columns
+
+  # The moderator record survives the write
+  expect_true(written$gdp_growth$bma)
+
+  # The mapped role record gains source_name without losing its other fields
+  expect_equal(written$effect$source_name, "effect_size")
+  expect_false(written$effect$bma)
+})
+
+
+test_that("read_stored_columns falls back to the session store when absent", {
+  box::use(artma / data / interactive_mapping[read_stored_columns])
+
+  withr::local_options(list(
+    "artma.verbose" = 1,
+    "artma.data.columns" = list(effect = list(source_name = "b"))
+  ))
+
+  store <- read_stored_columns("no-such-file-here.yaml")
+
+  expect_equal(store$effect$source_name, "b")
+})

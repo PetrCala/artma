@@ -124,23 +124,18 @@ save_to_options_file <- function(option_path, value) {
       # Parse option path and update nested structure
       path_parts <- strsplit(option_path, "\\.")[[1]]
 
-      # Navigate to the correct level and update
-      if (length(path_parts) == 1) {
-        current_opts[[path_parts[1]]] <- value
-      } else if (length(path_parts) == 2) {
-        if (is.null(current_opts[[path_parts[1]]])) {
-          current_opts[[path_parts[1]]] <- list()
+      # Navigate to the correct level and update. Any depth is handled: each
+      # missing intermediate level is created before the recursive assignment,
+      # so a deeper option path cannot fall through and write nothing.
+      if (length(path_parts) > 1) {
+        for (depth in seq_len(length(path_parts) - 1)) {
+          prefix <- path_parts[seq_len(depth)]
+          if (!is.list(current_opts[[prefix]])) {
+            current_opts[[prefix]] <- list()
+          }
         }
-        current_opts[[path_parts[1]]][[path_parts[2]]] <- value
-      } else if (length(path_parts) == 3) {
-        if (is.null(current_opts[[path_parts[1]]])) {
-          current_opts[[path_parts[1]]] <- list()
-        }
-        if (is.null(current_opts[[path_parts[1]]][[path_parts[2]]])) {
-          current_opts[[path_parts[1]]][[path_parts[2]]] <- list()
-        }
-        current_opts[[path_parts[1]]][[path_parts[2]]][[path_parts[3]]] <- value
       }
+      current_opts[[path_parts]] <- value
 
       # Write back to file
       write_options_file(options_file, current_opts)
