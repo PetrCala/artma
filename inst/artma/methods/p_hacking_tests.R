@@ -25,6 +25,8 @@ p_hacking_tests <- function(df) {
   caliper_thresholds <- opt$caliper_thresholds %||% c(1.645, 1.96, 2.58)
   caliper_widths <- opt$caliper_widths %||% c(0.05, 0.1, 0.15)
   caliper_display_ratios <- opt$caliper_display_ratios %||% TRUE
+  caliper_tail <- opt$caliper_tail %||% "auto"
+  caliper_cluster <- opt$caliper_cluster %||% TRUE
 
   # Elliott options
   include_elliott <- opt$include_elliott %||% TRUE
@@ -65,6 +67,8 @@ p_hacking_tests <- function(df) {
     is.numeric(caliper_thresholds),
     is.numeric(caliper_widths),
     is.logical(caliper_display_ratios),
+    is.character(caliper_tail),
+    is.logical(caliper_cluster),
     is.logical(include_elliott),
     is.numeric(lcm_iterations),
     is.numeric(lcm_grid_points),
@@ -90,6 +94,10 @@ p_hacking_tests <- function(df) {
   )
 
   assert(length(caliper_thresholds) > 0, "caliper_thresholds must not be empty")
+  assert(
+    caliper_tail %in% c("auto", "positive", "negative", "absolute"),
+    "caliper_tail must be one of: auto, positive, negative, absolute"
+  )
   assert(length(caliper_widths) > 0, "caliper_widths must not be empty")
   assert(lcm_iterations > 0, "lcm_iterations must be positive")
   assert(lcm_grid_points > 0, "lcm_grid_points must be positive")
@@ -114,6 +122,8 @@ p_hacking_tests <- function(df) {
     caliper_thresholds = caliper_thresholds,
     caliper_widths = caliper_widths,
     caliper_display_ratios = caliper_display_ratios,
+    caliper_tail = caliper_tail,
+    caliper_cluster = caliper_cluster,
     include_elliott = include_elliott,
     lcm_iterations = as.integer(lcm_iterations),
     lcm_grid_points = as.integer(lcm_grid_points),
@@ -150,6 +160,19 @@ p_hacking_tests <- function(df) {
       cli::cli_h3("Caliper tests (Gerber & Malhotra, 2008)")
       cli::cli_text("Tests for discontinuities in t-statistic distributions around significance thresholds.")
 
+      tail_used <- attr(results$caliper, "caliper_tail") %||% "positive"
+      tail_note <- switch(tail_used,
+        positive = "positive t-statistics (t > threshold)",
+        negative = "negative t-statistics (t < -threshold)",
+        absolute = "absolute t-statistics (|t| > threshold)",
+        tail_used
+      )
+      cli::cli_text("Tail inspected: {tail_note}. Only an excess {.emph above} the threshold indicates p-hacking.")
+
+      if (identical(attr(results$caliper, "caliper_cluster_method"), "study")) {
+        cli::cli_text("P-values are clustered at the study level.")
+      }
+
       caliper_lines <- utils::capture.output(
         print(results$caliper, row.names = FALSE) # nolint: undesirable_function_linter.
       )
@@ -160,6 +183,10 @@ p_hacking_tests <- function(df) {
     # Elliott tests (2022)
     if (!is.null(results$elliott) && nrow(results$elliott) > 0) {
       cli::cli_h3("Elliott et al. (2022) tests")
+      cli::cli_text(
+        "These test global monotonicity of the p-value density, so they can legitimately ",
+        "disagree with the local caliper results above."
+      )
 
       elliott_lines <- utils::capture.output(
         print(results$elliott, row.names = FALSE) # nolint: undesirable_function_linter.

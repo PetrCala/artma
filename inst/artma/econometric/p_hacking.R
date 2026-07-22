@@ -35,30 +35,165 @@ skip_reason <- function(value) {
 
 # Caliper tests (Gerber & Malhotra, 2008) ---------------------------------
 
+CALIPER_TAILS <- c("auto", "positive", "negative", "absolute")
+
+#' @title Resolve which tail the caliper should inspect
+#' @description
+#' The canonical Gerber and Malhotra (2008) caliper is one-sided, applied in
+#' the direction the literature has an incentive to push its estimates. Signed
+#' t-statistics compared against positive-only thresholds therefore inspect the
+#' wrong tail whenever the literature is dominated by negative effects, where
+#' the reporting incentive sits at `t < -1.96` rather than `t > 1.96`.
+#'
+#' `"auto"` (the default) picks the tail carrying the majority of the
+#' t-statistics. `"positive"` and `"negative"` force one tail; `"absolute"`
+#' pools both tails by taking `|t|`, which is the right choice only when the
+#' literature genuinely reports both signs as findings.
+#' @param t_stats *[numeric]* T-statistics.
+#' @param tail *[character]* One of `"auto"`, `"positive"`, `"negative"`, `"absolute"`.
+#' @return *[character]* The resolved tail, never `"auto"`.
+resolve_caliper_tail <- function(t_stats, tail = "auto") {
+  validate(is.character(tail), length(tail) == 1L)
+  assert(tail %in% CALIPER_TAILS, paste0("tail must be one of: ", paste(CALIPER_TAILS, collapse = ", ")))
+
+  if (!identical(tail, "auto")) {
+    return(tail)
+  }
+
+  usable <- t_stats[is.finite(t_stats) & t_stats != 0]
+  if (length(usable) == 0) {
+    return("positive")
+  }
+
+  if (mean(usable > 0) >= 0.5) "positive" else "negative"
+}
+
+#' @title Orient t-statistics so the tested tail is the upper one
+#' @param t_stats *[numeric]* T-statistics.
+#' @param tail *[character]* A resolved tail (not `"auto"`).
+#' @return *[numeric]* Oriented t-statistics.
+orient_t_stats <- function(t_stats, tail) {
+  switch(tail,
+    positive = t_stats,
+    negative = -t_stats,
+    absolute = abs(t_stats),
+    t_stats
+  )
+}
+
+#' @title Cluster-robust test that a window share equals one half
+#' @description
+#' `stats::binom.test` treats every estimate in the caliper window as an
+#' independent draw, which overstates significance when a handful of studies
+#' contribute most of the window (a single study reporting eight estimates just
+#' above the threshold is one decision, not eight). This computes the same
+#' share but tests it with a cluster-robust score statistic: the score residual
+#' `y_i - 0.5` is summed within each study, and the variance of the share comes
+#' from the between-study spread of those sums, referred to `t(G - 1)`.
+#'
+#' Falls back to the exact binomial test when clustering is not identified
+#' (fewer than two studies, or zero between-study variance).
+#' @param above *[logical]* Whether each window observation lies above the threshold.
+#' @param study_id *[vector or NULL]* Study identifiers for the window observations.
+#' @return *[list]* Contains p_value, n_studies, and cluster_method.
+cluster_robust_share_test <- function(above, study_id = NULL) {
+  n_total <- length(above)
+  n_above <- sum(above)
+
+  exact <- function(n_studies, reason) {
+    list(
+      p_value = stats::binom.test(n_above, n_total, p = 0.5)$p.value,
+      n_studies = n_studies,
+      cluster_method = reason
+    )
+  }
+
+  if (is.null(study_id)) {
+    return(exact(NA_integer_, "none"))
+  }
+
+  assert(length(study_id) == n_total, "study_id must be the same length as the window observations")
+
+  clusters <- split(above, as.character(study_id))
+  n_studies <- length(clusters)
+  if (n_studies < 2L) {
+    return(exact(n_studies, "none"))
+  }
+
+  # Score residuals under H0: share = 0.5, summed within each study.
+  cluster_scores <- vapply(clusters, function(y) sum(y - 0.5), numeric(1))
+  variance <- (n_studies / (n_studies - 1)) * sum(cluster_scores^2) / n_total^2
+
+  if (!is.finite(variance) || variance <= 0) {
+    return(exact(n_studies, "none"))
+  }
+
+  z <- ((n_above / n_total) - 0.5) / sqrt(variance)
+
+  list(
+    p_value = 2 * stats::pt(-abs(z), df = n_studies - 1L),
+    n_studies = n_studies,
+    cluster_method = "study"
+  )
+}
+
+#' @title Describe which side of the threshold carries the excess mass
+#' @param share_above *[numeric]* Share of window observations above the threshold.
+#' @return *[character]* `"above"`, `"below"`, `"balanced"`, or `NA`.
+caliper_direction <- function(share_above) {
+  if (!is.finite(share_above)) {
+    return(NA_character_)
+  }
+  if (share_above > 0.5) {
+    "above"
+  } else if (share_above < 0.5) {
+    "below"
+  } else {
+    "balanced"
+  }
+}
+
 #' @title Run single Caliper test
 #' @description
 #' Performs the Gerber and Malhotra (2008) Caliper test to detect selective
 #' reporting around a significance threshold: within a narrow window around
-#' the threshold, an exact binomial test checks whether the share of
-#' observations just above the threshold departs from 50%.
+#' the threshold, the share of observations just above the threshold is tested
+#' against 50%. The window is taken on t-statistics oriented towards the tail
+#' the literature has an incentive to report (see [resolve_caliper_tail()]),
+#' and the share is tested with a study-clustered statistic when `study_id` is
+#' supplied (see [cluster_robust_share_test()]).
 #' @param t_stats *[numeric]* T-statistics.
 #' @param threshold *[numeric]* T-statistic threshold (default 1.96).
 #' @param width *[numeric]* Caliper interval width (default 0.05).
-#' @return *[list]* Contains share_above, p_value, n_above, n_below.
-run_single_caliper <- function(t_stats, threshold = 1.96, width = 0.05) {
+#' @param study_id *[vector, optional]* Study identifiers, one per element of `t_stats`.
+#' @param tail *[character, optional]* Tail to inspect; see [resolve_caliper_tail()].
+#' @return *[list]* Contains share_above, p_value, n_above, n_below, n_studies,
+#'   direction, tail, and cluster_method.
+run_single_caliper <- function(t_stats, threshold = 1.96, width = 0.05,
+                               study_id = NULL, tail = "auto") {
   validate(
     is.numeric(t_stats),
     is.numeric(threshold),
     is.numeric(width)
   )
+  assert(
+    is.null(study_id) || length(study_id) == length(t_stats),
+    "study_id must be the same length as t_stats"
+  )
+
+  resolved_tail <- resolve_caliper_tail(t_stats, tail)
+  oriented <- orient_t_stats(t_stats, resolved_tail)
 
   # Subset to caliper interval
-  lower_bound <- t_stats > (threshold - width)
-  upper_bound <- t_stats < (threshold + width)
+  lower_bound <- oriented > (threshold - width)
+  upper_bound <- oriented < (threshold + width)
   in_interval <- lower_bound & upper_bound
+  in_interval[is.na(in_interval)] <- FALSE
 
-  n_above <- sum(t_stats[in_interval] > threshold)
-  n_below <- sum(t_stats[in_interval] < threshold)
+  window <- oriented[in_interval]
+  above <- window > threshold
+  n_above <- sum(above)
+  n_below <- sum(window < threshold)
   n_total <- n_above + n_below
 
   if (n_total == 0) {
@@ -66,15 +201,27 @@ run_single_caliper <- function(t_stats, threshold = 1.96, width = 0.05) {
       share_above = NA_real_,
       p_value = NA_real_,
       n_above = 0,
-      n_below = 0
+      n_below = 0,
+      n_studies = 0L,
+      direction = NA_character_,
+      tail = resolved_tail,
+      cluster_method = "none"
     ))
   }
 
+  window_studies <- if (is.null(study_id)) NULL else study_id[in_interval]
+  test <- cluster_robust_share_test(above, window_studies)
+  share_above <- n_above / n_total
+
   list(
-    share_above = n_above / n_total,
-    p_value = stats::binom.test(n_above, n_total, p = 0.5)$p.value,
+    share_above = share_above,
+    p_value = test$p_value,
     n_above = n_above,
-    n_below = n_below
+    n_below = n_below,
+    n_studies = test$n_studies,
+    direction = caliper_direction(share_above),
+    tail = resolved_tail,
+    cluster_method = test$cluster_method
   )
 }
 
@@ -82,12 +229,15 @@ run_single_caliper <- function(t_stats, threshold = 1.96, width = 0.05) {
 #' @param t_stats *[numeric]* T-statistics.
 #' @param thresholds *[numeric]* Vector of thresholds to test.
 #' @param widths *[numeric]* Vector of caliper widths to test.
+#' @param study_id *[vector, optional]* Study identifiers, one per element of `t_stats`.
+#' @param tail *[character, optional]* Tail to inspect; see [resolve_caliper_tail()].
 #' @param add_significance_marks *[logical]* Whether to add significance marks.
 #' @param round_to *[integer]* Number of decimal places.
 #' @param show_progress *[logical]* Whether to show progress indicator.
 #' @return *[data.frame]* Caliper test results.
 run_caliper_tests <- function(t_stats, thresholds = c(1.645, 1.96, 2.58),
-                              widths = c(0.05, 0.1, 0.2),
+                              widths = c(0.05, 0.1, 0.2), study_id = NULL,
+                              tail = "auto",
                               add_significance_marks = TRUE, round_to = 3L,
                               show_progress = TRUE) {
   validate(
@@ -115,9 +265,11 @@ run_caliper_tests <- function(t_stats, thresholds = c(1.645, 1.96, 2.58),
     )
   }
 
+  resolved_tail <- resolve_caliper_tail(t_stats, tail)
+
   for (thresh in thresholds) {
     for (w in widths) {
-      res <- run_single_caliper(t_stats, thresh, w)
+      res <- run_single_caliper(t_stats, thresh, w, study_id = study_id, tail = resolved_tail)
 
       if (show_pb) {
         cli::cli_progress_update()
@@ -129,9 +281,13 @@ run_caliper_tests <- function(t_stats, thresholds = c(1.645, 1.96, 2.58),
         NA_character_
       }
 
+      # Only a share above 0.5 is evidence of p-hacking. A significantly *low*
+      # share points the other way, so it must not be starred as if it were a
+      # discontinuity in the hacking direction.
       p_value_formatted <- if (is.finite(res$p_value)) {
         p_str <- format_number(res$p_value, round_to)
-        if (add_significance_marks) paste0(p_str, significance_mark(res$p_value)) else p_str
+        starrable <- add_significance_marks && identical(res$direction, "above")
+        if (starrable) paste0(p_str, significance_mark(res$p_value)) else p_str
       } else {
         NA_character_
       }
@@ -142,7 +298,11 @@ run_caliper_tests <- function(t_stats, thresholds = c(1.645, 1.96, 2.58),
         share_above = share_formatted,
         p_value = p_value_formatted,
         n_above = res$n_above,
-        n_below = res$n_below
+        n_below = res$n_below,
+        n_studies = res$n_studies,
+        direction = res$direction,
+        tail = res$tail,
+        cluster_method = res$cluster_method
       )
     }
   }
@@ -175,7 +335,7 @@ build_caliper_summary <- function(caliper_results, options) {
   display_ratios <- options$display_ratios %||% TRUE
 
   # Initialize result matrix
-  n_rows <- length(widths) * 3 # 3 rows per width: share above, p-value, n count
+  n_rows <- length(widths) * 4 # 4 rows per width: share above, direction, p-value, n count
   result <- matrix("", nrow = n_rows, ncol = length(thresholds) + 1)
 
   # Column names
@@ -186,10 +346,12 @@ build_caliper_summary <- function(caliper_results, options) {
   for (w in widths) {
     # Row 1: Share above the threshold
     result[row_idx, 1] <- paste0("Caliper width ", w, " - Share above")
-    # Row 2: Binomial test p-value
-    result[row_idx + 1, 1] <- paste0("Caliper width ", w, " - p-value")
-    # Row 3: n count (ratio or total)
-    result[row_idx + 2, 1] <- paste0("Caliper width ", w, if (display_ratios) " - n above/below" else " - n total")
+    # Row 2: Which side of the threshold carries the excess mass
+    result[row_idx + 1, 1] <- paste0("Caliper width ", w, " - Direction")
+    # Row 3: Test p-value
+    result[row_idx + 2, 1] <- paste0("Caliper width ", w, " - p-value")
+    # Row 4: n count (ratio or total)
+    result[row_idx + 3, 1] <- paste0("Caliper width ", w, if (display_ratios) " - n above/below" else " - n total")
 
     for (col_idx in seq_along(thresholds)) {
       thresh <- thresholds[col_idx]
@@ -199,23 +361,49 @@ build_caliper_summary <- function(caliper_results, options) {
       )]]
 
       result[row_idx, col_idx + 1] <- res$share_above
-      result[row_idx + 1, col_idx + 1] <- res$p_value
+      result[row_idx + 1, col_idx + 1] <- caliper_direction_label(res$direction)
+      result[row_idx + 2, col_idx + 1] <- res$p_value
       # Display ratio or total based on option
-      result[row_idx + 2, col_idx + 1] <- if (display_ratios) {
+      counts <- if (display_ratios) {
         paste0(res$n_above, "/", res$n_below)
       } else {
         as.character(res$n_above + res$n_below)
       }
+      n_studies <- res$n_studies
+      result[row_idx + 3, col_idx + 1] <- if (is.null(n_studies) || !is.finite(n_studies) || n_studies == 0) {
+        counts
+      } else {
+        paste0(counts, " (", n_studies, " stud", if (n_studies == 1L) "y" else "ies", ")")
+      }
     }
 
-    row_idx <- row_idx + 3
+    row_idx <- row_idx + 4
   }
 
   # Convert to data frame
   df <- as.data.frame(result, stringsAsFactors = FALSE)
   colnames(df) <- col_names
 
+  # Carried for the printed header; dropped by the CSV exporter.
+  attr(df, "caliper_tail") <- caliper_results[[1]]$tail
+  attr(df, "caliper_cluster_method") <- caliper_results[[1]]$cluster_method
+
   df
+}
+
+#' @title Human-readable label for a caliper direction
+#' @param direction *[character]* Value returned by [caliper_direction()].
+#' @return *[character]* Label for display.
+caliper_direction_label <- function(direction) {
+  if (is.null(direction) || is.na(direction)) {
+    return("")
+  }
+  switch(direction,
+    above = "excess above",
+    below = "excess below (anti-hacking)",
+    balanced = "balanced",
+    ""
+  )
 }
 
 # MAIVE utilities ----------------------------------------------------------
@@ -558,6 +746,8 @@ run_p_hacking_tests <- function(df, options) {
           t_stats = t_stats,
           thresholds = options$caliper_thresholds,
           widths = options$caliper_widths,
+          study_id = if (isFALSE(options$caliper_cluster)) NULL else study_id,
+          tail = options$caliper_tail %||% "auto",
           add_significance_marks = options$add_significance_marks,
           round_to = options$round_to
         )
@@ -763,6 +953,10 @@ box::export(
   run_caliper_tests,
   run_p_hacking_tests,
   run_single_caliper,
+  resolve_caliper_tail,
+  cluster_robust_share_test,
+  caliper_direction,
+  build_caliper_summary,
   compute_pvalues,
   resolve_t_stats,
   prepare_maive_data,

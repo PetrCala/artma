@@ -21,7 +21,11 @@ box::use(
     run_cox_shi,
     run_fisher,
     run_caliper_tests,
-    run_p_hacking_tests
+    run_p_hacking_tests,
+    resolve_caliper_tail,
+    cluster_robust_share_test,
+    caliper_direction,
+    build_caliper_summary
   ],
   artma / calc / methods / elliott[cox_shi_test, simulate_cdfs_parallel]
 )
@@ -146,6 +150,147 @@ test_that("run_single_caliper flags hacked data (excess mass just above threshol
   res <- run_single_caliper(t_stats, threshold = 1.96, width = 0.05)
 
   expect_true(res$p_value < 0.05)
+})
+
+# Caliper tail selection ------------------------------------------------------
+
+test_that("resolve_caliper_tail picks the tail holding most of the mass", {
+  expect_equal(resolve_caliper_tail(c(1, 2, 3, -1), tail = "auto"), "positive")
+  expect_equal(resolve_caliper_tail(c(-1, -2, -3, 1), tail = "auto"), "negative")
+  # Explicit choices are never overridden.
+  expect_equal(resolve_caliper_tail(c(-1, -2, -3), tail = "positive"), "positive")
+  expect_equal(resolve_caliper_tail(c(1, 2, 3), tail = "absolute"), "absolute")
+})
+
+test_that("resolve_caliper_tail defaults to positive without usable values", {
+  expect_equal(resolve_caliper_tail(c(0, 0, NA_real_), tail = "auto"), "positive")
+  expect_equal(resolve_caliper_tail(numeric(0), tail = "auto"), "positive")
+})
+
+test_that("resolve_caliper_tail rejects an unknown tail", {
+  expect_error(resolve_caliper_tail(c(1, 2), tail = "sideways"))
+})
+
+test_that("run_single_caliper inspects the negative tail in a negative literature", {
+  # Excess mass just below -1.96, plus noise well away from the threshold.
+  t_stats <- c(rep(-1.97, 18), rep(-1.94, 3), rep(-0.4, 40))
+
+  auto <- run_single_caliper(t_stats, threshold = 1.96, width = 0.05)
+  expect_equal(auto$tail, "negative")
+  expect_equal(auto$n_above, 18)
+  expect_equal(auto$n_below, 3)
+  expect_equal(auto$direction, "above")
+
+  # The old signed behaviour looks at the empty positive tail.
+  signed <- run_single_caliper(t_stats, threshold = 1.96, width = 0.05, tail = "positive")
+  expect_equal(signed$n_above, 0)
+  expect_true(is.na(signed$share_above))
+})
+
+test_that("run_single_caliper pools both tails when asked", {
+  t_stats <- c(rep(-1.97, 10), rep(1.97, 8), rep(-1.94, 2))
+
+  res <- run_single_caliper(t_stats, threshold = 1.96, width = 0.05, tail = "absolute")
+
+  expect_equal(res$tail, "absolute")
+  expect_equal(res$n_above, 18)
+  expect_equal(res$n_below, 2)
+})
+
+# Caliper study clustering ----------------------------------------------------
+
+test_that("run_single_caliper clusters window observations by study", {
+  # 16 above / 3 below, but half the above-threshold mass comes from 2 studies.
+  t_stats <- c(rep(1.97, 16), rep(1.94, 3))
+  study_id <- c(rep("s18", 4), rep("s45", 4), paste0("s", 1:8), c("s1", "s2", "s3"))
+
+  unclustered <- run_single_caliper(t_stats, threshold = 1.96, width = 0.05)
+  clustered <- run_single_caliper(t_stats, threshold = 1.96, width = 0.05, study_id = study_id)
+
+  expect_equal(clustered$share_above, unclustered$share_above)
+  expect_equal(clustered$cluster_method, "study")
+  expect_equal(clustered$n_studies, 10L)
+  # Clustering must not make the evidence look stronger than the naive test.
+  expect_true(clustered$p_value > unclustered$p_value)
+})
+
+test_that("cluster_robust_share_test falls back to the exact test without clustering", {
+  above <- c(rep(TRUE, 8), rep(FALSE, 2))
+
+  no_ids <- cluster_robust_share_test(above, NULL)
+  expect_equal(no_ids$cluster_method, "none")
+  expect_equal(no_ids$p_value, stats::binom.test(8, 10, p = 0.5)$p.value, tolerance = 1e-12)
+
+  # A single study gives no between-study variation to estimate.
+  one_study <- cluster_robust_share_test(above, rep("s1", 10))
+  expect_equal(one_study$cluster_method, "none")
+  expect_equal(one_study$n_studies, 1L)
+
+  # Every study identical: zero between-cluster spread, so fall back as well.
+  degenerate <- cluster_robust_share_test(c(TRUE, TRUE, TRUE, TRUE), c("a", "b", "c", "d"))
+  expect_true(degenerate$cluster_method %in% c("none", "study"))
+})
+
+test_that("cluster_robust_share_test errors on a mismatched study_id length", {
+  expect_error(cluster_robust_share_test(c(TRUE, FALSE), c("a")))
+})
+
+test_that("run_single_caliper rejects a study_id of the wrong length", {
+  expect_error(run_single_caliper(c(1.97, 1.94), study_id = c("a")))
+})
+
+# Caliper direction -----------------------------------------------------------
+
+test_that("caliper_direction labels which side carries the excess", {
+  expect_equal(caliper_direction(0.8), "above")
+  expect_equal(caliper_direction(0.3), "below")
+  expect_equal(caliper_direction(0.5), "balanced")
+  expect_true(is.na(caliper_direction(NA_real_)))
+})
+
+test_that("run_caliper_tests only stars an excess above the threshold", {
+  # 4 above / 16 below at the 1.645 threshold: significant, but anti-p-hacking.
+  t_stats <- c(rep(1.66, 4), rep(1.60, 16))
+
+  results <- run_caliper_tests(
+    t_stats,
+    thresholds = 1.645,
+    widths = 0.1,
+    show_progress = FALSE
+  )
+
+  expect_equal(results[[1]]$direction, "below")
+  expect_false(grepl("\\*", results[[1]]$p_value))
+
+  # Flip the imbalance and the same p-value does get starred.
+  flipped <- run_caliper_tests(
+    c(rep(1.66, 16), rep(1.60, 4)),
+    thresholds = 1.645,
+    widths = 0.1,
+    show_progress = FALSE
+  )
+  expect_equal(flipped[[1]]$direction, "above")
+  expect_match(flipped[[1]]$p_value, "\\*")
+})
+
+test_that("build_caliper_summary shows a direction row and study counts", {
+  t_stats <- c(rep(1.97, 6), rep(1.94, 2))
+  study_id <- c("a", "a", "b", "b", "c", "c", "d", "d")
+
+  results <- run_caliper_tests(
+    t_stats,
+    thresholds = 1.96,
+    widths = 0.05,
+    study_id = study_id,
+    show_progress = FALSE
+  )
+  summary <- build_caliper_summary(results, list(display_ratios = TRUE))
+
+  expect_true(any(grepl("Direction", summary[[1]])))
+  expect_true(any(grepl("excess above", summary[[2]])))
+  expect_true(any(grepl("6/2 \\(4 studies\\)", summary[[2]])))
+  expect_equal(attr(summary, "caliper_tail"), "positive")
+  expect_equal(attr(summary, "caliper_cluster_method"), "study")
 })
 
 # run_caliper_tests ---------------------------------------------------------
@@ -307,7 +452,8 @@ test_that("run_p_hacking_tests dedupes duplicated caliper thresholds/widths with
   )
 
   expect_true(is.data.frame(result$caliper))
-  expect_equal(nrow(result$caliper), 3L)
+  # 4 rows per width: share above, direction, p-value, n count.
+  expect_equal(nrow(result$caliper), 4L)
   expect_equal(ncol(result$caliper), 2L)
 })
 

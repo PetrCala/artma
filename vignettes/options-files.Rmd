@@ -114,6 +114,8 @@ Method-specific parameters for each analysis method:
 - `include_caliper`: Whether to include Caliper tests
 - `caliper_thresholds`: T-statistic thresholds to test
 - `caliper_widths`: Interval widths around thresholds
+- `caliper_tail`: Which tail to inspect (`auto`, `positive`, `negative`, `absolute`)
+- `caliper_cluster`: Whether to cluster the caliper p-values by study
 - `include_elliott`: Whether to include Elliott et al. tests
 - `lcm_iterations`: Number of simulations for LCM test
 
