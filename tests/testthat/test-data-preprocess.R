@@ -4,6 +4,9 @@ box::use(
     expect_error,
     expect_true,
     expect_false,
+    expect_null,
+    expect_warning,
+    expect_no_warning,
     test_that
   ],
   withr[local_options]
@@ -14,6 +17,9 @@ expect_equal <- getFromNamespace("expect_equal", "testthat")
 expect_error <- getFromNamespace("expect_error", "testthat")
 expect_true <- getFromNamespace("expect_true", "testthat")
 expect_false <- getFromNamespace("expect_false", "testthat")
+expect_null <- getFromNamespace("expect_null", "testthat")
+expect_warning <- getFromNamespace("expect_warning", "testthat")
+expect_no_warning <- getFromNamespace("expect_no_warning", "testthat")
 
 # Tests for remove_redundant_columns, verify_variable_names, and
 # handle_extra_columns_with_data have been removed. Those functions were
@@ -162,4 +168,134 @@ test_that("apply_subset_conditions errors when a condition targets a missing col
 
   df <- data.frame(country = c("USA", "UK"), year = c(1999, 2001))
   expect_error(apply_subset_conditions(df), "Failed to evaluate subset condition")
+})
+
+# -- enforce_correct_values ------------------------------------------------------
+
+test_that("enforce_correct_values defaults to removing rows with zero SE when unset", {
+  box::use(artma / data / preprocess[enforce_correct_values])
+
+  withr::local_options(list(
+    "artma.calc.se_zero_handling" = NULL,
+    "artma.verbose" = 3
+  ))
+
+  df <- data.frame(se = c(0.1, 0, 0.2, 0))
+  expect_warning(result <- enforce_correct_values(df), "Removed 2 rows")
+
+  expect_equal(nrow(result), 2)
+  expect_true(all(result$se != 0))
+})
+
+test_that("enforce_correct_values 'remove' strategy drops zero-SE rows with a warning", {
+  box::use(artma / data / preprocess[enforce_correct_values])
+
+  withr::local_options(list(
+    "artma.calc.se_zero_handling" = "remove",
+    "artma.verbose" = 3
+  ))
+
+  df <- data.frame(se = c(0.1, 0, 0.2))
+  expect_warning(result <- enforce_correct_values(df), "stricter validation")
+
+  expect_equal(result$se, c(0.1, 0.2))
+})
+
+test_that("enforce_correct_values 'remove' strategy is a no-op without zero SE", {
+  box::use(artma / data / preprocess[enforce_correct_values])
+
+  withr::local_options(list(
+    "artma.calc.se_zero_handling" = "remove",
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(se = c(0.1, 0.2))
+  result <- expect_no_warning(enforce_correct_values(df))
+
+  expect_equal(result, df)
+})
+
+test_that("enforce_correct_values 'stop' strategy aborts on zero SE", {
+  box::use(artma / data / preprocess[enforce_correct_values])
+
+  withr::local_options(list(
+    "artma.calc.se_zero_handling" = "stop",
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(se = c(0.1, 0))
+  expect_error(enforce_correct_values(df), "contains zero values")
+})
+
+test_that("enforce_correct_values 'warn' strategy keeps rows but warns", {
+  box::use(artma / data / preprocess[enforce_correct_values])
+
+  withr::local_options(list(
+    "artma.calc.se_zero_handling" = "warn",
+    "artma.verbose" = 3
+  ))
+
+  df <- data.frame(se = c(0.1, 0))
+  expect_warning(result <- enforce_correct_values(df), "contains zero values")
+
+  expect_equal(result, df)
+})
+
+test_that("enforce_correct_values 'ignore' strategy silently keeps rows", {
+  box::use(artma / data / preprocess[enforce_correct_values])
+
+  withr::local_options(list(
+    "artma.calc.se_zero_handling" = "ignore",
+    "artma.verbose" = 3
+  ))
+
+  df <- data.frame(se = c(0.1, 0))
+  result <- expect_no_warning(enforce_correct_values(df))
+
+  expect_equal(result, df)
+})
+
+# -- resolve_se_zero_handling ------------------------------------------------------
+
+test_that("resolve_se_zero_handling is a no-op when the option is already configured", {
+  box::use(artma / data / preprocess[resolve_se_zero_handling])
+
+  withr::local_options(list(
+    "artma.calc.se_zero_handling" = "stop",
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(se = c(0.1, 0))
+  resolve_se_zero_handling(df)
+
+  expect_equal(getOption("artma.calc.se_zero_handling"), "stop")
+})
+
+test_that("resolve_se_zero_handling is a no-op when no zero SE rows are found", {
+  box::use(artma / data / preprocess[resolve_se_zero_handling])
+
+  withr::local_options(list(
+    "artma.calc.se_zero_handling" = NULL,
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(se = c(0.1, 0.2))
+  resolve_se_zero_handling(df)
+
+  expect_null(getOption("artma.calc.se_zero_handling"))
+})
+
+test_that("resolve_se_zero_handling defaults to 'remove' in a non-interactive session", {
+  box::use(artma / data / preprocess[resolve_se_zero_handling])
+
+  withr::local_options(list(
+    "artma.calc.se_zero_handling" = NULL,
+    "artma.autonomy.level" = NULL,
+    "artma.verbose" = 2
+  ))
+
+  df <- data.frame(se = c(0.1, 0, 0.2))
+  expect_warning(resolve_se_zero_handling(df), "stricter validation")
+
+  expect_equal(getOption("artma.calc.se_zero_handling"), "remove")
 })

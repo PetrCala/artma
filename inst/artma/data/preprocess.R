@@ -162,6 +162,75 @@ enforce_data_types <- function(df) {
   df
 }
 
+#' @title Resolve the zero-standard-error handling strategy
+#' @description Configure-phase decision that fixes `artma.calc.se_zero_handling`
+#'   before the cached compute phase runs. When the option is already set it is
+#'   a no-op. Otherwise, if the (already cleaned) data frame has rows with a
+#'   zero standard error, it prompts the user interactively when the autonomy
+#'   level warrants it (offering the strict `"stop"` choice among others), or
+#'   falls back to the friendlier `"remove"` strategy. This is intentionally
+#'   separate from `enforce_correct_values()` (the pure compute-phase step) so
+#'   that no prompt or option write ever happens inside the cached pipeline.
+#' @param df *\[data.frame\]* The cleaned data frame used to detect zero
+#'   standard errors (as produced by `clean_data()`).
+#' @return `NULL`, invisibly.
+#' @keywords internal
+resolve_se_zero_handling <- function(df) {
+  box::use(
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / core / autonomy[should_prompt_user],
+    artma / options / prompts[prompt_se_zero_handling],
+    artma / interactive / save_preference[prompt_save_preference]
+  )
+
+  se_zero_handling_option <- getOption("artma.calc.se_zero_handling", default = NA)
+
+  # Strategy already configured: nothing to decide.
+  if (!is.na(se_zero_handling_option)) {
+    return(invisible(NULL))
+  }
+
+  if (is.null(df[["se"]])) {
+    return(invisible(NULL))
+  }
+
+  zero_se_rows <- which(suppressWarnings(as.numeric(df$se)) == 0)
+
+  # Without zero standard errors there is no decision to make; the compute
+  # phase falls back to the deterministic "remove" default when it runs.
+  if (length(zero_se_rows) == 0) {
+    return(invisible(NULL))
+  }
+
+  if (should_prompt_user(required_level = "autonomous")) {
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_info("Zero standard errors detected and no handling strategy configured")
+    }
+
+    # Prompt the user for their preference and record it for this session.
+    selected_strategy <- prompt_se_zero_handling()
+    options(artma.calc.se_zero_handling = selected_strategy)
+
+    # Offer to persist the preference to the options file.
+    prompt_save_preference(
+      option_path = "calc.se_zero_handling",
+      value = selected_strategy,
+      description = "zero standard error handling strategy",
+      respect_autonomy = FALSE
+    )
+  } else {
+    if (get_verbosity() >= 2) {
+      cli::cli_warn(c(
+        "!" = "{length(zero_se_rows)} row{?s} with zero standard errors detected.",
+        "i" = "Defaulting to the {.val remove} strategy. Set {.field artma.calc.se_zero_handling} to {.val stop} for stricter validation."
+      ))
+    }
+    options(artma.calc.se_zero_handling = "remove")
+  }
+
+  invisible(NULL)
+}
+
 #' @title Check for invalid values
 #' @description Check for invalid values and enforce correct ones
 #' @param df *\[data.frame\]* The data frame to check for invalid values for
@@ -176,7 +245,7 @@ enforce_correct_values <- function(df) {
 
   box::use(artma / libs / core / validation[assert])
 
-  se_zero_handling <- getOption("artma.calc.se_zero_handling", "stop")
+  se_zero_handling <- getOption("artma.calc.se_zero_handling", "remove")
 
   zero_se_rows <- which(df$se == 0)
 
@@ -186,6 +255,16 @@ enforce_correct_values <- function(df) {
     if (length(zero_se_rows) > 0) {
       if (get_verbosity() >= 3) {
         cli::cli_warn("The 'se' column contains zero values in {length(zero_se_rows)} rows")
+      }
+    }
+  } else if (se_zero_handling == "remove") {
+    if (length(zero_se_rows) > 0) {
+      df <- df[-zero_se_rows, , drop = FALSE]
+      if (get_verbosity() >= 3) {
+        cli::cli_warn(c(
+          "!" = "Removed {length(zero_se_rows)} row{?s} with zero standard errors.",
+          "i" = "Set {.field artma.calc.se_zero_handling} to {.val stop} for stricter validation."
+        ))
       }
     }
   }
@@ -355,7 +434,9 @@ preprocess_data <- function(df) {
 box::export(
   clean_data,
   enforce_data_types,
+  enforce_correct_values,
   apply_subset_conditions,
   preprocess_data,
-  resolve_na_handling
+  resolve_na_handling,
+  resolve_se_zero_handling
 )
