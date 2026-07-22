@@ -12,6 +12,7 @@ box::use(
   artma / libs / formatting / results[
     significance_mark,
     format_number,
+    format_estimate,
     format_se,
     format_ci
   ],
@@ -73,6 +74,20 @@ get_robust_vcov <- function(model, cluster) {
 #' Staiger-Stock/Stock-Yogo rule-of-thumb minimum first-stage F-statistic
 #' below which an instrument is considered weak.
 WEAK_INSTRUMENT_F_THRESHOLD <- 10
+
+#' @title Coerce a test statistic to a single numeric value
+#' @description
+#' Test statistics pulled out of third-party model objects are occasionally
+#' `NULL` or empty. Passing such a value on lets it vanish from a `c()` call
+#' and silently shorten a summary column, so collapse it to `NA_real_` here.
+#' @param x *[any]* Candidate statistic.
+#' @return *[numeric(1)]* The statistic, or `NA_real_` if it is not a single number.
+as_scalar_stat <- function(x) {
+  if (!is.numeric(x) || length(x) != 1) {
+    return(NA_real_)
+  }
+  x
+}
 
 #' @title Default tie-break instrument among equally strong candidates
 #' @description
@@ -209,11 +224,13 @@ run_iv_regression <- function(df, iv_instrument = "automatic", add_significance_
   model <- AER::ivreg(formula = iv_formula, data = df)
   model_summary <- summary(model, vcov = get_robust_vcov(model, df$study_id), diagnostics = TRUE)
 
-  # Extract Anderson-Rubin F-statistic
+  # Extract Anderson-Rubin F-statistic. `ivmodel` returns NULL for `AR` when the
+  # test is not computable, and a zero-length statistic silently shortens the
+  # summary column built from it, so normalize to a scalar here.
   fstat <- tryCatch(
     {
       model_ar <- ivmodel::ivmodel(Y = df$effect, D = df$se, Z = df$instr_temp)
-      model_ar$AR$Fstat
+      as_scalar_stat(model_ar$AR$Fstat)
     },
     error = function(e) NA_real_
   )
@@ -258,7 +275,7 @@ run_iv_regression <- function(df, iv_instrument = "automatic", add_significance_
   )
 
   coefficients$significance <- if (add_significance_marks) significance_mark(coefficients$p_value) else ""
-  coefficients$estimate_formatted <- paste0(format_number(coefficients$estimate, round_to), coefficients$significance)
+  coefficients$estimate_formatted <- format_estimate(coefficients$estimate, round_to, coefficients$significance)
   coefficients$std_error_formatted <- format_se(coefficients$std_error, round_to)
 
   list(
@@ -604,7 +621,7 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
   )
 
   coefficients$significance <- if (add_significance_marks) significance_mark(coefficients$p_value) else ""
-  coefficients$estimate_formatted <- paste0(format_number(coefficients$estimate, round_to), coefficients$significance)
+  coefficients$estimate_formatted <- format_estimate(coefficients$estimate, round_to, coefficients$significance)
   coefficients$std_error_formatted <- format_se(coefficients$std_error, round_to)
 
   list(
@@ -718,6 +735,24 @@ na_to_not_computable <- function(x) {
   x
 }
 
+#' @title Fit a summary column to the table's row count
+#' @description
+#' Each summary column is assembled by concatenating per-metric values, any of
+#' which can come back zero-length when the underlying model did not produce
+#' the statistic. A short column makes the data frame assignment fail with an
+#' opaque `replacement has N rows` error, so pad it with the placeholder
+#' instead and keep the table printable.
+#' @param values *[character]* The assembled column.
+#' @param n *[integer]* The number of rows the table has.
+#' @return *[character]* A column of exactly `n` entries.
+fit_summary_column <- function(values, n) {
+  values <- as.character(values)
+  if (length(values) < n) {
+    values <- c(values, rep(NOT_COMPUTABLE, n - length(values)))
+  }
+  values[seq_len(n)]
+}
+
 build_exogeneity_summary <- function(iv_results, puniform_results, options) {
   row_labels <- c(
     "Publication Bias",
@@ -741,20 +776,20 @@ build_exogeneity_summary <- function(iv_results, puniform_results, options) {
     pb <- iv_coef[iv_coef$term == "publication_bias", , drop = FALSE]
     eff <- iv_coef[iv_coef$term == "effect", , drop = FALSE]
 
-    first_stage_str <- format_number(iv_results$first_stage_fstat, options$round_to)
+    first_stage_str <- format_number(as_scalar_stat(iv_results$first_stage_fstat), options$round_to)
     if (isTRUE(iv_results$weak_instrument) && !is.na(first_stage_str)) {
       first_stage_str <- paste0(first_stage_str, " (weak instrument)")
     }
 
-    summary[["IV"]] <- na_to_not_computable(c(
+    summary[["IV"]] <- na_to_not_computable(fit_summary_column(c(
       if (nrow(pb) > 0) pb$estimate_formatted else NA_character_,
       if (nrow(pb) > 0) pb$std_error_formatted else NA_character_,
       if (nrow(eff) > 0) eff$estimate_formatted else NA_character_,
       if (nrow(eff) > 0) eff$std_error_formatted else NA_character_,
       if (nrow(iv_coef) > 0) format_number(iv_coef$n_obs[1], 0) else NA_character_,
       first_stage_str,
-      format_number(iv_results$ar_fstat, options$round_to)
-    ))
+      format_number(as_scalar_stat(iv_results$ar_fstat), options$round_to)
+    ), length(row_labels)))
   } else {
     summary[["IV"]] <- rep(NOT_COMPUTABLE, length(row_labels))
   }
@@ -778,7 +813,7 @@ build_exogeneity_summary <- function(iv_results, puniform_results, options) {
       NA_character_
     }
 
-    summary[["p-Uniform*"]] <- na_to_not_computable(c(
+    summary[["p-Uniform*"]] <- na_to_not_computable(fit_summary_column(c(
       pb_test_str,
       pb_p_str,
       if (nrow(eff) > 0) eff$estimate_formatted else NA_character_,
@@ -786,7 +821,7 @@ build_exogeneity_summary <- function(iv_results, puniform_results, options) {
       if (nrow(pu_coef) > 0) format_number(pu_coef$n_obs[1], 0) else NA_character_,
       "", # No first-stage F for p-uniform
       "" # No F-test for p-uniform
-    ))
+    ), length(row_labels)))
   } else {
     summary[["p-Uniform*"]] <- rep(NOT_COMPUTABLE, length(row_labels))
   }
@@ -796,6 +831,7 @@ build_exogeneity_summary <- function(iv_results, puniform_results, options) {
 }
 
 box::export(
+  build_exogeneity_summary,
   run_exogeneity_tests,
   run_iv_regression,
   run_puniform_star,

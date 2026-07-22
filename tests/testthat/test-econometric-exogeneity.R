@@ -13,6 +13,7 @@ box::use(
   ],
   withr[local_options],
   artma / econometric / exogeneity[
+    build_exogeneity_summary,
     run_iv_regression,
     run_puniform_star,
     find_best_instrument,
@@ -390,4 +391,51 @@ test_that("run_exogeneity_tests aborts when ivmodel is absent", {
 
   local_pretend_packages_absent("ivmodel")
   expect_error(run_exogeneity_tests(df, default_exogeneity_options()), regexp = "ivmodel")
+})
+
+test_that("build_exogeneity_summary survives a zero-length test statistic", {
+  # ivmodel returns NULL for AR whenever the test is not computable. The
+  # resulting zero-length statistic used to shorten the IV column and abort the
+  # table assembly with "replacement has N rows, data has 7".
+  iv_results <- list(
+    coefficients = data.frame(
+      term = c("effect", "publication_bias"),
+      estimate_formatted = c("0.100", "0.200"),
+      std_error_formatted = c("(0.010)", "(0.020)"),
+      n_obs = c(120L, 120L),
+      stringsAsFactors = FALSE
+    ),
+    instrument_name = "1/sqrt(n_obs)",
+    ar_fstat = NULL,
+    first_stage_fstat = NULL,
+    weak_instrument = FALSE
+  )
+  puniform_results <- list(coefficients = NULL)
+  options <- list(round_to = 3L)
+
+  summary <- build_exogeneity_summary(iv_results, puniform_results, options)
+
+  expect_equal(nrow(summary), 7L)
+  expect_equal(summary[["IV"]][[7]], "not computable")
+  expect_true(all(nzchar(summary[["p-Uniform*"]])))
+})
+
+test_that("build_exogeneity_summary does not print a bare NA for a non-estimable effect", {
+  puniform_results <- list(
+    coefficients = data.frame(
+      term = c("effect", "publication_bias_test"),
+      estimate = c(NA_real_, NA_real_),
+      statistic = c(NA_real_, NA_real_),
+      p_value = c(NA_real_, NA_real_),
+      estimate_formatted = c(NA_character_, NA_character_),
+      std_error_formatted = c(NA_character_, NA_character_),
+      n_obs = c(60L, 60L),
+      stringsAsFactors = FALSE
+    )
+  )
+
+  summary <- build_exogeneity_summary(list(coefficients = NULL), puniform_results, list(round_to = 3L))
+
+  expect_false(any(summary[["p-Uniform*"]] == "NA"))
+  expect_equal(summary[["p-Uniform*"]][[3]], "not computable")
 })
