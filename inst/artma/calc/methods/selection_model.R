@@ -154,7 +154,11 @@ variation_variance_loglikelihood <- function(lambdabar, tauhat, betap, cutoffs, 
 #' @param cutoffs [numeric] Cut-off thresholds.
 #' @param symmetric [logical] Should symmetry be enforced?
 #' @param model [character] Either "normal" or "t".
-#' @return A list with parameter estimates and robust standard errors.
+#' @return A list with parameter estimates and robust standard errors, plus
+#'   `convergence` (the optimiser's exit code, 0 for success) and
+#'   `boundary_hit` (TRUE when a variance or publication-probability
+#'   parameter landed on its lower constraint of 0, a corner solution rather
+#'   than a genuine optimum).
 metastudies_estimation <- function(X, sigma, cutoffs, symmetric, model = "normal") {
   max_eval <- 1e5
   max_iter <- 1e5
@@ -177,9 +181,20 @@ metastudies_estimation <- function(X, sigma, cutoffs, symmetric, model = "normal
   upper <- rep(Inf, length(start))
   optimum <- stats::nlminb(start = start, objective = objective, lower = lower, upper = upper, control = list(eval.max = max_eval, iter.max = max_iter, abs.tol = tol))
   params <- optimum$par
-  covariance <- robust_variance(stepsize, n, params, llh, seq_len(n))
-  standard_errors <- base::sqrt(base::diag(covariance))
-  list(Psihat = params, SE = standard_errors)
+  covariance <- tryCatch(
+    robust_variance(stepsize, n, params, llh, seq_len(n)),
+    error = function(e) matrix(NA_real_, length(params), length(params))
+  )
+  standard_errors <- suppressWarnings(base::sqrt(base::diag(covariance)))
+  boundary_tolerance <- 1e-4
+  boundary_hit <- any(abs(params[-1]) < boundary_tolerance)
+  list(
+    Psihat = params,
+    SE = standard_errors,
+    convergence = optimum$convergence,
+    message = optimum$message,
+    boundary_hit = boundary_hit
+  )
 }
 
 #' Tidy table of selection model estimates
