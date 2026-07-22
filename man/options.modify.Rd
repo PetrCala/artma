@@ -19,7 +19,7 @@ options.modify(
 
 \item{template_path}{\emph{[character, optional]} Full path to the options template file. Defaults to \code{NULL}.}
 
-\item{user_input}{\emph{[list, optional]} A named list of user-supplied values for these options. If \code{NULL} or missing entries exist, the function will prompt the user via \code{readline()} (for required entries) or use defaults (for optional ones).}
+\item{user_input}{\emph{[list, optional]} A named list of user-supplied values for these options, using either flat dotted-path names (e.g. \code{list("data.source_path" = "...")}, matching what \code{options.load(load_with_prefix = FALSE)} returns) or nested lists that mirror the YAML structure (e.g. \code{list(data = list(source_path = "..."))}); both are flattened against the template before merging, so a partial edit to a list-type option (e.g. one entry of \code{data.columns}) is merged into the existing value instead of replacing it. If \code{NULL} or missing entries exist, the function will prompt the user via \code{readline()} (for required entries) or use defaults (for optional ones).}
 
 \item{should_validate}{\emph{[logical, optional]} If TRUE, validate the modified options file against the template. Defaults to TRUE.}
 }

@@ -399,6 +399,130 @@ test_that("options.load backfills defaults when loading without prefix", {
   expect_equal(loaded$data.winsorization_level, 0)
 })
 
+test_that("options.modify merges a nested user_input into a list-type option without dropping siblings", {
+  box::use(artma[options.modify])
+
+  tmp_dir <- withr::local_tempdir()
+  template_path <- file.path(tmp_dir, "template.yaml")
+
+  template <- list(
+    data = list(
+      source_path = list(
+        type = "character",
+        default = "",
+        help = "Path to the data source"
+      ),
+      na_handling = list(
+        type = "character",
+        default = "stop",
+        help = "How to handle missing values"
+      ),
+      columns = list(
+        type = "list",
+        default = NA,
+        allow_na = TRUE,
+        help = "Per-column configuration"
+      )
+    ),
+    methods = list(
+      p_hacking_tests = list(
+        caliper_tail = list(
+          type = "character",
+          default = "two_sided",
+          help = "Which tail to test"
+        ),
+        caliper_cluster = list(
+          type = "logical",
+          default = TRUE,
+          help = "Whether to cluster"
+        )
+      )
+    )
+  )
+  yaml::write_yaml(template, template_path)
+
+  original <- list(
+    data = list(
+      source_path = "old.csv",
+      na_handling = "stop",
+      columns = list(
+        a = list(source_name = "A"),
+        b = list(source_name = "B"),
+        c = list(source_name = "C")
+      )
+    ),
+    methods = list(
+      p_hacking_tests = list(
+        caliper_tail = "two_sided",
+        caliper_cluster = TRUE
+      )
+    )
+  )
+  yaml::write_yaml(original, file.path(tmp_dir, "user.yaml"))
+
+  options.modify(
+    options_file_name = "user.yaml",
+    options_dir = tmp_dir,
+    template_path = template_path,
+    user_input = list(
+      data = list(
+        source_path = "new.csv",
+        columns = list(a = list(source_name = "A2"))
+      )
+    ),
+    should_validate = TRUE
+  )
+
+  modified <- yaml::read_yaml(file.path(tmp_dir, "user.yaml"))
+
+  # The requested edits landed...
+  expect_equal(modified$data$source_path, "new.csv")
+  expect_equal(modified$data$columns$a$source_name, "A2")
+
+  # ...without dropping sibling data.* keys, other data.columns entries, or an
+  # unrelated top-level section.
+  expect_equal(modified$data$na_handling, "stop")
+  expect_equal(modified$data$columns$b$source_name, "B")
+  expect_equal(modified$data$columns$c$source_name, "C")
+  expect_equal(modified$methods$p_hacking_tests$caliper_tail, "two_sided")
+  expect_true(modified$methods$p_hacking_tests$caliper_cluster)
+})
+
+test_that("options.modify leaves the file untouched when the modified options fail validation", {
+  box::use(artma[options.modify])
+
+  tmp_dir <- withr::local_tempdir()
+  template_path <- file.path(tmp_dir, "template.yaml")
+
+  template <- list(
+    data = list(
+      threshold = list(
+        type = "integer",
+        default = 10L,
+        help = "Numeric threshold"
+      )
+    )
+  )
+  yaml::write_yaml(template, template_path)
+
+  original <- list(data = list(threshold = 4L))
+  options_path <- file.path(tmp_dir, "user.yaml")
+  yaml::write_yaml(original, options_path)
+  original_contents <- readLines(options_path)
+
+  expect_error(
+    options.modify(
+      options_file_name = "user.yaml",
+      options_dir = tmp_dir,
+      template_path = template_path,
+      user_input = list("data.threshold" = "not-a-number"),
+      should_validate = TRUE
+    )
+  )
+
+  expect_identical(readLines(options_path), original_contents)
+})
+
 test_that("options.list includes files with the .yml suffix", {
   box::use(artma[options.list])
 

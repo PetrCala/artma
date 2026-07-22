@@ -444,7 +444,7 @@ options.load <- function(
 #' @param options_file_name *\[character, optional\]* Name of the user options file to modify, including the suffix.
 #' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
 #' @param template_path *\[character, optional\]* Full path to the options template file. Defaults to `NULL`.
-#' @param user_input *\[list, optional\]* A named list of user-supplied values for these options. If `NULL` or missing entries exist, the function will prompt the user via `readline()` (for required entries) or use defaults (for optional ones).
+#' @param user_input *\[list, optional\]* A named list of user-supplied values for these options, using either flat dotted-path names (e.g. `list("data.source_path" = "...")`, matching what `options.load(load_with_prefix = FALSE)` returns) or nested lists that mirror the YAML structure (e.g. `list(data = list(source_path = "..."))`); both are flattened against the template before merging, so a partial edit to a list-type option (e.g. one entry of `data.columns`) is merged into the existing value instead of replacing it. If `NULL` or missing entries exist, the function will prompt the user via `readline()` (for required entries) or use defaults (for optional ones).
 #' @param should_validate *\[logical, optional\]* If TRUE, validate the modified options file against the template. Defaults to TRUE.
 #' @return `NULL`
 #' @export
@@ -461,6 +461,8 @@ options.modify <- function(
       ask_for_options_to_modify
     ],
     artma / libs / core / validation[assert, validate],
+    artma / options / files[resolve_template_path],
+    artma / options / template[collect_leaf_paths, flatten_user_options],
     artma / options / utils[validate_user_input]
   )
 
@@ -490,7 +492,15 @@ options.modify <- function(
 
   validate_user_input(user_input)
 
-  new_options <- utils::modifyList(current_options, user_input)
+  # current_options is keyed by flat dotted paths (options.load(load_with_prefix
+  # = FALSE)). Flattening user_input against the same leaf set turns either a
+  # nested user_input or an already-flat one into that representation, so
+  # modifyList() merges into the matching key instead of adding a sibling
+  # top-level key that later clobbers it (see flat_to_nested()).
+  leaf_set <- collect_leaf_paths(resolve_template_path(template_path))
+  flat_user_input <- flatten_user_options(user_options = user_input, leaf_set = leaf_set)
+
+  new_options <- utils::modifyList(current_options, flat_user_input)
 
   options.create(
     options_file_name = options_file_name,
@@ -814,7 +824,7 @@ options.fix <- function(
 #' @param options_file_name *\[character\]* Name of the new user options file, including the suffix.
 #' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
 #' @param template_path *\[character, optional\]* Full path to the options template file.
-#' @param user_input *\[list, optional\]* A named list of user-supplied values for these options. If `NULL` or missing entries exist, the function will prompt the user via `readline()` (for required entries) or use defaults (for optional ones).
+#' @param user_input *\[list, optional\]* A named list of user-supplied values for these options, using either flat dotted-path names (e.g. `list("data.source_path" = "...")`) or nested lists that mirror the YAML structure (e.g. `list(data = list(source_path = "..."))`). When overwriting an existing file, a partial edit to a list-type option (e.g. one entry of `data.columns`) is merged into the existing value instead of replacing it. If `NULL` or missing entries exist, the function will prompt the user via `readline()` (for required entries) or use defaults (for optional ones).
 #' @param should_validate *\[logical, optional\]* If TRUE, validate the new options file against the template. Defaults to TRUE.
 #' @param should_overwrite *\[logical, optional\]* If TRUE, overwrite the file if it already exists. Defaults to FALSE, in which case the user is prompted to confirm the overwrite.
 #' @param action_name *\[character, optional\]* A name for the action being performed. This is used for logging purposes. Defaults to "create".
@@ -897,23 +907,42 @@ options.create <- function(
     }
     leaf_set <- collect_leaf_paths(template_path)
     current_options <- flatten_user_options(user_options = read_options_file(options_path), leaf_set = leaf_set)
-    utils::modifyList(current_options, user_input)
+    # Flatten user_input against the same leaf set so a nested user_input (or
+    # a partial edit to a list-type option) merges into the matching flat key
+    # instead of adding a colliding sibling that flat_to_nested() later
+    # overwrites the flat entries with (see options.modify()).
+    flat_user_input <- flatten_user_options(user_options = user_input, leaf_set = leaf_set)
+    utils::modifyList(current_options, flat_user_input)
   }
 
   nested_options <- flat_to_nested(parsed_options)
 
-  write_options_file(options_path, nested_options)
-
   if (should_validate) {
+    # Validate a temporary copy before touching the real file: options.validate()
+    # can abort, and if it did after the real file was already overwritten, a
+    # previously valid options file would be left corrupted on disk with no
+    # way back.
+    tmp_path <- tempfile(
+      pattern = paste0(tools::file_path_sans_ext(options_file_name), "-"),
+      tmpdir = options_dir,
+      fileext = ".yaml"
+    )
+    write_options_file(tmp_path, nested_options)
+    on.exit(if (file.exists(tmp_path)) file.remove(tmp_path), add = TRUE)
+
     withr::with_options(
       list("artma.verbose" = min(get_verbosity(), 2)),
       options.validate(
-        options_file_name = options_file_name,
+        options_file_name = basename(tmp_path),
         options_dir = options_dir,
         template_path = template_path,
         failure_action = "abort_verbose"
       )
     )
+
+    file.copy(tmp_path, options_path, overwrite = TRUE)
+  } else {
+    write_options_file(options_path, nested_options)
   }
 
   if (get_verbosity() >= 3) {
