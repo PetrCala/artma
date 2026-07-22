@@ -72,6 +72,10 @@ exogeneity_tests <- function(df) {
     if (!is.null(results$puniform$error) && verbosity >= 2) {
       cli::cli_alert_warning("p-uniform* error: {results$puniform$error}")
     }
+
+    if (!is.null(results$puniform$note) && verbosity >= 2) {
+      cli::cli_alert_warning("p-uniform* note: {results$puniform$note}")
+    }
   }
 
   invisible(new_method_result(
