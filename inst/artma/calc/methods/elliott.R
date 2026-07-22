@@ -145,12 +145,15 @@ simulate_cdfs_parallel <- function(
       hky <- hull$y.knots
       hks <- hull$slope.knots
 
-      for (s in 2:length(hkx)) {
+      # The x-knots are grid points j / gp, but the product hkx * gp can land
+      # just below the integer j (e.g. 86.999...); indexing with it truncates
+      # and writes the chord one grid slot too low. Round to recover j exactly.
+      ki <- as.integer(round(hkx * gp))
+
+      for (s in 2:length(ki)) {
         a <- hky[s] - hks[s - 1L] * hkx[s]
         b_slope <- hks[s - 1L]
-        lower <- hkx[s - 1L] * gp + 1
-        upper <- hkx[s] * gp
-        idx <- lower:upper
+        idx <- (ki[s - 1L] + 1L):ki[s]
         y[idx] <- a + b_slope * (idx * inv_gp)
       }
 
