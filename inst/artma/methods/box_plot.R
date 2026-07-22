@@ -331,8 +331,15 @@ create_single_box_plot <- function(df, factor_by, theme_name, show_mean_line, ef
   factor_levels <- rev(sort(unique(stats::na.omit(factor_values))))
   factor_by_verbose <- gsub("_", " ", factor_by)
 
-  plot_df <- df
-  plot_df[[".factor"]] <- factor(factor_values, levels = factor_levels)
+  # Only the two mapped columns are needed. Passing the whole data frame makes
+  # the plot fail on any unrelated column irregularity (duplicate names in
+  # particular, which ggplot2 rejects outright).
+  plot_df <- data.frame(
+    effect = df[["effect"]],
+    .factor = factor(factor_values, levels = factor_levels),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
 
   p <- ggplot2::ggplot(
     data = plot_df,

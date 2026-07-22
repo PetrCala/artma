@@ -101,3 +101,26 @@ test_that("print_paragraph wraps sentences and drops empty ones", {
   expect_true(length(lines) > 1)
   expect_match(paste(lines, collapse = " "), "One sentence\\. Another sentence\\.")
 })
+
+test_that("format_estimate keeps non-finite estimates as NA", {
+  box::use(artma / libs / formatting / results[format_estimate])
+
+  # A plain paste0() would turn the NA into the literal string "NA", which then
+  # slips past every downstream is.na() guard and prints as "NA" in tables.
+  expect_identical(
+    format_estimate(c(0.5, NA_real_, Inf), 2L, c("**", "", "")),
+    c("0.50**", NA_character_, NA_character_)
+  )
+})
+
+test_that("format_estimate recycles a single significance mark", {
+  box::use(artma / libs / formatting / results[format_estimate])
+
+  expect_identical(format_estimate(c(1, 2), 1L), c("1.0", "2.0"))
+})
+
+test_that("format_estimate returns an empty vector for empty input", {
+  box::use(artma / libs / formatting / results[format_estimate])
+
+  expect_identical(format_estimate(numeric(0), 2L), character(0))
+})

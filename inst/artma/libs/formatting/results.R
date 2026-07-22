@@ -44,6 +44,29 @@ format_number <- function(x, digits) {
   formatted
 }
 
+#' @title Format an estimate together with its significance mark
+#' @description Like `format_number()`, but appends a significance mark and
+#'   keeps non-finite estimates as `NA_character_`. A plain
+#'   `paste0(format_number(x), mark)` turns an `NA` estimate into the literal
+#'   string `"NA"`, which then slips past every downstream `is.na()` guard.
+#' @param x *[numeric]* Estimates to format.
+#' @param digits *[integer]* Number of decimals.
+#' @param marks *[character]* Significance marks, recycled against `x`.
+#' @return *[character]* Formatted estimates, `NA_character_` where not finite.
+format_estimate <- function(x, digits, marks = "") {
+  formatted <- format_number(x, digits)
+  if (!length(formatted)) {
+    return(formatted)
+  }
+
+  finite <- !is.na(formatted)
+  if (any(finite)) {
+    formatted[finite] <- paste0(formatted[finite], rep_len(marks, length(formatted))[finite])
+  }
+
+  formatted
+}
+
 format_se <- function(se, digits) {
   if (!length(se)) {
     return(character(0))
@@ -228,6 +251,7 @@ print_paragraph <- function(sentences, width = 88L) {
 box::export(
   significance_mark,
   format_number,
+  format_estimate,
   format_se,
   format_ci,
   print_summary_table,

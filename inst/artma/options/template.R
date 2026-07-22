@@ -186,6 +186,31 @@ get_option_defs <- function(template_path = NULL, opt_path = NULL) {
 }
 
 
+#' @title Sanitize a raw prompt answer
+#' @description Trim surrounding whitespace from a `readline()` answer and, for
+#'   path prompts, strip surrounding quotes. Windows Explorer's "Copy as path"
+#'   wraps the path in double quotes, and a quoted path fails every
+#'   `file.exists()` check downstream.
+#' @param input_val [character] The raw answer.
+#' @param prompt_type [character] The prompt type the answer was collected for.
+#' @return [character] The sanitized answer.
+#' @keywords internal
+sanitize_prompt_input <- function(input_val, prompt_type) {
+  box::use(artma / libs / core / string[trim_quotes])
+
+  if (!is.character(input_val) || length(input_val) != 1 || is.na(input_val)) {
+    return(input_val)
+  }
+
+  input_val <- trimws(input_val)
+
+  if (prompt_type %in% c("file", "directory")) {
+    input_val <- trimws(trim_quotes(input_val))
+  }
+
+  input_val
+}
+
 #' @title Prompt user for a required value with no default
 #' @description Prompt the user for a value, displaying the option name, type, and help.
 #' @param opt [list] Option definition.
@@ -244,6 +269,7 @@ prompt_user_for_option_value <- function(opt) {
 
   hint_msg <- if (length(hints)) paste0(" (or ", paste(hints, collapse = ", "), ")") else ""
   input_val <- readline(prompt = cli::format_inline("Enter a value for {.strong {opt$name}}{hint_msg}: "))
+  input_val <- sanitize_prompt_input(input_val, prompt_type)
 
   if (input_val == "choose" || is.na(input_val) || (!nzchar(input_val) && prompt_type %in% c("file", "directory"))) {
     input_val <- switch(prompt_type,
@@ -484,6 +510,7 @@ parse_options_from_template <- function(
 
 box::export(
   coerce_option_value,
+  sanitize_prompt_input,
   collect_leaf_paths,
   flatten_template_options,
   flatten_user_options,
