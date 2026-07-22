@@ -75,7 +75,7 @@ get_number_of_studies <- function(df) {
 #' @return *\[data.frame\]* The standardized data frame
 standardize_column_names <- function(df, auto_detect = TRUE) {
   box::use(
-    artma / libs / core / validation[validate],
+    artma / libs / core / validation[validate, assert],
     artma / libs / core / utils[get_verbosity]
   )
 
@@ -160,12 +160,45 @@ standardize_column_names <- function(df, auto_detect = TRUE) {
 
   # Rename columns to standardized names - only when present in the data frame
   reverse_map <- stats::setNames(names(map), unlist(map))
+  rename_from <- names(df)[names(df) %in% names(reverse_map)]
+  rename_to <- unname(reverse_map[rename_from])
+
+  # A rename target already occupied by a different column would otherwise
+  # silently produce two columns sharing a name; `df$<name>` would then return
+  # whichever comes first, ignoring the user's explicit mapping. Detect this
+  # before renaming and abort, except for the two cases where no collision
+  # actually results: an identity mapping (source == target, a no-op), or the
+  # occupying column being renamed away itself in this same pass.
+  for (i in seq_along(rename_from)) {
+    source_col <- rename_from[[i]]
+    target_col <- rename_to[[i]]
+
+    if (identical(source_col, target_col)) next
+    if (!target_col %in% names(df)) next
+    if (target_col %in% rename_from) next
+
+    if (identical(df[[source_col]], df[[target_col]])) {
+      # Byte-identical duplicate: drop the stale column quietly and proceed.
+      df[[target_col]] <- NULL
+      next
+    }
+
+    cli::cli_abort(c(
+      "x" = "Cannot map {.val {source_col}} to standard column {.val {target_col}}: the data frame already has a different column named {.val {target_col}}.",
+      "i" = "Resolve this by remapping {.val {target_col}} to a different source column, removing that mapping (e.g. via {.code artma::config.set()} or your options file), or renaming the raw {.val {target_col}} column in your data."
+    ))
+  }
+
   names(df)[names(df) %in% names(reverse_map)] <- reverse_map[names(df)[names(df) %in% names(reverse_map)]]
 
   missing_required <- setdiff(required_colnames, colnames(df))
   if (length(missing_required)) {
     cli::cli_abort("Failed to standardize the following columns: {.val {missing_required}}")
   }
+
+  assert(!anyDuplicated(names(df)), cli::format_inline(
+    "Standardization produced duplicated column names: {.val {names(df)[duplicated(names(df))]}}"
+  ))
 
   df
 }
