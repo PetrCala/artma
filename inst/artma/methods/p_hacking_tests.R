@@ -115,6 +115,7 @@ p_hacking_tests <- function(df) {
   assert(maive_studylevel %in% c(0, 1, 2), "maive_studylevel must be 0, 1, or 2")
   assert(maive_se %in% c(1, 2, 3, 4, 5), "maive_se must be 1, 2, 3, 4, or 5")
   assert(maive_ar %in% c(0, 1), "maive_ar must be 0 or 1")
+  assert(maive_first_stage %in% c(0, 1, 2), "maive_first_stage must be 0, 1, or 2")
   assert(round_to >= 0, "Number of decimals must be non-negative")
 
   resolved_options <- list(

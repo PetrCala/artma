@@ -851,6 +851,7 @@ methods:
         squared standard error with sample size:
           0 = levels, regress SE^2 on 1/N (default)
           1 = log, regress log(SE^2) on log(N)
+          2 = automatic, choose from the spread of sample sizes
 
         Use the log form when sample sizes span orders of magnitude. With a
         wide N range, 1/N is numerically near zero for most observations, so
@@ -858,6 +859,13 @@ methods:
         collapses into a weak instrument (F below 10), which leaves the MAIVE
         coefficient unreliable. Check the "F-test (1st stage IV)" row of the
         MAIVE output: if it is flagged as weak, switch to 1.
+
+        Setting 2 makes that call for you: the log form is used when sample
+        sizes span at least 3 orders of magnitude. The rule reads the sample
+        size column only, never the effects, the standard errors, or any
+        fitted statistic, so it cannot turn into a search for a preferred
+        coefficient. The form actually used is reported in the "1st stage
+        form" row and announced during the run.
 
     maive_seed:
       type: "integer"

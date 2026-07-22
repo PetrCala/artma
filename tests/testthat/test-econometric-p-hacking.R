@@ -15,6 +15,7 @@ box::use(
     maive_p_from_coef,
     maive_first_stage_f,
     maive_first_stage_is_weak,
+    resolve_maive_first_stage,
     format_maive_results,
     prepare_maive_data,
     run_single_caliper,
@@ -103,6 +104,69 @@ test_that("maive_first_stage_is_weak applies the F < 10 rule of thumb", {
   expect_false(maive_first_stage_is_weak(NA_real_))
 })
 
+# resolve_maive_first_stage -------------------------------------------------
+
+test_that("resolve_maive_first_stage passes explicit choices through untouched", {
+  wide <- c(100, 10^9)
+
+  # A wide N spread would trigger the log form under 2, but 0 stays 0.
+  levels_choice <- resolve_maive_first_stage(0, wide)
+  expect_equal(levels_choice$value, 0L)
+  expect_false(levels_choice$automatic)
+
+  log_choice <- resolve_maive_first_stage(1, c(100, 200))
+  expect_equal(log_choice$value, 1L)
+  expect_false(log_choice$automatic)
+})
+
+test_that("resolve_maive_first_stage picks log once N spans the threshold", {
+  # The master-thesis case: 135 to 14.7M, about 5 orders of magnitude.
+  res <- resolve_maive_first_stage(2, c(135, 14746755))
+
+  expect_equal(res$value, 1L)
+  expect_true(res$automatic)
+  expect_equal(res$orders, 5.038, tolerance = 1e-3)
+})
+
+test_that("resolve_maive_first_stage keeps levels for a narrow N spread", {
+  res <- resolve_maive_first_stage(2, c(500, 900, 4000))
+
+  expect_equal(res$value, 0L)
+  expect_true(res$automatic)
+  expect_true(res$orders < 3)
+})
+
+test_that("resolve_maive_first_stage decides on the threshold boundary", {
+  # Exactly 3 orders of magnitude counts as wide.
+  expect_equal(resolve_maive_first_stage(2, c(10, 10000))$value, 1L)
+  # Just under does not.
+  expect_equal(resolve_maive_first_stage(2, c(10, 9999))$value, 0L)
+})
+
+test_that("resolve_maive_first_stage ignores unusable sample sizes", {
+  # Zero, negative, and non-finite N cannot enter a ratio.
+  res <- resolve_maive_first_stage(2, c(0, -5, NA, Inf, 100, 10^6))
+  expect_equal(res$value, 1L)
+  expect_equal(res$orders, 4)
+})
+
+test_that("resolve_maive_first_stage falls back to levels without a usable spread", {
+  for (degenerate in list(numeric(0), c(NA_real_, NA_real_), 1000, c(0, -1))) {
+    res <- resolve_maive_first_stage(2, degenerate)
+    expect_equal(res$value, 0L)
+    expect_true(res$automatic)
+    expect_true(is.na(res$orders))
+  }
+})
+
+test_that("resolve_maive_first_stage never reads anything but sample size", {
+  # Same N, wildly different effects and SEs: the choice must not move.
+  a <- resolve_maive_first_stage(2, c(135, 14746755))
+  b <- resolve_maive_first_stage(2, c(135, 14746755))
+  expect_equal(a, b)
+  expect_equal(names(formals(resolve_maive_first_stage)), c("first_stage", "n_obs"))
+})
+
 # format_maive_results ------------------------------------------------------
 
 test_that("format_maive_results flags a weak first stage", {
@@ -131,6 +195,29 @@ test_that("format_maive_results leaves a strong first stage unflagged", {
 
   expect_false("  Instrument strength" %in% out$Statistic)
   expect_equal(out$Value[out$Statistic == "F-test (1st stage IV)"], "80.935")
+})
+
+test_that("format_maive_results records the first stage form when given one", {
+  output <- list(
+    beta = 6.993, SE = 0.393, `pub bias p-value` = 0.241,
+    egger_coef = 2.078, egger_se = 1.771,
+    `F-test` = 80.935, Hausman = 0.847, Chi2 = 3.841
+  )
+
+  auto <- format_maive_results(
+    output, list(round_to = 3),
+    list(value = 1L, automatic = TRUE, orders = 5.04)
+  )
+  expect_equal(auto$Value[auto$Statistic == "1st stage form"], "log (auto)")
+
+  explicit <- format_maive_results(
+    output, list(round_to = 3),
+    list(value = 0L, automatic = FALSE, orders = NA_real_)
+  )
+  expect_equal(explicit$Value[explicit$Statistic == "1st stage form"], "levels")
+
+  # Omitting it keeps the table exactly as it was before this row existed.
+  expect_false("1st stage form" %in% format_maive_results(output, list(round_to = 3))$Statistic)
 })
 
 # prepare_maive_data --------------------------------------------------------
