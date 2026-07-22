@@ -205,6 +205,30 @@ test_that("run_puniform_star returns a finite estimate with significant studies"
   expect_true(is.finite(res$coefficients$estimate[1]))
 })
 
+test_that("run_puniform_star recovers the effect when n_obs is large", {
+  # Regression test: the study variance used to be computed as se^2 * n_obs
+  # (the variance of the underlying micro observations, not of the effect
+  # estimate), so large primary-study samples flattened the likelihood and
+  # dragged the estimate far below the true effect. With vi = se^2 the
+  # estimate must stay in the neighborhood of the simulated truth.
+  set.seed(11)
+  n <- 120
+  df <- data.frame(
+    effect = rnorm(n, 5, 0.5),
+    se = rep(0.5, n),
+    study_id = rep(seq_len(30), each = 4),
+    study_size = rep(5000L, n),
+    n_obs = rep(5000L, n)
+  )
+
+  res <- run_puniform_star(df, method = "ML")
+  eff <- res$coefficients[res$coefficients$term == "effect", ]
+
+  expect_equal(res$method_used, "ML")
+  expect_gt(eff$estimate, 4)
+  expect_lt(eff$estimate, 6)
+})
+
 test_that("run_puniform_star with method = 'P' returns a finite, positive estimate with significant studies", {
   set.seed(11)
   n <- 120
