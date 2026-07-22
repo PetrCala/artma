@@ -1,5 +1,5 @@
 box::use(
-  testthat[expect_error, expect_true, test_that]
+  testthat[expect_equal, expect_error, expect_false, expect_true, test_that]
 )
 
 box::use(
@@ -163,4 +163,91 @@ test_that("standardize_column_names passes when all required columns are present
     NA,
     info = "Standardizing column names should pass when all required columns are present"
   )
+})
+
+# -- Rename-target collision --
+#
+# Reproduces a real bug: a role mapping (e.g. study_id -> study_name) targets a
+# standard name that the data frame already has under a *different* column.
+# Renaming used to silently produce two columns named "study_id", so
+# `df$study_id` returned whichever came first in column order regardless of
+# the user's mapping. standardize_column_names() must abort instead.
+
+#' Build a synthetic data frame with the required columns plus one extra
+#' column that can collide with a rename target.
+#' @keywords internal
+build_collision_df <- function(extra_col_name, extra_col_values) {
+  df <- data.frame(
+    study_id = 1:5,
+    effect = c(0.1, 0.2, 0.3, 0.4, 0.5),
+    se = c(0.01, 0.02, 0.03, 0.04, 0.05),
+    n_obs = c(50L, 60L, 70L, 80L, 90L)
+  )
+  df[[extra_col_name]] <- extra_col_values
+  df
+}
+
+test_that("standardize_column_names aborts when a rename target is already occupied", {
+  box::use(artma / data / utils[standardize_column_names])
+
+  # study_id is mapped to study_name, but the data frame already has its own,
+  # different study_id column.
+  mock_df <- build_collision_df("study_name", paste("Study", 1:5))
+
+  withr::with_options(
+    list("artma.data.columns" = list(study_id = list(source_name = "study_name"))),
+    {
+      expect_error(
+        standardize_column_names(mock_df, auto_detect = FALSE),
+        "already has a different column named"
+      )
+    }
+  )
+})
+
+test_that("standardize_column_names allows an identity mapping through quietly", {
+  box::use(artma / data / utils[standardize_column_names])
+
+  mock_df <- build_collision_df("study_size", 1:5)
+
+  withr::with_options(
+    list("artma.data.columns" = list(study_id = list(source_name = "study_id"))),
+    {
+      standardized_df <- standardize_column_names(mock_df, auto_detect = FALSE)
+      expect_equal(anyDuplicated(colnames(standardized_df)), 0)
+      expect_true("study_id" %in% colnames(standardized_df))
+    }
+  )
+})
+
+test_that("standardize_column_names drops a byte-identical duplicate target column quietly", {
+  box::use(artma / data / utils[standardize_column_names])
+
+  # study_name is byte-identical to study_id, so the collision is safe to
+  # resolve without user input: the stale duplicate is dropped.
+  mock_df <- build_collision_df("study_name", 1:5)
+
+  withr::with_options(
+    list("artma.data.columns" = list(study_id = list(source_name = "study_name"))),
+    {
+      standardized_df <- standardize_column_names(mock_df, auto_detect = FALSE)
+      expect_equal(sum(colnames(standardized_df) == "study_id"), 1)
+      expect_equal(standardized_df$study_id, 1:5)
+    }
+  )
+})
+
+test_that("standardize_column_names still performs normal renames without collision", {
+  box::use(artma / data / utils[standardize_column_names])
+
+  mock_colnames <- MOCKS$create_mock_options_colnames(
+    colnames = list(study_id = "study_id_raw")
+  )
+  FIXTURES$with_custom_colnames(mock_colnames)
+  mock_df <- MOCKS$create_mock_df(colnames_map = mock_colnames)
+
+  standardized_df <- standardize_column_names(mock_df, auto_detect = FALSE)
+  expect_equal(anyDuplicated(colnames(standardized_df)), 0)
+  expect_true("study_id" %in% colnames(standardized_df))
+  expect_false("study_id_raw" %in% colnames(standardized_df))
 })
