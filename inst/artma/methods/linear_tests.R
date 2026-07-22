@@ -20,7 +20,7 @@ linear_tests <- function(df) {
   opt <- get_option_group("artma.methods.linear_tests")
 
   add_marks <- resolve_add_significance_marks()
-  bootstrap_replications <- opt$bootstrap_replications %||% 100L
+  bootstrap_replications <- opt$bootstrap_replications %||% 999L
   conf_level <- opt$conf_level %||% 0.95
   round_to <- as.integer(getOption("artma.output.number_of_decimals", 3))
 
@@ -43,9 +43,25 @@ linear_tests <- function(df) {
     round_to = round_to
   )
 
-  results <- run_linear_models(df, resolved_options)
-
   verbosity <- get_verbosity()
+
+  # Below this many expected draws per tail, the percentile CI bound is
+  # effectively pinned by a handful of extreme resamples and swings with the
+  # RNG seed rather than converging.
+  min_tail_draws <- 10
+  tail_draws <- bootstrap_replications * (1 - conf_level) / 2
+  if (verbosity >= 1 && bootstrap_replications > 0 && tail_draws < min_tail_draws) {
+    cli::cli_alert_warning(paste(
+      "Only {bootstrap_replications} bootstrap replications requested",
+      "(~{round(tail_draws, 1)} draws per confidence interval tail at the",
+      "{round(conf_level * 100)}% level). Percentile bootstrap CI bounds can",
+      "be unstable with so few draws, especially when {.field se} spans",
+      "several orders of magnitude. Consider raising",
+      "{.field artma.methods.linear_tests.bootstrap_replications}."
+    ))
+  }
+
+  results <- run_linear_models(df, resolved_options)
 
   if (verbosity >= 1) {
     cli::cli_h2("Linear model tests")
@@ -54,6 +70,17 @@ linear_tests <- function(df) {
       print_summary_table(results$summary)
     } else {
       cli::cli_alert_warning("No linear models were successfully estimated.")
+    }
+
+    n_conflicts <- sum(results$coefficients$ci_conflict, na.rm = TRUE)
+    if (n_conflicts > 0) {
+      cli::cli_alert_warning(paste(
+        "{n_conflicts} out of {nrow(results$coefficients)} estimates are",
+        "marked with †: the analytic significance test and the",
+        "{round(conf_level * 100)}% bootstrap confidence interval disagree",
+        "on whether the estimate differs from zero. Treat these estimates",
+        "with caution."
+      ))
     }
 
     if (length(results$skipped) > 0 && verbosity >= 2) {

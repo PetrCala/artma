@@ -573,6 +573,29 @@ linear_model_specs <- function() {
   )
 }
 
+#' @title Flag disagreements between the analytic and bootstrap significance tests
+#' @description
+#' The analytic p-value comes from a clustered-vcov Wald test; the bootstrap CI
+#' is a nonparametric percentile interval. They can disagree, most often when
+#' the regressor (`se`) is heavy-tailed enough that a handful of resampled
+#' clusters dominate the bootstrap distribution. Both tests are evaluated at
+#' the same `conf_level` so the comparison is apples-to-apples regardless of
+#' the (coarser) `*`/`**`/`***` star thresholds.
+#' @param p_value *[numeric]* Analytic (clustered) p-values.
+#' @param bootstrap_lower *[numeric]* Lower bootstrap percentile CI bound.
+#' @param bootstrap_upper *[numeric]* Upper bootstrap percentile CI bound.
+#' @param conf_level *[numeric]* Confidence level shared by both tests.
+#' @return A logical vector, `NA` where no bootstrap CI is available.
+flag_ci_conflicts <- function(p_value, bootstrap_lower, bootstrap_upper, conf_level) {
+  ci_available <- is.finite(bootstrap_lower) & is.finite(bootstrap_upper)
+  analytic_significant <- is.finite(p_value) & p_value <= (1 - conf_level)
+  ci_excludes_zero <- ci_available & (bootstrap_lower > 0 | bootstrap_upper < 0)
+
+  conflict <- analytic_significant != ci_excludes_zero
+  conflict[!ci_available] <- NA
+  conflict
+}
+
 #' @title Run linear model specifications
 #' @param df *[data.frame]* Input dataset.
 #' @param options *[list]* Options controlling formatting and bootstrap.
@@ -685,6 +708,15 @@ run_linear_models <- function(df, options, is_pkg_available = NULL) {
     digits = options$round_to
   )
 
+  coefficients$ci_conflict <- flag_ci_conflicts(
+    coefficients$p_value,
+    coefficients$bootstrap_lower,
+    coefficients$bootstrap_upper,
+    options$conf_level
+  )
+  conflicting <- !is.na(coefficients$ci_conflict) & coefficients$ci_conflict
+  coefficients$bootstrap_formatted[conflicting] <- paste0(coefficients$bootstrap_formatted[conflicting], " †")
+
   summary <- build_summary_table(coefficients, options$round_to)
 
   list(
@@ -755,7 +787,8 @@ build_summary_table <- function(coefficients, digits) {
 box::export(
   run_linear_models,
   linear_model_specs,
-  resample_cluster_rows
+  resample_cluster_rows,
+  flag_ci_conflicts
 )
 
 # nocov end -----------------------------------------------------------------
