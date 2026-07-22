@@ -2,11 +2,13 @@ box::use(
   testthat[
     expect_equal,
     expect_error,
+    expect_no_error,
     expect_true,
     skip_if_not_installed,
     test_that
   ],
   withr[local_options],
+  artma / data / mock[create_mock_df],
   artma / methods / p_hacking_tests[p_hacking_tests],
   artma / methods / exogeneity_tests[exogeneity_tests]
 )
@@ -96,4 +98,23 @@ test_that("exogeneity_tests aborts when a required column is missing", {
   local_options(artma.verbose = 1)
   df <- make_exogeneity_df(n = 30)
   expect_error(exogeneity_tests(df[, c("effect", "se")]))
+})
+
+test_that("exogeneity_tests handles mock data with too few significant p-uniform studies", {
+  skip_if_not_installed("AER")
+  skip_if_not_installed("ivmodel")
+  local_options(artma.verbose = 1)
+
+  # The package's own mock generator spreads effect/se uniformly at random, so
+  # almost no study-level median clears the significance threshold p-uniform*
+  # requires. That drives run_puniform_star() down its early-return path,
+  # which used to omit the estimate_formatted/std_error_formatted columns and
+  # crash build_exogeneity_summary() with "replacement has 4 rows, data has 6".
+  df <- create_mock_df(nrow = 600, n_studies = 30)
+  df$study_size <- unname(as.integer(table(df$study_id)[as.character(df$study_id)]))
+
+  result <- expect_no_error(exogeneity_tests(df))
+
+  expect_true(is.data.frame(result$tables$summary))
+  expect_equal(nrow(result$tables$summary), 6L)
 })
