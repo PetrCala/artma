@@ -3,7 +3,9 @@ box::use(
     expect_equal,
     expect_false,
     expect_gt,
+    expect_message,
     expect_named,
+    expect_no_message,
     expect_true,
     skip_if_not_installed,
     test_that
@@ -13,6 +15,7 @@ box::use(
 
 box::use(
   artma / econometric / linear[
+    flag_ci_conflicts,
     linear_model_specs,
     resample_cluster_rows,
     run_linear_models
@@ -35,6 +38,119 @@ make_demo_data <- function() {
     check.names = FALSE
   )
 }
+
+# A study with an extreme, trend-breaking `se`/`effect` pair gives the
+# unweighted specs a high-leverage point: the analytic clustered-vcov test and
+# the percentile bootstrap CI reliably disagree on several rows, which is
+# exactly the disagreement `flag_ci_conflicts()` is meant to surface.
+make_conflict_data <- function() {
+  set.seed(1)
+  n_studies <- 10L
+  per_study <- 4L
+  study_ids <- rep(paste0("S", seq_len(n_studies)), each = per_study)
+  se_level <- runif(n_studies, 0.05, 0.15)
+  se_level[1] <- 8
+  se_vals <- rep(se_level, each = per_study) * exp(rnorm(n_studies * per_study, 0, 0.05))
+  effect_level <- rnorm(n_studies, mean = -0.05, sd = 0.02) + 0.02 * se_level
+  effect_level[1] <- 5
+  effect <- rep(effect_level, each = per_study) + rnorm(n_studies * per_study, 0, 0.01)
+  data.frame(
+    study_id = study_ids,
+    effect = effect,
+    se = se_vals,
+    study_size = sample(20:80, n_studies * per_study, replace = TRUE),
+    precision = 1 / se_vals,
+    check.names = FALSE
+  )
+}
+
+test_that("flag_ci_conflicts marks disagreement between the analytic test and the bootstrap CI", {
+  p_value <- c(0.01, 0.5, 0.5, 0.01, NA, 0.01)
+  bootstrap_lower <- c(-0.1, -0.1, 0.2, 0.2, -0.1, NA)
+  bootstrap_upper <- c(0.5, 0.5, 0.5, 0.5, 0.1, NA)
+
+  result <- flag_ci_conflicts(p_value, bootstrap_lower, bootstrap_upper, conf_level = 0.95)
+
+  expect_equal(
+    result,
+    c(
+      TRUE, # significant analytically, CI includes zero
+      FALSE, # not significant, CI includes zero
+      TRUE, # not significant, CI excludes zero
+      FALSE, # significant, CI excludes zero
+      FALSE, # p-value missing (treated as not significant), CI includes zero -> no conflict
+      NA # bootstrap CI unavailable
+    )
+  )
+})
+
+test_that("run_linear_models flags and marks conflicting rows on high-leverage data", {
+  skip_if_not_installed("plm")
+
+  df <- make_conflict_data()
+  opts <- list(
+    add_significance_marks = TRUE,
+    bootstrap_replications = 60L,
+    conf_level = 0.95,
+    round_to = 3L
+  )
+
+  set.seed(100)
+  res <- run_linear_models(df, opts)
+
+  conflicts <- res$coefficients[res$coefficients$ci_conflict %in% TRUE, , drop = FALSE]
+  expect_gt(nrow(conflicts), 0)
+  expect_true(all(grepl("†$", conflicts$bootstrap_formatted)))
+
+  non_conflicts <- res$coefficients[res$coefficients$ci_conflict %in% FALSE, , drop = FALSE]
+  if (nrow(non_conflicts) > 0) {
+    expect_false(any(grepl("†", non_conflicts$bootstrap_formatted)))
+  }
+})
+
+test_that("linear_tests warns when few bootstrap replications are requested", {
+  skip_if_not_installed("plm")
+
+  df <- make_demo_data()
+
+  local_options(
+    "artma.methods.linear_tests.bootstrap_replications" = 10L,
+    "artma.methods.linear_tests.conf_level" = 0.95,
+    "artma.verbose" = 1
+  )
+
+  expect_message(linear_tests(df), "Only 10 bootstrap replications")
+})
+
+test_that("linear_tests does not warn about replications when the count is high enough", {
+  skip_if_not_installed("plm")
+
+  df <- make_demo_data()
+
+  local_options(
+    "artma.methods.linear_tests.bootstrap_replications" = 999L,
+    "artma.methods.linear_tests.conf_level" = 0.95,
+    "artma.verbose" = 1
+  )
+
+  expect_no_message(linear_tests(df), message = "bootstrap replications")
+})
+
+test_that("linear_tests reports the count of estimates with disagreeing stars and CIs", {
+  skip_if_not_installed("plm")
+
+  df <- make_conflict_data()
+
+  local_options(
+    "artma.methods.add_significance_marks" = TRUE,
+    "artma.methods.linear_tests.bootstrap_replications" = 60L,
+    "artma.methods.linear_tests.conf_level" = 0.95,
+    "artma.verbose" = 1
+  )
+
+  set.seed(100)
+  expect_message(linear_tests(df), "estimates are.*marked with")
+})
 
 test_that("linear tests return tidy coefficients and summary", {
   skip_if_not_installed("plm")
@@ -74,7 +190,7 @@ test_that("linear tests return tidy coefficients and summary", {
       "model_label", "n_obs", "term_label", "bootstrap_lower",
       "bootstrap_upper", "significance", "estimate_rounded",
       "std_error_rounded", "estimate_formatted", "std_error_formatted",
-      "bootstrap_formatted"
+      "bootstrap_formatted", "ci_conflict"
     )
   )
 

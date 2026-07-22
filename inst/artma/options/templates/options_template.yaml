@@ -132,10 +132,13 @@ methods:
   linear_tests:
     bootstrap_replications:
       type: "integer"
-      default: 100
+      default: 999
       help: |
         Number of bootstrap replications to use when computing cluster-robust
-        confidence intervals. Set to `0` to disable bootstrapping.
+        confidence intervals. Percentile confidence intervals need several
+        hundred draws per tail to be stable; values below 999 can produce
+        visibly unstable interval bounds, especially with heavy-tailed or
+        widely spread standard errors. Set to `0` to disable bootstrapping.
 
     conf_level:
       type: "numeric"
