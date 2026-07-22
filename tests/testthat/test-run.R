@@ -447,13 +447,35 @@ test_that("invoke_runtime_methods explains a forked method that was killed", {
 
   # A worker that dies without signalling (a segfault in a graphics device is
   # the real-world case) used to be recorded as a failure with an empty message.
+  # Only ever signal a *forked child*: if this were to run in the current
+  # process (because the layer fell back to sequential execution) the kill would
+  # take down the testthat subprocess running this file. These methods are
+  # written out to a module file, so they cannot close over a local variable;
+  # the forked-worker option is set in the child and is readable there.
   fake_methods <- list(
     method_a = list(run = function(df, ...) "method_a"),
-    method_b = list(run = function(df, ...) tools::pskill(Sys.getpid())),
+    method_b = list(run = function(df, ...) {
+      if (!isTRUE(getOption("artma.temp.forked_worker", FALSE))) {
+        return("method_b ran in the parent")
+      }
+      tools::pskill(Sys.getpid())
+    }),
     method_c = list(run = function(df, ...) "method_c")
   )
-  withr::local_options(list(artma.verbose = 0, artma.general.parallel = TRUE))
+  # Graphics exports force sequential execution where no fork-safe device
+  # exists, so turn them off to keep this layer genuinely parallel.
+  withr::local_options(list(
+    artma.verbose = 0,
+    artma.general.parallel = TRUE,
+    artma.visualization.export_graphics = FALSE
+  ))
   methods_dir <- local_mock_methods_dir(fake_methods)
+
+  box::use(artma / modules / method_execution[resolve_worker_count])
+  testthat::skip_if(
+    resolve_worker_count(3L) < 2L,
+    "this environment runs method layers sequentially"
+  )
 
   df <- data.frame(x = 1:3)
   results <- suppressWarnings(artma:::invoke_runtime_methods(

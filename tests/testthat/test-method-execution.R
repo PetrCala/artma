@@ -23,7 +23,8 @@ worker_count <- function(n_tasks, is_interactive = FALSE, os_type = "unix", n_co
     is_interactive = is_interactive,
     os_type = os_type,
     n_cores = n_cores,
-    max_workers = Inf
+    max_workers = Inf,
+    graphics_fork_safe = TRUE
   )
 }
 
@@ -137,7 +138,10 @@ test_that("resolve_worker_count respects the environment's process ceiling", {
   withr::local_envvar(list("_R_CHECK_LIMIT_CORES_" = "TRUE"))
   expect_equal(max_parallel_workers(), 2L)
   expect_equal(
-    resolve_worker_count(8L, is_interactive = FALSE, os_type = "unix", n_cores = 16L),
+    resolve_worker_count(
+      8L,
+      is_interactive = FALSE, os_type = "unix", n_cores = 16L, graphics_fork_safe = TRUE
+    ),
     2L
   )
 
@@ -146,7 +150,10 @@ test_that("resolve_worker_count respects the environment's process ceiling", {
   withr::local_options(list(mc.cores = 3L))
   expect_equal(max_parallel_workers(), 3L)
   expect_equal(
-    resolve_worker_count(8L, is_interactive = FALSE, os_type = "unix", n_cores = 16L),
+    resolve_worker_count(
+      8L,
+      is_interactive = FALSE, os_type = "unix", n_cores = 16L, graphics_fork_safe = TRUE
+    ),
     3L
   )
 })
@@ -282,10 +289,15 @@ test_that("execute_method_layer explains a worker that died without an error", {
 
   skip_if(!can_fork(), "forking is unavailable")
 
+  # Guard the kill on actually being in a forked child: signalling the current
+  # process would take down the testthat subprocess running this file.
+  parent_pid <- Sys.getpid()
   outcomes <- suppressWarnings(execute_method_layer(
     c("a", "b"),
     run_one = function(name) {
-      if (identical(name, "b")) tools::pskill(Sys.getpid())
+      if (identical(name, "b") && !identical(Sys.getpid(), parent_pid)) {
+        tools::pskill(Sys.getpid())
+      }
       name
     },
     workers = 2L
