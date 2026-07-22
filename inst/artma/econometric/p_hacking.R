@@ -691,7 +691,10 @@ run_p_hacking_tests <- function(df, options) {
           )
         },
         error = function(e) {
-          skipped[["maive"]] <<- e$message
+          # conditionMessage(), not e$message: the latter keeps only the cli
+          # header, dropping the bullets that carry the install and upgrade
+          # hints the user needs to act on the skip.
+          skipped[["maive"]] <<- conditionMessage(e)
           NULL
         }
       )
