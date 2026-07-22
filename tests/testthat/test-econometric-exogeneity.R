@@ -2,6 +2,8 @@ box::use(
   testthat[
     expect_equal,
     expect_error,
+    expect_false,
+    expect_message,
     expect_true,
     skip_if_not_installed,
     test_that
@@ -11,7 +13,8 @@ box::use(
     run_iv_regression,
     run_puniform_star,
     find_best_instrument,
-    run_exogeneity_tests
+    run_exogeneity_tests,
+    WEAK_INSTRUMENT_F_THRESHOLD
   ]
 )
 
@@ -27,6 +30,22 @@ make_exogeneity_df <- function(seed = 2024, n = 300, mu = 0.5, bias = 1.0) {
   set.seed(seed)
   n_obs <- sample(30:600, n, replace = TRUE)
   se <- 2 / sqrt(n_obs) + abs(rnorm(n, 0, 0.01))
+  effect <- mu + bias * se + rnorm(n, 0, 0.05)
+  data.frame(
+    effect = effect,
+    se = se,
+    study_id = rep(seq_len(60), length.out = n),
+    n_obs = n_obs,
+    study_size = n_obs
+  )
+}
+
+# A DGP where se is essentially unrelated to n_obs, so any instrument built
+# from n_obs is a weak predictor of se in the first stage.
+make_weak_instrument_df <- function(seed = 99, n = 300, mu = 0.5, bias = 1.0) {
+  set.seed(seed)
+  n_obs <- sample(30:600, n, replace = TRUE)
+  se <- 0.1 + abs(rnorm(n, 0, 0.05))
   effect <- mu + bias * se + rnorm(n, 0, 0.05)
   data.frame(
     effect = effect,
@@ -67,6 +86,8 @@ test_that("run_iv_regression recovers the effect and bias from a known DGP", {
   expect_equal(bias_est, 1.0, tolerance = 0.2)
   # Strong instrument: Anderson-Rubin F well above conventional weak thresholds.
   expect_true(res$ar_fstat > 30)
+  expect_true(res$first_stage_fstat > WEAK_INSTRUMENT_F_THRESHOLD)
+  expect_false(res$weak_instrument)
 })
 
 test_that("run_iv_regression auto-selects the sample-size instrument", {
@@ -87,6 +108,21 @@ test_that("run_iv_regression rejects an instrument without n_obs", {
   expect_error(run_iv_regression(df, iv_instrument = "1/sqrt(study_size)"))
 })
 
+test_that("run_iv_regression warns and flags a weak instrument", {
+  skip_if_not_installed("AER")
+  skip_if_not_installed("ivmodel")
+  local_options(artma.verbose = 1)
+
+  df <- make_weak_instrument_df()
+  expect_message(
+    res <- run_iv_regression(df, iv_instrument = "1/sqrt(n_obs)"),
+    "Weak instrument"
+  )
+
+  expect_true(res$weak_instrument)
+  expect_true(res$first_stage_fstat < WEAK_INSTRUMENT_F_THRESHOLD)
+})
+
 # find_best_instrument ------------------------------------------------------
 
 test_that("find_best_instrument returns one of the candidate instruments", {
@@ -99,6 +135,35 @@ test_that("find_best_instrument returns one of the candidate instruments", {
 
   best <- find_best_instrument(df, instruments, names_verbose)
   expect_true(all(best %in% names_verbose))
+})
+
+test_that("find_best_instrument selects by first-stage F, not Wu-Hausman or R-squared", {
+  skip_if_not_installed("AER")
+  local_options(artma.verbose = 1)
+
+  # se depends on n_obs, so 1/sqrt(n_obs) is a strong instrument; log(n_obs) is
+  # a much weaker predictor of se and would previously have been able to win
+  # a majority vote via the (backwards) Wu-Hausman or R-squared criteria.
+  df <- make_exogeneity_df()
+  instruments <- list(1 / sqrt(df$n_obs), log(df$n_obs))
+  names_verbose <- c("1/sqrt(n_obs)", "log(n_obs)")
+
+  best <- find_best_instrument(df, instruments, names_verbose)
+  expect_equal(best, "1/sqrt(n_obs)")
+})
+
+test_that("find_best_instrument breaks ties in favor of 1/sqrt(n_obs)", {
+  skip_if_not_installed("AER")
+  local_options(artma.verbose = 1)
+
+  # A rescaled copy of the same instrument has an identical first-stage F,
+  # so this is a genuine tie that the tie-break rule must resolve.
+  df <- make_exogeneity_df()
+  instruments <- list(1 / sqrt(df$n_obs), 2 / sqrt(df$n_obs))
+  names_verbose <- c("1/sqrt(n_obs)", "rescaled")
+
+  best <- find_best_instrument(df, instruments, names_verbose)
+  expect_equal(best, "1/sqrt(n_obs)")
 })
 
 # run_puniform_star ---------------------------------------------------------
@@ -186,11 +251,24 @@ test_that("run_exogeneity_tests assembles IV and p-uniform results", {
 
   expect_true(all(c("iv", "puniform", "summary") %in% names(res)))
   expect_true(is.data.frame(res$summary))
-  expect_equal(nrow(res$summary), 6L)
+  expect_equal(nrow(res$summary), 7L)
   expect_true("IV" %in% colnames(res$summary))
+  expect_true("First-stage F" %in% res$summary$Metric)
 
   effect_est <- res$iv$coefficients$estimate[res$iv$coefficients$term == "effect"]
   expect_equal(effect_est, 0.5, tolerance = 0.05)
+})
+
+test_that("run_exogeneity_tests flags a weak instrument in the summary table", {
+  skip_if_not_installed("AER")
+  skip_if_not_installed("ivmodel")
+  local_options(artma.verbose = 1)
+
+  df <- make_weak_instrument_df()
+  res <- run_exogeneity_tests(df, default_exogeneity_options(iv_instrument = "1/sqrt(n_obs)"))
+
+  fstat_row <- res$summary[res$summary$Metric == "First-stage F", "IV"]
+  expect_true(grepl("weak instrument", fstat_row))
 })
 
 test_that("run_exogeneity_tests skips gracefully when columns are missing", {

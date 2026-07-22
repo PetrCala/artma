@@ -87,7 +87,7 @@ test_that("exogeneity_tests returns the standard contract with IV results", {
 
   expect_true(is.list(result))
   expect_true(is.data.frame(result$tables$summary))
-  expect_equal(nrow(result$tables$summary), 6L)
+  expect_equal(nrow(result$tables$summary), 7L)
   # The IV model lives in the meta slot and recovers the true effect (mu = 0.5).
   iv_coef <- result$meta$iv$coefficients
   effect_est <- iv_coef$estimate[iv_coef$term == "effect"]

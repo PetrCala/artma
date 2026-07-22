@@ -68,14 +68,37 @@ get_robust_vcov <- function(model, cluster) {
 
 # IV regression utilities --------------------------------------------------
 
-#' @title Identify best instrument for IV regression
+#' @title Conventional threshold for the first-stage weak-instruments F-test
 #' @description
-#' Evaluates multiple instruments for IV regression using diagnostics
-#' (R-squared, weak instruments test, Wu-Hausman test, Sargan test).
+#' Staiger-Stock/Stock-Yogo rule-of-thumb minimum first-stage F-statistic
+#' below which an instrument is considered weak.
+WEAK_INSTRUMENT_F_THRESHOLD <- 10
+
+#' @title Default tie-break instrument among equally strong candidates
+#' @description
+#' `1/sqrt(n_obs)` is the theoretically motivated instrument for a
+#' meta-analysis IV regression of effect on se, since the standard error
+#' of an estimator scales with `1/sqrt(N)`. It is preferred whenever
+#' several candidate instruments tie on first-stage strength.
+WEAK_INSTRUMENT_TIEBREAK <- "1/sqrt(n_obs)"
+
+#' @title Identify the strongest instrument for IV regression
+#' @description
+#' Ranks candidate instruments by first-stage strength: the "Weak
+#' instruments" F-statistic reported by `AER::ivreg`'s diagnostics, which is
+#' the standard weak-instruments diagnostic for a single endogenous
+#' regressor. R-squared, Wu-Hausman, and Sargan are deliberately not used
+#' for selection: IV R-squared is unbounded below and has no
+#' instrument-quality interpretation; Wu-Hausman measures how strongly the
+#' data reject exogeneity, a property of the data rather than the
+#' instrument, so favoring a low Wu-Hausman p-value biases selection toward
+#' concluding endogeneity; and Sargan is unidentified (df1 = 0, p = NA)
+#' whenever there is exactly one instrument for one endogenous regressor,
+#' the case here.
 #' @param df *[data.frame]* Data frame with columns: effect, se, study_id, n_obs.
 #' @param instruments *[list]* List of numeric vectors, each representing a potential instrument.
 #' @param instruments_verbose *[character]* Verbose names for each instrument.
-#' @return *[character]* Name(s) of the best instrument(s).
+#' @return *[character]* Name of the strongest instrument by first-stage F-statistic.
 find_best_instrument <- function(df, instruments, instruments_verbose) {
   validate(
     is.data.frame(df),
@@ -87,12 +110,7 @@ find_best_instrument <- function(df, instruments, instruments_verbose) {
   required_cols <- c("effect", "se", "study_id", "n_obs")
   validate(all(required_cols %in% colnames(df)))
 
-  results <- data.frame(
-    r_squared = numeric(length(instruments)),
-    weak_instruments = numeric(length(instruments)),
-    wu_hausman = numeric(length(instruments)),
-    sargan = numeric(length(instruments))
-  )
+  first_stage_fstat <- rep(NA_real_, length(instruments))
 
   for (i in seq_along(instruments)) {
     instrument <- instruments[[i]]
@@ -107,7 +125,6 @@ find_best_instrument <- function(df, instruments, instruments_verbose) {
     )
 
     if (is.null(model)) {
-      results[i, ] <- NA_real_
       next
     }
 
@@ -116,43 +133,29 @@ find_best_instrument <- function(df, instruments, instruments_verbose) {
       error = function(e) NULL
     )
 
-    if (is.null(model_summary)) {
-      results[i, ] <- NA_real_
+    if (is.null(model_summary) || is.null(model_summary$diagnostics)) {
       next
     }
 
-    results[i, "r_squared"] <- model_summary$r.squared
-
-    if (!is.null(model_summary$diagnostics)) {
-      diag_names <- rownames(model_summary$diagnostics)
-      if ("Weak instruments" %in% diag_names) {
-        results[i, "weak_instruments"] <- model_summary$diagnostics["Weak instruments", "p-value"]
-      }
-      if ("Wu-Hausman" %in% diag_names) {
-        results[i, "wu_hausman"] <- model_summary$diagnostics["Wu-Hausman", "p-value"]
-      }
-      if ("Sargan" %in% diag_names) {
-        results[i, "sargan"] <- model_summary$diagnostics["Sargan", "p-value"]
-      }
+    diag_names <- rownames(model_summary$diagnostics)
+    if ("Weak instruments" %in% diag_names) {
+      first_stage_fstat[i] <- model_summary$diagnostics["Weak instruments", "statistic"]
     }
   }
 
-  rownames(results) <- instruments_verbose
+  names(first_stage_fstat) <- instruments_verbose
 
-  # Determine best instrument based on frequency across metrics
-  best_r_squared_idx <- if (any(!is.na(results$r_squared))) which.max(results$r_squared) else NA_integer_
-  best_weak_instruments_idx <- if (any(!is.na(results$weak_instruments))) which.min(results$weak_instruments) else NA_integer_
-  best_wu_hausman_idx <- if (any(!is.na(results$wu_hausman))) which.min(results$wu_hausman) else NA_integer_
-  best_sargan_idx <- if (any(!is.na(results$sargan))) which.min(results$sargan) else NA_integer_
+  assert(
+    any(!is.na(first_stage_fstat)),
+    "Unable to determine best instrument - first-stage F-statistic unavailable for all candidates"
+  )
 
-  best_instruments_idx <- c(best_r_squared_idx, best_weak_instruments_idx, best_wu_hausman_idx, best_sargan_idx)
-  freqs <- table(best_instruments_idx[!is.na(best_instruments_idx)])
+  max_fstat <- max(first_stage_fstat, na.rm = TRUE)
+  best_instruments <- instruments_verbose[!is.na(first_stage_fstat) & first_stage_fstat == max_fstat]
 
-  assert(length(freqs) > 0, "Unable to determine best instrument - all diagnostics returned NA")
-
-  max_freq <- max(freqs)
-  max_values <- as.integer(names(freqs[freqs == max_freq]))
-  best_instruments <- rownames(results)[max_values]
+  if (length(best_instruments) > 1 && WEAK_INSTRUMENT_TIEBREAK %in% best_instruments) {
+    best_instruments <- WEAK_INSTRUMENT_TIEBREAK
+  }
 
   best_instruments
 }
@@ -215,6 +218,21 @@ run_iv_regression <- function(df, iv_instrument = "automatic", add_significance_
     error = function(e) NA_real_
   )
 
+  # First-stage F-statistic for the chosen instrument (weak-instruments diagnostic)
+  first_stage_fstat <- NA_real_
+  if (!is.null(model_summary$diagnostics) && "Weak instruments" %in% rownames(model_summary$diagnostics)) {
+    first_stage_fstat <- model_summary$diagnostics["Weak instruments", "statistic"]
+  }
+
+  weak_instrument <- is.na(first_stage_fstat) || first_stage_fstat < WEAK_INSTRUMENT_F_THRESHOLD
+
+  if (weak_instrument) {
+    fstat_label <- format_number(first_stage_fstat, round_to)
+    cli::cli_alert_warning(
+      "Weak instrument: {.field {best_instrument}} has a first-stage F-statistic of {fstat_label} (below the conventional threshold of {WEAK_INSTRUMENT_F_THRESHOLD}). Publication-bias estimates from the IV regression may be unreliable."
+    )
+  }
+
   # Extract coefficients
   all_coefs <- model_summary$coefficients
 
@@ -246,7 +264,9 @@ run_iv_regression <- function(df, iv_instrument = "automatic", add_significance_
   list(
     coefficients = coefficients,
     instrument_name = best_instrument,
-    ar_fstat = fstat
+    ar_fstat = fstat,
+    first_stage_fstat = first_stage_fstat,
+    weak_instrument = weak_instrument
   )
 }
 
@@ -579,6 +599,8 @@ run_exogeneity_tests <- function(df, options) {
         coefficients = NULL,
         instrument_name = NA_character_,
         ar_fstat = NA_real_,
+        first_stage_fstat = NA_real_,
+        weak_instrument = NA,
         error = e$message
       )
     }
@@ -641,6 +663,7 @@ build_exogeneity_summary <- function(iv_results, puniform_results, options) {
     "Effect Beyond Bias",
     "(Std. Error)",
     "Total Observations",
+    "First-stage F",
     "F-test (AR)"
   )
 
@@ -656,12 +679,18 @@ build_exogeneity_summary <- function(iv_results, puniform_results, options) {
     pb <- iv_coef[iv_coef$term == "publication_bias", , drop = FALSE]
     eff <- iv_coef[iv_coef$term == "effect", , drop = FALSE]
 
+    first_stage_str <- format_number(iv_results$first_stage_fstat, options$round_to)
+    if (isTRUE(iv_results$weak_instrument) && !is.na(first_stage_str)) {
+      first_stage_str <- paste0(first_stage_str, " (weak instrument)")
+    }
+
     summary[["IV"]] <- na_to_not_computable(c(
       if (nrow(pb) > 0) pb$estimate_formatted else NA_character_,
       if (nrow(pb) > 0) pb$std_error_formatted else NA_character_,
       if (nrow(eff) > 0) eff$estimate_formatted else NA_character_,
       if (nrow(eff) > 0) eff$std_error_formatted else NA_character_,
       if (nrow(iv_coef) > 0) format_number(iv_coef$n_obs[1], 0) else NA_character_,
+      first_stage_str,
       format_number(iv_results$ar_fstat, options$round_to)
     ))
   } else {
@@ -693,6 +722,7 @@ build_exogeneity_summary <- function(iv_results, puniform_results, options) {
       if (nrow(eff) > 0) eff$estimate_formatted else NA_character_,
       if (nrow(eff) > 0) eff$std_error_formatted else NA_character_,
       if (nrow(pu_coef) > 0) format_number(pu_coef$n_obs[1], 0) else NA_character_,
+      "", # No first-stage F for p-uniform
       "" # No F-test for p-uniform
     ))
   } else {
@@ -707,5 +737,6 @@ box::export(
   run_exogeneity_tests,
   run_iv_regression,
   run_puniform_star,
-  find_best_instrument
+  find_best_instrument,
+  WEAK_INSTRUMENT_F_THRESHOLD
 )
