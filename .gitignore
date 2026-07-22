@@ -91,3 +91,7 @@ venv.bak/
 *.asc
 !*.asc.gpg
 **/*-ssh-key
+
+# testthat check-reporter debug artifacts
+tests/testthat/_problems/
+tests/testthat/testthat-problems.rds
