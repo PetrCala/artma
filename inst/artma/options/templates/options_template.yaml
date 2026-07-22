@@ -717,9 +717,10 @@ methods:
 
     lcm_iterations:
       type: "integer"
-      default: 3000
+      default: 10000
       help: |
-        Number of simulations for LCM test critical values.
+        Number of simulations for LCM test critical values, matching the
+        Monte-Carlo size used by Elliott et al. (2022).
         Higher values increase precision but take longer to compute.
 
     lcm_grid_points:
