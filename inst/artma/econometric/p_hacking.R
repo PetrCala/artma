@@ -23,7 +23,8 @@ box::use(
     cox_shi_test,
     skipped_result
   ],
-  artma / calc / methods / maive[maive]
+  artma / calc / methods / maive[maive],
+  artma / libs / core / utils[get_verbosity]
 )
 
 #' @title Extract the skip reason attached to a `skipped_result()` value
@@ -408,6 +409,10 @@ caliper_direction_label <- function(direction) {
 
 # MAIVE utilities ----------------------------------------------------------
 
+# Stock-Yogo rule of thumb: a first-stage F below this leaves the instrumented
+# SE too noisy to identify the MAIVE intercept.
+MAIVE_WEAK_F_THRESHOLD <- 10
+
 #' @title Prepare data for MAIVE
 #' @param df *[data.frame]* Input data with effect, se, n_obs, study_id.
 #' @return *[data.frame]* Data formatted for MAIVE (bs, sebs, Ns, studyid).
@@ -491,13 +496,12 @@ format_maive_results <- function(maive_output, options) {
 
   # --- Diagnostics ---
   sep()
-  ftest_raw <- maive_output$`F-test`
-  ftest_val <- if (!is.null(ftest_raw) && !is.na(ftest_raw) && !identical(ftest_raw, "NA")) {
-    format_number(as.numeric(ftest_raw), rd)
-  } else {
-    "NA"
-  }
+  ftest <- maive_first_stage_f(maive_output)
+  ftest_val <- if (is.na(ftest)) "NA" else format_number(ftest, rd)
   add("F-test (1st stage IV)", ftest_val)
+  if (maive_first_stage_is_weak(ftest)) {
+    add("  Instrument strength", sprintf("weak (F < %s)", MAIVE_WEAK_F_THRESHOLD))
+  }
 
   add("Hausman test", format_number(maive_output$Hausman, rd))
   add("  Chi-sq. crit. (alpha=0.05)", format_number(maive_output$Chi2, rd))
@@ -517,6 +521,27 @@ format_maive_results <- function(maive_output, options) {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+}
+
+#' @title Extract the first-stage F statistic from MAIVE output
+#' @description MAIVE reports the statistic as the literal string "NA" when
+#'   instrumenting is switched off, so a plain `as.numeric()` is not enough.
+#' @param maive_output *[list]* Output from `maive()`.
+#' @return *[numeric]* The F statistic, or `NA_real_` when unavailable.
+maive_first_stage_f <- function(maive_output) {
+  raw <- maive_output$`F-test`
+  if (is.null(raw) || length(raw) != 1L || identical(raw, "NA")) {
+    return(NA_real_)
+  }
+  val <- suppressWarnings(as.numeric(raw))
+  if (!is.finite(val)) NA_real_ else val
+}
+
+#' @title Flag a weak MAIVE first stage
+#' @param ftest *[numeric]* First-stage F statistic.
+#' @return *[logical]* TRUE when the instrument is weak by the Stock-Yogo rule of thumb.
+maive_first_stage_is_weak <- function(ftest) {
+  is.numeric(ftest) && length(ftest) == 1L && is.finite(ftest) && ftest < MAIVE_WEAK_F_THRESHOLD
 }
 
 #' @title Compute two-sided p-value from coefficient and SE
@@ -896,6 +921,19 @@ run_p_hacking_tests <- function(df, options) {
           NULL
         }
       )
+      if (!is.null(maive_results) && get_verbosity() >= 2) {
+        maive_f <- maive_first_stage_f(maive_results)
+        if (maive_first_stage_is_weak(maive_f)) {
+          cli::cli_alert_warning(c(
+            "MAIVE first-stage F is {round(maive_f, 3)}, below {MAIVE_WEAK_F_THRESHOLD}: ",
+            "the sample-size instrument is weak and the MAIVE estimate is unreliable."
+          ))
+          cli::cli_alert_info(
+            "Try {.code maive_first_stage: 1} (log first stage), which fits data whose sample sizes span orders of magnitude."
+          )
+        }
+      }
+
       output$maive <- if (is.null(maive_results)) {
         NULL
       } else {
@@ -972,6 +1010,9 @@ box::export(
   resolve_t_stats,
   prepare_maive_data,
   maive_p_from_coef,
+  maive_first_stage_f,
+  maive_first_stage_is_weak,
+  format_maive_results,
   run_binomial,
   run_lcm,
   run_discontinuity,
