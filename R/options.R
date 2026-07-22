@@ -379,6 +379,7 @@ options.load <- function(
     # invalid abort the load, naming the offending options.
     resolved <- defaults
     unresolved <- character(0)
+    substituted <- character(0)
 
     for (opt_def in get_option_defs(template_path = template_path)) {
       opt_name <- opt_def$name
@@ -393,7 +394,19 @@ options.load <- function(
         resolved[[key]] <- user_values[[key]]
       } else if (!(key %in% names(defaults))) {
         unresolved <- c(unresolved, opt_name)
+      } else if (key %in% names(user_values)) {
+        # The file holds a value that does not match the template type. Loading
+        # stays resilient and falls back to the default, but say so: a later
+        # options.modify() persists the resolved set and would overwrite the
+        # user's value without trace.
+        substituted <- c(substituted, opt_name)
       }
+    }
+
+    if (length(substituted) > 0 && get_verbosity() >= 2) {
+      cli::cli_alert_warning(
+        "Ignoring {length(substituted)} invalid value{?s} in {.file {options_file_name}} and using the template default{?s} instead: {.val {substituted}}. Run {.code artma::options.fix()} to write the defaults to the file."
+      )
     }
 
     if (length(unresolved) > 0) {

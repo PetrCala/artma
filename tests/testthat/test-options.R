@@ -214,6 +214,44 @@ test_that("options.load backfills missing and invalid values with template defau
   expect_equal(loaded$`artma.calc.se_zero_handling`, "stop")
 })
 
+test_that("options.load warns when it substitutes an invalid value", {
+  box::use(artma[options.load])
+
+  tmp_dir <- withr::local_tempdir()
+  template_path <- file.path(tmp_dir, "template.yaml")
+
+  template <- list(
+    calc = list(
+      precision_type = list(
+        type = "character",
+        default = "1/SE",
+        help = "Precision metric"
+      )
+    )
+  )
+  yaml::write_yaml(template, template_path)
+
+  # An integer where the template wants a character: invalid, backfilled.
+  yaml::write_yaml(
+    list(calc = list(precision_type = 42L)),
+    file.path(tmp_dir, "stale.yaml")
+  )
+
+  withr::local_options(list("artma.verbose" = 3))
+
+  msgs <- testthat::capture_messages(
+    options.load(
+      options_file_name = "stale.yaml",
+      options_dir = tmp_dir,
+      template_path = template_path,
+      should_validate = TRUE,
+      should_return = TRUE
+    )
+  )
+
+  expect_true(any(grepl("calc.precision_type", msgs, fixed = TRUE)))
+})
+
 test_that("options.load never writes to the options file", {
   box::use(artma[options.load])
 

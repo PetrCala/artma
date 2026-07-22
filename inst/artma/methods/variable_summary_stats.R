@@ -46,7 +46,7 @@ variable_summary_stats <- function(df) {
     var_name <- desired_vars[[row_idx]]
     var_data <- as.vector(unlist(subset(df, select = var_name))) # Roundabout way, because types
     var_class <- config[[var_name]]$data_type
-    var_name_display <- if (opt$use_verbose_names) config[[var_name]]$var_name_verbose else var_name
+    var_name_display <- if (isTRUE(opt$use_verbose_names %||% TRUE)) config[[var_name]]$var_name_verbose else var_name
 
     # Missing all data
     if (!any(is.numeric(var_data), na.rm = TRUE) || all(is.na(var_data))) {

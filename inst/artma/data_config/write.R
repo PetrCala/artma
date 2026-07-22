@@ -142,7 +142,6 @@ fix_data_config <- function(
 ) {
   box::use(
     artma / libs / core / utils[get_verbosity],
-    artma / data / utils[get_colnames_map],
     artma / data_config / defaults[build_base_config],
     artma / data_config / resolve[read_df_for_config]
   )
@@ -152,16 +151,23 @@ fix_data_config <- function(
   }
 
   # Preserve the column name mappings: they cannot be re-derived from the
-  # dataframe and dropping them would orphan the source columns.
-  colnames_map <- get_colnames_map()
+  # dataframe and dropping them would orphan the source columns. Moderators
+  # carry a `source_name` just like role records do, so the whole store is
+  # scanned rather than only the standard-name keys.
+  store <- getOption("artma.data.columns", list())
+  if (!is.list(store)) store <- list()
 
   df <- read_df_for_config()
   base_config <- build_base_config(df)
 
   # Clear all analysis overrides -- the base config is the canonical default
   new_store <- list()
-  for (std in names(colnames_map)) {
-    new_store[[std]] <- list(source_name = colnames_map[[std]])
+  for (key in names(store)) {
+    entry <- store[[key]]
+    if (!is.list(entry)) next
+    src <- entry[["source_name"]]
+    if (is.null(src) || length(src) != 1 || is.na(src) || !nzchar(src)) next
+    new_store[[key]] <- list(source_name = src)
   }
 
   write_unified_columns(new_store)
