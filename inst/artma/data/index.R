@@ -8,9 +8,9 @@ box::use(
 #   configure -> compute -> persist
 #
 # * configure (interactive, uncached, runs first): resolves schema drift and
-#   the missing-value strategy, prompting where the autonomy/interactivity gate
-#   allows it, and updating the persisted config. Skipped decisions fall back to
-#   deterministic defaults.
+#   the missing-value and zero-standard-error strategies, prompting where the
+#   autonomy/interactivity gate allows it, and updating the persisted config.
+#   Skipped decisions fall back to deterministic defaults.
 # * compute (pure, cached): read is shared with configure; standardizes,
 #   preprocesses, and derives columns using only the resolved config. It is the
 #   ONLY phase behind the cache and performs no prompts and no option writes.
@@ -37,8 +37,9 @@ prime_raw_df <- function(df_raw) {
 
 #' @title Configure phase
 #' @description Interactive, uncached phase. Resolves any schema drift and
-#'   decides the missing-value handling strategy before the cached compute phase
-#'   runs, so compute never prompts and its cache key is stable across runs.
+#'   decides the missing-value and zero-standard-error handling strategies
+#'   before the cached compute phase runs, so compute never prompts and its
+#'   cache key is stable across runs.
 #' @param df_raw *[data.frame]* Raw data frame with original column names.
 #' @return `NULL`, invisibly.
 #' @keywords internal
@@ -46,7 +47,7 @@ configure_data <- function(df_raw) {
   box::use(
     artma / data / utils[standardize_column_names],
     artma / data / schema_reconcile[reconcile_schema],
-    artma / data / preprocess[clean_data, resolve_na_handling]
+    artma / data / preprocess[clean_data, resolve_na_handling, resolve_se_zero_handling]
   )
 
   # Detect and resolve any schema drift before column standardization. This may
@@ -54,10 +55,12 @@ configure_data <- function(df_raw) {
   mode <- getOption("artma.data.reconcile_mode", "ask")
   reconcile_schema(df_raw, mode = mode)
 
-  # Decide the missing-value strategy on the cleaned, standardized frame so the
-  # compute phase can handle missing values without prompting.
+  # Decide the missing-value and zero-SE strategies on the cleaned, standardized
+  # frame so the compute phase can handle both without prompting.
   df_std <- standardize_column_names(df_raw, auto_detect = FALSE)
-  resolve_na_handling(clean_data(df_std))
+  df_clean <- clean_data(df_std)
+  resolve_na_handling(df_clean)
+  resolve_se_zero_handling(df_clean)
 
   invisible(NULL)
 }

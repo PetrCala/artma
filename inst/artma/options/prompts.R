@@ -87,6 +87,52 @@ prompt_na_handling <- function(opt, ...) {
   selected_value
 }
 
+prompt_se_zero_handling <- function(opt, ...) {
+  box::use(artma / const[CONST])
+
+  choices <- c(
+    "Remove rows with zero SE, with a warning (default)" = "remove",
+    "Stop (abort if zero SE found)" = "stop",
+    "Warn but keep rows with zero SE" = "warn",
+    "Ignore silently" = "ignore"
+  )
+
+  cli::cli_h1("Zero Standard Error Handling")
+  cli::cli_text("Standard errors equal to zero cause division-by-zero errors (e.g. infinite t-statistics).")
+  cli::cat_line()
+
+  cli::cli_h3("Available strategies:")
+  cli::cli_ul(c(
+    "{.strong remove}: Remove rows with zero standard errors, with a warning (recommended)",
+    "{.strong stop}: Abort analysis if any zero standard errors are found (strictest)",
+    "{.strong warn}: Warn but keep rows with zero standard errors",
+    "{.strong ignore}: Silently ignore zero standard errors"
+  ))
+  cli::cat_line()
+
+  selected <- climenu::select(
+    choices = names(choices),
+    prompt = "Select zero standard error handling strategy",
+    selected = 1 # "remove" as default
+  )
+
+  if (rlang::is_empty(selected)) {
+    cli::cli_alert_info("No selection made. Using default: {CONST$STYLES$OPTIONS$VALUE('remove')}")
+    return("remove")
+  }
+
+  selected_value <- choices[selected][[1]]
+
+  if (selected_value == "stop") {
+    cli::cli_alert_warning("Strict mode: analysis will abort if any zero standard errors are found.")
+  }
+
+  cli::cli_alert_success("Selected strategy: {CONST$STYLES$OPTIONS$VALUE(selected_value)}")
+  cli::cat_line()
+
+  selected_value
+}
+
 prompt_autonomy_level <- function(opt, ...) {
   box::use(
     artma / const[CONST],
@@ -140,5 +186,6 @@ prompt_autonomy_level <- function(opt, ...) {
 box::export(
   prompt_autonomy_level,
   prompt_winsorization_level,
-  prompt_na_handling
+  prompt_na_handling,
+  prompt_se_zero_handling
 )

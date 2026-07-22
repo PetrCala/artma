@@ -48,16 +48,24 @@ calc:
         {cli::symbol$bullet} {.strong DoF}: Calculate precision as sqrt(DoF)
 
   se_zero_handling:
-    type: "enum: stop|warn|ignore"
-    default: "stop"
+    type: "enum: stop|warn|remove|ignore"
+    default: .na
+    allow_na: true
+    prompt: "function"
+    prompt_function: "prompt_se_zero_handling"
+    suppress_help_in_prompt: true
     help: |
       Having standard errors equal to zero can lead to division by zero errors, introducing infinite t-statistics.
-      By default, the package will stop if any zero standard errors are found.
-      You can change this behavior by setting the option to 'warn' or 'ignore'.
+      By default, rows with zero standard errors are removed with a warning; set this option to 'stop'
+      for stricter validation, or to 'warn'/'ignore' to keep the affected rows.
       How to handle zero standard errors:
-        {cli::symbol$bullet} {.strong stop}: Abort if any zero standard errors are found
-        {cli::symbol$bullet} {.strong warn}: Warn if any zero standard errors are found
-        {cli::symbol$bullet} {.strong ignore}: Ignore zero standard errors
+        {cli::symbol$bullet} {.strong stop}: Abort if any zero standard errors are found (strictest)
+        {cli::symbol$bullet} {.strong warn}: Warn but keep rows with zero standard errors
+        {cli::symbol$bullet} {.strong remove}: Remove rows with zero standard errors, with a warning (default)
+        {cli::symbol$bullet} {.strong ignore}: Silently ignore zero standard errors
+
+      If this option is not set (NA), you will be prompted interactively when zero standard errors are
+      detected, subject to your autonomy level; a non-interactive session defaults to 'remove'.
 
 visualization:
   theme:
