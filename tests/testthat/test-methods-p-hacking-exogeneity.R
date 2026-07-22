@@ -116,5 +116,5 @@ test_that("exogeneity_tests handles mock data with too few significant p-uniform
   result <- expect_no_error(exogeneity_tests(df))
 
   expect_true(is.data.frame(result$tables$summary))
-  expect_equal(nrow(result$tables$summary), 6L)
+  expect_equal(nrow(result$tables$summary), 7L)
 })
