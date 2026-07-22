@@ -109,6 +109,7 @@ List them at any time with `artma::methods.list()`. The current set:
 | `nonlinear_tests` | Publication bias diagnostics based on non-linear estimators |
 | `exogeneity_tests` | Diagnostics that relax the exogeneity assumption (IV regression, p-uniform*) |
 | `p_hacking_tests` | A suite of tests for p-hacking and selective reporting |
+| `maive` | The MAIVE estimator, correcting for publication bias, p-hacking, and spurious precision |
 | `bma` | Bayesian Model Averaging over moderator variables for heterogeneity analysis |
 | `fma` | Frequentist Model Averaging, reusing the BMA model to order predictors |
 | `best_practice_estimate` | Best-practice estimates computed from the BMA coefficients |

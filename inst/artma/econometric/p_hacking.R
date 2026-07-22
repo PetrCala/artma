@@ -1,8 +1,8 @@
 #' @title P-hacking test helpers
 #' @description
 #' Helper functions for comprehensive p-hacking detection tests.
-#' Includes Caliper tests (Gerber & Malhotra, 2008), Elliott tests (2022),
-#' and MAIVE estimator (Irsova et al., 2023).
+#' Includes Caliper tests (Gerber & Malhotra, 2008) and Elliott tests (2022).
+#' The MAIVE estimator lives in its own module (`artma/econometric/maive`).
 NULL
 
 box::use(
@@ -22,9 +22,7 @@ box::use(
     cox_shi_test,
     skipped_result
   ],
-  artma / calc / methods / elliott_cache[simulate_cdfs_cached],
-  artma / calc / methods / maive[maive],
-  artma / libs / core / utils[get_verbosity]
+  artma / calc / methods / elliott_cache[simulate_cdfs_cached]
 )
 
 #' @title Extract the skip reason attached to a `skipped_result()` value
@@ -407,210 +405,6 @@ caliper_direction_label <- function(direction) {
   )
 }
 
-# MAIVE utilities ----------------------------------------------------------
-
-# Stock-Yogo rule of thumb: a first-stage F below this leaves the instrumented
-# SE too noisy to identify the MAIVE intercept.
-MAIVE_WEAK_F_THRESHOLD <- 10
-
-# maive_first_stage = 2 asks artma to pick the functional form. The levels first
-# stage regresses SE^2 on 1/N; once sample sizes span this many orders of
-# magnitude, 1/N is numerically indistinguishable from zero for most of the
-# sample and the regression is identified off the few smallest studies alone.
-MAIVE_AUTO_FIRST_STAGE <- 2L
-MAIVE_AUTO_ORDERS_THRESHOLD <- 3
-
-#' @title Prepare data for MAIVE
-#' @param df *[data.frame]* Input data with effect, se, n_obs, study_id.
-#' @return *[data.frame]* Data formatted for MAIVE (bs, sebs, Ns, studyid).
-prepare_maive_data <- function(df) {
-  validate(is.data.frame(df))
-
-  required_cols <- c("effect", "se", "n_obs")
-  validate(all(required_cols %in% colnames(df)))
-
-  maive_data <- data.frame(
-    bs = df$effect,
-    sebs = df$se,
-    Ns = df$n_obs,
-    stringsAsFactors = FALSE
-  )
-
-  if ("study_id" %in% colnames(df)) {
-    maive_data$studyid <- df$study_id
-  }
-
-  maive_data
-}
-
-#' @title Format MAIVE results
-#' @param maive_output *[list]* Output from maive() function.
-#' @param options *[list]* Options.
-#' @param first_stage *[list, optional]* The resolved first stage, as returned
-#'   by `resolve_maive_first_stage()`. When supplied, the functional form used
-#'   is recorded in the table so the exported result documents its own
-#'   specification.
-#' @return *[data.frame]* Formatted MAIVE summary.
-format_maive_results <- function(maive_output, options, first_stage = NULL) {
-  if (is.null(maive_output)) {
-    return(data.frame(
-      Statistic = "Error",
-      Value = "MAIVE estimation failed",
-      stringsAsFactors = FALSE
-    ))
-  }
-
-  rd <- options$round_to
-  rows <- list()
-  self_env <- environment()
-  add <- function(stat, val) {
-    self_env$rows[[length(self_env$rows) + 1L]] <- list(stat = stat, val = val)
-  }
-  sep <- function() add("", "")
-
-  # --- Estimates ---
-  beta_p <- maive_p_from_coef(maive_output$beta, maive_output$SE)
-  add("MAIVE coefficient", paste0(format_number(maive_output$beta, rd), significance_mark(beta_p)))
-  add("  Std. error", format_se(maive_output$SE, rd))
-
-  selected <- maive_output$petpeese_selected
-  if (!is.null(selected) && !is.na(selected)) {
-    add("Model selected", selected)
-  }
-
-  # --- Publication bias ---
-  sep()
-  pub_p <- maive_output$`pub bias p-value`
-  if (is.numeric(pub_p) && is.finite(pub_p)) {
-    add("Pub. bias p-value", paste0(format_number(pub_p, rd), significance_mark(pub_p)))
-  } else {
-    add("Pub. bias p-value", "NA")
-  }
-
-  add("Egger coefficient", format_number(maive_output$egger_coef, rd))
-  add("  Std. error", format_se(maive_output$egger_se, rd))
-
-  boot_ci <- maive_output$egger_boot_ci
-  if (is.numeric(boot_ci) && length(boot_ci) == 2L && all(is.finite(boot_ci))) {
-    add("  95% CI (bootstrap)", format_ci(boot_ci[1L], boot_ci[2L], rd))
-  }
-
-  # PEESE SE^2 details (only when PEESE is the selected model)
-  peese_coef <- maive_output$peese_se2_coef
-  if (is.numeric(peese_coef) && is.finite(peese_coef)) {
-    add("PEESE SE^2 coefficient", format_number(peese_coef, rd))
-    peese_se <- maive_output$peese_se2_se
-    if (is.numeric(peese_se) && is.finite(peese_se)) {
-      add("  Std. error", format_se(peese_se, rd))
-    }
-  }
-
-  # --- Diagnostics ---
-  sep()
-  ftest <- maive_first_stage_f(maive_output)
-  ftest_val <- if (is.na(ftest)) "NA" else format_number(ftest, rd)
-  if (is.list(first_stage) && !is.null(first_stage$value)) {
-    form <- c("levels", "log")[first_stage$value + 1L]
-    add("1st stage form", if (isTRUE(first_stage$automatic)) paste(form, "(auto)") else form)
-  }
-
-  add("F-test (1st stage IV)", ftest_val)
-  if (maive_first_stage_is_weak(ftest)) {
-    add("  Instrument strength", sprintf("weak (F < %s)", MAIVE_WEAK_F_THRESHOLD))
-  }
-
-  add("Hausman test", format_number(maive_output$Hausman, rd))
-  add("  Chi-sq. crit. (alpha=0.05)", format_number(maive_output$Chi2, rd))
-
-  ar_ci <- maive_output$AR_CI
-  if (is.numeric(ar_ci) && length(ar_ci) == 2L && all(is.finite(ar_ci))) {
-    add("AR 95% CI", format_ci(ar_ci[1L], ar_ci[2L], rd))
-  }
-
-  # Build data frame
-  stats <- vapply(rows, `[[`, "", "stat")
-  vals <- vapply(rows, `[[`, "", "val")
-
-  data.frame(
-    Statistic = stats,
-    Value = vals,
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
-}
-
-#' @title Choose the MAIVE first-stage functional form
-#' @description
-#' Resolves `maive_first_stage`. Values 0 (levels) and 1 (log) pass straight
-#' through; 2 asks artma to decide.
-#'
-#' The decision reads the sample-size column and nothing else. It never looks
-#' at the effects, the standard errors, or any fitted statistic, so it cannot
-#' become a search over specifications for a preferred coefficient: `N` is the
-#' instrument and is taken as exogenous, which makes its own spread a
-#' legitimate basis for a functional-form choice, in the same way a skewed
-#' regressor justifies a log scale. Selecting instead on the first-stage F
-#' would be a different thing entirely, since MAIVE's premise is that the
-#' standard error is endogenous with respect to the effect.
-#' @param first_stage *[numeric]* The configured value: 0, 1, or 2.
-#' @param n_obs *[numeric]* Per-observation sample sizes (MAIVE's `Ns`).
-#' @return *[list]* `value` (0 or 1), `automatic` (was it resolved here), and
-#'   `orders` (orders of magnitude spanned by `n_obs`, `NA` when undecidable).
-resolve_maive_first_stage <- function(first_stage, n_obs) {
-  passthrough <- function(value) {
-    list(value = as.integer(value), automatic = FALSE, orders = NA_real_)
-  }
-
-  if (!isTRUE(as.integer(first_stage) == MAIVE_AUTO_FIRST_STAGE)) {
-    return(passthrough(first_stage))
-  }
-
-  usable <- n_obs[is.finite(n_obs) & n_obs > 0]
-  if (length(usable) < 2L) {
-    # Nothing to measure a spread over: keep MAIVE's own default.
-    return(list(value = 0L, automatic = TRUE, orders = NA_real_))
-  }
-
-  orders <- log10(max(usable) / min(usable))
-  list(
-    value = if (orders >= MAIVE_AUTO_ORDERS_THRESHOLD) 1L else 0L,
-    automatic = TRUE,
-    orders = orders
-  )
-}
-
-#' @title Extract the first-stage F statistic from MAIVE output
-#' @description MAIVE reports the statistic as the literal string "NA" when
-#'   instrumenting is switched off, so a plain `as.numeric()` is not enough.
-#' @param maive_output *[list]* Output from `maive()`.
-#' @return *[numeric]* The F statistic, or `NA_real_` when unavailable.
-maive_first_stage_f <- function(maive_output) {
-  raw <- maive_output$`F-test`
-  if (is.null(raw) || length(raw) != 1L || identical(raw, "NA")) {
-    return(NA_real_)
-  }
-  val <- suppressWarnings(as.numeric(raw))
-  if (!is.finite(val)) NA_real_ else val
-}
-
-#' @title Flag a weak MAIVE first stage
-#' @param ftest *[numeric]* First-stage F statistic.
-#' @return *[logical]* TRUE when the instrument is weak by the Stock-Yogo rule of thumb.
-maive_first_stage_is_weak <- function(ftest) {
-  is.numeric(ftest) && length(ftest) == 1L && is.finite(ftest) && ftest < MAIVE_WEAK_F_THRESHOLD
-}
-
-#' @title Compute two-sided p-value from coefficient and SE
-#' @param beta *[numeric]* Coefficient.
-#' @param se *[numeric]* Standard error.
-#' @return *[numeric]* P-value, or NA if inputs are not finite.
-maive_p_from_coef <- function(beta, se) {
-  if (!is.numeric(beta) || !is.numeric(se) || !is.finite(beta) || !is.finite(se) || se <= 0) {
-    return(NA_real_)
-  }
-  2 * stats::pnorm(-abs(beta / se))
-}
-
 # P-value utilities --------------------------------------------------------
 
 #' @title Compute p-values from effect and se
@@ -806,8 +600,8 @@ run_cox_shi <- function(pvalues, study_id = NULL, p_min, p_max, n_bins = 10L,
 #' @title Run suite of p-hacking tests
 #' @description
 #' Executes comprehensive p-hacking detection tests: Caliper (Gerber & Malhotra, 2008),
-#' Elliott et al. (2022), and MAIVE (Irsova et al., 2023).
-#' @param df *[data.frame]* Input data with effect, se, study_id, n_obs columns.
+#' Elliott et al. (2022).
+#' @param df *[data.frame]* Input data with effect, se, and study_id columns.
 #' @param options *[list]* Options containing test parameters.
 #' @return *[list]* Contains test results and formatted summaries.
 run_p_hacking_tests <- function(df, options) {
@@ -947,79 +741,6 @@ run_p_hacking_tests <- function(df, options) {
     output$elliott <- build_elliott_summary(elliott_tests, pvalues, options)
   }
 
-  # 3. MAIVE Estimator
-  if (options$include_maive) {
-    if ("n_obs" %in% colnames(df)) {
-      maive_data <- prepare_maive_data(df)
-
-      if (options$maive_se == 3L) {
-        cli::cli_alert_info("Running MAIVE with wild cluster bootstrap (this may take a moment)...")
-      }
-
-      first_stage <- resolve_maive_first_stage(options$maive_first_stage, maive_data$Ns)
-      if (first_stage$automatic && get_verbosity() >= 3) {
-        cli::cli_alert_info(c(
-          "MAIVE first stage selected automatically: {c('levels', 'log')[first_stage$value + 1L]}",
-          if (is.na(first_stage$orders)) {
-            " (sample sizes carry no usable spread)."
-          } else {
-            " (sample sizes span {round(first_stage$orders, 1)} orders of magnitude, threshold {MAIVE_AUTO_ORDERS_THRESHOLD})."
-          }
-        ))
-      }
-
-      maive_results <- tryCatch(
-        {
-          maive(
-            dat = maive_data,
-            method = options$maive_method,
-            weight = options$maive_weight,
-            instrument = options$maive_instrument,
-            studylevel = options$maive_studylevel,
-            SE = options$maive_se,
-            AR = options$maive_ar,
-            first_stage = first_stage$value,
-            seed = options$maive_seed
-          )
-        },
-        error = function(e) {
-          # conditionMessage(), not e$message: the latter keeps only the cli
-          # header, dropping the bullets that carry the install and upgrade
-          # hints the user needs to act on the skip.
-          skipped[["maive"]] <<- conditionMessage(e)
-          NULL
-        }
-      )
-      if (!is.null(maive_results) && get_verbosity() >= 2) {
-        maive_f <- maive_first_stage_f(maive_results)
-        if (maive_first_stage_is_weak(maive_f)) {
-          cli::cli_alert_warning(c(
-            "MAIVE first-stage F is {round(maive_f, 3)}, below {MAIVE_WEAK_F_THRESHOLD}: ",
-            "the sample-size instrument is weak and the MAIVE estimate is unreliable."
-          ))
-          cli::cli_alert_info(
-            "Try {.code maive_first_stage: 1} (log first stage), which fits data whose sample sizes span orders of magnitude."
-          )
-        }
-      }
-
-      output$maive <- if (is.null(maive_results)) {
-        NULL
-      } else {
-        tryCatch(
-          format_maive_results(maive_results, options, first_stage),
-          error = function(e) {
-            skipped[["maive"]] <<- paste("MAIVE result formatting failed:", e$message)
-            NULL
-          }
-        )
-      }
-    } else {
-      skipped[["maive"]] <- "requires the 'n_obs' column, which is absent from the data"
-      output$maive <- NULL
-    }
-  }
-
   output$n_pvalues <- length(pvalues)
   output$n_significant_005 <- sum(pvalues <= 0.05, na.rm = TRUE)
   output$n_significant_010 <- sum(pvalues <= 0.10, na.rm = TRUE)
@@ -1077,12 +798,6 @@ box::export(
   build_caliper_summary,
   compute_pvalues,
   resolve_t_stats,
-  prepare_maive_data,
-  maive_p_from_coef,
-  maive_first_stage_f,
-  maive_first_stage_is_weak,
-  resolve_maive_first_stage,
-  format_maive_results,
   run_binomial,
   run_lcm,
   run_discontinuity,

@@ -104,6 +104,125 @@ print_summary_table <- function(summary) {
     print(summary, row.names = !duplicated_metric) # nolint: undesirable_function_linter.
   )
   cli::cli_verbatim(lines)
+  invisible(lines)
+}
+
+#' Pick the cli style function for a verdict tone
+#'
+#' @param tone *\[character\]* One of `"good"`, `"bad"`, or anything else for
+#'   unstyled output.
+#' @return *\[function\]* A string-to-string styling function.
+#' @keywords internal
+tone_style <- function(tone) {
+  switch(tone %||% "",
+    good = cli::col_green,
+    bad = cli::col_red,
+    identity
+  )
+}
+
+#' Print a sectioned key/value summary table through cli
+#'
+#' @description
+#' Renders a tidy `Section` / `Statistic` / `Value` (/ `Note`) frame as
+#' left-aligned key/value rows under underlined section headings. Unlike
+#' `print.data.frame`, which right-aligns character columns and so destroys any
+#' label hierarchy, this keeps labels flush left and right-aligns only the value
+#' column, so numbers line up and sub-rows stay readable.
+#'
+#' Verdict notes are colourised from a `tone` attribute on the frame (a
+#' character vector, one entry per row, of `"good"`, `"bad"`, or `""`). The
+#' attribute is deliberately not a column, so the exported CSV stays free of
+#' presentation-only data.
+#'
+#' Falls back to [print_summary_table()] when the expected columns are absent.
+#'
+#' @param summary *\[data.frame\]* The summary table to print.
+#' @param section_col *\[character\]* Name of the section column.
+#' @param label_col *\[character\]* Name of the label column.
+#' @param value_col *\[character\]* Name of the value column.
+#' @param note_col *\[character\]* Name of the (optional) verdict column.
+#' @param indent *\[character\]* Prefix placed before every non-heading row.
+#' @keywords internal
+print_sectioned_table <- function(summary,
+                                  section_col = "Section",
+                                  label_col = "Statistic",
+                                  value_col = "Value",
+                                  note_col = "Note",
+                                  indent = "  ") {
+  if (!is.data.frame(summary) || nrow(summary) == 0L) {
+    return(invisible(character()))
+  }
+  if (!all(c(section_col, label_col, value_col) %in% names(summary))) {
+    return(print_summary_table(summary))
+  }
+
+  as_chr <- function(x, empty = "") {
+    out <- as.character(x)
+    out[is.na(out)] <- empty
+    out
+  }
+
+  sections <- as_chr(summary[[section_col]])
+  labels <- as_chr(summary[[label_col]])
+  values <- as_chr(summary[[value_col]], empty = "NA")
+  notes <- if (note_col %in% names(summary)) as_chr(summary[[note_col]]) else rep("", nrow(summary))
+
+  tones <- attr(summary, "tone")
+  if (length(tones) != nrow(summary)) {
+    tones <- rep("", nrow(summary))
+  }
+  tones <- as_chr(tones)
+
+  label_width <- max(nchar(labels))
+  value_width <- max(nchar(values))
+
+  lines <- character()
+  current_section <- NULL
+  for (i in seq_along(labels)) {
+    if (!identical(sections[[i]], current_section)) {
+      current_section <- sections[[i]]
+      if (nzchar(current_section)) {
+        if (length(lines) > 0L) {
+          lines <- c(lines, "")
+        }
+        lines <- c(lines, current_section, strrep("-", nchar(current_section)))
+      }
+    }
+
+    line <- sprintf("%s%-*s  %*s", indent, label_width, labels[[i]], value_width, values[[i]])
+    if (nzchar(notes[[i]])) {
+      line <- paste0(line, "   ", tone_style(tones[[i]])(notes[[i]]))
+    }
+    lines <- c(lines, line)
+  }
+
+  # cli_verbatim() silently drops empty strings, so the blank line separating
+  # two sections has to go out through cli_text().
+  for (line in lines) {
+    if (nzchar(line)) cli::cli_verbatim(line) else cli::cli_text("")
+  }
+
+  invisible(lines)
+}
+
+#' Print a wrapped paragraph of generated prose through cli
+#'
+#' @description
+#' Wraps and prints sentences via `cli_verbatim` (so cached runs replay the
+#' output verbatim, which `cli_text`'s glue interpolation would not survive).
+#'
+#' @param sentences *\[character\]* Sentences to join into one paragraph.
+#' @param width *\[integer\]* Wrap width.
+#' @keywords internal
+print_paragraph <- function(sentences, width = 88L) {
+  sentences <- sentences[nzchar(sentences)]
+  if (length(sentences) == 0L) {
+    return(invisible(character()))
+  }
+  lines <- strwrap(paste(sentences, collapse = " "), width = width)
+  cli::cli_verbatim(lines)
+  invisible(lines)
 }
 
 box::export(
@@ -111,5 +230,8 @@ box::export(
   format_number,
   format_se,
   format_ci,
-  print_summary_table
+  print_summary_table,
+  print_sectioned_table,
+  print_paragraph,
+  tone_style
 )

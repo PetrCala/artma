@@ -782,99 +782,101 @@ methods:
         Whether to use theoretical bounds in Cox-Shi tests (1 = yes, 0 = no).
         Bounds account for the two-sided nature of t-tests.
 
-    include_maive:
-      type: "logical"
-      default: true
-      help: |
-        If `TRUE`, include MAIVE estimator (Irsova et al., 2023) for publication
-        bias correction using instrumental variables.
-
-    maive_method:
+  maive:
+    method:
       type: "integer"
       default: 3
       help: |
-        MAIVE method selection:
+        Funnel model plugged with the instrumented variances:
           1 = FAT-PET
           2 = PEESE
           3 = PET-PEESE (default)
           4 = Endogenous Kink (EK)
 
-    maive_weight:
+    weight:
       type: "integer"
       default: 0
       help: |
-        MAIVE weighting scheme:
+        Weighting scheme:
           0 = No weights (default)
           1 = Standard weights
           2 = Adjusted weights
 
-    maive_instrument:
+    instrument:
       type: "integer"
       default: 1
       help: |
-        MAIVE instrumenting:
-          0 = No instrumenting
+        Whether reported variances are instrumented with the inverse sample
+        size (the correction that makes MAIVE MAIVE):
+          0 = No instrumenting; the output reduces to the standard funnel model
           1 = Use instrumental variables (default)
 
-    maive_studylevel:
+    studylevel:
       type: "integer"
       default: 2
       help: |
-        MAIVE study-level correlation structure:
+        Study-level correlation structure:
           0 = None
           1 = Fixed effects
           2 = Cluster-robust (default)
 
-    maive_se:
+    se:
       type: "integer"
       default: 1
       help: |
-        MAIVE standard error estimation method:
+        Standard error estimation method:
           1 = Asymptotic (default)
           2 = Pairs cluster bootstrap
           3 = Wild bootstrap
           4 = Wild cluster bootstrap
           5 = Pairs bootstrap
 
-    maive_ar:
+    ar:
       type: "integer"
       default: 0
       help: |
-        MAIVE Anderson-Rubin confidence interval:
+        Anderson-Rubin confidence interval, which stays valid when the
+        first-stage instrument is weak:
           0 = Do not compute (default)
           1 = Compute
 
-    maive_first_stage:
+    first_stage:
       type: "integer"
       default: 0
       help: |
-        Functional form of the MAIVE first stage, which instruments the
-        squared standard error with sample size:
+        Functional form of the first stage, which instruments the squared
+        standard error with sample size:
           0 = levels, regress SE^2 on 1/N (default)
-          1 = log, regress log(SE^2) on log(N)
+          1 = log, regress log(SE^2) on log(N), with Duan smearing
           2 = automatic, choose from the spread of sample sizes
 
         Use the log form when sample sizes span orders of magnitude. With a
         wide N range, 1/N is numerically near zero for most observations, so
         the levels first stage is identified off the few smallest studies and
         collapses into a weak instrument (F below 10), which leaves the MAIVE
-        coefficient unreliable. Check the "F-test (1st stage IV)" row of the
-        MAIVE output: if it is flagged as weak, switch to 1.
+        coefficient unreliable. Check the "First-stage F" row of the MAIVE
+        output: if it is flagged as weak, switch to 1.
 
         Setting 2 makes that call for you: the log form is used when sample
         sizes span at least 3 orders of magnitude. The rule reads the sample
         size column only, never the effects, the standard errors, or any
         fitted statistic, so it cannot turn into a search for a preferred
-        coefficient. The form actually used is reported in the "1st stage
-        form" row and announced during the run.
+        coefficient. The form actually used is reported in the "First-stage
+        specification" row.
 
-    maive_seed:
+    seed:
       type: "integer"
       default: 123
       help: |
-        RNG seed passed to MAIVE's bootstrap standard error modes
-        (maive_se = 2..5), so repeated runs on the same data reproduce
-        identical results.
+        RNG seed passed to the bootstrap standard error modes (se = 2..5), so
+        repeated runs on the same data reproduce identical results.
+
+    show_interpretation:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, print a short plain-language reading of the results below
+        the tables (shown at verbosity 3 and above).
 
 data:
   source_path:
