@@ -22,7 +22,6 @@ local_caliper_only_options <- function(.local_envir = parent.frame()) {
     artma.methods.p_hacking_tests.include_elliott = FALSE,
     artma.methods.p_hacking_tests.include_discontinuity = FALSE,
     artma.methods.p_hacking_tests.include_cox_shi = FALSE,
-    artma.methods.p_hacking_tests.include_maive = FALSE,
     .local_envir = .local_envir
   )
 }

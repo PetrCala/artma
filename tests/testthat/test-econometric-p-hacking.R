@@ -5,19 +5,12 @@ box::use(
     expect_false,
     expect_match,
     expect_true,
-    skip_if_not_installed,
     test_that
   ],
   withr[local_options],
   artma / econometric / p_hacking[
     compute_pvalues,
     resolve_t_stats,
-    maive_p_from_coef,
-    maive_first_stage_f,
-    maive_first_stage_is_weak,
-    resolve_maive_first_stage,
-    format_maive_results,
-    prepare_maive_data,
     run_single_caliper,
     run_binomial,
     run_lcm,
@@ -74,188 +67,6 @@ test_that("resolve_t_stats prefers a reported t_stat over effect / se", {
   df <- data.frame(effect = c(1, 2), se = c(1, 1), t_stat = c(5, NA))
   # Row 1 uses the reported 5 (not effect/se = 1); row 2 falls back to 2/1 = 2.
   expect_equal(resolve_t_stats(df), c(5, 2))
-})
-
-# maive_p_from_coef ---------------------------------------------------------
-
-test_that("maive_p_from_coef matches the two-sided normal p-value", {
-  expect_equal(maive_p_from_coef(1.96, 1), 0.0499957902964409, tolerance = 1e-12)
-  expect_equal(maive_p_from_coef(0, 2), 1, tolerance = 1e-12)
-})
-
-test_that("maive_p_from_coef returns NA for degenerate inputs", {
-  expect_true(is.na(maive_p_from_coef(1, 0)))
-  expect_true(is.na(maive_p_from_coef(1, -1)))
-  expect_true(is.na(maive_p_from_coef(Inf, 1)))
-  expect_true(is.na(maive_p_from_coef(1, NA_real_)))
-})
-
-# maive_first_stage_f -------------------------------------------------------
-
-test_that("maive_first_stage_f reads the statistic MAIVE reports", {
-  expect_equal(maive_first_stage_f(list(`F-test` = 4.549)), 4.549)
-  expect_equal(maive_first_stage_f(list(`F-test` = "80.935")), 80.935)
-})
-
-test_that("maive_first_stage_f returns NA when instrumenting is off", {
-  # MAIVE sets the field to the literal string "NA" when instrument = 0.
-  expect_true(is.na(maive_first_stage_f(list(`F-test` = "NA"))))
-  expect_true(is.na(maive_first_stage_f(list())))
-  expect_true(is.na(maive_first_stage_f(list(`F-test` = Inf))))
-})
-
-# maive_first_stage_is_weak -------------------------------------------------
-
-test_that("maive_first_stage_is_weak applies the F < 10 rule of thumb", {
-  expect_true(maive_first_stage_is_weak(4.549))
-  expect_false(maive_first_stage_is_weak(10))
-  expect_false(maive_first_stage_is_weak(80.935))
-  expect_false(maive_first_stage_is_weak(NA_real_))
-})
-
-# resolve_maive_first_stage -------------------------------------------------
-
-test_that("resolve_maive_first_stage passes explicit choices through untouched", {
-  wide <- c(100, 10^9)
-
-  # A wide N spread would trigger the log form under 2, but 0 stays 0.
-  levels_choice <- resolve_maive_first_stage(0, wide)
-  expect_equal(levels_choice$value, 0L)
-  expect_false(levels_choice$automatic)
-
-  log_choice <- resolve_maive_first_stage(1, c(100, 200))
-  expect_equal(log_choice$value, 1L)
-  expect_false(log_choice$automatic)
-})
-
-test_that("resolve_maive_first_stage picks log once N spans the threshold", {
-  # The master-thesis case: 135 to 14.7M, about 5 orders of magnitude.
-  res <- resolve_maive_first_stage(2, c(135, 14746755))
-
-  expect_equal(res$value, 1L)
-  expect_true(res$automatic)
-  expect_equal(res$orders, 5.038, tolerance = 1e-3)
-})
-
-test_that("resolve_maive_first_stage keeps levels for a narrow N spread", {
-  res <- resolve_maive_first_stage(2, c(500, 900, 4000))
-
-  expect_equal(res$value, 0L)
-  expect_true(res$automatic)
-  expect_true(res$orders < 3)
-})
-
-test_that("resolve_maive_first_stage decides on the threshold boundary", {
-  # Exactly 3 orders of magnitude counts as wide.
-  expect_equal(resolve_maive_first_stage(2, c(10, 10000))$value, 1L)
-  # Just under does not.
-  expect_equal(resolve_maive_first_stage(2, c(10, 9999))$value, 0L)
-})
-
-test_that("resolve_maive_first_stage ignores unusable sample sizes", {
-  # Zero, negative, and non-finite N cannot enter a ratio.
-  res <- resolve_maive_first_stage(2, c(0, -5, NA, Inf, 100, 10^6))
-  expect_equal(res$value, 1L)
-  expect_equal(res$orders, 4)
-})
-
-test_that("resolve_maive_first_stage falls back to levels without a usable spread", {
-  for (degenerate in list(numeric(0), c(NA_real_, NA_real_), 1000, c(0, -1))) {
-    res <- resolve_maive_first_stage(2, degenerate)
-    expect_equal(res$value, 0L)
-    expect_true(res$automatic)
-    expect_true(is.na(res$orders))
-  }
-})
-
-test_that("resolve_maive_first_stage never reads anything but sample size", {
-  # Same N, wildly different effects and SEs: the choice must not move.
-  a <- resolve_maive_first_stage(2, c(135, 14746755))
-  b <- resolve_maive_first_stage(2, c(135, 14746755))
-  expect_equal(a, b)
-  expect_equal(names(formals(resolve_maive_first_stage)), c("first_stage", "n_obs"))
-})
-
-# format_maive_results ------------------------------------------------------
-
-test_that("format_maive_results flags a weak first stage", {
-  out <- format_maive_results(
-    list(
-      beta = 3.095, SE = 3.612, `pub bias p-value` = 0.241,
-      egger_coef = 2.078, egger_se = 1.771,
-      `F-test` = 4.549, Hausman = 0.847, Chi2 = 3.841
-    ),
-    list(round_to = 3)
-  )
-
-  expect_true("  Instrument strength" %in% out$Statistic)
-  expect_match(out$Value[out$Statistic == "  Instrument strength"], "weak")
-})
-
-test_that("format_maive_results leaves a strong first stage unflagged", {
-  out <- format_maive_results(
-    list(
-      beta = 6.993, SE = 0.393, `pub bias p-value` = 0.241,
-      egger_coef = 2.078, egger_se = 1.771,
-      `F-test` = 80.935, Hausman = 0.847, Chi2 = 3.841
-    ),
-    list(round_to = 3)
-  )
-
-  expect_false("  Instrument strength" %in% out$Statistic)
-  expect_equal(out$Value[out$Statistic == "F-test (1st stage IV)"], "80.935")
-})
-
-test_that("format_maive_results records the first stage form when given one", {
-  output <- list(
-    beta = 6.993, SE = 0.393, `pub bias p-value` = 0.241,
-    egger_coef = 2.078, egger_se = 1.771,
-    `F-test` = 80.935, Hausman = 0.847, Chi2 = 3.841
-  )
-
-  auto <- format_maive_results(
-    output, list(round_to = 3),
-    list(value = 1L, automatic = TRUE, orders = 5.04)
-  )
-  expect_equal(auto$Value[auto$Statistic == "1st stage form"], "log (auto)")
-
-  explicit <- format_maive_results(
-    output, list(round_to = 3),
-    list(value = 0L, automatic = FALSE, orders = NA_real_)
-  )
-  expect_equal(explicit$Value[explicit$Statistic == "1st stage form"], "levels")
-
-  # Omitting it keeps the table exactly as it was before this row existed.
-  expect_false("1st stage form" %in% format_maive_results(output, list(round_to = 3))$Statistic)
-})
-
-# prepare_maive_data --------------------------------------------------------
-
-test_that("prepare_maive_data renames columns to the MAIVE contract", {
-  df <- data.frame(
-    effect = c(0.1, 0.2, 0.3),
-    se = c(0.05, 0.06, 0.07),
-    n_obs = c(100, 200, 300),
-    study_id = c(1, 1, 2)
-  )
-
-  out <- prepare_maive_data(df)
-
-  expect_equal(colnames(out), c("bs", "sebs", "Ns", "studyid"))
-  expect_equal(out$bs, df$effect)
-  expect_equal(out$sebs, df$se)
-  expect_equal(out$Ns, df$n_obs)
-  expect_equal(out$studyid, df$study_id)
-})
-
-test_that("prepare_maive_data omits studyid when study_id is absent", {
-  df <- data.frame(effect = 1, se = 0.1, n_obs = 10)
-  out <- prepare_maive_data(df)
-  expect_equal(colnames(out), c("bs", "sebs", "Ns"))
-})
-
-test_that("prepare_maive_data errors when required columns are missing", {
-  expect_error(prepare_maive_data(data.frame(effect = 1, se = 0.1)))
 })
 
 # run_single_caliper --------------------------------------------------------
@@ -545,15 +356,6 @@ base_p_hacking_options <- function(...) {
     cox_shi_bins = 20L,
     cox_shi_order = 2L,
     cox_shi_bounds = 1L,
-    include_maive = FALSE,
-    maive_method = 3L,
-    maive_weight = 0L,
-    maive_instrument = 1L,
-    maive_studylevel = 2L,
-    maive_se = 1L,
-    maive_ar = 0L,
-    maive_first_stage = 0L,
-    maive_seed = 123L,
     add_significance_marks = TRUE,
     round_to = 3L
   )
@@ -671,52 +473,6 @@ test_that("run_p_hacking_tests records a skip reason for a singular Cox-Shi cova
   expect_match(result$skipped$cox_shi_005, "singular")
 })
 
-test_that("run_p_hacking_tests records a skip reason when MAIVE lacks n_obs", {
-  local_options(artma.verbose = 1)
-  df <- make_p_hacking_df()
-  df$n_obs <- NULL
-
-  result <- run_p_hacking_tests(
-    df,
-    base_p_hacking_options(include_caliper = FALSE, include_maive = TRUE)
-  )
-
-  expect_match(result$skipped$maive, "n_obs")
-  expect_true(is.null(result$maive))
-})
-
-test_that("the MAIVE skip reason keeps the install hint when the package is absent", {
-  local_options(artma.verbose = 1)
-  local_pretend_packages_absent("MAIVE")
-
-  result <- run_p_hacking_tests(
-    make_p_hacking_df(),
-    base_p_hacking_options(include_caliper = FALSE, include_maive = TRUE)
-  )
-
-  expect_true(is.null(result$maive))
-  expect_match(result$skipped$maive, "MAIVE")
-  # The actionable half lives in a cli bullet, which e$message would drop.
-  expect_match(result$skipped$maive, "install.packages")
-})
-
-test_that("the MAIVE skip reason reports the installed version when it is too old", {
-  # Without the package the absence check fires first and never reaches the
-  # version branch under test.
-  skip_if_not_installed("MAIVE")
-  local_options(artma.verbose = 1)
-  local_pretend_package_version("MAIVE", "0.0.2.11")
-
-  result <- run_p_hacking_tests(
-    make_p_hacking_df(),
-    base_p_hacking_options(include_caliper = FALSE, include_maive = TRUE)
-  )
-
-  expect_true(is.null(result$maive))
-  expect_match(result$skipped$maive, "0\\.2\\.4 or higher")
-  expect_match(result$skipped$maive, "0\\.0\\.2\\.11")
-})
-
 test_that("run_lcm skips with a reason instead of failing silently", {
   local_pretend_packages_absent("fdrtool")
 
@@ -726,7 +482,7 @@ test_that("run_lcm skips with a reason instead of failing silently", {
   expect_match(attr(result, "reason"), "fdrtool")
 })
 
-# LCM / MAIVE reproducibility --------------------------------------------
+# LCM reproducibility -----------------------------------------------------
 
 test_that("simulate_cdfs_parallel is reproducible when seed is passed explicitly", {
   res_a <- simulate_cdfs_parallel(iterations = 20, grid_points = 30, seed = 123, show_progress = FALSE)
@@ -751,22 +507,6 @@ test_that("run_p_hacking_tests produces identical LCM p-values across two runs",
   lcm_a <- result_a$elliott[grepl("^LCM", result_a$elliott$Test), "P-value"]
   lcm_b <- result_b$elliott[grepl("^LCM", result_b$elliott$Test), "P-value"]
   expect_equal(lcm_a, lcm_b)
-})
-
-test_that("run_p_hacking_tests produces identical MAIVE bootstrap results across two runs", {
-  skip_if_not_installed("MAIVE")
-  local_options(artma.verbose = 1)
-  df <- make_p_hacking_df()
-  opts <- base_p_hacking_options(
-    include_caliper = FALSE,
-    include_maive = TRUE,
-    maive_se = 3L # Wild bootstrap: irreproducible without a threaded seed.
-  )
-
-  result_a <- run_p_hacking_tests(df, opts)
-  result_b <- run_p_hacking_tests(df, opts)
-
-  expect_equal(result_a$maive, result_b$maive)
 })
 
 # Discontinuity alignment -----------------------------------------------------

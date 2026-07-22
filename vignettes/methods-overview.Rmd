@@ -49,9 +49,10 @@ These methods test for publication bias and selective reporting; none depend on 
 | `linear_tests` | Linear funnel-asymmetry regressions of effect on standard error (FAT-PET): OLS, panel Fixed/Between/Random Effects, and study-size/precision-weighted variants | `effect`, `se`, `study_id` |
 | `nonlinear_tests` | Non-linear publication-bias corrections: WAAP, Top10, STEM (funnel and MSE variants), a hierarchical Bayesian model, a selection-model (p-uniform-style) estimator, and the endogenous kink test | `effect`, `se`, `study_id` |
 | `exogeneity_tests` | Diagnostics that relax the exogeneity assumption: instrumental-variable regression and the p-uniform* test | `effect`, `se`, `study_id`, `n_obs`, `study_size` |
-| `p_hacking_tests` | Caliper tests around significance thresholds, the Elliott et al. (2022) battery, and the MAIVE estimator | `effect`, `se`, `t_stat`, `study_id` |
+| `p_hacking_tests` | Caliper tests around significance thresholds and the Elliott et al. (2022) battery | `effect`, `se`, `t_stat`, `study_id` |
+| `maive` | The MAIVE estimator: corrects the mean effect for publication bias, p-hacking, and spurious precision by instrumenting reported variances with the inverse sample size | `effect`, `se`, `n_obs` |
 
-`exogeneity_tests` needs the `AER` and `ivmodel` packages; the others in this group work with the package's own dependencies.
+`exogeneity_tests` needs the `AER` and `ivmodel` packages and `maive` needs the `MAIVE` package (>= 0.2.4); the others in this group work with the package's own dependencies.
 
 ## Moderator and heterogeneity analysis
 

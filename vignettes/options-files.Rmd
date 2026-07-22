@@ -119,6 +119,17 @@ Method-specific parameters for each analysis method:
 - `include_elliott`: Whether to include Elliott et al. tests
 - `lcm_iterations`: Number of simulations for LCM test
 
+#### `maive`
+
+- `method`: Funnel model plugged with the instrumented variances (1 = FAT-PET, 2 = PEESE, 3 = PET-PEESE, 4 = EK)
+- `instrument`: Whether reported variances are instrumented with the inverse sample size
+- `weight`: Weighting scheme
+- `studylevel`: Study-level correlation structure
+- `se`: Standard error estimation method (asymptotic or one of four bootstraps)
+- `ar`: Whether to compute the weak-instrument-robust Anderson-Rubin interval
+- `first_stage`: First-stage functional form (0 = levels, 1 = logs, 2 = chosen automatically from the spread of sample sizes)
+- `show_interpretation`: Whether to print the plain-language reading of the results
+
 ### 5. `output`
 
 Controls output formatting:
@@ -369,6 +380,11 @@ methods:
     include_caliper: true
     caliper_thresholds: [1.645, 1.96, 2.58]
     include_elliott: true
+
+  maive:
+    method: 3
+    instrument: 1
+    ar: 1
 
 verbose:
   level: 3

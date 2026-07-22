@@ -4,7 +4,9 @@
 #' p-hacking and selective reporting. Tests include:
 #' - Caliper tests (Gerber & Malhotra, 2008)
 #' - Elliott et al. (2022) tests (Binomial, LCM, Fisher, Discontinuity, Cox-Shi)
-#' - MAIVE estimator (Irsova et al., 2023)
+#'
+#' The MAIVE estimator has its own method (`maive`); it is an estimator rather
+#' than a test, and its diagnostics do not read as p-hacking p-values.
 p_hacking_tests <- function(df) {
   box::use(
     artma / libs / core / validation[assert, validate, validate_columns],
@@ -47,17 +49,6 @@ p_hacking_tests <- function(df) {
   cox_shi_order <- opt$cox_shi_order %||% 2L
   cox_shi_bounds <- opt$cox_shi_bounds %||% 1L
 
-  # MAIVE options
-  include_maive <- opt$include_maive %||% TRUE
-  maive_method <- opt$maive_method %||% 3L
-  maive_weight <- opt$maive_weight %||% 0L
-  maive_instrument <- opt$maive_instrument %||% 1L
-  maive_studylevel <- opt$maive_studylevel %||% 2L
-  maive_se <- opt$maive_se %||% 1L
-  maive_ar <- opt$maive_ar %||% 0L
-  maive_first_stage <- opt$maive_first_stage %||% 0L
-  maive_seed <- opt$maive_seed %||% 123L
-
   # General options
   add_significance_marks <- resolve_add_significance_marks()
   round_to <- as.integer(getOption("artma.output.number_of_decimals", 3))
@@ -80,15 +71,6 @@ p_hacking_tests <- function(df) {
     is.numeric(cox_shi_bins),
     is.numeric(cox_shi_order),
     is.numeric(cox_shi_bounds),
-    is.logical(include_maive),
-    is.numeric(maive_method),
-    is.numeric(maive_weight),
-    is.numeric(maive_instrument),
-    is.numeric(maive_studylevel),
-    is.numeric(maive_se),
-    is.numeric(maive_ar),
-    is.numeric(maive_first_stage),
-    is.numeric(maive_seed),
     is.logical(add_significance_marks),
     is.numeric(round_to)
   )
@@ -109,13 +91,6 @@ p_hacking_tests <- function(df) {
   assert(cox_shi_bins > 0, "cox_shi_bins must be positive")
   assert(cox_shi_order >= 0, "cox_shi_order must be non-negative")
   assert(cox_shi_bounds %in% c(0, 1), "cox_shi_bounds must be 0 or 1")
-  assert(maive_method %in% c(1, 2, 3, 4), "maive_method must be 1, 2, 3, or 4")
-  assert(maive_weight %in% c(0, 1, 2), "maive_weight must be 0, 1, or 2")
-  assert(maive_instrument %in% c(0, 1), "maive_instrument must be 0 or 1")
-  assert(maive_studylevel %in% c(0, 1, 2), "maive_studylevel must be 0, 1, or 2")
-  assert(maive_se %in% c(1, 2, 3, 4, 5), "maive_se must be 1, 2, 3, 4, or 5")
-  assert(maive_ar %in% c(0, 1), "maive_ar must be 0 or 1")
-  assert(maive_first_stage %in% c(0, 1, 2), "maive_first_stage must be 0, 1, or 2")
   assert(round_to >= 0, "Number of decimals must be non-negative")
 
   resolved_options <- list(
@@ -136,15 +111,6 @@ p_hacking_tests <- function(df) {
     cox_shi_bins = as.integer(cox_shi_bins),
     cox_shi_order = as.integer(cox_shi_order),
     cox_shi_bounds = as.integer(cox_shi_bounds),
-    include_maive = include_maive,
-    maive_method = as.integer(maive_method),
-    maive_weight = as.integer(maive_weight),
-    maive_instrument = as.integer(maive_instrument),
-    maive_studylevel = as.integer(maive_studylevel),
-    maive_se = as.integer(maive_se),
-    maive_ar = as.integer(maive_ar),
-    maive_first_stage = as.integer(maive_first_stage),
-    maive_seed = as.integer(maive_seed),
     add_significance_marks = add_significance_marks,
     round_to = round_to
   )
@@ -196,19 +162,8 @@ p_hacking_tests <- function(df) {
       cli::cli_text("")
     }
 
-    # MAIVE estimator (Irsova et al., 2023)
-    if (!is.null(results$maive) && nrow(results$maive) > 0) {
-      cli::cli_h3("MAIVE estimator (Irsova et al., 2023)")
-
-      maive_lines <- utils::capture.output(
-        print(results$maive, row.names = FALSE) # nolint: undesirable_function_linter.
-      )
-      cli::cli_verbatim(maive_lines)
-      cli::cli_text("")
-    }
-
     # Overall note
-    if (!is.null(results$caliper) || !is.null(results$elliott) || !is.null(results$maive)) {
+    if (!is.null(results$caliper) || !is.null(results$elliott)) {
       cli::cli_text("Note: Low p-values indicate potential p-hacking or selective reporting.")
       cli::cli_text("Significance marks: * p <= 0.1, ** p <= 0.05, *** p <= 0.01")
     } else {
@@ -225,8 +180,7 @@ p_hacking_tests <- function(df) {
   invisible(new_method_result(
     tables = list(
       caliper = results$caliper,
-      elliott = results$elliott,
-      maive = results$maive
+      elliott = results$elliott
     ),
     meta = list(skipped = results$skipped)
   ))

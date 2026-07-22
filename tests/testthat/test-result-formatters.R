@@ -27,3 +27,77 @@ test_that("significance_mark preserves input names", {
 test_that("significance_mark returns empty vector for empty input", {
   expect_identical(significance_mark(numeric(0)), character(0))
 })
+
+# print_sectioned_table -----------------------------------------------------
+
+box::use(
+  testthat[expect_match, expect_true],
+  artma / libs / formatting / results[print_sectioned_table, print_paragraph]
+)
+
+sectioned_fixture <- function() {
+  out <- data.frame(
+    Section = c("Estimate", "Estimate", "Diagnostics"),
+    Statistic = c("MAIVE estimate", "Std. error", "First-stage F"),
+    Value = c("0.123", "(0.045)", "4.512"),
+    Note = c("significant at 5%", "", "weak instrument"),
+    stringsAsFactors = FALSE
+  )
+  attr(out, "tone") <- c("good", "", "bad")
+  out
+}
+
+# The printer returns the exact lines it emitted, so assertions can read them
+# without fighting cli's output connection.
+capture_sectioned <- function(x, ...) {
+  withr::with_options(
+    list(cli.num_colors = 1),
+    utils::capture.output(lines <- print_sectioned_table(x, ...))
+  )
+  lines
+}
+
+test_that("print_sectioned_table underlines every section heading", {
+  lines <- capture_sectioned(sectioned_fixture())
+
+  expect_true("Estimate" %in% lines)
+  expect_true(strrep("-", nchar("Estimate")) %in% lines)
+  expect_true("Diagnostics" %in% lines)
+})
+
+test_that("print_sectioned_table left-aligns labels and right-aligns values", {
+  lines <- capture_sectioned(sectioned_fixture())
+  rows <- grep("^  \\S", lines, value = TRUE)
+
+  # Labels all start in the same column; print.data.frame would right-align them.
+  expect_identical(substring(rows, 1, 3), c("  M", "  S", "  F"))
+  # Values share a right edge, so the decimal points line up.
+  value_ends <- regexpr("0\\.045\\)|0\\.123|4\\.512", rows) +
+    attr(regexpr("0\\.045\\)|0\\.123|4\\.512", rows), "match.length")
+  expect_equal(length(unique(value_ends)), 1L)
+})
+
+test_that("print_sectioned_table emits no blank separator rows inside a section", {
+  lines <- capture_sectioned(sectioned_fixture())
+  # One blank line only, between the two sections.
+  expect_equal(sum(!nzchar(lines)), 1L)
+})
+
+test_that("print_sectioned_table falls back to the plain printer without a Section column", {
+  plain <- data.frame(Statistic = "a", Value = "1", stringsAsFactors = FALSE)
+
+  expect_true(any(grepl("Statistic", capture_sectioned(plain))))
+})
+
+test_that("print_sectioned_table ignores an empty table", {
+  expect_equal(capture_sectioned(sectioned_fixture()[0, ]), character(0))
+})
+
+test_that("print_paragraph wraps sentences and drops empty ones", {
+  utils::capture.output(
+    lines <- print_paragraph(c("One sentence.", "", "Another sentence."), width = 20)
+  )
+
+  expect_true(length(lines) > 1)
+  expect_match(paste(lines, collapse = " "), "One sentence\\. Another sentence\\.")
+})
