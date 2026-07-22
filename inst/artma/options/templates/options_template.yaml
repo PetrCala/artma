@@ -191,9 +191,13 @@ methods:
       default: "automatic"
       help: |
         Instrument to use for the instrumental variable (IV) regression.
-        Use {.strong automatic} to automatically select the best instrument
-        based on diagnostics (R-squared, weak instruments, Wu-Hausman, Sargan).
-        Alternatively, specify a specific instrument formula involving n_obs.
+        Use {.strong automatic} to rank candidates by first-stage F-statistic
+        (the weak-instruments diagnostic) and pick the strongest, breaking
+        ties in favor of {.strong 1/sqrt(n_obs)}, the theoretically motivated
+        instrument. A warning is printed if the selected instrument's
+        first-stage F falls below the conventional weak-instrument threshold
+        of 10. Alternatively, specify a specific instrument formula involving
+        n_obs.
 
     puniform_alpha:
       type: "numeric"
