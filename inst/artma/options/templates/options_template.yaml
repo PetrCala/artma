@@ -652,6 +652,27 @@ methods:
         If `TRUE`, display ratios (n_above/n_below) for Caliper tests.
         If `FALSE`, display total count (n_above + n_below).
 
+    caliper_tail:
+      type: "character"
+      default: "auto"
+      help: |
+        Which tail of the t-statistic distribution the Caliper test inspects.
+        The canonical Gerber & Malhotra (2008) caliper is one-sided, applied in
+        the direction the literature has an incentive to report.
+        "auto" (default) picks the tail holding the majority of the t-statistics,
+        so a literature of mostly negative effects is tested at t < -threshold.
+        "positive" and "negative" force one tail; "absolute" pools both by
+        taking |t|, which fits literatures reporting findings of either sign.
+
+    caliper_cluster:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE` (default), test the Caliper share with a study-clustered
+        statistic instead of an exact binomial test. The binomial test treats
+        every estimate in the window as independent, which overstates
+        significance when a few studies contribute most of the window.
+
     include_elliott:
       type: "logical"
       default: true
