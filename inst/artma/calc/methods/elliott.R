@@ -310,32 +310,44 @@ lambda2 <- function(x1, x2, h) {
     stats::pnorm(stats::qnorm(1 - x1 / 2) + h) - stats::pnorm(stats::qnorm(1 - x2 / 2) + h)
 }
 
-#' Compute bounds for the p-curve and its derivatives
-compute_bounds <- function(p_min, p_max, J, order) {
+#' Adjacent-pair lambda vectors shared by all Cox-Shi bound orders
+#'
+#' Element `j` is `lambda2(grid[j], grid[j + 1], h)` on the common `h` grid.
+#' Every bound order is an elementwise combination of these J vectors, so
+#' they are computed once and reused instead of re-evaluated per order.
+pair_lambdas <- function(p_min, p_max, J) {
   h <- seq(0, 100, by = 0.001)
   grid <- linspace(p_min, p_max, J + 1)
+  lapply(seq_len(J), function(j) lambda2(grid[j], grid[j + 1], h))
+}
+
+#' Derive one order of Cox-Shi bounds from precomputed pair lambdas
+bounds_from_lambdas <- function(lam, order, p_min) {
   order <- as.integer(order)
   if (!order %in% 0:2) {
     cli::cli_abort("Unsupported order")
   }
-  width <- c(J, J - 1, J - 2)[order + 1]
+  n_pairs <- length(lam)
+  width <- c(n_pairs, n_pairs - 1, n_pairs - 2)[order + 1]
   bounds <- numeric(width)
   for (j in seq_len(width)) {
-    lambda_left <- lambda2(grid[j], grid[j + 1], h)
     if (order == 0L) {
-      bounds[j] <- max(lambda_left)
+      bounds[j] <- max(lam[[j]])
     } else if (order == 1L) {
-      lambda_right <- lambda2(grid[j + 1], grid[j + 2], h)
-      bounds[j] <- max(abs(lambda_right - lambda_left))
+      bounds[j] <- max(abs(lam[[j + 1]] - lam[[j]]))
     } else {
-      lambda_mid <- lambda2(grid[j + 2], grid[j + 3], h)
-      bounds[j] <- max(abs(lambda_mid - 2 * lambda2(grid[j + 1], grid[j + 2], h) + lambda_left))
+      bounds[j] <- max(abs(lam[[j + 2]] - 2 * lam[[j + 1]] + lam[[j]]))
     }
   }
   if (p_min == 0) {
     bounds[1] <- 1
   }
   matrix(bounds, ncol = 1)
+}
+
+#' Compute bounds for the p-curve and its derivatives
+compute_bounds <- function(p_min, p_max, J, order) {
+  bounds_from_lambdas(pair_lambdas(p_min, p_max, J), order, p_min)
 }
 
 bound0 <- function(p_min, p_max, J) compute_bounds(p_min, p_max, J, 0)
@@ -553,9 +565,10 @@ cox_shi_test <- function(Q, ind, p_min, p_max, J, K, use_bounds) {
   phat_data <- compute_phat(P, J, p_min, p_max)
   phat <- phat_data$phat
   bins <- phat_data$bins
-  B0 <- bound0(p_min, p_max, J)
-  B1 <- bound1(p_min, p_max, J)
-  B2 <- bound2(p_min, p_max, J)
+  lam <- pair_lambdas(p_min, p_max, J)
+  B0 <- bounds_from_lambdas(lam, 0L, p_min)
+  B1 <- bounds_from_lambdas(lam, 1L, p_min)
+  B2 <- bounds_from_lambdas(lam, 2L, p_min)
   omega <- compute_omega(P, ind_filtered, phat, bins)
   omega_inv <- if (is.finite(det(omega)) && abs(det(omega)) > 0) {
     tryCatch(solve(omega), error = function(e) NULL)
