@@ -612,6 +612,7 @@ test_that("run_p_hacking_tests dedupes duplicated caliper thresholds/widths with
 test_that("run_p_hacking_tests runs the Elliott suite when requested", {
   local_options(
     artma.verbose = 1,
+    artma.cache.use_cache = FALSE,
     artma.methods.p_hacking_tests.simulate_cdfs.use_cpp = FALSE
   )
   set.seed(202)
@@ -632,7 +633,7 @@ test_that("run_p_hacking_tests runs the Elliott suite when requested", {
 # Skip reasons ---------------------------------------------------------------
 
 test_that("run_p_hacking_tests records a skip reason when the CDF simulation yields no draws", {
-  local_options(artma.verbose = 1)
+  local_options(artma.verbose = 1, artma.cache.use_cache = FALSE)
   df <- make_p_hacking_df()
 
   result <- run_p_hacking_tests(
@@ -652,7 +653,7 @@ test_that("run_p_hacking_tests records a skip reason when the CDF simulation yie
 })
 
 test_that("run_p_hacking_tests records a skip reason for a singular Cox-Shi covariance", {
-  local_options(artma.verbose = 1)
+  local_options(artma.verbose = 1, artma.cache.use_cache = FALSE)
   set.seed(404, kind = "Mersenne-Twister", normal.kind = "Inversion")
   t_stats <- abs(stats::rnorm(300, mean = 1, sd = 1))
   df <- data.frame(effect = t_stats, se = rep(1, length(t_stats)))
@@ -735,7 +736,7 @@ test_that("simulate_cdfs_parallel is reproducible when seed is passed explicitly
 })
 
 test_that("run_p_hacking_tests produces identical LCM p-values across two runs", {
-  local_options(artma.verbose = 1)
+  local_options(artma.verbose = 1, artma.cache.use_cache = FALSE)
   df <- make_p_hacking_df()
   opts <- base_p_hacking_options(
     include_caliper = FALSE,
@@ -933,6 +934,7 @@ test_that("run_cox_shi preserves the skip reason for the caller to record", {
 test_that("run_p_hacking_tests reports numeric Cox-Shi rows on clustered data", {
   local_options(
     artma.verbose = 1,
+    artma.cache.use_cache = FALSE,
     artma.methods.p_hacking_tests.simulate_cdfs.use_cpp = FALSE
   )
   panel <- cox_shi_panel(202)

@@ -15,7 +15,6 @@ box::use(
     significance_mark
   ],
   artma / calc / methods / elliott[
-    simulate_cdfs_parallel,
     binomial_test,
     lcm_test,
     fisher_test,
@@ -23,6 +22,7 @@ box::use(
     cox_shi_test,
     skipped_result
   ],
+  artma / calc / methods / elliott_cache[simulate_cdfs_cached],
   artma / calc / methods / maive[maive],
   artma / libs / core / utils[get_verbosity]
 )
@@ -853,10 +853,11 @@ run_p_hacking_tests <- function(df, options) {
   if (options$include_elliott) {
     elliott_tests <- list()
 
-    # Pre-simulate CDFs for LCM test
+    # Pre-simulate CDFs for the LCM test; with a fixed seed the table is
+    # served from its own narrow disk cache (see elliott_cache.R)
     cdfs_reason <- NULL
     cdfs <- tryCatch(
-      simulate_cdfs_parallel(
+      simulate_cdfs_cached(
         iterations = options$lcm_iterations,
         grid_points = options$lcm_grid_points,
         block_size = options$simulate_cdfs_chunk_size,

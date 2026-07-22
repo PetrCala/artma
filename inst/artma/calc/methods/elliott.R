@@ -618,6 +618,7 @@ cox_shi_test <- function(Q, ind, p_min, p_max, J, K, use_bounds) {
 box::export(
   format_decimal,
   linspace,
+  simulate_cdfs_block_cpp,
   simulate_cdfs_parallel,
   binomial_test,
   lcm_test,
