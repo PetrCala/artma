@@ -170,6 +170,7 @@ The level is stored in the options file under `autonomy.level` and loaded with t
 - Style: 2-space indentation; `snake_case` or `dotted.case` names (max 40 chars); prefer `cli::cli_*` over base messaging; custom linters live in `.lintr.R`.
 - Documentation: roxygen2 with type annotations: `@param x *\[character, optional\]* Description`.
 - Commits: Conventional Commits, enforced by the commitlint workflow; the changelog is generated from them via `git-chglog`.
+- Ad-hoc scripts: write outputs to absolute paths; never derive a save path from `commandArgs()`.
 
 ## Testing
 
