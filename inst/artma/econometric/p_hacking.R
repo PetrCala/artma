@@ -413,6 +413,13 @@ caliper_direction_label <- function(direction) {
 # SE too noisy to identify the MAIVE intercept.
 MAIVE_WEAK_F_THRESHOLD <- 10
 
+# maive_first_stage = 2 asks artma to pick the functional form. The levels first
+# stage regresses SE^2 on 1/N; once sample sizes span this many orders of
+# magnitude, 1/N is numerically indistinguishable from zero for most of the
+# sample and the regression is identified off the few smallest studies alone.
+MAIVE_AUTO_FIRST_STAGE <- 2L
+MAIVE_AUTO_ORDERS_THRESHOLD <- 3
+
 #' @title Prepare data for MAIVE
 #' @param df *[data.frame]* Input data with effect, se, n_obs, study_id.
 #' @return *[data.frame]* Data formatted for MAIVE (bs, sebs, Ns, studyid).
@@ -439,8 +446,12 @@ prepare_maive_data <- function(df) {
 #' @title Format MAIVE results
 #' @param maive_output *[list]* Output from maive() function.
 #' @param options *[list]* Options.
+#' @param first_stage *[list, optional]* The resolved first stage, as returned
+#'   by `resolve_maive_first_stage()`. When supplied, the functional form used
+#'   is recorded in the table so the exported result documents its own
+#'   specification.
 #' @return *[data.frame]* Formatted MAIVE summary.
-format_maive_results <- function(maive_output, options) {
+format_maive_results <- function(maive_output, options, first_stage = NULL) {
   if (is.null(maive_output)) {
     return(data.frame(
       Statistic = "Error",
@@ -498,6 +509,11 @@ format_maive_results <- function(maive_output, options) {
   sep()
   ftest <- maive_first_stage_f(maive_output)
   ftest_val <- if (is.na(ftest)) "NA" else format_number(ftest, rd)
+  if (is.list(first_stage) && !is.null(first_stage$value)) {
+    form <- c("levels", "log")[first_stage$value + 1L]
+    add("1st stage form", if (isTRUE(first_stage$automatic)) paste(form, "(auto)") else form)
+  }
+
   add("F-test (1st stage IV)", ftest_val)
   if (maive_first_stage_is_weak(ftest)) {
     add("  Instrument strength", sprintf("weak (F < %s)", MAIVE_WEAK_F_THRESHOLD))
@@ -520,6 +536,46 @@ format_maive_results <- function(maive_output, options) {
     Value = vals,
     stringsAsFactors = FALSE,
     check.names = FALSE
+  )
+}
+
+#' @title Choose the MAIVE first-stage functional form
+#' @description
+#' Resolves `maive_first_stage`. Values 0 (levels) and 1 (log) pass straight
+#' through; 2 asks artma to decide.
+#'
+#' The decision reads the sample-size column and nothing else. It never looks
+#' at the effects, the standard errors, or any fitted statistic, so it cannot
+#' become a search over specifications for a preferred coefficient: `N` is the
+#' instrument and is taken as exogenous, which makes its own spread a
+#' legitimate basis for a functional-form choice, in the same way a skewed
+#' regressor justifies a log scale. Selecting instead on the first-stage F
+#' would be a different thing entirely, since MAIVE's premise is that the
+#' standard error is endogenous with respect to the effect.
+#' @param first_stage *[numeric]* The configured value: 0, 1, or 2.
+#' @param n_obs *[numeric]* Per-observation sample sizes (MAIVE's `Ns`).
+#' @return *[list]* `value` (0 or 1), `automatic` (was it resolved here), and
+#'   `orders` (orders of magnitude spanned by `n_obs`, `NA` when undecidable).
+resolve_maive_first_stage <- function(first_stage, n_obs) {
+  passthrough <- function(value) {
+    list(value = as.integer(value), automatic = FALSE, orders = NA_real_)
+  }
+
+  if (!isTRUE(as.integer(first_stage) == MAIVE_AUTO_FIRST_STAGE)) {
+    return(passthrough(first_stage))
+  }
+
+  usable <- n_obs[is.finite(n_obs) & n_obs > 0]
+  if (length(usable) < 2L) {
+    # Nothing to measure a spread over: keep MAIVE's own default.
+    return(list(value = 0L, automatic = TRUE, orders = NA_real_))
+  }
+
+  orders <- log10(max(usable) / min(usable))
+  list(
+    value = if (orders >= MAIVE_AUTO_ORDERS_THRESHOLD) 1L else 0L,
+    automatic = TRUE,
+    orders = orders
   )
 }
 
@@ -899,6 +955,18 @@ run_p_hacking_tests <- function(df, options) {
         cli::cli_alert_info("Running MAIVE with wild cluster bootstrap (this may take a moment)...")
       }
 
+      first_stage <- resolve_maive_first_stage(options$maive_first_stage, maive_data$Ns)
+      if (first_stage$automatic && get_verbosity() >= 3) {
+        cli::cli_alert_info(c(
+          "MAIVE first stage selected automatically: {c('levels', 'log')[first_stage$value + 1L]}",
+          if (is.na(first_stage$orders)) {
+            " (sample sizes carry no usable spread)."
+          } else {
+            " (sample sizes span {round(first_stage$orders, 1)} orders of magnitude, threshold {MAIVE_AUTO_ORDERS_THRESHOLD})."
+          }
+        ))
+      }
+
       maive_results <- tryCatch(
         {
           maive(
@@ -909,7 +977,7 @@ run_p_hacking_tests <- function(df, options) {
             studylevel = options$maive_studylevel,
             SE = options$maive_se,
             AR = options$maive_ar,
-            first_stage = options$maive_first_stage,
+            first_stage = first_stage$value,
             seed = options$maive_seed
           )
         },
@@ -938,7 +1006,7 @@ run_p_hacking_tests <- function(df, options) {
         NULL
       } else {
         tryCatch(
-          format_maive_results(maive_results, options),
+          format_maive_results(maive_results, options, first_stage),
           error = function(e) {
             skipped[["maive"]] <<- paste("MAIVE result formatting failed:", e$message)
             NULL
@@ -1012,6 +1080,7 @@ box::export(
   maive_p_from_coef,
   maive_first_stage_f,
   maive_first_stage_is_weak,
+  resolve_maive_first_stage,
   format_maive_results,
   run_binomial,
   run_lcm,
