@@ -847,7 +847,17 @@ methods:
       type: "integer"
       default: 0
       help: |
-        MAIVE first stage option (default: 0).
+        Functional form of the MAIVE first stage, which instruments the
+        squared standard error with sample size:
+          0 = levels, regress SE^2 on 1/N (default)
+          1 = log, regress log(SE^2) on log(N)
+
+        Use the log form when sample sizes span orders of magnitude. With a
+        wide N range, 1/N is numerically near zero for most observations, so
+        the levels first stage is identified off the few smallest studies and
+        collapses into a weak instrument (F below 10), which leaves the MAIVE
+        coefficient unreliable. Check the "F-test (1st stage IV)" row of the
+        MAIVE output: if it is flagged as weak, switch to 1.
 
     maive_seed:
       type: "integer"

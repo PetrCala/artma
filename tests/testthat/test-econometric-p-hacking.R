@@ -13,6 +13,9 @@ box::use(
     compute_pvalues,
     resolve_t_stats,
     maive_p_from_coef,
+    maive_first_stage_f,
+    maive_first_stage_is_weak,
+    format_maive_results,
     prepare_maive_data,
     run_single_caliper,
     run_binomial,
@@ -75,6 +78,59 @@ test_that("maive_p_from_coef returns NA for degenerate inputs", {
   expect_true(is.na(maive_p_from_coef(1, -1)))
   expect_true(is.na(maive_p_from_coef(Inf, 1)))
   expect_true(is.na(maive_p_from_coef(1, NA_real_)))
+})
+
+# maive_first_stage_f -------------------------------------------------------
+
+test_that("maive_first_stage_f reads the statistic MAIVE reports", {
+  expect_equal(maive_first_stage_f(list(`F-test` = 4.549)), 4.549)
+  expect_equal(maive_first_stage_f(list(`F-test` = "80.935")), 80.935)
+})
+
+test_that("maive_first_stage_f returns NA when instrumenting is off", {
+  # MAIVE sets the field to the literal string "NA" when instrument = 0.
+  expect_true(is.na(maive_first_stage_f(list(`F-test` = "NA"))))
+  expect_true(is.na(maive_first_stage_f(list())))
+  expect_true(is.na(maive_first_stage_f(list(`F-test` = Inf))))
+})
+
+# maive_first_stage_is_weak -------------------------------------------------
+
+test_that("maive_first_stage_is_weak applies the F < 10 rule of thumb", {
+  expect_true(maive_first_stage_is_weak(4.549))
+  expect_false(maive_first_stage_is_weak(10))
+  expect_false(maive_first_stage_is_weak(80.935))
+  expect_false(maive_first_stage_is_weak(NA_real_))
+})
+
+# format_maive_results ------------------------------------------------------
+
+test_that("format_maive_results flags a weak first stage", {
+  out <- format_maive_results(
+    list(
+      beta = 3.095, SE = 3.612, `pub bias p-value` = 0.241,
+      egger_coef = 2.078, egger_se = 1.771,
+      `F-test` = 4.549, Hausman = 0.847, Chi2 = 3.841
+    ),
+    list(round_to = 3)
+  )
+
+  expect_true("  Instrument strength" %in% out$Statistic)
+  expect_match(out$Value[out$Statistic == "  Instrument strength"], "weak")
+})
+
+test_that("format_maive_results leaves a strong first stage unflagged", {
+  out <- format_maive_results(
+    list(
+      beta = 6.993, SE = 0.393, `pub bias p-value` = 0.241,
+      egger_coef = 2.078, egger_se = 1.771,
+      `F-test` = 80.935, Hausman = 0.847, Chi2 = 3.841
+    ),
+    list(round_to = 3)
+  )
+
+  expect_false("  Instrument strength" %in% out$Statistic)
+  expect_equal(out$Value[out$Statistic == "F-test (1st stage IV)"], "80.935")
 })
 
 # prepare_maive_data --------------------------------------------------------
