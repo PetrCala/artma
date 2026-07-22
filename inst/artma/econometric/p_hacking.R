@@ -482,6 +482,14 @@ run_discontinuity <- function(pvalues, cutoff = 0.05, bandwidth = NULL) {
 }
 
 #' @title Run Cox-Shi test wrapper
+#' @description
+#' `n_bins` fixes the bin *count*, not the bin *width*, so the same value
+#' applied to the [0, 0.05] and [0, 0.10] windows makes the wider window twice
+#' as coarse. A spike in the p-curve narrower than one bin can be averaged away
+#' on the wider window while remaining visible on the narrower one, and the two
+#' windows are then not comparable, nor need their p-values be ordered. Compare
+#' windows at a matched bin width (double `n_bins` when doubling `p_max`)
+#' before reading anything into a disagreement between them.
 #' @param pvalues *[numeric]* P-values to test.
 #' @param study_id *[vector]* Study identifiers for clustering.
 #' @param p_min *[numeric]* Lower bound of interval.

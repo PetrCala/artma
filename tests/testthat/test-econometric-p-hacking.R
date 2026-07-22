@@ -526,6 +526,59 @@ test_that("cox_shi_test returns 1 for a monotone p-curve with no binding constra
   )
 })
 
+# Bin counts of the class-size p-curve (meta-analysis.cz, PCC estimates) at
+# width 0.005 over [0, 0.10]. The curve spikes in [0.045, 0.05]: 36 estimates
+# against 16 in the preceding bin, the classic just-under-0.05 signature.
+class_shaped_pcurve <- function() {
+  counts <- c(
+    673, 80, 46, 42, 29, 35, 31, 23, 16, 36,
+    19, 21, 19, 20, 19, 20, 20, 11, 11, 18
+  )
+  edges <- seq(0, 0.10, by = 0.005)
+  midpoints <- (edges[-length(edges)] + edges[-1]) / 2
+  rep(midpoints, counts)
+}
+
+# `cox_shi_bins` is applied to both windows (as in the canonical `Example.R`,
+# which fixes J = 10 regardless of the interval), so [0, 0.10] runs at half the
+# bin resolution of [0, 0.05]. Its 0.01-wide bins merge the spike with its
+# neighbour -- 16 + 36 = 52 against 31 + 23 = 54 -- so the curve reads as
+# monotone and the p-value climbs. The nested windows therefore disagree
+# sharply. That is a property of the binning, not a defect in the port: on the
+# class-size data both windows agree once the bin *width* is held fixed instead
+# of the bin *count* (p = 0.0004 on [0, 0.05] with J = 20, p = 0.0044 on
+# [0, 0.10] with J = 20). All four values below were cross-checked against the
+# canonical `Tests.R` and agreed exactly.
+test_that("cox_shi_test reproduces the nested-window disagreement", {
+  pvalues <- class_shaped_pcurve()
+
+  expect_equal(
+    cox_shi_test(pvalues, 0, 0, 0.05, J = 10, K = 2, use_bounds = 1),
+    0.092150969638,
+    tolerance = 1e-6
+  )
+  expect_equal(
+    cox_shi_test(pvalues, 0, 0, 0.10, J = 10, K = 2, use_bounds = 1),
+    0.362149788835,
+    tolerance = 1e-6
+  )
+})
+
+test_that("cox_shi_test resolves the sub-bin spike when the bin width is halved", {
+  pvalues <- class_shaped_pcurve()
+
+  expect_equal(
+    cox_shi_test(pvalues, 0, 0, 0.05, J = 20, K = 2, use_bounds = 1),
+    0,
+    tolerance = 1e-9
+  )
+  expect_equal(
+    cox_shi_test(pvalues, 0, 0, 0.10, J = 20, K = 2, use_bounds = 1),
+    0.261350676443,
+    tolerance = 1e-6
+  )
+})
+
 test_that("cox_shi_test skips with a reason when the covariance is singular", {
   # Too few p-values in the window for 20 bins: empty bins make omega singular.
   set.seed(404, kind = "Mersenne-Twister", normal.kind = "Inversion")

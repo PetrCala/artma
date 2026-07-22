@@ -723,6 +723,13 @@ methods:
         Number of bins for discretization in Cox-Shi tests.
         More bins provide finer resolution but require more observations; empty
         bins make the covariance matrix singular and the test is then skipped.
+        The same bin count is used for both the [0, 0.05] and [0, 0.10] windows
+        (matching the canonical Elliott et al. code), so the wider window runs
+        at half the bin width of the narrower one. A spike in the p-curve that
+        is narrower than a bin can therefore be averaged away on [0, 0.10]
+        while still showing up on [0, 0.05], and the two windows may disagree
+        sharply. When they do, rerun with the bin count doubled to compare the
+        windows at a matched bin width before reading anything into the gap.
 
     cox_shi_order:
       type: "integer"
