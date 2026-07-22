@@ -308,16 +308,19 @@ puniform_star_nll <- function(params, yi, vi, ni, alpha = 0.05) {
   # Total variance
   vi_total <- vi + tau^2
 
-  # Z-statistics under null
-  zi <- yi / sqrt(vi_total)
-
   # Critical value
   z_crit <- stats::qnorm(1 - alpha / 2)
 
-  # Publication probability (conditional on being significant)
-  # We model only significant studies
-  pub_prob <- 1 - stats::pnorm(z_crit, mean = theta / sqrt(vi_total), sd = 1) +
-    stats::pnorm(-z_crit, mean = theta / sqrt(vi_total), sd = 1)
+  # Publication probability (conditional on being significant). Selection is
+  # on the observed z-statistic yi / se_i, so the threshold in effect space is
+  # z_crit * se_i, fixed in tau. Scaling the threshold by the total SD instead
+  # lets the null model inflate tau until the observed effects fall outside
+  # the selection region while it still divides by a small P(significant),
+  # which spuriously rewards the null and collapses the LR test.
+  crit_y <- z_crit * sqrt(vi)
+  pub_prob <- 1 - stats::pnorm(crit_y, mean = theta, sd = sqrt(vi_total)) +
+    stats::pnorm(-crit_y, mean = theta, sd = sqrt(vi_total))
+  pub_prob <- pmax(pub_prob, .Machine$double.eps)
 
   # Likelihood contribution
   ll <- sum(stats::dnorm(yi, mean = theta, sd = sqrt(vi_total), log = TRUE) - log(pub_prob))
@@ -536,12 +539,13 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
   # Compute study medians
   med_yi <- compute_study_medians(df, "effect")
   med_ses <- compute_study_medians(df, "se")
-  med_sample_sizes <- compute_study_medians(df, "n_obs")
   med_ni <- compute_study_medians(df, "study_size")
 
-  # Compute variances
-  med_sdi <- med_ses * sqrt(med_sample_sizes)
-  med_vi <- med_sdi^2
+  # Sampling variance of each study's effect estimate. This must be se^2:
+  # multiplying by the sample size (as an earlier version did) yields the
+  # variance of the underlying micro observations, flattening the likelihood
+  # and destroying the power of the LR test.
+  med_vi <- med_ses^2
 
   # Filter for significant effects (basic p-uniform assumption)
   z_scores <- abs(med_yi / med_ses)
