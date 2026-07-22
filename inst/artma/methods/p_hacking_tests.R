@@ -30,7 +30,7 @@ p_hacking_tests <- function(df) {
 
   # Elliott options
   include_elliott <- opt$include_elliott %||% TRUE
-  lcm_iterations <- opt$lcm_iterations %||% 3000L
+  lcm_iterations <- opt$lcm_iterations %||% 10000L
   lcm_grid_points <- opt$lcm_grid_points %||% 3000L
   simulate_cdfs_chunk_size <- opt[["simulate_cdfs.chunk_size"]] %||% 512L
   simulate_cdfs_seed <- opt[["simulate_cdfs.seed"]] %||% 123L
