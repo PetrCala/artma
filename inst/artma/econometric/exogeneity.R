@@ -400,7 +400,111 @@ run_puniform_mm <- function(yi, vi, alpha) {
   l_stat <- -2 * sum(log(qi_null))
   l_pval <- stats::pchisq(l_stat, df = 2 * length(yi), lower.tail = FALSE)
 
-  list(theta_est = theta_est, theta_se = theta_se, l_stat = l_stat, l_pval = l_pval)
+  list(
+    theta_est = theta_est,
+    theta_se = theta_se,
+    l_stat = l_stat,
+    l_pval = l_pval,
+    converged = is.finite(theta_est),
+    note = if (!is.finite(theta_est)) "P estimator: root not found within the search bounds; effect not estimable." else NULL
+  )
+}
+
+#' @title Maximum-likelihood estimation for p-uniform*
+#' @description
+#' Fits the p-uniform* selection model by unconstrained maximum likelihood,
+#' then tests for publication bias with a likelihood-ratio test against the
+#' null of no effect (theta = 0). The null model must hold theta fixed at 0
+#' and optimize only the heterogeneity parameter tau; starting the
+#' unconstrained optimizer at theta = 0 is not a restriction; it converges
+#' back to the same optimum as the full model and collapses the statistic to
+#' zero.
+#' @param yi *[numeric]* Effect sizes, restricted to significant studies.
+#' @param vi *[numeric]* Variances.
+#' @param ni *[numeric]* Sample sizes.
+#' @param alpha *[numeric]* Significance level used for selection.
+#' @return *[list]* theta_est, theta_se, l_stat, l_pval, converged, note.
+run_puniform_ml <- function(yi, vi, ni, alpha) {
+  start_theta <- mean(yi)
+  start_tau <- stats::sd(yi)
+
+  opt_result <- tryCatch(
+    stats::optim(
+      par = c(start_theta, start_tau),
+      fn = puniform_star_nll,
+      yi = yi,
+      vi = vi,
+      ni = ni,
+      alpha = alpha,
+      method = "BFGS"
+    ),
+    error = function(e) list(par = c(NA_real_, NA_real_), value = NA_real_, convergence = 1)
+  )
+
+  if (opt_result$convergence != 0 || any(!is.finite(opt_result$par))) {
+    return(list(
+      theta_est = NA_real_,
+      theta_se = NA_real_,
+      l_stat = NA_real_,
+      l_pval = NA_real_,
+      converged = FALSE,
+      note = sprintf("ML optimization did not converge (optim code %d).", opt_result$convergence)
+    ))
+  }
+
+  theta_est <- opt_result$par[1]
+
+  # Approximate standard error using the Hessian of the full model.
+  theta_se <- tryCatch(
+    {
+      hess <- stats::optimHess(par = opt_result$par, fn = puniform_star_nll, yi = yi, vi = vi, ni = ni, alpha = alpha)
+      se_val <- sqrt(solve(hess)[1, 1])
+      if (is.finite(se_val)) se_val else NA_real_
+    },
+    error = function(e) NA_real_
+  )
+
+  # Likelihood-ratio test for publication bias (H0: theta = 0), holding theta
+  # fixed at the null and optimizing only tau via a 1-D bounded search.
+  ll_full <- -opt_result$value
+  tau_search_upper <- max(start_tau, 1) * 10 + 10 * max(sqrt(vi))
+  null_fit <- tryCatch(
+    stats::optim(
+      par = start_tau,
+      fn = function(tau) puniform_star_nll(c(0, tau), yi, vi, ni, alpha),
+      method = "Brent",
+      lower = 0,
+      upper = tau_search_upper
+    ),
+    error = function(e) NULL
+  )
+
+  if (is.null(null_fit) || !is.finite(null_fit$value)) {
+    return(list(
+      theta_est = theta_est,
+      theta_se = theta_se,
+      l_stat = NA_real_,
+      l_pval = NA_real_,
+      converged = TRUE,
+      note = "ML null-model optimization (theta fixed at 0) failed; publication-bias test not computable."
+    ))
+  }
+
+  ll_null <- -null_fit$value
+  # Numerical noise in the two independent optimizations can occasionally put
+  # the null log-likelihood a hair above the full model's; floor at 0 rather
+  # than report a spurious negative statistic.
+  l_stat <- max(2 * (ll_full - ll_null), 0)
+  l_pval <- stats::pchisq(l_stat, df = 1, lower.tail = FALSE)
+
+  list(
+    theta_est = theta_est,
+    theta_se = theta_se,
+    l_stat = l_stat,
+    l_pval = l_pval,
+    converged = TRUE,
+    note = if (is.na(theta_se)) "ML Hessian was not invertible; standard error is not computable." else NULL
+  )
 }
 
 #' @title Run p-uniform* estimation
@@ -413,7 +517,9 @@ run_puniform_mm <- function(yi, vi, alpha) {
 #' @param round_to *[integer]* Number of decimal places for rounding.
 #' @param alpha *[numeric]* Significance level for selection (default 0.05).
 #' @param method *[character]* Estimation method ("ML" or "P").
-#' @return *[list]* Contains coefficients and test statistics.
+#' @return *[list]* Contains coefficients, test statistics, the method actually
+#'   used (`method_used`), and a `note` explaining non-convergence or a
+#'   fallback from "ML" to "P", if either occurred.
 run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, alpha = 0.05, method = "ML") {
   validate(
     is.data.frame(df),
@@ -450,85 +556,35 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
     theta_se <- NA_real_
     l_stat <- NA_real_
     l_pval <- NA_real_
+    method_used <- method
+    note <- sprintf("Fewer than 2 studies were significant at alpha = %s; effect not estimable.", alpha)
   } else {
     yi_sig <- med_yi[sig_mask]
     vi_sig <- med_vi[sig_mask]
     ni_sig <- med_ni[sig_mask]
 
-    if (method == "P") {
-      mm_result <- run_puniform_mm(yi_sig, vi_sig, alpha)
-      theta_est <- mm_result$theta_est
-      theta_se <- mm_result$theta_se
-      l_stat <- mm_result$l_stat
-      l_pval <- mm_result$l_pval
-    } else {
-      # Optimize
-      start_theta <- mean(yi_sig)
-      start_tau <- stats::sd(yi_sig)
+    fit_result <- if (method == "P") run_puniform_mm(yi_sig, vi_sig, alpha) else run_puniform_ml(yi_sig, vi_sig, ni_sig, alpha)
+    method_used <- method
 
-      opt_result <- tryCatch(
-        {
-          stats::optim(
-            par = c(start_theta, start_tau),
-            fn = puniform_star_nll,
-            yi = yi_sig,
-            vi = vi_sig,
-            ni = ni_sig,
-            alpha = alpha,
-            method = "BFGS"
-          )
-        },
-        error = function(e) {
-          list(par = c(NA_real_, NA_real_), value = NA_real_, convergence = 1)
-        }
-      )
-
-      if (opt_result$convergence != 0 || any(is.na(opt_result$par))) {
-        theta_est <- NA_real_
-        theta_se <- NA_real_
-        l_stat <- NA_real_
-        l_pval <- NA_real_
+    # A failed ML fit falls back to the method-of-moments (P) estimator so a
+    # single non-convergent optimization doesn't leave the whole test blank.
+    if (method == "ML" && !isTRUE(fit_result$converged)) {
+      fallback_result <- run_puniform_mm(yi_sig, vi_sig, alpha)
+      ml_note <- fit_result$note %||% "ML estimation did not converge."
+      if (isTRUE(fallback_result$converged)) {
+        fit_result <- fallback_result
+        method_used <- "P"
+        fit_result$note <- paste(ml_note, "Fell back to the method-of-moments (P) estimator.")
       } else {
-        theta_est <- opt_result$par[1]
-
-        # Approximate standard error using Hessian
-        theta_se <- tryCatch(
-          {
-            hess <- stats::optimHess(
-              par = opt_result$par,
-              fn = puniform_star_nll,
-              yi = yi_sig,
-              vi = vi_sig,
-              ni = ni_sig,
-              alpha = alpha
-            )
-            sqrt(solve(hess)[1, 1])
-          },
-          error = function(e) NA_real_
-        )
-
-        # Likelihood ratio test for publication bias (H0: theta = 0)
-        ll_full <- -opt_result$value
-        ll_null <- tryCatch(
-          {
-            opt_null <- stats::optim(
-              par = c(0, start_tau),
-              fn = puniform_star_nll,
-              yi = yi_sig,
-              vi = vi_sig,
-              ni = ni_sig,
-              alpha = alpha,
-              method = "BFGS"
-            )
-            -opt_null$value
-          },
-          error = function(e) NA_real_
-        )
-
-        l_stat <- 2 * (ll_full - ll_null)
-        l_pval <- if (is.finite(l_stat) && l_stat > 0) stats::pchisq(l_stat, df = 1, lower.tail = FALSE) else NA_real_
+        fit_result$note <- ml_note
       }
     }
+
+    theta_est <- fit_result$theta_est
+    theta_se <- fit_result$theta_se
+    l_stat <- fit_result$l_stat
+    l_pval <- fit_result$l_pval
+    note <- fit_result$note
   }
 
   # Format coefficients
@@ -550,7 +606,9 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
   list(
     coefficients = coefficients,
     test_statistic = l_stat,
-    test_p_value = l_pval
+    test_p_value = l_pval,
+    method_used = method_used,
+    note = note
   )
 }
 

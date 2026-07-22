@@ -3,6 +3,9 @@ box::use(
     expect_equal,
     expect_error,
     expect_false,
+    expect_gt,
+    expect_lt,
+    expect_match,
     expect_message,
     expect_true,
     skip_if_not_installed,
@@ -237,6 +240,72 @@ test_that("run_puniform_star with method = 'P' returns NA estimates without enou
 
   expect_true(is.na(res$coefficients$estimate[1]))
   expect_true(is.na(res$test_p_value))
+})
+
+test_that("run_puniform_star ML publication-bias test is not degenerately zero", {
+  # Regression test: the null model of the likelihood-ratio test used to start
+  # an *unconstrained* BFGS search at theta = 0, so it simply re-found the
+  # full model's optimum and collapsed the statistic to ~0 regardless of the
+  # data (observed in production as "L = 0.000" with p = 1 on every dataset).
+  set.seed(11)
+  n <- 120
+  df <- data.frame(
+    effect = rnorm(n, 0.4, 0.03),
+    se = rep(0.05, n),
+    study_id = rep(seq_len(30), each = 4),
+    study_size = sample(50:200, n, replace = TRUE),
+    n_obs = sample(50:200, n, replace = TRUE)
+  )
+
+  res <- run_puniform_star(df, method = "ML")
+  test_row <- res$coefficients[res$coefficients$term == "publication_bias_test", ]
+
+  expect_true(is.finite(test_row$statistic))
+  expect_gt(test_row$statistic, 0.01)
+  expect_true(is.finite(test_row$p_value))
+  expect_lt(test_row$p_value, 1)
+})
+
+test_that("run_puniform_star falls back to method 'P' when ML does not converge", {
+  testthat::local_mocked_bindings(
+    optim = function(...) list(par = c(NA_real_, NA_real_), value = NA_real_, convergence = 1),
+    .package = "stats"
+  )
+
+  set.seed(11)
+  n <- 120
+  df <- data.frame(
+    effect = rnorm(n, 3, 0.05),
+    se = rep(0.05, n),
+    study_id = rep(seq_len(30), each = 4),
+    study_size = rep(50, n),
+    n_obs = rep(50, n)
+  )
+
+  res <- run_puniform_star(df, method = "ML")
+
+  expect_equal(res$method_used, "P")
+  expect_true(is.finite(res$coefficients$estimate[1]))
+  expect_match(res$note, "did not converge")
+  expect_match(res$note, "Fell back to the method-of-moments")
+})
+
+test_that("run_puniform_star reports a note when the ML Hessian is not invertible", {
+  set.seed(11)
+  n <- 120
+  df <- data.frame(
+    effect = rnorm(n, 0.4, 0.03),
+    se = rep(0.05, n),
+    study_id = rep(seq_len(30), each = 4),
+    study_size = sample(50:200, n, replace = TRUE),
+    n_obs = sample(50:200, n, replace = TRUE)
+  )
+
+  res <- run_puniform_star(df, method = "ML")
+
+  expect_equal(res$method_used, "ML")
+  expect_true(is.na(res$coefficients$std_error[1]))
+  expect_match(res$note, "Hessian was not invertible")
 })
 
 # run_exogeneity_tests ------------------------------------------------------
