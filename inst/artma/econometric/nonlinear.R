@@ -12,7 +12,7 @@ box::use(
     format_number,
     format_se
   ],
-  artma / calc / methods / stem[stem, stem_funnel, stem_MSE],
+  artma / calc / methods / stem[stem, stem_funnel, stem_MSE, STEM_MIN_STUDIES],
   artma / calc / methods / selection_model[metastudies_estimation],
   artma / calc / methods / endo_kink[run_endogenous_kink],
   artma / visualization / options[get_visualization_options],
@@ -45,22 +45,117 @@ format_standard_error <- function(std_error, digits) {
   formatted
 }
 
+#' Kish's effective sample size for a set of precision weights
+#'
+#' @param weights *\[numeric\]* Non-negative weights (e.g. inverse-variance weights).
+#' @return *\[numeric\]* The effective number of independent observations the
+#'   weighted average behaves like. Equals `length(weights)` when weights are
+#'   equal, and shrinks toward 1 when a single weight dominates the sum.
+#' @keywords internal
+effective_sample_size <- function(weights) {
+  sum(weights)^2 / sum(weights^2)
+}
+
+#' Detect a degenerate effect/std-error pair produced by a nonlinear estimator
+#'
+#' @description
+#' A term is degenerate when its estimate is not finite, or its standard
+#' error is exactly zero or non-finite (typically a sign that a single
+#' extreme-precision observation dominated the fit, or that an optimizer
+#' returned a garbage covariance). A term that is genuinely absent by design
+#' (an intentional `NA`, not a computed `NaN`) is left alone.
+#'
+#' @param component *\[list, optional\]* With elements `estimate` and `std_error`.
+#' @param label *\[character\]* Human-readable name used in the skip reason.
+#' @return *\[character or NULL\]* A skip reason, or `NULL` if not degenerate.
+#' @keywords internal
+degenerate_effect_reason <- function(component, label) {
+  if (is.null(component)) {
+    return(NULL)
+  }
+  estimate <- component$estimate
+  std_error <- component$std_error
+  if (is.na(std_error) && !is.nan(std_error)) {
+    return(NULL)
+  }
+  if (!is.finite(estimate)) {
+    return(paste0(label, " did not produce a finite estimate."))
+  }
+  if (!is.finite(std_error)) {
+    return(paste0(label, " produced a non-finite standard error, indicating a failed optimizer or singular Hessian."))
+  }
+  if (std_error <= 0) {
+    return(paste0(label, " produced a standard error of exactly zero, which is not a valid estimate."))
+  }
+  NULL
+}
+
+#' Flag WAAP/Top10 fits dominated by a single extreme-precision observation
+#'
+#' @param method_result *\[list\]* Runner output with `effective_n` and `n_model`.
+#' @return *\[character or NULL\]* A skip reason, or `NULL` if not degenerate.
+#' @keywords internal
+degenerate_check_precision_weighted <- function(method_result) {
+  eff_n <- method_result$effective_n
+  if (is.null(eff_n) || !is.finite(eff_n) || eff_n >= 2) {
+    return(NULL)
+  }
+  paste0(
+    "the estimate is dominated by a single extreme-precision observation (effective sample size ",
+    format_number(eff_n, 2), " across ", method_result$n_model, " model observations)."
+  )
+}
+
+#' Flag STEM fits that land on its algorithmic minimum window
+#'
+#' @param method_result *\[list\]* Runner output with `n_model`.
+#' @return *\[character or NULL\]* A skip reason, or `NULL` if not degenerate.
+#' @keywords internal
+degenerate_check_stem <- function(method_result) {
+  n_model <- method_result$n_model
+  if (is.null(n_model) || !is.finite(n_model) || n_model > STEM_MIN_STUDIES) {
+    return(NULL)
+  }
+  paste0(
+    "STEM selected only ", n_model, " studies, its algorithmic minimum of ", STEM_MIN_STUDIES,
+    "; the fit is a corner solution and carries too little information to report."
+  )
+}
+
+#' Flag selection-model fits that hit a boundary or failed to converge
+#'
+#' @param method_result *\[list\]* Runner output with `boundary_hit` and `convergence`.
+#' @return *\[character or NULL\]* A skip reason, or `NULL` if not degenerate.
+#' @keywords internal
+degenerate_check_selection <- function(method_result) {
+  if (isTRUE(method_result$boundary_hit)) {
+    return("the publication-probability or heterogeneity parameter landed on its boundary (near zero), a corner solution rather than a genuine optimum.")
+  }
+  if (!is.null(method_result$convergence) && !identical(method_result$convergence, 0L) && !identical(method_result$convergence, 0)) {
+    return(paste0("the optimizer did not converge (nlminb exit code ", method_result$convergence, ")."))
+  }
+  NULL
+}
+
 nonlinear_method_specs <- function(options) {
   list(
     list(
       name = "waap",
       label = "WAAP",
-      runner = function(df, total_n) run_waap(df, total_n)
+      runner = function(df, total_n) run_waap(df, total_n),
+      degenerate_check = degenerate_check_precision_weighted
     ),
     list(
       name = "top10",
       label = "Top10",
-      runner = function(df, total_n) run_top10(df, total_n)
+      runner = function(df, total_n) run_top10(df, total_n),
+      degenerate_check = degenerate_check_precision_weighted
     ),
     list(
       name = "stem",
       label = "Stem",
-      runner = function(df, total_n) run_stem(df, total_n, options)
+      runner = function(df, total_n) run_stem(df, total_n, options),
+      degenerate_check = degenerate_check_stem
     ),
     list(
       name = "hierarchical",
@@ -70,7 +165,8 @@ nonlinear_method_specs <- function(options) {
     list(
       name = "selection",
       label = "Selection",
-      runner = function(df, total_n) run_selection(df, total_n, options)
+      runner = function(df, total_n) run_selection(df, total_n, options),
+      degenerate_check = degenerate_check_selection
     ),
     list(
       name = "endogenous_kink",
@@ -118,7 +214,8 @@ run_waap <- function(df, total_n) {
       std_error = std_error,
       p_value = normal_p_value(estimate, std_error)
     ),
-    n_model = nrow(filtered)
+    n_model = nrow(filtered),
+    effective_n = effective_sample_size(weights)
   )
 }
 
@@ -143,7 +240,8 @@ run_top10 <- function(df, total_n) {
       std_error = std_error,
       p_value = normal_p_value(estimate, std_error)
     ),
-    n_model = nrow(filtered)
+    n_model = nrow(filtered),
+    effective_n = effective_sample_size(weights)
   )
 }
 
@@ -359,7 +457,9 @@ run_selection <- function(df, total_n, options) {
       std_error = pub_bias_se,
       p_value = normal_p_value(pub_bias_est, pub_bias_se)
     ),
-    n_model = nrow(data)
+    n_model = nrow(data),
+    convergence = estimates$convergence,
+    boundary_hit = estimates$boundary_hit
   )
 }
 
@@ -440,6 +540,16 @@ run_nonlinear_methods <- function(df, options) {
     tryCatch(
       {
         method_result <- spec$runner(df, total_n)
+        degenerate_reason <- degenerate_effect_reason(method_result$effect, "Effect estimate")
+        if (is.null(degenerate_reason)) {
+          degenerate_reason <- degenerate_effect_reason(method_result$publication_bias, "Publication-bias estimate")
+        }
+        if (is.null(degenerate_reason) && !is.null(spec$degenerate_check)) {
+          degenerate_reason <- spec$degenerate_check(method_result)
+        }
+        if (!is.null(degenerate_reason)) {
+          cli::cli_abort(degenerate_reason)
+        }
         coefficients <- list()
         pb <- method_result$publication_bias %||% list(estimate = NA_real_, std_error = NA_real_, p_value = NA_real_)
         effect <- method_result$effect

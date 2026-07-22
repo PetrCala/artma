@@ -1,3 +1,8 @@
+#' Minimum number of studies STEM will ever select. The MSE-minimising search
+#' never returns a window narrower than this, so a fit that lands exactly on
+#' it is a corner solution rather than a genuine MSE minimum.
+STEM_MIN_STUDIES <- 3L
+
 #' Compute the weighted mean for the first `i` studies
 #'
 #' @param beta [numeric] Effect sizes ordered by precision.
@@ -67,7 +72,7 @@ stem_compute <- function(beta, se, sigma0) {
   eb_squared <- weighted_mean_squared(beta[-1], se[-1], sigma0)
   mse_original <- eb_squared - 2 * beta[1] * eb_leave_top_out
   var_all <- variance_b(se, sigma0)
-  n_stem_min <- 3
+  n_stem_min <- STEM_MIN_STUDIES
   mse <- mse_original[(n_stem_min - 1):(n - 1)]
   bias <- mse - var_all[n_stem_min:n]
   index <- which.min(mse)
@@ -223,6 +228,7 @@ data_median <- function(data, id_var, main_var, additional_var) {
 
 
 box::export(
+  STEM_MIN_STUDIES,
   weighted_mean,
   weighted_mean_squared,
   variance_0,

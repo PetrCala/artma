@@ -1,7 +1,9 @@
 box::use(
   testthat[
     expect_equal,
+    expect_false,
     expect_gt,
+    expect_match,
     expect_named,
     expect_s3_class,
     expect_setequal,
@@ -17,13 +19,18 @@ box::use(
 )
 
 make_demo_data <- function() {
-  n_studies <- 8L
+  # STEM picks the MSE-minimising number of (precision-ordered) studies; a
+  # small, widely spread study set can land on its algorithmic floor of 3,
+  # which the panel now treats as a degenerate corner solution and skips.
+  # More studies with tightly clustered effects keep STEM's window well
+  # above that floor so this fixture continues to exercise every model.
+  n_studies <- 15L
   per_study <- 6L
   study_ids <- rep(paste0("S", seq_len(n_studies)), each = per_study)
   base_se <- seq(0.05, 0.12, length.out = per_study)
   se_vals <- rep(base_se, times = n_studies)
-  effect_base <- seq(0.06, 0.3, length.out = n_studies)
-  effect_offsets <- seq(-0.07, 0.07, length.out = per_study)
+  effect_base <- 0.15 + seq(-0.01, 0.01, length.out = n_studies)
+  effect_offsets <- seq(-0.02, 0.02, length.out = per_study)
   effect_vals <- rep(effect_base, each = per_study) + rep(effect_offsets, times = n_studies)
   data.frame(
     study_id = study_ids,
@@ -103,6 +110,84 @@ test_that("nonlinear tests writes STEM diagnostic plot files when export is enab
   expect_true(file.exists(file.path(dir, "stem_mse.png")))
   expect_s3_class(res$plots$stem_funnel, "recordedplot")
   expect_s3_class(res$plots$stem_mse, "recordedplot")
+})
+
+make_degenerate_options <- function() {
+  list(
+    add_significance_marks = FALSE,
+    round_to = 3L,
+    stem_representative_sample = "medians",
+    selection_cutoffs = c(1.96),
+    selection_symmetric = FALSE,
+    selection_model = "normal",
+    hierarchical_iterations = 10L
+  )
+}
+
+test_that("WAAP and Top10 are skipped when a single observation dominates the weights", {
+  n_moderate <- 20
+  df <- data.frame(
+    effect = rep(0.2, n_moderate + 1),
+    se = c(rep(0.05, n_moderate), 0.0001),
+    study_id = paste0("S", seq_len(n_moderate + 1)),
+    stringsAsFactors = FALSE
+  )
+
+  res <- suppressWarnings(run_nonlinear_methods(df, make_degenerate_options()))
+
+  expect_true("waap" %in% names(res$skipped))
+  expect_match(res$skipped$waap$reason, "dominated by a single extreme-precision observation")
+  expect_false("waap" %in% res$coefficients$model)
+})
+
+test_that("Top10 is skipped when a single observation dominates the weights", {
+  df <- data.frame(
+    effect = rep(0.2, 50),
+    se = c(rep(0.05, 45), rep(0.01, 4), 0.0001),
+    study_id = paste0("S", seq_len(50)),
+    stringsAsFactors = FALSE
+  )
+
+  res <- suppressWarnings(run_nonlinear_methods(df, make_degenerate_options()))
+
+  expect_true("top10" %in% names(res$skipped))
+  expect_match(res$skipped$top10$reason, "dominated by a single extreme-precision observation")
+  expect_false("top10" %in% res$coefficients$model)
+})
+
+test_that("STEM is skipped when it lands on its algorithmic minimum window", {
+  set.seed(123)
+  n <- 30
+  se <- seq(0.02, 0.3, length.out = n)
+  effect <- c(0.9, 0.95, 0.85, rnorm(n - 3, 0, 0.05))
+  df <- data.frame(
+    effect = effect,
+    se = se,
+    study_id = paste0("S", seq_len(n)),
+    stringsAsFactors = FALSE
+  )
+
+  res <- suppressWarnings(run_nonlinear_methods(df, make_degenerate_options()))
+
+  expect_true("stem" %in% names(res$skipped))
+  expect_match(res$skipped$stem$reason, "corner solution")
+  expect_false("stem" %in% res$coefficients$model)
+})
+
+test_that("Selection model is skipped on a boundary (non-converged) solution", {
+  set.seed(42)
+  n <- 60
+  df <- data.frame(
+    effect = rnorm(n, 0, 0.001),
+    se = rep(1, n),
+    study_id = paste0("S", seq_len(n)),
+    stringsAsFactors = FALSE
+  )
+
+  res <- suppressWarnings(run_nonlinear_methods(df, make_degenerate_options()))
+
+  expect_true("selection" %in% names(res$skipped))
+  expect_false("selection" %in% res$coefficients$model)
 })
 
 test_that("nonlinear methods record skipped models when input is insufficient", {

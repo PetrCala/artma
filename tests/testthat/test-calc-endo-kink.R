@@ -74,6 +74,29 @@ test_that("run_endogenous_kink recovers a homogeneous true effect", {
   expect_true(is.finite(out[2]))
 })
 
+test_that("run_endogenous_kink's no-kink fallback matches a precision-weighted OLS fit", {
+  # Below the +/-1.96*sd band, compute_cutoff() returns 0 and
+  # final_endokink_fit() falls back to an unrestricted regression of bs_sebs
+  # on ones_sebs + pub_bias, which is algebraically the same as a weighted
+  # least-squares fit of effect on se with weights 1/se^2 (i.e. "precision
+  # weighted" when a dataset's precision column is defined as 1/se). A
+  # coincidental match between Endogenous Kink and a precision-weighted OLS
+  # spec in this regime is therefore expected, not a wiring bug.
+  set.seed(5)
+  n <- 40
+  se <- runif(n, 0.05, 0.5)
+  effect <- 0.3 + rnorm(n, 0, se)
+  df <- data.frame(effect, se)
+
+  out <- run_endogenous_kink(df, verbose = FALSE)
+  reference <- summary(stats::lm(effect ~ se, data = df, weights = 1 / se^2))$coefficients
+
+  expect_equal(unname(out[1]), unname(reference["(Intercept)", "Estimate"]))
+  expect_equal(unname(out[2]), unname(reference["(Intercept)", "Std. Error"]))
+  expect_equal(unname(out[3]), unname(reference["se", "Estimate"]))
+  expect_equal(unname(out[4]), unname(reference["se", "Std. Error"]))
+})
+
 test_that("run_endogenous_kink is deterministic for identical input", {
   set.seed(5)
   n <- 40
