@@ -423,85 +423,33 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
   sig_mask <- z_scores >= z_crit
 
   if (sum(sig_mask) < 2) {
-    # Not enough significant studies
-    return(list(
-      coefficients = data.frame(
-        term = c("effect", "publication_bias_test"),
-        term_label = c("Effect Beyond Bias", "Publication Bias Test"),
-        estimate = c(NA_real_, NA_real_),
-        std_error = c(NA_real_, NA_real_),
-        statistic = c(NA_real_, NA_real_),
-        p_value = c(NA_real_, NA_real_),
-        n_obs = nrow(df),
-        stringsAsFactors = FALSE
-      ),
-      test_statistic = NA_real_,
-      test_p_value = NA_real_
-    ))
-  }
-
-  yi_sig <- med_yi[sig_mask]
-  vi_sig <- med_vi[sig_mask]
-  ni_sig <- med_ni[sig_mask]
-
-  if (method == "P") {
-    mm_result <- run_puniform_mm(yi_sig, vi_sig, alpha)
-    theta_est <- mm_result$theta_est
-    theta_se <- mm_result$theta_se
-    l_stat <- mm_result$l_stat
-    l_pval <- mm_result$l_pval
+    # Not enough significant studies to estimate theta or run the LR test.
+    # Fall through to the shared coefficient formatting below so the returned
+    # data.frame always has the same columns as the fully-estimated case.
+    theta_est <- NA_real_
+    theta_se <- NA_real_
+    l_stat <- NA_real_
+    l_pval <- NA_real_
   } else {
-    # Optimize
-    start_theta <- mean(yi_sig)
-    start_tau <- stats::sd(yi_sig)
+    yi_sig <- med_yi[sig_mask]
+    vi_sig <- med_vi[sig_mask]
+    ni_sig <- med_ni[sig_mask]
 
-    opt_result <- tryCatch(
-      {
-        stats::optim(
-          par = c(start_theta, start_tau),
-          fn = puniform_star_nll,
-          yi = yi_sig,
-          vi = vi_sig,
-          ni = ni_sig,
-          alpha = alpha,
-          method = "BFGS"
-        )
-      },
-      error = function(e) {
-        list(par = c(NA_real_, NA_real_), value = NA_real_, convergence = 1)
-      }
-    )
-
-    if (opt_result$convergence != 0 || any(is.na(opt_result$par))) {
-      theta_est <- NA_real_
-      theta_se <- NA_real_
-      l_stat <- NA_real_
-      l_pval <- NA_real_
+    if (method == "P") {
+      mm_result <- run_puniform_mm(yi_sig, vi_sig, alpha)
+      theta_est <- mm_result$theta_est
+      theta_se <- mm_result$theta_se
+      l_stat <- mm_result$l_stat
+      l_pval <- mm_result$l_pval
     } else {
-      theta_est <- opt_result$par[1]
+      # Optimize
+      start_theta <- mean(yi_sig)
+      start_tau <- stats::sd(yi_sig)
 
-      # Approximate standard error using Hessian
-      theta_se <- tryCatch(
+      opt_result <- tryCatch(
         {
-          hess <- stats::optimHess(
-            par = opt_result$par,
-            fn = puniform_star_nll,
-            yi = yi_sig,
-            vi = vi_sig,
-            ni = ni_sig,
-            alpha = alpha
-          )
-          sqrt(solve(hess)[1, 1])
-        },
-        error = function(e) NA_real_
-      )
-
-      # Likelihood ratio test for publication bias (H0: theta = 0)
-      ll_full <- -opt_result$value
-      ll_null <- tryCatch(
-        {
-          opt_null <- stats::optim(
-            par = c(0, start_tau),
+          stats::optim(
+            par = c(start_theta, start_tau),
             fn = puniform_star_nll,
             yi = yi_sig,
             vi = vi_sig,
@@ -509,13 +457,57 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
             alpha = alpha,
             method = "BFGS"
           )
-          -opt_null$value
         },
-        error = function(e) NA_real_
+        error = function(e) {
+          list(par = c(NA_real_, NA_real_), value = NA_real_, convergence = 1)
+        }
       )
 
-      l_stat <- 2 * (ll_full - ll_null)
-      l_pval <- if (is.finite(l_stat) && l_stat > 0) stats::pchisq(l_stat, df = 1, lower.tail = FALSE) else NA_real_
+      if (opt_result$convergence != 0 || any(is.na(opt_result$par))) {
+        theta_est <- NA_real_
+        theta_se <- NA_real_
+        l_stat <- NA_real_
+        l_pval <- NA_real_
+      } else {
+        theta_est <- opt_result$par[1]
+
+        # Approximate standard error using Hessian
+        theta_se <- tryCatch(
+          {
+            hess <- stats::optimHess(
+              par = opt_result$par,
+              fn = puniform_star_nll,
+              yi = yi_sig,
+              vi = vi_sig,
+              ni = ni_sig,
+              alpha = alpha
+            )
+            sqrt(solve(hess)[1, 1])
+          },
+          error = function(e) NA_real_
+        )
+
+        # Likelihood ratio test for publication bias (H0: theta = 0)
+        ll_full <- -opt_result$value
+        ll_null <- tryCatch(
+          {
+            opt_null <- stats::optim(
+              par = c(0, start_tau),
+              fn = puniform_star_nll,
+              yi = yi_sig,
+              vi = vi_sig,
+              ni = ni_sig,
+              alpha = alpha,
+              method = "BFGS"
+            )
+            -opt_null$value
+          },
+          error = function(e) NA_real_
+        )
+
+        l_stat <- 2 * (ll_full - ll_null)
+        l_pval <- if (is.finite(l_stat) && l_stat > 0) stats::pchisq(l_stat, df = 1, lower.tail = FALSE) else NA_real_
+      }
     }
   }
 
