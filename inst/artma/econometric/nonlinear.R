@@ -8,10 +8,11 @@ box::use(
   utils[capture.output],
   artma / libs / core / validation[validate, validate_columns, assert],
   artma / libs / formatting / results[
-    significance_mark,
     format_number,
-    format_se
+    format_estimate_with_pvalue,
+    format_standard_error
   ],
+  artma / calc / meta[normal_p_value],
   artma / calc / methods / stem[stem, stem_funnel, stem_MSE, STEM_MIN_STUDIES],
   artma / calc / methods / selection_model[metastudies_estimation],
   artma / calc / methods / endo_kink[run_endogenous_kink],
@@ -20,30 +21,6 @@ box::use(
 )
 
 # nocov start -----------------------------------------------------------------
-
-normal_p_value <- function(estimate, std_error) {
-  if (!is.finite(estimate) || !is.finite(std_error) || std_error <= 0) {
-    return(NA_real_)
-  }
-  2 * stats::pnorm(abs(estimate / std_error), lower.tail = FALSE)
-}
-
-format_estimate <- function(estimate, p_value, digits, add_marks) {
-  formatted <- format_number(estimate, digits)
-  if (!length(formatted)) {
-    return(character(0))
-  }
-  marks <- if (isTRUE(add_marks)) significance_mark(p_value) else ""
-  formatted <- paste0(formatted, marks)
-  formatted[is.na(formatted)] <- ""
-  formatted
-}
-
-format_standard_error <- function(std_error, digits) {
-  formatted <- format_se(std_error, digits)
-  formatted[is.na(formatted)] <- ""
-  formatted
-}
 
 #' Kish's effective sample size for a set of precision weights
 #'
@@ -603,7 +580,7 @@ run_nonlinear_methods <- function(df, options) {
   coefficients <- do.call(rbind, results)
   digits <- options$round_to %||% 3L
   add_marks <- isTRUE(options$add_significance_marks)
-  coefficients$estimate_formatted <- format_estimate(coefficients$estimate, coefficients$p_value, digits, add_marks)
+  coefficients$estimate_formatted <- format_estimate_with_pvalue(coefficients$estimate, coefficients$p_value, digits, add_marks)
   coefficients$std_error_formatted <- format_standard_error(coefficients$std_error, digits)
   summary <- build_summary_table(coefficients, digits)
   list(
