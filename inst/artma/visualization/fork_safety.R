@@ -128,6 +128,48 @@ use_fork_safe_png_device <- function() {
   in_forked_worker() && graphics_fork_is_hostile() && fork_safe_png_available()
 }
 
+#' @title Run an expression with BLAS/OpenMP pinned to one thread per process
+#' @description
+#' Forking while a multithreaded BLAS/OpenMP backend (OpenBLAS, Apple's
+#' Accelerate/vecLib) already has worker threads running is a well-known
+#' deadlock hazard: `fork()` duplicates only the calling thread, so a mutex
+#' another BLAS thread held at fork time is held forever in the child, which
+#' then hangs on its first BLAS call with no error. Even short of a deadlock,
+#' every forked worker would otherwise try to use every core for its own BLAS
+#' calls, oversubscribing the machine badly enough to look like a hang. Pins
+#' both to a single thread for the duration of `expr` and restores the
+#' previous count afterwards; a no-op when {RhpcBLASctl} is not installed,
+#' since without it there is no reliable way to reconfigure an
+#' already-initialised BLAS library from R.
+#' @param expr *\[any\]* Expression to evaluate.
+#' @return The value of `expr`.
+#' @keywords internal
+with_single_threaded_blas <- function(expr) {
+  if (!requireNamespace("RhpcBLASctl", quietly = TRUE)) {
+    return(expr)
+  }
+
+  # BLAS libraries expose no getter for their currently configured thread
+  # count, only the number of procs they can see, so that stands in as the
+  # restore target: "let it use everything again" rather than an exact
+  # rollback. OpenMP's runtime does expose the real current value, so that one
+  # is captured and restored precisely.
+  full_blas_threads <- RhpcBLASctl::blas_get_num_procs()
+  previous_omp_threads <- RhpcBLASctl::omp_get_max_threads()
+
+  RhpcBLASctl::blas_set_num_threads(1L)
+  RhpcBLASctl::omp_set_num_threads(1L)
+  on.exit(
+    {
+      RhpcBLASctl::blas_set_num_threads(full_blas_threads)
+      RhpcBLASctl::omp_set_num_threads(previous_omp_threads)
+    },
+    add = TRUE
+  )
+
+  expr
+}
+
 #' @title Evaluate an expression with the forked-worker flag set
 #' @description
 #' Marks the current process as a forked method worker so the graphics helpers
@@ -184,5 +226,6 @@ box::export(
   in_forked_worker,
   probe_cairo_png,
   use_fork_safe_png_device,
-  with_forked_worker_flag
+  with_forked_worker_flag,
+  with_single_threaded_blas
 )

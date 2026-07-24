@@ -17,7 +17,9 @@ box::use(
   artma / libs / core / autonomy[get_autonomy_level, get_default_autonomy_level],
   artma / libs / core / utils[opt_or],
   artma / libs / core / validation[assert],
-  artma / visualization / fork_safety[graphics_survive_fork, in_forked_worker, with_forked_worker_flag]
+  artma / visualization / fork_safety[
+    graphics_survive_fork, in_forked_worker, with_forked_worker_flag, with_single_threaded_blas
+  ]
 )
 
 #' @title Group methods into dependency layers
@@ -350,13 +352,13 @@ execute_method_layer <- function(method_names, run_one, streams = list(), worker
   }
 
   if (workers > 1L) {
-    outcomes <- parallel::mclapply(
+    outcomes <- with_single_threaded_blas(parallel::mclapply(
       method_names,
       function(method_name) with_forked_worker_flag(run_task(method_name)),
       mc.cores = workers,
       mc.preschedule = FALSE,
       mc.set.seed = TRUE
-    )
+    ))
     # A worker that dies outright rather than signalling an R error comes back
     # as a try-error, or as NULL when the child was killed before it could
     # answer at all. Neither carries a usable message, so describe what

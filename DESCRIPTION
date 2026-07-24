@@ -57,6 +57,7 @@ Suggests:
     rddensity (>= 2.5),
     readxl (>= 1.4.0),
     rex (>= 1.2.1),
+    RhpcBLASctl (>= 0.23-42),
     rjags (>= 4.15),
     rmarkdown (>= 2.30),
     RoBMA (>= 4.0.0),

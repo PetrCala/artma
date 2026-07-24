@@ -8,6 +8,7 @@ box::use(
     expect_null,
     expect_true,
     skip_if,
+    skip_if_not_installed,
     test_that
   ]
 )
@@ -324,6 +325,35 @@ test_that("execute_method_layer explains a worker that died without an error", {
   expect_null(outcomes[[2L]]$value)
   expect_true(nzchar(outcomes[[2L]]$error))
   expect_match(outcomes[[2L]]$error, "b", fixed = TRUE)
+})
+
+test_that("execute_method_layer pins BLAS/OpenMP to one thread only while forking", {
+  box::use(artma / modules / method_execution[execute_method_layer])
+
+  skip_if(!can_fork(), "forking is unavailable")
+  skip_if_not_installed("RhpcBLASctl")
+  # RhpcBLASctl reports NA for every OpenMP query when R itself was not built
+  # with OpenMP support (common on macOS toolchains); there is nothing to
+  # verify restored in that case, but the layer must still run correctly.
+  has_omp <- !is.na(RhpcBLASctl::omp_get_max_threads())
+
+  if (has_omp) {
+    RhpcBLASctl::omp_set_num_threads(2L)
+    withr::defer(RhpcBLASctl::omp_set_num_threads(RhpcBLASctl::omp_get_num_procs()))
+  }
+
+  outcomes <- execute_method_layer(
+    c("a", "b"),
+    run_one = function(name) name,
+    workers = 2L
+  )
+
+  expect_equal(vapply(outcomes, function(o) o$value, character(1)), c("a", "b"))
+  if (has_omp) {
+    # The pin-and-restore happens around `mclapply()` in the parent process,
+    # so the parent's own thread count is unaffected once the layer returns.
+    expect_equal(RhpcBLASctl::omp_get_max_threads(), 2L)
+  }
 })
 
 test_that("execute_method_layer captures output from forked workers", {
