@@ -298,7 +298,7 @@ resolve_bma_input_for_bpe <- function(df, bma_result, run_bma_if_missing) {
   box::use(
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate],
-    artma / methods / bma[bma]
+    artma / methods / bma[bma, unwrap_bma_result]
   )
 
   validate(
@@ -307,7 +307,7 @@ resolve_bma_input_for_bpe <- function(df, bma_result, run_bma_if_missing) {
     length(run_bma_if_missing) == 1
   )
 
-  normalized <- normalize_bma_result_input(bma_result)
+  normalized <- unwrap_bma_result(bma_result)
   if (is_bma_input_ready(normalized)) {
     normalized$formula <- build_bma_formula_from_data(normalized$data)
     normalized$source <- "provided"
@@ -331,7 +331,7 @@ resolve_bma_input_for_bpe <- function(df, bma_result, run_bma_if_missing) {
     cli::cli_alert_info("Running BMA first because BPE needs BMA model inputs.")
   }
 
-  computed <- normalize_bma_result_input(bma(df))
+  computed <- unwrap_bma_result(bma(df))
   assert(
     is_bma_input_ready(computed),
     "BMA did not produce a usable model/data bundle for best-practice estimation."
@@ -340,29 +340,6 @@ resolve_bma_input_for_bpe <- function(df, bma_result, run_bma_if_missing) {
   computed$formula <- build_bma_formula_from_data(computed$data)
   computed$source <- "computed"
   computed
-}
-
-normalize_bma_result_input <- function(bma_result) {
-  empty <- list(model = NULL, data = NULL, var_list = NULL, params = NULL)
-
-  if (!is.list(bma_result)) {
-    return(empty)
-  }
-
-  # Accept the standard method contract (fields under meta) or a bare meta-like
-  # list for callers that pass one directly.
-  meta <- bma_result$meta %||% bma_result
-
-  if (!is.null(meta$model) || !is.null(meta$data) || !is.null(meta$var_list)) {
-    return(list(
-      model = meta$model,
-      data = meta$data,
-      var_list = meta$var_list,
-      params = meta$params
-    ))
-  }
-
-  empty
 }
 
 is_bma_input_ready <- function(result) {
@@ -1539,4 +1516,7 @@ run <- register_runtime_method(
   suggests = "BMS"
 )
 
-box::export(best_practice_estimate, run, infer_bpe_recommendation, format_bpe_recommendation)
+box::export(
+  best_practice_estimate, run, infer_bpe_recommendation, format_bpe_recommendation,
+  resolve_bma_input_for_bpe
+)

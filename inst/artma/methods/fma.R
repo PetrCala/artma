@@ -9,7 +9,7 @@ fma <- function(df, bma_result = NULL) {
     artma / econometric / fma[run_fma],
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
-    artma / methods / bma[prepare_bma_inputs],
+    artma / methods / bma[prepare_bma_inputs, unwrap_bma_result],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group]
   )
@@ -78,24 +78,7 @@ fma <- function(df, bma_result = NULL) {
   }
   bma_params <- bma_params[[1]]
 
-  resolve_bma_result <- function(result) {
-    if (!is.list(result)) {
-      return(list())
-    }
-    # Accept the standard method contract (fields under meta) or a bare
-    # meta-like list for callers that pass one directly.
-    meta <- result$meta %||% result
-    if (!is.null(meta$model) || !is.null(meta$data) || !is.null(meta$var_list)) {
-      return(list(
-        model = meta$model,
-        data = meta$data,
-        var_list = meta$var_list
-      ))
-    }
-    list()
-  }
-
-  resolved <- resolve_bma_result(bma_result)
+  resolved <- unwrap_bma_result(bma_result)
   bma_model <- resolved$model
   bma_data <- resolved$data
   bma_var_list <- resolved$var_list
