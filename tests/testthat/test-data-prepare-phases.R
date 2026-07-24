@@ -4,14 +4,29 @@ box::use(
   testing / mocks / index[MOCKS]
 )
 
-# Create a valid runtime options file pointing at `source_path`, load it, and
-# return the prefixed options list (including artma.temp.* bookkeeping) so a
-# test can activate it with withr::local_options().
-local_runtime_options <- function(source_path, extra = list()) {
-  options_dir <- withr::local_tempdir(.local_envir = parent.frame())
+# Both tests drive the same three-phase pipeline over equivalent inputs, so the
+# expensive fixture work (mock CSV plus options.create/options.load, most of
+# this file's runtime) happens once at file scope. options.load() is pure: it
+# returns the prefixed list (including artma.temp.* bookkeeping) without
+# touching options(), so each test activates the shared list with
+# withr::local_options() and stays isolated; every artma.* key the pipeline
+# writes during a test is present in the list and therefore restored on exit.
+# The dataset is deliberately tiny: these tests exercise cache and config
+# bookkeeping, not data richness.
+shared_runtime_options <- local({
+  fixture_dir <- withr::local_tempdir(.local_envir = testthat::teardown_env())
 
-  user_input <- utils::modifyList(
-    list(
+  df <- MOCKS$create_mock_df(seed = 42, nrow = 60, n_studies = 5)
+  source_path <- file.path(fixture_dir, "phases-data.csv")
+  utils::write.csv(df, source_path, row.names = FALSE)
+
+  options_dir <- file.path(fixture_dir, "options")
+  dir.create(options_dir)
+
+  artma::options.create(
+    options_file_name = "phases.yaml",
+    options_dir = options_dir,
+    user_input = list(
       "data.source_path" = source_path,
       "data.na_handling" = "remove",
       "data.reconcile_mode" = "auto",
@@ -19,13 +34,6 @@ local_runtime_options <- function(source_path, extra = list()) {
       "cache.use_cache" = TRUE,
       "verbose" = 1L
     ),
-    extra
-  )
-
-  artma::options.create(
-    options_file_name = "phases.yaml",
-    options_dir = options_dir,
-    user_input = user_input,
     should_validate = TRUE,
     should_overwrite = TRUE
   )
@@ -38,7 +46,7 @@ local_runtime_options <- function(source_path, extra = list()) {
     should_add_temp_options = TRUE,
     should_return = TRUE
   )
-}
+})
 
 # Orchestrate the three phases with an isolated in-memory compute cache, so the
 # test never touches the user cache directory. Mirrors prepare_data() exactly.
@@ -78,11 +86,7 @@ local_phase_runner <- function() {
 test_that("warm-cache run repopulates a deleted data config (motivating bug)", {
   FIXTURES$local_cli_silence()
 
-  df <- MOCKS$create_mock_df(seed = 42)
-  tmp_file <- withr::local_tempfile(fileext = ".csv")
-  utils::write.csv(df, tmp_file, row.names = FALSE)
-
-  withr::local_options(local_runtime_options(tmp_file))
+  withr::local_options(shared_runtime_options)
 
   runner <- local_phase_runner()
 
@@ -109,11 +113,7 @@ test_that("warm-cache run repopulates a deleted data config (motivating bug)", {
 test_that("non-interactive prepare is identical run to run with cache hits from run 2", {
   FIXTURES$local_cli_silence()
 
-  df <- MOCKS$create_mock_df(seed = 7)
-  tmp_file <- withr::local_tempfile(fileext = ".csv")
-  utils::write.csv(df, tmp_file, row.names = FALSE)
-
-  withr::local_options(local_runtime_options(tmp_file))
+  withr::local_options(shared_runtime_options)
 
   runner <- local_phase_runner()
 
