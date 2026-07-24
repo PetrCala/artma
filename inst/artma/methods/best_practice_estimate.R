@@ -943,12 +943,13 @@ compute_bpe_factor_summary <- function(predictors, config, bma_data, coef_post_m
     }
 
     var_label <- var_cfg$var_name_verbose %||% var_name
-    groups <- resolve_bpe_factor_groups(
+    groups <- resolve_variable_groups(
       var_label = var_label,
       equal_val = var_cfg$bpe_equal,
       gltl_val = var_cfg$bpe_gltl,
       var_values = bma_data[[var_name]],
-      round_to = round_to
+      round_to = round_to,
+      auto_levels = TRUE
     )
 
     for (group in groups) {
@@ -1126,12 +1127,13 @@ build_bpe_density_plots <- function(predictors, config, bma_data, study_index_gr
     var_label <- var_cfg$var_name_verbose %||% var_name
     study_level_values <- resolve_bpe_study_level_values(bma_data, study_index_groups, var_name)
 
-    groups <- resolve_bpe_factor_groups(
+    groups <- resolve_variable_groups(
       var_label = var_label,
       equal_val = var_cfg$bpe_equal,
       gltl_val = var_cfg$bpe_gltl,
       var_values = study_level_values,
-      round_to = round_to
+      round_to = round_to,
+      auto_levels = TRUE
     )
 
     plot_df <- build_bpe_density_plot_data(
@@ -1229,83 +1231,6 @@ is_bpe_factor_var <- function(var_cfg) {
   gltl <- var_cfg$bpe_gltl
 
   any(c(isTRUE(flag), !is_bpe_override_na(equal), !is_bpe_override_na(gltl)))
-}
-
-#' @title Split a Variable's Values into BPE Factor-Level Groups
-#' @description
-#' Mirrors the equal/gltl split used by `effect_summary_stats`: an exact-match
-#' group when `equal_val` is set, greater/less-than groups when `gltl_val` is
-#' set (accepting "mean"/"median" as well as a literal threshold), and,
-#' absent both, one group per distinct level for variables with a small
-#' number of unique values.
-#' @return *\[list\]* A list of `list(label, row_idx)` entries, where `row_idx`
-#'   indexes into `var_values`.
-#' @keywords internal
-resolve_bpe_factor_groups <- function(var_label, equal_val, gltl_val, var_values, round_to) {
-  groups <- list()
-
-  if (!is_bpe_override_na(equal_val)) {
-    row_idx <- which(!is.na(var_values) & var_values == equal_val)
-    groups[[length(groups) + 1]] <- list(
-      label = paste0(var_label, " = ", format_bpe_group_value(equal_val, round_to)),
-      row_idx = row_idx
-    )
-  }
-
-  if (!is_bpe_override_na(gltl_val)) {
-    threshold <- resolve_bpe_gltl_threshold(gltl_val, var_values)
-    if (!is.na(threshold)) {
-      groups[[length(groups) + 1]] <- list(
-        label = paste0(var_label, " >= ", format_bpe_group_value(threshold, round_to)),
-        row_idx = which(!is.na(var_values) & var_values >= threshold)
-      )
-      groups[[length(groups) + 1]] <- list(
-        label = paste0(var_label, " < ", format_bpe_group_value(threshold, round_to)),
-        row_idx = which(!is.na(var_values) & var_values < threshold)
-      )
-    }
-  }
-
-  if (length(groups)) {
-    return(groups)
-  }
-
-  max_auto_levels <- 12L
-  levels_present <- sort(unique(stats::na.omit(var_values)))
-  if (length(levels_present) < 2 || length(levels_present) > max_auto_levels) {
-    return(list())
-  }
-
-  lapply(levels_present, function(level_value) {
-    list(
-      label = paste0(var_label, " = ", format_bpe_group_value(level_value, round_to)),
-      row_idx = which(!is.na(var_values) & var_values == level_value)
-    )
-  })
-}
-
-#' @title Resolve a gltl Threshold to a Numeric Value
-#' @keywords internal
-resolve_bpe_gltl_threshold <- function(gltl_val, var_values) {
-  if (!is.character(gltl_val)) {
-    return(as.numeric(gltl_val))
-  }
-
-  filtered <- var_values[!is.na(var_values)]
-  switch(gltl_val,
-    mean = if (length(filtered)) mean(filtered) else NA_real_,
-    median = if (length(filtered)) stats::median(filtered) else NA_real_,
-    suppressWarnings(as.numeric(gltl_val))
-  )
-}
-
-#' @title Format a Group Boundary Value for Display
-#' @keywords internal
-format_bpe_group_value <- function(value, round_to) {
-  if (is.numeric(value)) {
-    return(as.character(round(value, round_to)))
-  }
-  as.character(value)
 }
 
 compute_context_values <- function(bma_data, row_idx, predictors, overrides) {
@@ -1528,6 +1453,7 @@ matches_any <- function(label, patterns) {
 
 
 box::use(
+  artma / libs / core / grouping[resolve_variable_groups],
   artma / modules / runtime_methods[register_runtime_method]
 )
 
