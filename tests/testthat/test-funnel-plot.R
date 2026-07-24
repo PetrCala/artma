@@ -5,6 +5,7 @@ box::use(
     expect_named,
     expect_null,
     expect_s3_class,
+    expect_setequal,
     expect_true,
     test_that
   ],
