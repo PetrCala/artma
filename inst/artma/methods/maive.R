@@ -59,9 +59,6 @@ maive_estimator <- function(df) {
       constraint_msg = "maive first_stage must be 0, 1, or 2"
     ),
     seed = opt_spec(default = 123L, type = "numeric", cast = as.integer),
-    add_significance_marks = opt_spec(
-      default = TRUE, type = "logical", key = "artma.methods.add_significance_marks"
-    ),
     round_to = opt_spec(
       default = 3L, type = "numeric", key = "artma.output.number_of_decimals",
       cast = as.integer,
@@ -69,6 +66,7 @@ maive_estimator <- function(df) {
       constraint_msg = "Number of decimals must be non-negative"
     )
   ))
+  resolved_options$add_significance_marks <- resolve_add_significance_marks()
 
   # show_interpretation drives display only and is not part of resolved_options
   # (which is echoed into the method result meta), so it is resolved separately.
