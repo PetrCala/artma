@@ -13,7 +13,7 @@ TEST_FILES_COUNT=${#TEST_FILES[@]}
 
 info "Running $TEST_FILES_COUNT end-to-end tests..."
 
-for TEST_FILE in $TEST_FILES; do
+for TEST_FILE in "${TEST_FILES[@]}"; do
   info "Testing $TEST_FILE..."
   if ! Rscript "$TEST_FILE" 2>&1; then
     error "Error in $TEST_FILE" >&2
