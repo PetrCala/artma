@@ -47,7 +47,8 @@ configure_data <- function(df_raw) {
   box::use(
     artma / data / utils[standardize_column_names],
     artma / data / schema_reconcile[reconcile_schema],
-    artma / data / preprocess[clean_data, resolve_na_handling, resolve_se_zero_handling]
+    artma / data / preprocess[clean_data],
+    artma / data / configure[resolve_na_handling, resolve_se_zero_handling]
   )
 
   # Detect and resolve any schema drift before column standardization. This may

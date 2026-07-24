@@ -24,6 +24,7 @@ utils::globalVariables(c(
   "collect_leaf_paths",
   "compute",
   "compute_optional_columns",
+  "configure",
   "const",
   "core",
   "data",
