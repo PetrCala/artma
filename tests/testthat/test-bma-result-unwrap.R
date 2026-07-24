@@ -4,7 +4,9 @@ box::use(
     expect_error,
     expect_false,
     expect_identical,
+    expect_match,
     expect_named,
+    expect_null,
     expect_true,
     skip_if_not_installed,
     test_that
@@ -188,4 +190,57 @@ test_that("fma reuses a provided BMA result in both the $meta bundle and bare-li
   expect_identical(result_meta_bundle$meta$model, model)
   expect_identical(result_bare_list$meta$model, model)
   expect_named(result_meta_bundle$tables$coefficients, names(result_bare_list$tables$coefficients))
+})
+
+# BMS::bms() crashes with "subscript out of bounds" for a model space with
+# exactly one candidate regressor; prepare_bma_inputs() now catches this
+# before run_bma() is ever reached, and every consumer should surface the
+# reason instead of propagating a NULL model.
+make_single_moderator_df <- function() {
+  set.seed(7)
+  n <- 20L
+  data.frame(
+    effect = rnorm(n, mean = 0.2, sd = 0.1),
+    se = runif(n, min = 0.05, max = 0.15),
+    stringsAsFactors = FALSE
+  )
+}
+
+test_that("fma skips gracefully instead of crashing when only one moderator is available", {
+  df <- make_single_moderator_df()
+  config <- list(
+    effect = list(var_name = "effect", var_name_verbose = "Effect", bma = FALSE),
+    se = list(var_name = "se", var_name_verbose = "SE", bma = TRUE)
+  )
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = config
+  ))
+
+  result <- fma(df, bma_result = NULL)
+
+  expect_equal(nrow(result$tables$coefficients), 0)
+  expect_null(result$meta$model)
+  expect_match(result$meta$skipped, "at least 2 candidate moderator variables")
+})
+
+test_that("resolve_bma_input_for_bpe surfaces the BMA skip reason when BMA cannot run", {
+  df <- make_single_moderator_df()
+  config <- list(
+    effect = list(var_name = "effect", var_name_verbose = "Effect", bma = FALSE),
+    se = list(var_name = "se", var_name_verbose = "SE", bma = TRUE)
+  )
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = config
+  ))
+
+  expect_error(
+    resolve_bma_input_for_bpe(df = df, bma_result = NULL, run_bma_if_missing = TRUE),
+    "BMA was skipped"
+  )
 })

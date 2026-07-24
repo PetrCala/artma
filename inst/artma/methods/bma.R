@@ -89,7 +89,7 @@ bma <- function(df) {
 
   if (!is.null(prepared$skipped)) {
     if (get_verbosity() >= 2) {
-      cli::cli_alert_warning("No valid BMA variables available. Skipping BMA analysis.")
+      cli::cli_alert_warning("{prepared$skipped}. Skipping BMA analysis.")
     }
     empty_coefs <- data.frame(
       variable = character(0),
@@ -437,6 +437,21 @@ prepare_bma_inputs <- function(df, config, use_vif_optimization, max_groups_to_r
     }
   }
 
+  # BMS::bms() crashes with "subscript out of bounds" when the model space has
+  # exactly one candidate regressor (its internal XtX.big matrix collapses to
+  # 1x1 but position indices assume at least two candidates). Two or more
+  # moderators are required to reach the codepath BMS actually supports.
+  n_moderators <- ncol(bma_data) - 1
+  if (n_moderators == 1) {
+    sole_moderator <- setdiff(colnames(bma_data), "effect")
+    return(list(
+      skipped = sprintf(
+        "BMA requires at least 2 candidate moderator variables, but only 1 remains (%s). The BMS package cannot fit a model with a single regressor",
+        sole_moderator
+      )
+    ))
+  }
+
   list(
     bma_data = bma_data,
     bma_var_list = bma_var_list,
@@ -449,14 +464,15 @@ prepare_bma_inputs <- function(df, config, use_vif_optimization, max_groups_to_r
 #' Accepts either the standard method-result shape (fields nested under
 #' `$meta`) or a bare list carrying `model`/`data`/`var_list` directly, so
 #' callers that pass a previously computed `bma()` result or a hand-built
-#' list are both supported. Returns a list with `model`, `data`, `var_list`
-#' and `params` fields (all `NULL` when `bma_result` does not carry a usable
-#' bundle).
+#' list are both supported. Returns a list with `model`, `data`, `var_list`,
+#' `params` and `skipped` fields (all `NULL` except `skipped` when
+#' `bma_result` does not carry a usable bundle; `skipped` carries the reason
+#' string when the source `bma()` run was itself skipped).
 #' @param bma_result *\[list, optional\]* Either a `bma()` method result or a
 #'   bare `list(model=, data=, var_list=, params=)`.
-#' @return *\[list\]* `list(model=, data=, var_list=, params=)`.
+#' @return *\[list\]* `list(model=, data=, var_list=, params=, skipped=)`.
 unwrap_bma_result <- function(bma_result) {
-  empty <- list(model = NULL, data = NULL, var_list = NULL, params = NULL)
+  empty <- list(model = NULL, data = NULL, var_list = NULL, params = NULL, skipped = NULL)
 
   if (!is.list(bma_result)) {
     return(empty)
@@ -471,10 +487,12 @@ unwrap_bma_result <- function(bma_result) {
       model = meta$model,
       data = meta$data,
       var_list = meta$var_list,
-      params = meta$params
+      params = meta$params,
+      skipped = meta$skipped
     ))
   }
 
+  empty$skipped <- meta$skipped
   empty
 }
 

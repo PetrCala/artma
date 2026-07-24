@@ -3,7 +3,9 @@ box::use(
     expect_equal,
     expect_false,
     expect_length,
+    expect_match,
     expect_named,
+    expect_null,
     expect_true,
     expect_type,
     skip_if_not_installed,
@@ -18,7 +20,7 @@ box::use(
     handle_bma_params,
     get_bma_data
   ],
-  artma / methods / bma[bma]
+  artma / methods / bma[bma, prepare_bma_inputs]
 )
 
 make_demo_bma_data <- function() {
@@ -290,4 +292,49 @@ test_that("bma does not export a comparison plot for a single parameter set", {
 
   expect_length(result$meta$all, 1)
   expect_false(file.exists(file.path(export_dir, "bma_comparison.png")))
+})
+
+test_that("prepare_bma_inputs skips gracefully when config selects a single moderator variable", {
+  # BMS::bms() crashes with "subscript out of bounds" for a model space with
+  # exactly one candidate regressor; a single selected moderator must be
+  # caught here instead of reaching run_bma().
+  df <- make_demo_bma_data()
+  config <- list(
+    effect = list(var_name = "effect", var_name_verbose = "Effect", bma = FALSE),
+    se = list(var_name = "se", var_name_verbose = "SE", bma = TRUE)
+  )
+
+  prepared <- prepare_bma_inputs(
+    df = df,
+    config = config,
+    use_vif_optimization = FALSE,
+    max_groups_to_remove = 30L,
+    scale_data = TRUE,
+    verbosity = 0
+  )
+
+  expect_null(prepared$bma_data)
+  expect_match(prepared$skipped, "at least 2 candidate moderator variables")
+  expect_match(prepared$skipped, "se")
+})
+
+test_that("bma skips with an explanatory reason instead of crashing on a single moderator", {
+  df <- make_demo_bma_data()
+  config <- list(
+    effect = list(var_name = "effect", var_name_verbose = "Effect", bma = FALSE),
+    se = list(var_name = "se", var_name_verbose = "SE", bma = TRUE)
+  )
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = config,
+    artma.output.save_results = FALSE
+  ))
+
+  result <- bma(df)
+
+  expect_equal(nrow(result$tables$coefficients), 0)
+  expect_true(is.null(result$meta$model))
+  expect_match(result$meta$skipped, "at least 2 candidate moderator variables")
 })
