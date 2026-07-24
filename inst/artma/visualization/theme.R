@@ -8,8 +8,9 @@
 #' Constructs a consistent ggplot2 theme based on the selected color theme.
 #' Used across all artma visualization methods for visual consistency.
 #'
-#' Uses ggtext::element_markdown() for x-axis text to support per-tick coloring
-#' via HTML spans in tick labels.
+#' Uses ggplot2::element_text() for x-axis text. Note: per-tick HTML color
+#' spans produced by format_colored_tick_labels() are not rendered as colors
+#' here; they show as plain text including the raw markup.
 #'
 #' @param theme_name *\[character\]* One of: blue, yellow, green, red, purple
 #'
@@ -30,7 +31,7 @@ get_theme <- function(theme_name) {
 
   ggplot2::theme(
     axis.line = ggplot2::element_line(color = "black", linewidth = 0.5, linetype = "solid"),
-    axis.text.x = ggtext::element_markdown(size = 12),
+    axis.text.x = ggplot2::element_text(color = "black", size = 12),
     axis.text.y = ggplot2::element_text(color = "black", size = 12),
     axis.title.x = ggplot2::element_text(size = 14),
     axis.title.y = ggplot2::element_text(size = 14),

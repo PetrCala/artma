@@ -27,9 +27,11 @@ format_tick_labels <- function(x) {
 #' Format tick labels with HTML color spans
 #'
 #' @description
-#' Wraps tick labels in HTML span elements with color styling for use with
-#' ggtext::element_markdown(). This enables per-tick coloring (e.g., highlighting
-#' the mean tick in a different color).
+#' Wraps tick labels in HTML span elements with color styling. Historically
+#' rendered via ggtext::element_markdown() for per-tick coloring (e.g.,
+#' highlighting the mean tick in a different color); the theme now uses plain
+#' ggplot2::element_text(), so the HTML markup is displayed as literal text
+#' rather than rendered as color.
 #'
 #' @param ticks *\[numeric\]* Tick values
 #' @param colors *\[character\]* Color for each tick (same length as ticks)
