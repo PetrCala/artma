@@ -319,6 +319,7 @@ suggest_variables_for_bma <- function(
   all_priority <- unique(c(get_bma_priority_variables(), priority_vars))
 
   # Add priority variables if they exist and are numeric
+  added_priority <- character(0)
   for (pvar in all_priority) {
     if (!pvar %in% names(df)) {
       next
@@ -353,6 +354,13 @@ suggest_variables_for_bma <- function(
     )
 
     base_suggestions <- rbind(base_suggestions, new_row)
+    added_priority <- c(added_priority, pvar)
+  }
+
+  if (length(added_priority) > 0 && get_verbosity() >= 3) {
+    cli::cli_inform(
+      "Including {.val {added_priority}} as priority moderator{?s} by convention (the standard error term captures publication bias inside BMA)."
+    )
   }
 
   # Get variable names
