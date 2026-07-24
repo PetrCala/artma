@@ -250,3 +250,66 @@ test_that("resolve_worker_count ignores fork-unsafe graphics when not exporting"
     4L
   )
 })
+
+test_that("preview_plot prints in the parent but not inside a forked worker", {
+  box::use(
+    artma / visualization / export[preview_plot],
+    artma / visualization / fork_safety[with_forked_worker_flag]
+  )
+
+  # `preview_plot()` calls `print()` from inside a box module, whose scope
+  # chain bypasses the global environment, so the probe method must go through
+  # the S3 registration table to be dispatched. The registration is process
+  # local and the class is fake, so no cleanup is needed.
+  calls <- new.env(parent = emptyenv())
+  calls$n <- 0L
+  registerS3method(
+    "print", "artma_preview_probe",
+    function(x, ...) {
+      calls$n <- calls$n + 1L
+      invisible(x)
+    },
+    envir = globalenv()
+  )
+
+  probe <- structure(list(), class = "artma_preview_probe")
+
+  with_forked_worker_flag(preview_plot(probe))
+  expect_equal(calls$n, 0L)
+
+  preview_plot(probe)
+  expect_equal(calls$n, 1L)
+
+  expect_null(preview_plot(NULL))
+  expect_equal(calls$n, 1L)
+})
+
+test_that("a forked worker previewing a plot survives", {
+  box::use(
+    artma / modules / method_execution[execute_method_layer],
+    artma / visualization / export[preview_plot]
+  )
+
+  skip_if(!can_fork(), "forking is unavailable")
+
+  # The regression: methods previewed plots at verbosity >= 3 with a bare
+  # `print()`, which opens the default interactive device. On macOS that is
+  # quartz, and the Objective-C runtime kills a forked child that touches it,
+  # so the whole method died before its exports ran.
+  plot <- ggplot2::ggplot(data.frame(x = 1:10, y = 1:10), ggplot2::aes(x, y)) +
+    ggplot2::geom_point()
+
+  outcomes <- execute_method_layer(
+    c("first", "second"),
+    run_one = function(name) {
+      preview_plot(plot)
+      name
+    },
+    workers = 2L
+  )
+
+  for (outcome in outcomes) {
+    expect_null(outcome$error)
+  }
+  expect_equal(vapply(outcomes, function(o) o$value, character(1)), c("first", "second"))
+})

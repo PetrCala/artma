@@ -115,6 +115,31 @@ open_png_device <- function(path, width, height, units = "px", res = 90) {
 }
 
 
+#' Print a plot to the interactive device, unless inside a forked worker
+#'
+#' @description
+#' Methods preview their plots at verbosity >= 3 by printing them, which opens
+#' the session's default interactive device. In a forked method worker that
+#' device must not be touched: on macOS it is quartz, whose Objective-C runtime
+#' aborts a forked child outright (killing the method before its file exports
+#' run), and on other platforms each child would pop its own on-screen device.
+#' Previews are therefore skipped inside forked workers; file exports are
+#' unaffected.
+#'
+#' @param plot *\[any\]* A printable plot object. `NULL` is skipped.
+#' @return NULL (invisibly)
+preview_plot <- function(plot) {
+  box::use(artma / visualization / fork_safety[in_forked_worker])
+
+  if (is.null(plot) || in_forked_worker()) {
+    return(invisible(NULL))
+  }
+
+  suppressWarnings(print(plot)) # nolint: undesirable_function_linter.
+  invisible(NULL)
+}
+
+
 #' Save a ggplot2 plot to file
 #'
 #' @description
@@ -380,6 +405,7 @@ box::export(
   ensure_export_dir,
   build_export_filename,
   open_png_device,
+  preview_plot,
   save_plot,
   save_plot_html,
   export_base_plot,

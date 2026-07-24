@@ -11,7 +11,7 @@ funnel_plot <- function(df) {
     artma / options / index[get_option_group],
     artma / options / resolver[opt_spec, resolve_options],
     artma / visualization / options[get_visualization_options],
-    artma / visualization / export[export_named_plots]
+    artma / visualization / export[export_named_plots, preview_plot]
   )
 
   validate(is.data.frame(df))
@@ -117,7 +117,7 @@ funnel_plot <- function(df) {
 
   if (get_verbosity() >= 3) {
     cli::cli_h3("Funnel Plot: Effect vs Precision")
-    suppressWarnings(print(plot)) # nolint: undesirable_function_linter.
+    preview_plot(plot)
   }
 
   if (export_graphics) {

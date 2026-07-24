@@ -14,7 +14,7 @@ t_stat_histogram <- function(df) {
     artma / options / index[get_option_group],
     artma / options / resolver[opt_spec, resolve_options],
     artma / visualization / options[get_visualization_options],
-    artma / visualization / export[export_named_plots]
+    artma / visualization / export[export_named_plots, preview_plot]
   )
 
   validate(is.data.frame(df))
@@ -109,7 +109,7 @@ t_stat_histogram <- function(df) {
         lower_cutoff, ", ", upper_cutoff, "] excluded"
       ))
     }
-    suppressWarnings(print(main_result$plot)) # nolint: undesirable_function_linter.
+    preview_plot(main_result$plot)
   }
 
   # Build the close-up plot (if enabled)
@@ -133,7 +133,7 @@ t_stat_histogram <- function(df) {
         "T-Statistic Distribution (Close-up: [",
         close_up_lower, ", ", close_up_upper, "])"
       ))
-      suppressWarnings(print(close_up_result$plot)) # nolint: undesirable_function_linter.
+      preview_plot(close_up_result$plot)
     }
   }
 
