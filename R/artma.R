@@ -139,7 +139,7 @@ artma <- function(
       artma / data / index[prepare_data],
       artma / libs / core / utils[get_verbosity],
       artma / output / export[
-        resolve_output_dir, ensure_output_dirs, export_results
+        resolve_output_dir, resolve_graphics_dir, ensure_output_dirs, export_results
       ]
     )
 
@@ -181,6 +181,30 @@ artma <- function(
     # Export tabular results
     if (isTRUE(save_results)) {
       export_results(results, output_dir)
+
+      # Optionally render a single self-contained HTML report of the whole run.
+      # A render failure must never abort a run that already produced results.
+      if (isTRUE(getOption("artma.output.report", FALSE))) {
+        tryCatch(
+          {
+            box::use(
+              artma / report / render[gather_report_meta, render_report]
+            )
+            render_report(
+              results = results,
+              output_file = file.path(output_dir, "report.html"),
+              graphics_dir = resolve_graphics_dir(output_dir),
+              report_meta = gather_report_meta(),
+              open = FALSE
+            )
+          },
+          error = function(e) {
+            if (get_verbosity() >= 2) {
+              cli::cli_alert_warning("Failed to render the HTML report: {e$message}")
+            }
+          }
+        )
+      }
     }
 
     if (isTRUE(save_results) && isTRUE(open_results) && interactive()) {

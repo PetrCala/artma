@@ -85,6 +85,8 @@ DIR_CONFIG <- file.path(PROJECT_ROOT, "config")
 DIR_METHODS <- file.path(PROJECT_ROOT, "methods")
 DIR_OPTIONS <- file.path(PROJECT_ROOT, "options")
 DIR_OPTIONS_TEMPLATES <- file.path(DIR_OPTIONS, "templates")
+DIR_REPORT <- file.path(PROJECT_ROOT, "report")
+DIR_REPORT_PARTIALS <- file.path(DIR_REPORT, "partials")
 
 # Alternative to 'rappdirs' (https://github.com/r-lib/rappdirs)
 DIR_USR_DATA <- tools::R_user_dir(CONST$PACKAGE_NAME, which = "data")
@@ -102,6 +104,8 @@ PATHS <- list(
   DIR_METHODS = DIR_METHODS,
   DIR_OPTIONS = DIR_OPTIONS,
   DIR_OPTIONS_TEMPLATES = DIR_OPTIONS_TEMPLATES,
+  DIR_REPORT = DIR_REPORT,
+  DIR_REPORT_PARTIALS = DIR_REPORT_PARTIALS,
 
   # Persistent user data directories (alternative to 'rappdirs')
   DIR_USR_DATA = DIR_USR_DATA,
