@@ -262,6 +262,21 @@ prepare_bma_inputs <- function(df, config, use_vif_optimization, max_groups_to_r
     bma_vars <- bma_vars[bma_vars %in% names(df)]
   }
 
+  # Constant columns carry no moderator information, and scaling one yields an
+  # all-NaN column that na.omit would then use to drop every observation.
+  constant_vars <- bma_vars[vapply(bma_vars, function(v) {
+    vals <- df[[v]]
+    length(unique(vals[!is.na(vals)])) <= 1L
+  }, logical(1))]
+  if (length(constant_vars)) {
+    if (verbosity >= 2) {
+      cli::cli_alert_warning(
+        "Excluding {length(constant_vars)} constant (zero-variance) variable{?s} from the BMA moderator set: {.val {constant_vars}}"
+      )
+    }
+    bma_vars <- setdiff(bma_vars, constant_vars)
+  }
+
   if (!length(bma_vars)) {
     return(list(skipped = "No valid BMA variables available"))
   }

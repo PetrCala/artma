@@ -125,6 +125,16 @@ get_na_handling <- function() {
   opt_or("artma.data.na_handling", NA_HANDLING_DEFAULT)
 }
 
+#' @title Maximum imputation missingness accessor
+#' @description The maximum share of missing values an optional numeric column
+#'   may have and still be imputed. Falls back to the template-declared default
+#'   when unset.
+#' @return *\[numeric\]* The missingness-ratio threshold in \[0, 1\].
+#' @keywords internal
+get_max_imputation_missingness <- function() {
+  getOption("artma.data.max_imputation_missingness", option_template_default("artma.data.max_imputation_missingness"))
+}
+
 #' @title Zero-standard-error handling strategy accessor
 #' @description The strategy for handling zero standard errors in the compute
 #'   phase. Resolves the `.na` template sentinel to the documented `"remove"`
@@ -140,6 +150,7 @@ box::export(
   get_precision_type,
   get_winsorization_level,
   get_na_handling,
+  get_max_imputation_missingness,
   get_se_zero_handling,
   NA_HANDLING_DEFAULT,
   SE_ZERO_HANDLING_DEFAULT
