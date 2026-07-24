@@ -16,8 +16,8 @@ box::use(ggplot2[is_ggplot])
 
 box::use(
   artma / methods / bma[bma],
-  artma / methods / best_practice_estimate[
-    best_practice_estimate,
+  artma / methods / best_practice_estimate[best_practice_estimate],
+  artma / econometric / best_practice_estimate[
     infer_bpe_recommendation,
     format_bpe_recommendation
   ]
