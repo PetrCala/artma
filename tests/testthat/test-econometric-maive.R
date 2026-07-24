@@ -6,6 +6,7 @@ box::use(
     expect_match,
     expect_no_match,
     expect_true,
+    local_mocked_bindings,
     skip_if_not_installed,
     test_that
   ],
@@ -473,6 +474,18 @@ test_that("run_maive is reproducible across two bootstrap runs", {
   skip_if_not_installed("MAIVE")
   local_options(artma.verbose = 1)
   opts <- base_maive_options(se = 3L) # Wild bootstrap: needs the threaded seed.
+
+  # MAIVE hardcodes 999 wild-bootstrap replications with no public knob, which
+  # makes the two runs below take close to half a minute. The replication count
+  # is irrelevant to what this test guards (both runs seeing identical RNG
+  # state), so shrink B while keeping the real bootstrap and its seeding path.
+  real_boot <- utils::getFromNamespace("manual_wild_cluster_boot_se", "MAIVE")
+  local_mocked_bindings(
+    manual_wild_cluster_boot_se = function(model, data, cluster_var, B = 500, seed = 123) {
+      real_boot(model = model, data = data, cluster_var = cluster_var, B = 25L, seed = seed)
+    },
+    .package = "MAIVE"
+  )
 
   expect_equal(
     run_maive(make_maive_df(), opts)$summary,
