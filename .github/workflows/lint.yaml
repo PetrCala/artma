@@ -41,6 +41,9 @@ jobs:
           lintr::lint_package()
         shell: Rscript {0}
 
+      # Regenerates R/generated_check_manifest.R (via `make generate-check-manifest`'s
+      # underlying script) and the roxygen2 docs, then fails on any drift. This is the
+      # staleness guard for a forgotten `make document` before a commit.
       - name: Check generated docs are up to date
         env:
           LC_ALL: en_US.UTF-8
