@@ -13,7 +13,7 @@ prima_facie_graphs <- function(df) {
     artma / options / index[get_option_group],
     artma / variable / detection[detect_variable_groups],
     artma / visualization / options[get_visualization_options],
-    artma / visualization / export[save_plot, build_export_filename, ensure_export_dir]
+    artma / visualization / export[export_named_plots]
   )
 
   validate(is.data.frame(df))
@@ -111,11 +111,14 @@ prima_facie_graphs <- function(df) {
   }
 
   if (export_graphics) {
-    export_prima_facie_plots(
+    export_named_plots(
       plots = plots,
-      group_names = group_names,
+      base_name = "prima_facie",
       export_path = export_path,
-      graph_scale = graph_scale
+      graph_scale = graph_scale,
+      names = group_names,
+      width = 800,
+      height = 666
     )
   }
 
@@ -344,39 +347,6 @@ create_prima_facie_plot <- function(df, group_col, group_name, graph_type,
     )
 
   p
-}
-
-
-#' Export prima facie plots to files
-#'
-#' @param plots *\[list\]* Named list of ggplot objects
-#' @param group_names *\[character\]* Vector of group base names
-#' @param export_path *\[character\]* Directory path
-#' @param graph_scale *\[numeric\]* Scale factor
-#'
-#' @return NULL (invisibly)
-#' @keywords internal
-export_prima_facie_plots <- function(plots, group_names, export_path, graph_scale) {
-  box::use(
-    artma / visualization / export[save_plot, build_export_filename, ensure_export_dir]
-  )
-
-  ensure_export_dir(export_path)
-
-  for (i in seq_along(plots)) {
-    filename <- build_export_filename("prima_facie", group_names[i])
-    full_path <- file.path(export_path, filename)
-
-    save_plot(
-      plot = plots[[i]],
-      path = full_path,
-      width = 800,
-      height = 666,
-      scale = graph_scale
-    )
-  }
-
-  invisible(NULL)
 }
 
 

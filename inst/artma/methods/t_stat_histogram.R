@@ -13,11 +13,7 @@ t_stat_histogram <- function(df) {
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / visualization / options[get_visualization_options],
-    artma / visualization / export[
-      save_plot,
-      build_export_filename,
-      ensure_export_dir
-    ]
+    artma / visualization / export[export_named_plots]
   )
 
   validate(is.data.frame(df))
@@ -137,13 +133,16 @@ t_stat_histogram <- function(df) {
 
   # Export if enabled
   if (export_graphics) {
-    export_t_stat_histograms(
-      main_plot = main_result$plot,
-      close_up_plot = if (!is.null(close_up_result)) {
-        close_up_result$plot
-      },
+    export_named_plots(
+      plots = list(
+        full_range = main_result$plot,
+        close_up = if (!is.null(close_up_result)) close_up_result$plot
+      ),
+      base_name = "t_stat_histogram",
       export_path = export_path,
-      graph_scale = graph_scale
+      graph_scale = graph_scale,
+      width = 800,
+      height = 600
     )
   }
 
@@ -216,31 +215,6 @@ compute_data_bounds <- function(filtered_values,
 }
 
 
-#' Determine tick interval for histogram based on data range
-#'
-#' @param range_size *\[numeric\]* Range of data
-#' @return *\[numeric\]* Tick interval
-#' @keywords internal
-determine_histogram_tick_interval <- function(range_size) {
-  if (range_size <= 5) {
-    return(1)
-  }
-  if (range_size <= 20) {
-    return(2)
-  }
-  if (range_size <= 50) {
-    return(5)
-  }
-  if (range_size <= 100) {
-    return(10)
-  }
-  if (range_size <= 200) {
-    return(20)
-  }
-  50
-}
-
-
 #' Generate intelligent x-axis ticks for t-statistic histogram
 #'
 #' @description
@@ -263,7 +237,8 @@ generate_histogram_ticks <- function(bounds,
                                      min_tick_distance,
                                      theme_name) {
   box::use(
-    artma / visualization / colors[get_colors, get_vline_color]
+    artma / visualization / colors[get_colors, get_vline_color],
+    artma / visualization / ticks[resolve_tick_interval, generate_regular_ticks]
   )
 
   lower <- bounds[1]
@@ -278,24 +253,23 @@ generate_histogram_ticks <- function(bounds,
   special_ticks <- unique(c(crit_ticks, mean_value))
 
   # Determine interval for regular ticks
-  interval <- determine_histogram_tick_interval(range_size)
+  interval <- resolve_tick_interval(
+    range_size,
+    breakpoints = c(5, 20, 50, 100, 200),
+    intervals = c(1, 2, 5, 10, 20),
+    fallback = 50
+  )
 
   # Generate regular ticks
-  start_tick <- ceiling(lower / interval) * interval
-  regular_ticks <- numeric(0)
-  current <- start_tick
-  while (current <= upper) {
-    far_from_special <- all(
-      abs(current - special_ticks) >= min_tick_distance
-    )
-    far_from_lower <- abs(current - lower) >= min_tick_distance / 2
-    far_from_upper <- abs(current - upper) >= min_tick_distance / 2
-
-    if (far_from_special && far_from_lower && far_from_upper) {
-      regular_ticks <- c(regular_ticks, current)
-    }
-    current <- current + interval
-  }
+  regular_ticks <- generate_regular_ticks(
+    lower = lower,
+    upper = upper,
+    interval = interval,
+    edge_distance = min_tick_distance / 2,
+    special_values = special_ticks,
+    special_distance = min_tick_distance,
+    upper_inclusive = TRUE
+  )
 
   # Combine all ticks
   all_ticks <- sort(unique(c(
@@ -460,59 +434,6 @@ build_histogram <- function(t_values,
     n_outliers = filter_result$n_outliers,
     mean_t = mean_t
   )
-}
-
-
-#' Export t-statistic histograms to files
-#'
-#' @param main_plot *\[ggplot\]* Main histogram
-#' @param close_up_plot *\[ggplot, NULL\]* Close-up histogram
-#' @param export_path *\[character\]* Directory
-#' @param graph_scale *\[numeric\]* Scale factor
-#'
-#' @return NULL (invisibly)
-#' @keywords internal
-export_t_stat_histograms <- function(main_plot,
-                                     close_up_plot,
-                                     export_path,
-                                     graph_scale) {
-  box::use(
-    artma / visualization / export[
-      save_plot,
-      build_export_filename,
-      ensure_export_dir
-    ]
-  )
-
-  ensure_export_dir(export_path)
-
-  if (!is.null(main_plot)) {
-    filename <- build_export_filename(
-      "t_stat_histogram", "full_range"
-    )
-    save_plot(
-      plot = main_plot,
-      path = file.path(export_path, filename),
-      width = 800,
-      height = 600,
-      scale = graph_scale
-    )
-  }
-
-  if (!is.null(close_up_plot)) {
-    filename <- build_export_filename(
-      "t_stat_histogram", "close_up"
-    )
-    save_plot(
-      plot = close_up_plot,
-      path = file.path(export_path, filename),
-      width = 800,
-      height = 600,
-      scale = graph_scale
-    )
-  }
-
-  invisible(NULL)
 }
 
 

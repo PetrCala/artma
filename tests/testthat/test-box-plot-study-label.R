@@ -1,5 +1,5 @@
 box::use(
-  testthat[expect_equal, expect_true, test_that]
+  testthat[expect_equal, expect_setequal, expect_true, test_that]
 )
 
 box::use(
@@ -56,4 +56,28 @@ test_that("box_plot builds a plot even when the data has duplicate column names"
   expect_equal(result$meta$factor_by, "study_label")
   expect_true(inherits(result$plots[[1]], "ggplot"))
   expect_true(is.data.frame(ggplot2::ggplot_build(result$plots[[1]])$data[[1]]))
+})
+
+test_that("box_plot writes exactly one PNG file when export is enabled", {
+  df <- data.frame(
+    study_id = c(1L, 2L, 1L, 3L),
+    study_label = c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)", "Clark (2010)"),
+    effect = c(0.2, 0.3, 0.1, 0.4),
+    se = c(0.1, 0.1, 0.2, 0.1),
+    n_obs = c(100, 120, 100, 140),
+    stringsAsFactors = FALSE
+  )
+  dir <- withr::local_tempdir()
+
+  withr::local_options(list(
+    "artma.visualization.export_graphics" = TRUE,
+    "artma.visualization.export_path" = dir,
+    "artma.output.save_results" = FALSE,
+    "artma.verbose" = 1,
+    "artma.data.columns" = list()
+  ))
+
+  box_plot(df)
+
+  expect_setequal(list.files(dir), "box_plot_study_label.png")
 })

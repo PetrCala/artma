@@ -4,11 +4,12 @@ box::use(
     expect_error,
     expect_named,
     expect_false,
+    expect_setequal,
     expect_true,
     skip_if_not_installed,
     test_that
   ],
-  withr[local_options]
+  withr[local_options, local_tempdir]
 )
 
 box::use(ggplot2[is_ggplot])
@@ -374,4 +375,40 @@ test_that("best_practice_estimate reports has_recommendation explicitly in the o
   # Every demo predictor matches a keyword rule, so all have a genuine recommendation.
   expect_true(all(overrides$has_recommendation))
   expect_false(any(overrides$recommended == "no recommendation"))
+})
+
+test_that("best_practice_estimate writes one PNG per plot when export is enabled", {
+  skip_if_not_installed("BMS")
+
+  df <- make_bpe_demo_data()
+  dir <- local_tempdir()
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = make_bpe_demo_config(),
+    artma.output.save_results = FALSE,
+    artma.visualization.export_graphics = FALSE,
+    artma.methods.bma.burn = 50L,
+    artma.methods.bma.iter = 300L,
+    artma.methods.bma.nmodel = 20L,
+    artma.methods.bma.g = "UIP",
+    artma.methods.bma.mprior = "uniform",
+    artma.methods.bma.mcmc = "bd",
+    artma.methods.best_practice_estimate.include_study_rows = TRUE
+  ))
+
+  bma_result <- bma(df)
+
+  local_options(list(
+    artma.visualization.export_graphics = TRUE,
+    artma.visualization.export_path = dir
+  ))
+
+  result <- best_practice_estimate(df, bma_result = bma_result)
+
+  expect_setequal(
+    list.files(dir),
+    paste0("best_practice_estimate_", names(result$plots), ".png")
+  )
 })

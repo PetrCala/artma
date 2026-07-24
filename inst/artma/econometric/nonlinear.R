@@ -16,7 +16,7 @@ box::use(
   artma / calc / methods / selection_model[metastudies_estimation],
   artma / calc / methods / endo_kink[run_endogenous_kink],
   artma / visualization / options[get_visualization_options],
-  artma / visualization / export[ensure_export_dir, build_export_filename, open_png_device]
+  artma / visualization / export[export_named_plots]
 )
 
 # nocov start -----------------------------------------------------------------
@@ -318,9 +318,15 @@ build_stem_plots <- function(effects, ses, estimates, mse_matrix) {
       draw_mse <- function() stem_MSE(mse_matrix)
 
       if (isTRUE(vis$export_graphics)) {
-        ensure_export_dir(vis$export_path)
-        export_stem_plot(draw_funnel, file.path(vis$export_path, build_export_filename("stem", "funnel")), vis$graph_scale)
-        export_stem_plot(draw_mse, file.path(vis$export_path, build_export_filename("stem", "mse")), vis$graph_scale)
+        export_named_plots(
+          plots = list(funnel = draw_funnel, mse = draw_mse),
+          base_name = "stem",
+          export_path = vis$export_path,
+          graph_scale = vis$graph_scale,
+          width = 800,
+          height = 600,
+          renderer = "base"
+        )
       }
 
       list(
@@ -346,23 +352,6 @@ record_stem_plot <- function(draw) {
   grDevices::dev.control("enable")
   draw()
   grDevices::recordPlot()
-}
-
-#' Export a base-graphics plotting function to a PNG file
-#'
-#' @param draw *\[function\]* Zero-argument function that draws the plot.
-#' @param path *\[character\]* Full file path (including filename).
-#' @param graph_scale *\[numeric\]* Scale factor for the exported dimensions.
-#' @return NULL (invisibly)
-#' @keywords internal
-export_stem_plot <- function(draw, path, graph_scale) {
-  if (file.exists(path)) {
-    file.remove(path)
-  }
-  open_png_device(path, width = 800 * graph_scale, height = 600 * graph_scale, units = "px", res = 90 * graph_scale)
-  on.exit(grDevices::dev.off(), add = TRUE)
-  draw()
-  invisible(NULL)
 }
 
 run_hierarchical <- function(df, total_n, options) {

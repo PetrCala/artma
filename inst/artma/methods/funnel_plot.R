@@ -10,7 +10,7 @@ funnel_plot <- function(df) {
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / visualization / options[get_visualization_options],
-    artma / visualization / export[save_plot, build_export_filename, ensure_export_dir]
+    artma / visualization / export[export_named_plots]
   )
 
   validate(is.data.frame(df))
@@ -121,10 +121,13 @@ funnel_plot <- function(df) {
   }
 
   if (export_graphics) {
-    export_funnel_plot(
-      plot = plot,
+    export_named_plots(
+      plots = list(effect_precision = plot),
+      base_name = "funnel_plot",
       export_path = export_path,
-      graph_scale = graph_scale
+      graph_scale = graph_scale,
+      width = 800,
+      height = 736
     )
   }
 
@@ -240,7 +243,10 @@ aggregate_study_medians <- function(df) {
 #' @return *\[list\]* With elements: ticks (numeric), tick_colors (character)
 #' @keywords internal
 generate_funnel_ticks <- function(bounds, mean_effect, add_zero, theme_name) {
-  box::use(artma / visualization / colors[get_vline_color])
+  box::use(
+    artma / visualization / colors[get_vline_color],
+    artma / visualization / ticks[resolve_tick_interval, generate_regular_ticks]
+  )
 
   lower_bound <- bounds[1]
   upper_bound <- bounds[2]
@@ -252,22 +258,22 @@ generate_funnel_ticks <- function(bounds, mean_effect, add_zero, theme_name) {
     ticks <- c(ticks, 0)
   }
 
-  interval <- determine_tick_interval(range_size)
+  interval <- resolve_tick_interval(
+    range_size,
+    breakpoints = c(1, 5, 20, 50, 100),
+    intervals = c(0.2, 1, 5, 10, 20),
+    fallback = 50
+  )
   min_distance <- interval / 5
 
-  start_tick <- ceiling(lower_bound / interval) * interval
-
-  current_tick <- start_tick
-  while (current_tick < upper_bound) {
-    far_from_lower <- abs(current_tick - lower_bound) >= min_distance
-    far_from_upper <- abs(current_tick - upper_bound) >= min_distance
-    not_duplicate <- !(current_tick %in% ticks)
-
-    if (far_from_lower && far_from_upper && not_duplicate) {
-      ticks <- c(ticks, current_tick)
-    }
-    current_tick <- current_tick + interval
-  }
+  regular_ticks <- generate_regular_ticks(
+    lower = lower_bound,
+    upper = upper_bound,
+    interval = interval,
+    edge_distance = min_distance,
+    upper_inclusive = FALSE
+  )
+  ticks <- c(ticks, regular_ticks)
 
   ticks <- sort(unique(c(ticks, mean_effect)))
 
@@ -282,31 +288,6 @@ generate_funnel_ticks <- function(bounds, mean_effect, add_zero, theme_name) {
     tick_colors = tick_colors,
     mean_effect = mean_effect
   )
-}
-
-
-#' Determine appropriate tick interval based on data range
-#'
-#' @param range_size *\[numeric\]* The range of data values
-#' @return *\[numeric\]* Appropriate tick interval
-#' @keywords internal
-determine_tick_interval <- function(range_size) {
-  if (range_size <= 1) {
-    return(0.2)
-  }
-  if (range_size <= 5) {
-    return(1)
-  }
-  if (range_size <= 20) {
-    return(5)
-  }
-  if (range_size <= 50) {
-    return(10)
-  }
-  if (range_size <= 100) {
-    return(20)
-  }
-  50
 }
 
 
@@ -383,36 +364,6 @@ create_funnel_plot <- function(df, tick_info, theme_name, precision_to_log, use_
     plot_theme
 
   p
-}
-
-
-#' Export funnel plot to file
-#'
-#' @param plot *\[ggplot\]* The plot to export
-#' @param export_path *\[character\]* Directory path
-#' @param graph_scale *\[numeric\]* Scale factor
-#'
-#' @return NULL (invisibly)
-#' @keywords internal
-export_funnel_plot <- function(plot, export_path, graph_scale) {
-  box::use(
-    artma / visualization / export[save_plot, build_export_filename, ensure_export_dir]
-  )
-
-  ensure_export_dir(export_path)
-
-  filename <- build_export_filename("funnel_plot", "effect_precision")
-  full_path <- file.path(export_path, filename)
-
-  save_plot(
-    plot = plot,
-    path = full_path,
-    width = 800,
-    height = 736,
-    scale = graph_scale
-  )
-
-  invisible(NULL)
 }
 
 
