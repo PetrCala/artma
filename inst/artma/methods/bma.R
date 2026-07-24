@@ -436,6 +436,40 @@ prepare_bma_inputs <- function(df, config, use_vif_optimization, max_groups_to_r
   )
 }
 
+#' Unwrap a BMA result into its model/data/var_list/params fields
+#' @description
+#' Accepts either the standard method-result shape (fields nested under
+#' `$meta`) or a bare list carrying `model`/`data`/`var_list` directly, so
+#' callers that pass a previously computed `bma()` result or a hand-built
+#' list are both supported. Returns a list with `model`, `data`, `var_list`
+#' and `params` fields (all `NULL` when `bma_result` does not carry a usable
+#' bundle).
+#' @param bma_result *\[list, optional\]* Either a `bma()` method result or a
+#'   bare `list(model=, data=, var_list=, params=)`.
+#' @return *\[list\]* `list(model=, data=, var_list=, params=)`.
+unwrap_bma_result <- function(bma_result) {
+  empty <- list(model = NULL, data = NULL, var_list = NULL, params = NULL)
+
+  if (!is.list(bma_result)) {
+    return(empty)
+  }
+
+  # Accept the standard method contract (fields under meta) or a bare meta-like
+  # list for callers that pass one directly.
+  meta <- bma_result$meta %||% bma_result
+
+  if (!is.null(meta$model) || !is.null(meta$data) || !is.null(meta$var_list)) {
+    return(list(
+      model = meta$model,
+      data = meta$data,
+      var_list = meta$var_list,
+      params = meta$params
+    ))
+  }
+
+  empty
+}
+
 #' Prompt user to select BMA variables at runtime
 #' @param df *\[data.frame\]* The data frame
 #' @param config *\[list\]* The data config
@@ -797,5 +831,6 @@ run <- register_runtime_method(
   cached = TRUE
 )
 
-# prepare_bma_inputs is exported because the fma method reuses it directly.
-box::export(bma, run, prepare_bma_inputs)
+# prepare_bma_inputs and unwrap_bma_result are exported because the fma and
+# best_practice_estimate methods reuse them directly.
+box::export(bma, run, prepare_bma_inputs, unwrap_bma_result)
