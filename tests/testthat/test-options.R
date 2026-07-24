@@ -399,6 +399,126 @@ test_that("options.load backfills defaults when loading without prefix", {
   expect_equal(loaded$data.winsorization_level, 0)
 })
 
+test_that("options.create honors nested user_input on the create-new path", {
+  box::use(artma[options.create])
+
+  tmp_dir <- withr::local_tempdir()
+  template_path <- file.path(tmp_dir, "template.yaml")
+
+  template <- list(
+    data = list(
+      source_path = list(
+        type = "character",
+        help = "Path to the data source"
+      ),
+      na_handling = list(
+        type = "character",
+        default = "stop",
+        help = "How to handle missing values"
+      )
+    )
+  )
+  yaml::write_yaml(template, template_path)
+
+  withr::local_options(list("artma.verbose" = 1))
+
+  # Nested and flat dotted user_input must produce identical files; the
+  # create-new branch previously dropped nested values silently (issue #321).
+  options.create(
+    options_file_name = "nested.yaml",
+    options_dir = tmp_dir,
+    template_path = template_path,
+    user_input = list(data = list(source_path = "some.csv")),
+    should_validate = TRUE
+  )
+  options.create(
+    options_file_name = "flat.yaml",
+    options_dir = tmp_dir,
+    template_path = template_path,
+    user_input = list("data.source_path" = "some.csv"),
+    should_validate = TRUE
+  )
+
+  nested <- yaml::read_yaml(file.path(tmp_dir, "nested.yaml"))
+  flat <- yaml::read_yaml(file.path(tmp_dir, "flat.yaml"))
+
+  expect_equal(nested$data$source_path, "some.csv")
+  expect_equal(nested$data$na_handling, "stop")
+  expect_identical(nested, flat)
+})
+
+test_that("options.create generates mock data for the 'mock' source path shortcut", {
+  box::use(artma[options.create])
+
+  tmp_dir <- withr::local_tempdir()
+  template_path <- file.path(tmp_dir, "template.yaml")
+
+  template <- list(
+    data = list(
+      source_path = list(
+        type = "character",
+        prompt = "file",
+        help = "Path to the data source"
+      )
+    )
+  )
+  yaml::write_yaml(template, template_path)
+
+  withr::local_options(list("artma.verbose" = 1))
+
+  options.create(
+    options_file_name = "mock.yaml",
+    options_dir = tmp_dir,
+    template_path = template_path,
+    user_input = list("data.source_path" = "mock"),
+    should_validate = TRUE
+  )
+
+  created <- yaml::read_yaml(file.path(tmp_dir, "mock.yaml"))
+
+  expect_false(identical(created$data$source_path, "mock"))
+  expect_true(file.exists(created$data$source_path))
+  expect_true(endsWith(created$data$source_path, ".csv"))
+  df <- utils::read.csv(created$data$source_path)
+  expect_true(all(c("study_id", "effect", "se") %in% colnames(df)))
+})
+
+test_that("a missing required option aborts naming the option, without a cli meta-error", {
+  box::use(artma[options.create])
+
+  testthat::skip_if(interactive())
+
+  tmp_dir <- withr::local_tempdir()
+  template_path <- file.path(tmp_dir, "template.yaml")
+
+  template <- list(
+    data = list(
+      source_path = list(
+        type = "character",
+        help = "Path to the data source"
+      )
+    )
+  )
+  yaml::write_yaml(template, template_path)
+
+  withr::local_options(list("artma.verbose" = 1))
+
+  err <- expect_error(
+    options.create(
+      options_file_name = "missing.yaml",
+      options_dir = tmp_dir,
+      template_path = template_path,
+      user_input = list(),
+      should_validate = TRUE
+    ),
+    "Required option"
+  )
+  # The intended abort must name the option instead of failing to evaluate
+  # its cli glue expression (issue #321, bug 6).
+  expect_true(grepl("data.source_path", conditionMessage(err), fixed = TRUE))
+  expect_false(grepl("Could not evaluate", conditionMessage(err), fixed = TRUE))
+})
+
 test_that("options.modify merges a nested user_input into a list-type option without dropping siblings", {
   box::use(artma[options.modify])
 

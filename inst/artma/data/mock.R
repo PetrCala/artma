@@ -163,4 +163,29 @@ create_mock_df <- function(
   data_frame
 }
 
-box::export(create_mock_df)
+#' Generate a mock dataset file and return its path
+#'
+#' @description
+#' Backs the `"mock"` data source shortcut: writes a temporary CSV with mock
+#' meta-analysis data and returns its path. Used both by the interactive
+#' source-path prompt and by programmatic `user_input` values.
+#' @return *\[character\]* Path to the generated CSV file.
+#' @export
+materialize_mock_data_path <- function() {
+  box::use(artma / libs / core / utils[get_verbosity])
+
+  if (get_verbosity() >= 3) {
+    cli::cli_alert_info("Generating mock data...")
+  }
+
+  temp_file <- tempfile(pattern = "artma-mock-data-", fileext = ".csv")
+  create_mock_df(with_file_creation = TRUE, file_path = temp_file)
+
+  if (get_verbosity() >= 3) {
+    cli::cli_alert_success("Mock data generated and saved to {.path {temp_file}}")
+  }
+
+  temp_file
+}
+
+box::export(create_mock_df, materialize_mock_data_path)
