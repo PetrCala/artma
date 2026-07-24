@@ -79,6 +79,7 @@ get_number_of_studies <- function(df) {
 #' @return *\[data.frame\]* The standardized data frame
 standardize_column_names <- function(df) {
   box::use(
+    artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[validate, assert]
   )
 

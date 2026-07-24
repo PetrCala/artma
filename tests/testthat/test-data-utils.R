@@ -215,7 +215,7 @@ test_that("the collision abort message names the exact remediation commands", {
     list("artma.data.columns" = list(study_id = list(source_name = "study_name"))),
     {
       err <- tryCatch(
-        standardize_column_names(mock_df, auto_detect = FALSE),
+        standardize_column_names(mock_df),
         error = function(e) conditionMessage(e)
       )
       expect_true(grepl('config.set("study_id", drop_conflicting_raw = TRUE)', err, fixed = TRUE))
@@ -237,7 +237,7 @@ test_that("standardize_column_names drops the raw column when drop_conflicting_r
       "artma.verbose" = 1L
     ),
     {
-      standardized_df <- standardize_column_names(mock_df, auto_detect = FALSE)
+      standardized_df <- standardize_column_names(mock_df)
       expect_equal(sum(colnames(standardized_df) == "study_id"), 1)
       expect_equal(standardized_df$study_id, paste("Study", 1:5))
       expect_false("study_name" %in% colnames(standardized_df))
