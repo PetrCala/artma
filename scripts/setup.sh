@@ -26,7 +26,12 @@ info "Setting up the environment..."
 
 cd $PROJECT_ROOT
 
-Rscript -e "devtools::install(dependencies = TRUE)"
+# devtools no longer ships remotes as a hard dependency, so install the
+# dependencies with remotes explicitly before installing the package itself.
+Rscript -e "if (!requireNamespace('remotes', quietly = TRUE)) install.packages('remotes')"
+Rscript -e "remotes::install_deps(dependencies = TRUE, upgrade = 'never')"
+Rscript -e "if (!requireNamespace('devtools', quietly = TRUE)) install.packages('devtools')"
+Rscript -e "devtools::install(dependencies = FALSE)"
 
 # Validate box.path
 if [[ $NO_BOX_CHECK == false ]]; then

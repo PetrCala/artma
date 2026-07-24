@@ -44,10 +44,12 @@ help:
 	@echo ""
 
 # Install package dependencies
+# Uses remotes directly: devtools::install_deps() is deprecated and delegates
+# to remotes, which current devtools no longer installs as a hard dependency.
 deps:
 	@echo "Installing package dependencies..."
-	@Rscript -e "if (!requireNamespace('devtools', quietly = TRUE)) install.packages('devtools')"
-	@Rscript -e "devtools::install_deps(dependencies = TRUE, upgrade = 'never')"
+	@Rscript -e "if (!requireNamespace('remotes', quietly = TRUE)) install.packages('remotes')"
+	@Rscript -e "remotes::install_deps(dependencies = TRUE, upgrade = 'never')"
 
 # Setup development environment
 setup: hooks
