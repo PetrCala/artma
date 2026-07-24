@@ -377,6 +377,44 @@ test_that("best_practice_estimate reports has_recommendation explicitly in the o
   expect_false(any(overrides$recommended == "no recommendation"))
 })
 
+test_that("best_practice_estimate pins its full table/meta/plot contract on fixture data", {
+  skip_if_not_installed("BMS")
+
+  df <- make_bpe_demo_data()
+  config <- make_bpe_demo_config()
+  config$top_journal$bpe_sum_stats <- TRUE
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = config,
+    artma.visualization.export_graphics = FALSE,
+    artma.methods.bma.burn = 50L,
+    artma.methods.bma.iter = 300L,
+    artma.methods.bma.nmodel = 20L,
+    artma.methods.bma.g = "UIP",
+    artma.methods.bma.mprior = "uniform",
+    artma.methods.bma.mcmc = "bd"
+  ))
+
+  bma_result <- bma(df)
+  result <- best_practice_estimate(df, bma_result = bma_result)
+
+  expect_named(result, c("tables", "plots", "meta"))
+  expect_setequal(names(result$tables), c("summary", "economic_significance", "summary_by_factor"))
+  expect_setequal(
+    names(result$meta),
+    c("formula", "overrides", "bma_formula", "bma_source", "autonomy_level")
+  )
+  expect_setequal(names(result$plots), c("bpe_scatter", "bpe_density_top_journal"))
+  expect_true(all(vapply(result$plots, is_ggplot, logical(1))))
+
+  expect_true(is.character(result$meta$formula) && length(result$meta$formula) == 1L)
+  expect_true(nzchar(result$meta$formula))
+  expect_true(inherits(result$meta$bma_formula, "formula"))
+  expect_equal(result$meta$autonomy_level, "autonomous")
+})
+
 test_that("best_practice_estimate writes one PNG per plot when export is enabled", {
   skip_if_not_installed("BMS")
 
