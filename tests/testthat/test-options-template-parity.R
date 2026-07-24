@@ -34,7 +34,10 @@ runtime_only_option_prefixes <- c("temp.")
 # Template leaves consumed outside the R options namespace:
 #   - cli.editor is read straight from the YAML options file by
 #     resolve_cli_editor() before any options are loaded
-leaves_consumed_elsewhere <- c("cli.editor")
+#   - data.config_setup is read from the in-progress `user_input` list by
+#     preprocess_column_mapping() during options creation, before the value
+#     ever reaches the options() namespace
+leaves_consumed_elsewhere <- c("cli.editor", "data.config_setup")
 
 package_root <- function() {
   normalizePath(testthat::test_path("..", ".."), winslash = "/", mustWork = FALSE)

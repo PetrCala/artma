@@ -298,7 +298,7 @@ test_that("reconcile then standardize: produces df with standard column names", 
       reconcile_schema(df_raw, mode = "auto")
 
       # Step 2: standardize uses the now-updated record to rename the column
-      df_std <- standardize_column_names(df_raw, auto_detect = FALSE)
+      df_std <- standardize_column_names(df_raw)
 
       # Column "effect_sise" should be renamed to the standard name "effect"
       expect_true("effect" %in% colnames(df_std))

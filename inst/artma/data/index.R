@@ -58,7 +58,7 @@ configure_data <- function(df_raw) {
 
   # Decide the missing-value and zero-SE strategies on the cleaned, standardized
   # frame so the compute phase can handle both without prompting.
-  df_std <- standardize_column_names(df_raw, auto_detect = FALSE)
+  df_std <- standardize_column_names(df_raw)
   df_clean <- clean_data(df_std)
   resolve_na_handling(df_clean)
   resolve_se_zero_handling(df_clean)
@@ -84,7 +84,7 @@ compute_data_impl <- function() {
   df_raw <- .raw_env$df_raw
 
   # Apply colnames map (now updated if drift was reconciled in configure)
-  df <- standardize_column_names(df_raw, auto_detect = FALSE)
+  df <- standardize_column_names(df_raw)
 
   prime_df_for_config_cache(df)
   df <- preprocess_data(df)

@@ -57,7 +57,7 @@ standardize_df_for_config <- function(df) {
   )
 
   tryCatch(
-    standardize_column_names(df, auto_detect = FALSE),
+    standardize_column_names(df),
     error = function(e) {
       if (get_verbosity() >= 4) {
         cli::cli_inform(

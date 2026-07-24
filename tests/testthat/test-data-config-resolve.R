@@ -249,7 +249,7 @@ test_that("config keys are standardized regardless of which entry point resolves
   expect_false(any(c("coef", "stderr", "nobs") %in% names(cold_config)))
 
   # Pipeline path: prepare_data standardizes the df and primes the cache
-  df_std <- standardize_column_names(read_data(tmp_file), auto_detect = FALSE)
+  df_std <- standardize_column_names(read_data(tmp_file))
   prime_df_for_config_cache(df_std, tmp_file)
   primed_config <- get_data_config()
 
