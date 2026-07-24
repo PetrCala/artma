@@ -160,7 +160,8 @@ artma <- function(
       # Mirror prepare_data's phases: decide the NA strategy (configure), run
       # the pure preprocess + compute, then persist the computed columns.
       box::use(
-        artma / data / preprocess[clean_data, preprocess_data, resolve_na_handling],
+        artma / data / preprocess[clean_data, preprocess_data],
+        artma / data / configure[resolve_na_handling],
         artma / data / compute[compute_optional_columns, update_config_with_computed_columns]
       )
 

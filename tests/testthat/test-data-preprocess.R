@@ -4,7 +4,6 @@ box::use(
     expect_error,
     expect_true,
     expect_false,
-    expect_null,
     expect_warning,
     expect_no_warning,
     test_that
@@ -17,7 +16,6 @@ expect_equal <- getFromNamespace("expect_equal", "testthat")
 expect_error <- getFromNamespace("expect_error", "testthat")
 expect_true <- getFromNamespace("expect_true", "testthat")
 expect_false <- getFromNamespace("expect_false", "testthat")
-expect_null <- getFromNamespace("expect_null", "testthat")
 expect_warning <- getFromNamespace("expect_warning", "testthat")
 expect_no_warning <- getFromNamespace("expect_no_warning", "testthat")
 
@@ -272,47 +270,5 @@ test_that("enforce_correct_values 'ignore' strategy silently keeps rows", {
   expect_equal(result, df)
 })
 
-# -- resolve_se_zero_handling ------------------------------------------------------
-
-test_that("resolve_se_zero_handling is a no-op when the option is already configured", {
-  box::use(artma / data / preprocess[resolve_se_zero_handling])
-
-  withr::local_options(list(
-    "artma.calc.se_zero_handling" = "stop",
-    "artma.verbose" = 1
-  ))
-
-  df <- data.frame(se = c(0.1, 0))
-  resolve_se_zero_handling(df)
-
-  expect_equal(getOption("artma.calc.se_zero_handling"), "stop")
-})
-
-test_that("resolve_se_zero_handling is a no-op when no zero SE rows are found", {
-  box::use(artma / data / preprocess[resolve_se_zero_handling])
-
-  withr::local_options(list(
-    "artma.calc.se_zero_handling" = NULL,
-    "artma.verbose" = 1
-  ))
-
-  df <- data.frame(se = c(0.1, 0.2))
-  resolve_se_zero_handling(df)
-
-  expect_null(getOption("artma.calc.se_zero_handling"))
-})
-
-test_that("resolve_se_zero_handling defaults to 'remove' in a non-interactive session", {
-  box::use(artma / data / preprocess[resolve_se_zero_handling])
-
-  withr::local_options(list(
-    "artma.calc.se_zero_handling" = NULL,
-    "artma.autonomy.level" = NULL,
-    "artma.verbose" = 2
-  ))
-
-  df <- data.frame(se = c(0.1, 0, 0.2))
-  expect_warning(resolve_se_zero_handling(df), "stricter validation")
-
-  expect_equal(getOption("artma.calc.se_zero_handling"), "remove")
-})
+# resolve_se_zero_handling now lives in inst/artma/data/configure.R; see
+# tests/testthat/test-data-configure.R for its tests.
