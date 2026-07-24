@@ -392,14 +392,14 @@ handle_na_mice <- function(df) {
 handle_missing_values <- function(df) {
   box::use(
     artma / const[CONST],
-    artma / libs / core / utils[opt_or]
+    artma / options / typed_accessors[get_na_handling]
   )
 
   # Detect missing values
   na_summary <- detect_missing_values(df)
 
   # Get the handling strategy
-  na_handling <- opt_or("artma.data.na_handling", "stop")
+  na_handling <- get_na_handling()
 
   non_numeric_required_with_na <- character(0)
   numeric_required_with_na <- character(0)

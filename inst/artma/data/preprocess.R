@@ -104,15 +104,18 @@ enforce_data_types <- function(df) {
 #' @return *\[data.frame\]* The data frame with the invalid values enforced
 #' @keywords internal
 enforce_correct_values <- function(df) {
-  box::use(artma / libs / core / utils[get_verbosity, opt_or])
+  box::use(artma / libs / core / utils[get_verbosity])
 
   if (get_verbosity() >= 4) {
     cli::cli_inform("Checking for invalid values...")
   }
 
-  box::use(artma / libs / core / validation[assert])
+  box::use(
+    artma / libs / core / validation[assert],
+    artma / options / typed_accessors[get_se_zero_handling]
+  )
 
-  se_zero_handling <- opt_or("artma.calc.se_zero_handling", "remove")
+  se_zero_handling <- get_se_zero_handling()
 
   zero_se_rows <- which(df$se == 0)
 
@@ -210,9 +213,12 @@ apply_subset_conditions <- function(df) {
 #' @return *\[data.frame\]* The data frame with winsorized values
 #' @keywords internal
 winsorize_data <- function(df) {
-  box::use(artma / libs / core / utils[get_verbosity])
+  box::use(
+    artma / libs / core / utils[get_verbosity],
+    artma / options / typed_accessors[get_winsorization_level]
+  )
 
-  winsorization_level <- getOption("artma.data.winsorization_level", default = 0)
+  winsorization_level <- get_winsorization_level()
 
   # Skip if winsorization is disabled
   if (is.null(winsorization_level) || is.na(winsorization_level) || winsorization_level == 0) {

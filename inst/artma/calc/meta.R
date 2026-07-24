@@ -39,9 +39,12 @@ reg_dof <- function(n_obs, n_predictors) n_obs - n_predictors
 #' @param reg_dof *\[numeric, optional\]* The degrees of freedom for the regression. Has to be provided if `se` is not provided.
 #' @return *\[numeric\]* The precision of the effect estimates
 precision <- function(se = NULL, reg_dof = NULL) {
-  box::use(artma / libs / core / utils[get_verbosity])
+  box::use(
+    artma / libs / core / utils[get_verbosity],
+    artma / options / typed_accessors[get_precision_type]
+  )
 
-  precision_type <- getOption("artma.calc.precision_type", "1/SE")
+  precision_type <- get_precision_type()
   if (precision_type == "1/SE") {
     zero_se_rows <- which(se == 0)
     if (length(zero_se_rows) > 0) {
