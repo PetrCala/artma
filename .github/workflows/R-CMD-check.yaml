@@ -1,7 +1,11 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
 # Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
 #
-# PR gate: release R on the three major platforms, without vignettes.
+# PR gate: release R on the three major platforms, without vignettes, plus a
+# cut-down E2E smoke test (tests/E2E/test-smoke.R) exercising a couple of
+# runtime methods on a tiny fixture dataset. The full matrix (plus R-devel and
+# oldrel, with vignettes) and the nightly E2E suite run separately; this job
+# is a fast, always-on companion to those.
 # The full matrix (plus R-devel and oldrel, with vignettes) runs after
 # merges in R-CMD-check-extended.yaml, which also saves the dependency
 # caches on master so every PR branch can restore them.
@@ -59,3 +63,26 @@ jobs:
           upload-snapshots: true
           args: 'c("--no-manual", "--as-cran", "--ignore-vignettes")'
           build_args: 'c("--no-manual", "--no-build-vignettes")'
+
+  e2e-smoke:
+    runs-on: ubuntu-latest
+
+    name: E2E smoke test
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          needs: e2e
+
+      - name: Run E2E smoke test
+        working-directory: tests/E2E
+        run: Rscript test-smoke.R
