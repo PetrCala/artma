@@ -187,6 +187,23 @@ test_that("enforce_correct_values defaults to removing rows with zero SE when un
   expect_true(all(result$se != 0))
 })
 
+test_that("enforce_correct_values treats an NA option as remove", {
+  box::use(artma / data / preprocess[enforce_correct_values])
+
+  # Options with a `.na` template default are loaded into options() as a
+  # literal NA; the read must fall back to "remove" instead of crashing on
+  # `if (NA == "stop")` (issue #321, bug 1).
+  withr::local_options(list(
+    "artma.calc.se_zero_handling" = NA,
+    "artma.verbose" = 3
+  ))
+
+  df <- data.frame(se = c(0.1, 0, 0.2))
+  expect_warning(result <- enforce_correct_values(df), "Removed 1 row")
+
+  expect_equal(result$se, c(0.1, 0.2))
+})
+
 test_that("enforce_correct_values 'remove' strategy drops zero-SE rows with a warning", {
   box::use(artma / data / preprocess[enforce_correct_values])
 

@@ -13,6 +13,28 @@ format_cols_with_counts <- function(counts) {
 }
 
 
+#' @title Label NA counts with source column names
+#' @description Rename a per-column NA count vector so messages show the user's
+#'   source column name next to the standardized one. Falls back to the
+#'   standardized name when no mapping exists (the column store is sparse).
+#' @param counts *\[integer\]* Named vector of NA counts, keyed by standardized column names
+#' @return *\[integer\]* The same counts with display-ready names
+#' @keywords internal
+label_with_source_names <- function(counts) {
+  box::use(artma / data / utils[get_colnames_map])
+  map <- get_colnames_map()
+  names(counts) <- vapply(
+    names(counts),
+    function(std) {
+      src <- map[[std]]
+      if (is.null(src) || identical(src, std)) std else sprintf("%s (source: %s)", std, src)
+    },
+    character(1)
+  )
+  counts
+}
+
+
 #' @title Detect missing values
 #' @description Analyze the data frame for missing values and return a summary.
 #' @param df *\[data.frame\]* The data frame to analyze
@@ -368,13 +390,19 @@ handle_na_mice <- function(df) {
 #' @return *\[data.frame\]* The processed data frame
 #' @keywords internal
 handle_missing_values <- function(df) {
-  box::use(artma / const[CONST])
+  box::use(
+    artma / const[CONST],
+    artma / libs / core / utils[opt_or]
+  )
 
   # Detect missing values
   na_summary <- detect_missing_values(df)
 
   # Get the handling strategy
-  na_handling <- getOption("artma.data.na_handling", default = "stop")
+  na_handling <- opt_or("artma.data.na_handling", "stop")
+
+  non_numeric_required_with_na <- character(0)
+  numeric_required_with_na <- character(0)
 
   # Check if required columns have missing values
   if (na_summary$has_required_na) {
@@ -386,20 +414,33 @@ handle_missing_values <- function(df) {
     ]
     numeric_required_with_na <- setdiff(required_cols_with_na, non_numeric_required_with_na)
 
-    # Non-numeric required columns (like study_id) cannot be imputed - always error
+    # Non-numeric required columns (like study_id) cannot be imputed; only the
+    # "remove" strategy can resolve them, by dropping the affected rows.
     if (length(non_numeric_required_with_na) > 0) {
-      non_numeric_msg <- format_cols_with_counts(na_summary$required_cols_with_na[non_numeric_required_with_na])
-      cli::cli_abort(c(
-        "x" = "Missing values found in non-numeric required columns: {non_numeric_msg}",
-        "i" = "Non-numeric required columns (e.g., study_id) cannot be imputed and must be complete.",
-        "i" = "Please clean your data or remove incomplete rows before analysis."
-      ))
+      non_numeric_msg <- format_cols_with_counts(
+        label_with_source_names(na_summary$required_cols_with_na[non_numeric_required_with_na])
+      )
+      if (identical(na_handling, "remove")) {
+        if (get_verbosity() >= 2) {
+          cli::cli_alert_warning(
+            "Missing values found in non-numeric required columns: {non_numeric_msg}. The {.val remove} strategy will drop the affected rows."
+          )
+        }
+      } else {
+        cli::cli_abort(c(
+          "x" = "Missing values found in non-numeric required columns: {non_numeric_msg}",
+          "i" = "Non-numeric required columns (e.g., study_id) cannot be imputed and must be complete.",
+          "i" = "Set {.field artma.data.na_handling} to {.val remove} to drop these rows, or clean your data before analysis."
+        ))
+      }
     }
 
     # For numeric required columns, check if strategy allows imputation
     if (length(numeric_required_with_na) > 0) {
+      numeric_msg <- format_cols_with_counts(
+        label_with_source_names(na_summary$required_cols_with_na[numeric_required_with_na])
+      )
       if (na_handling == "stop") {
-        numeric_msg <- format_cols_with_counts(na_summary$required_cols_with_na[numeric_required_with_na])
         cli::cli_abort(c(
           "x" = "Missing values found in required columns: {numeric_msg}",
           "i" = "Current strategy is {.val stop}. Change {.field artma.data.na_handling} to handle missing values automatically.",
@@ -408,7 +449,6 @@ handle_missing_values <- function(df) {
       }
       # If strategy is not "stop", allow processing to continue (will be handled by imputation functions)
       if (get_verbosity() >= 3) {
-        numeric_msg <- format_cols_with_counts(na_summary$required_cols_with_na[numeric_required_with_na])
         cli::cli_alert_warning("Missing values detected in numeric required columns: {numeric_msg}. Will apply {.val {na_handling}} strategy.")
       }
     }
@@ -417,14 +457,12 @@ handle_missing_values <- function(df) {
   # Check if we need to process missing values
   # We need to process if:
   # 1. There are optional missing values, OR
-  # 2. There are numeric required missing values and strategy is not "stop"
-  has_numeric_required_na <- if (na_summary$has_required_na) {
-    length(numeric_required_with_na) > 0 && na_handling != "stop"
-  } else {
-    FALSE
-  }
+  # 2. There are numeric required missing values and strategy is not "stop", OR
+  # 3. There are non-numeric required missing values (only reachable with "remove")
+  has_numeric_required_na <- length(numeric_required_with_na) > 0 && na_handling != "stop"
+  has_non_numeric_required_na <- length(non_numeric_required_with_na) > 0
 
-  needs_processing <- na_summary$has_optional_na || has_numeric_required_na
+  needs_processing <- na_summary$has_optional_na || has_numeric_required_na || has_non_numeric_required_na
 
   if (!needs_processing) {
     if (get_verbosity() >= 4) {
