@@ -2,10 +2,11 @@ box::use(
   testthat[
     expect_equal,
     expect_false,
+    expect_match,
     expect_true,
     test_that
   ],
-  withr[local_options, local_tempdir],
+  withr[local_envvar, local_options, local_tempdir],
   artma / output / export[
     resolve_output_dir,
     resolve_graphics_dir,
@@ -16,9 +17,52 @@ box::use(
 
 # resolve_output_dir --------------------------------------------------------
 
-test_that("resolve_output_dir falls back to a session temp dir when auto", {
-  local_options(artma.output.dir = "auto")
-  expect_equal(resolve_output_dir(), file.path(tempdir(), "artma-results"))
+# Redirect R_user_dir so auto resolution never touches the real user data dir.
+local_user_data_dir <- function(.local_envir = parent.frame()) {
+  dir <- local_tempdir(.local_envir = .local_envir)
+  local_envvar(R_USER_DATA_DIR = dir, .local_envir = .local_envir)
+  dir
+}
+
+test_that("resolve_output_dir maps auto to a per-options-file user data dir", {
+  base <- local_user_data_dir()
+  local_options(
+    artma.output.dir = "auto",
+    artma.temp.file_name = "my_config.yaml"
+  )
+  expect_equal(
+    resolve_output_dir(),
+    file.path(tools::R_user_dir("artma", "data"), "results", "my_config")
+  )
+  expect_true(startsWith(resolve_output_dir(), base))
+})
+
+test_that("resolve_output_dir gives distinct auto dirs for distinct options files", {
+  local_user_data_dir()
+  local_options(artma.output.dir = "auto", artma.temp.file_name = "a.yaml")
+  dir_a <- resolve_output_dir()
+  local_options(artma.temp.file_name = "b.yaml")
+  dir_b <- resolve_output_dir()
+
+  expect_false(identical(dir_a, dir_b))
+  expect_equal(basename(dir_a), "a")
+  expect_equal(basename(dir_b), "b")
+})
+
+test_that("resolve_output_dir uses a default auto subdir without an options file", {
+  local_user_data_dir()
+  local_options(artma.output.dir = "auto", artma.temp.file_name = NULL)
+  expect_equal(basename(resolve_output_dir()), "default")
+})
+
+test_that("resolve_output_dir sanitizes the options file stem", {
+  local_user_data_dir()
+  local_options(
+    artma.output.dir = "auto",
+    artma.temp.file_name = "My Config (v2).yaml"
+  )
+  expect_match(basename(resolve_output_dir()), "^[A-Za-z0-9._-]+$")
+  expect_equal(basename(resolve_output_dir()), "My_Config_v2")
 })
 
 test_that("resolve_output_dir returns an explicit path unchanged", {
@@ -46,6 +90,21 @@ test_that("ensure_output_dirs creates the tables and graphics subdirectories", {
 
   expect_true(dir.exists(file.path(dir, "tables")))
   expect_true(dir.exists(file.path(dir, "graphics")))
+})
+
+test_that("ensure_output_dirs leaves the auto option untouched", {
+  local_user_data_dir()
+  local_options(
+    artma.output.dir = "auto",
+    artma.temp.file_name = "cfg.yaml",
+    artma.visualization.export_path = "graphics"
+  )
+
+  ensure_output_dirs(resolve_output_dir())
+
+  # The resolved path must never be written back over "auto", neither in the
+  # session options nor in the options file (issue #321, bug 3).
+  expect_equal(getOption("artma.output.dir"), "auto")
 })
 
 # export_results ------------------------------------------------------------
