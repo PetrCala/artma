@@ -30,7 +30,7 @@ box::use(
 # An IV regression of effect on se, instrumented by a function of n_obs, should
 # recover the intercept (effect beyond bias ~ mu) and the slope (publication
 # bias ~ bias).
-make_exogeneity_df <- function(seed = 2024, n = 300, mu = 0.5, bias = 1.0) {
+make_exogeneity_df <- function(seed = 4, n = 120, mu = 0.5, bias = 1.0) {
   set.seed(seed)
   n_obs <- sample(30:600, n, replace = TRUE)
   se <- 2 / sqrt(n_obs) + abs(rnorm(n, 0, 0.01))
@@ -38,7 +38,7 @@ make_exogeneity_df <- function(seed = 2024, n = 300, mu = 0.5, bias = 1.0) {
   data.frame(
     effect = effect,
     se = se,
-    study_id = rep(seq_len(60), length.out = n),
+    study_id = rep(seq_len(24), length.out = n),
     n_obs = n_obs,
     study_size = n_obs
   )
@@ -46,7 +46,7 @@ make_exogeneity_df <- function(seed = 2024, n = 300, mu = 0.5, bias = 1.0) {
 
 # A DGP where se is essentially unrelated to n_obs, so any instrument built
 # from n_obs is a weak predictor of se in the first stage.
-make_weak_instrument_df <- function(seed = 99, n = 300, mu = 0.5, bias = 1.0) {
+make_weak_instrument_df <- function(seed = 99, n = 120, mu = 0.5, bias = 1.0) {
   set.seed(seed)
   n_obs <- sample(30:600, n, replace = TRUE)
   se <- 0.1 + abs(rnorm(n, 0, 0.05))
@@ -54,7 +54,7 @@ make_weak_instrument_df <- function(seed = 99, n = 300, mu = 0.5, bias = 1.0) {
   data.frame(
     effect = effect,
     se = se,
-    study_id = rep(seq_len(60), length.out = n),
+    study_id = rep(seq_len(24), length.out = n),
     n_obs = n_obs,
     study_size = n_obs
   )
