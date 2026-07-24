@@ -14,11 +14,9 @@ box::use(
     format_ci,
     significance_mark
   ],
-  artma / calc / methods / maive[maive]
+  artma / calc / methods / maive[maive],
+  artma / econometric / exogeneity[WEAK_INSTRUMENT_F_THRESHOLD]
 )
-
-#' @title Threshold below which the first-stage instrument counts as weak
-WEAK_INSTRUMENT_F <- 10
 
 #' @title Threshold below which running the first stage in logs is advised
 LOG_FIRST_STAGE_F <- 30
@@ -178,7 +176,7 @@ instrument_strength <- function(f_stat) {
   if (!is.numeric(f_stat) || length(f_stat) != 1L || !is.finite(f_stat)) {
     return("unknown")
   }
-  if (f_stat >= WEAK_INSTRUMENT_F) "strong" else "weak"
+  if (f_stat >= WEAK_INSTRUMENT_F_THRESHOLD) "strong" else "weak"
 }
 
 #' @title Flag a weak MAIVE first stage
@@ -447,8 +445,8 @@ build_maive_summary <- function(maive_output, options, data_info = list(),
     add(
       diag, first_stage$f_label, format_number(f_stat, rd),
       note = switch(strength,
-        strong = sprintf("strong instrument (>= %s)", WEAK_INSTRUMENT_F),
-        weak = sprintf("weak instrument (< %s)", WEAK_INSTRUMENT_F),
+        strong = sprintf("strong instrument (>= %s)", WEAK_INSTRUMENT_F_THRESHOLD),
+        weak = sprintf("weak instrument (< %s)", WEAK_INSTRUMENT_F_THRESHOLD),
         ""
       ),
       tone = switch(strength,
