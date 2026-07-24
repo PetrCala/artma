@@ -239,10 +239,149 @@ save_plot_html <- function(plot, path) {
 }
 
 
+#' Export a single base-graphics plot to a PNG file
+#'
+#' @description
+#' Opens a PNG device sized `width`/`height` (scaled by `graph_scale`),
+#' invokes `draw()` to render into it, and guarantees the device is closed
+#' even if `draw()` errors.
+#'
+#' @param draw *\[function\]* Zero-argument function that draws the plot
+#' @param path *\[character\]* Full file path (including filename)
+#' @param width *\[numeric\]* Unscaled device width, in pixels
+#' @param height *\[numeric\]* Unscaled device height, in pixels
+#' @param graph_scale *\[numeric\]* Scale multiplier for dimensions and resolution
+#'
+#' @return NULL (invisibly)
+#' @keywords internal
+export_base_plot <- function(draw, path, width, height, graph_scale) {
+  box::use(artma / libs / core / validation[validate])
+
+  validate(
+    is.function(draw),
+    is.character(path),
+    is.numeric(width), width > 0,
+    is.numeric(height), height > 0,
+    is.numeric(graph_scale), graph_scale > 0
+  )
+
+  if (file.exists(path)) {
+    file.remove(path)
+  }
+
+  open_png_device(
+    path,
+    width = width * graph_scale,
+    height = height * graph_scale,
+    units = "px",
+    res = 90 * graph_scale
+  )
+  on.exit(grDevices::dev.off(), add = TRUE)
+  draw()
+
+  invisible(NULL)
+}
+
+
+#' Export a named collection of plots to files
+#'
+#' @description
+#' Generic replacement for the near-identical `export_*_plots` wrappers that
+#' used to live one per method: builds a standardized filename for each plot
+#' via `build_export_filename()` and writes it with either `save_plot()`
+#' (ggplot2 objects) or `export_base_plot()` (zero-argument base-graphics draw
+#' functions).
+#'
+#' `NULL` entries in `plots` are skipped (e.g. an optional close-up plot that
+#' was not built). Entries are named for filename purposes either by
+#' `names(plots)`, or by `names` when supplied; a scalar `names` is recycled
+#' across every plot. When every plot shares the same name and there is more
+#' than one plot, a `1`-based index is appended to disambiguate filenames
+#' (matching the historical box-plot naming scheme); set `use_indexing`
+#' explicitly to override this inference.
+#'
+#' @param plots *\[list\]* List of plots (ggplot objects, or zero-argument draw
+#'   functions when `renderer = "base"`). May contain `NULL` entries, which
+#'   are skipped.
+#' @param base_name *\[character\]* Base filename prefix (e.g. "box_plot")
+#' @param export_path *\[character\]* Directory to export to
+#' @param graph_scale *\[numeric\]* Scale factor for dimensions
+#' @param names *\[character, optional\]* Name to use per plot for the
+#'   filename. Defaults to `names(plots)`. A scalar is recycled.
+#' @param width *\[numeric\]* Unscaled plot width. Defaults to 800.
+#' @param height *\[numeric\]* Unscaled plot height. Defaults to 600.
+#' @param use_indexing *\[logical, optional\]* Force (or suppress) the
+#'   numeric-suffix disambiguation. Defaults to auto-detection (see above).
+#' @param renderer *\[character\]* Either `"ggplot"` (default, uses
+#'   `save_plot()`) or `"base"` (uses `export_base_plot()` for base-graphics
+#'   draw functions).
+#'
+#' @return NULL (invisibly)
+export_named_plots <- function(plots,
+                               base_name,
+                               export_path,
+                               graph_scale,
+                               names = NULL,
+                               width = 800,
+                               height = 600,
+                               use_indexing = NULL,
+                               renderer = c("ggplot", "base")) {
+  box::use(artma / libs / core / validation[validate])
+
+  renderer <- match.arg(renderer)
+
+  validate(
+    is.list(plots),
+    is.character(base_name),
+    is.character(export_path),
+    is.numeric(graph_scale)
+  )
+
+  ensure_export_dir(export_path)
+
+  plot_names <- names %||% base::names(plots)
+  validate(!is.null(plot_names), length(plot_names) %in% c(1, length(plots)))
+  if (length(plot_names) == 1 && length(plots) > 1) {
+    plot_names <- rep(plot_names, length(plots))
+  }
+
+  if (is.null(use_indexing)) {
+    use_indexing <- length(plots) > 1 && length(unique(plot_names)) == 1
+  }
+
+  for (i in seq_along(plots)) {
+    plot <- plots[[i]]
+    if (is.null(plot)) {
+      next
+    }
+
+    index <- if (use_indexing) i else NULL
+    filename <- build_export_filename(base_name, plot_names[i], index = index)
+    full_path <- file.path(export_path, filename)
+
+    if (renderer == "base") {
+      export_base_plot(plot, full_path, width = width, height = height, graph_scale = graph_scale)
+    } else {
+      save_plot(
+        plot = plot,
+        path = full_path,
+        width = width,
+        height = height,
+        scale = graph_scale
+      )
+    }
+  }
+
+  invisible(NULL)
+}
+
+
 box::export(
   ensure_export_dir,
   build_export_filename,
   open_png_device,
   save_plot,
-  save_plot_html
+  save_plot_html,
+  export_base_plot,
+  export_named_plots
 )

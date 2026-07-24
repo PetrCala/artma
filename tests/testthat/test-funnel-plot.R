@@ -167,6 +167,21 @@ test_that("funnel_plot handles precision_to_log option", {
 })
 
 
+test_that("funnel_plot writes exactly one PNG file when export is enabled", {
+  dir <- withr::local_tempdir()
+  local_funnel_options(
+    "artma.visualization.export_graphics" = TRUE,
+    "artma.visualization.export_path" = dir,
+    "artma.output.save_results" = FALSE
+  )
+
+  df <- create_test_data()
+  funnel_plot(df)
+
+  expect_setequal(list.files(dir), "funnel_plot_effect_precision.png")
+})
+
+
 test_that("funnel_plot returns empty result when all data filtered", {
   local_funnel_options(
     "artma.methods.funnel_plot.effect_proximity" = 0,

@@ -107,8 +107,7 @@ test_that("nonlinear tests writes STEM diagnostic plot files when export is enab
 
   res <- suppressWarnings(nonlinear_tests(df))
 
-  expect_true(file.exists(file.path(dir, "stem_funnel.png")))
-  expect_true(file.exists(file.path(dir, "stem_mse.png")))
+  expect_setequal(list.files(dir), c("stem_funnel.png", "stem_mse.png"))
   expect_s3_class(res$plots$stem_funnel, "recordedplot")
   expect_s3_class(res$plots$stem_mse, "recordedplot")
 })

@@ -12,7 +12,7 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / visualization / options[get_visualization_options],
-    artma / visualization / export[save_plot, build_export_filename, ensure_export_dir]
+    artma / visualization / export[export_named_plots]
   )
 
   validate(is.data.frame(df))
@@ -262,7 +262,14 @@ best_practice_estimate <- function(df, bma_result = NULL) {
   )
 
   if (isTRUE(vis$export_graphics) && length(plots)) {
-    export_bpe_plots(plots = plots, export_path = vis$export_path, graph_scale = vis$graph_scale)
+    export_named_plots(
+      plots = plots,
+      base_name = "best_practice_estimate",
+      export_path = vis$export_path,
+      graph_scale = vis$graph_scale,
+      width = 800,
+      height = 600
+    )
   }
 
   if (get_verbosity() >= 3) {
@@ -1299,31 +1306,6 @@ format_bpe_group_value <- function(value, round_to) {
     return(as.character(round(value, round_to)))
   }
   as.character(value)
-}
-
-#' @title Export BPE Plots to Files
-#' @keywords internal
-export_bpe_plots <- function(plots, export_path, graph_scale) {
-  box::use(
-    artma / visualization / export[save_plot, build_export_filename, ensure_export_dir]
-  )
-
-  ensure_export_dir(export_path)
-
-  for (plot_name in names(plots)) {
-    filename <- build_export_filename("best_practice_estimate", plot_name)
-    full_path <- file.path(export_path, filename)
-
-    save_plot(
-      plot = plots[[plot_name]],
-      path = full_path,
-      width = 800,
-      height = 600,
-      scale = graph_scale
-    )
-  }
-
-  invisible(NULL)
 }
 
 compute_context_values <- function(bma_data, row_idx, predictors, overrides) {

@@ -12,7 +12,7 @@ box_plot <- function(df) {
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / visualization / options[get_visualization_options],
-    artma / visualization / export[save_plot, build_export_filename, ensure_export_dir]
+    artma / visualization / export[export_named_plots]
   )
 
   validate(is.data.frame(df))
@@ -81,11 +81,14 @@ box_plot <- function(df) {
   }
 
   if (export_graphics) {
-    export_box_plots(
+    export_named_plots(
       plots = result$plots,
-      factor_by = factor_by,
+      base_name = "box_plot",
       export_path = export_path,
-      graph_scale = graph_scale
+      graph_scale = graph_scale,
+      names = factor_by,
+      width = 800,
+      height = 1100
     )
   }
 
@@ -372,42 +375,6 @@ create_single_box_plot <- function(df, factor_by, theme_name, show_mean_line, ef
   p
 }
 
-
-#' Export box plots to files
-#'
-#' @param plots *\[list\]* List of ggplot objects
-#' @param factor_by *\[character\]* Factor variable name
-#' @param export_path *\[character\]* Directory path
-#' @param graph_scale *\[numeric\]* Scale factor
-#'
-#' @return NULL (invisibly)
-#' @keywords internal
-export_box_plots <- function(plots, factor_by, export_path, graph_scale) {
-  box::use(
-    artma / libs / core / utils[get_verbosity],
-    artma / visualization / export[save_plot, build_export_filename, ensure_export_dir]
-  )
-
-  ensure_export_dir(export_path)
-  n_plots <- length(plots)
-  use_indexing <- n_plots > 1
-
-  for (i in seq_along(plots)) {
-    index <- if (use_indexing) i else NULL
-    filename <- build_export_filename("box_plot", factor_by, index = index)
-    full_path <- file.path(export_path, filename)
-
-    save_plot(
-      plot = plots[[i]],
-      path = full_path,
-      width = 800,
-      height = 1100,
-      scale = graph_scale
-    )
-  }
-
-  invisible(NULL)
-}
 
 
 box::use(

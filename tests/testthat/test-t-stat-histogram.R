@@ -5,6 +5,7 @@ box::use(
     expect_named,
     expect_null,
     expect_s3_class,
+    expect_setequal,
     expect_true,
     test_that
   ],
@@ -166,4 +167,42 @@ test_that("t_stat_histogram reports correct mean", {
   result <- t_stat_histogram(df)
 
   expect_equal(result$meta$mean_t_stat, 1)
+})
+
+
+test_that("t_stat_histogram writes both PNG files when export and close-up are enabled", {
+  dir <- withr::local_tempdir()
+  local_hist_options(
+    "artma.methods.t_stat_histogram.close_up_enabled" = TRUE,
+    "artma.methods.t_stat_histogram.close_up_lower" = -10,
+    "artma.methods.t_stat_histogram.close_up_upper" = 10,
+    "artma.methods.t_stat_histogram.close_up_min_tick_distance" = 0.3,
+    "artma.visualization.export_graphics" = TRUE,
+    "artma.visualization.export_path" = dir,
+    "artma.output.save_results" = FALSE
+  )
+
+  df <- create_test_data()
+  t_stat_histogram(df)
+
+  expect_setequal(
+    list.files(dir),
+    c("t_stat_histogram_full_range.png", "t_stat_histogram_close_up.png")
+  )
+})
+
+
+test_that("t_stat_histogram writes only the full-range PNG when close-up is disabled", {
+  dir <- withr::local_tempdir()
+  local_hist_options(
+    "artma.methods.t_stat_histogram.close_up_enabled" = FALSE,
+    "artma.visualization.export_graphics" = TRUE,
+    "artma.visualization.export_path" = dir,
+    "artma.output.save_results" = FALSE
+  )
+
+  df <- create_test_data()
+  t_stat_histogram(df)
+
+  expect_setequal(list.files(dir), "t_stat_histogram_full_range.png")
 })
