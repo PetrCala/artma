@@ -16,6 +16,9 @@ box::use(
     format_se,
     format_ci
   ],
+  artma / libs / formatting / summary_table[
+    shared_build_summary_table = build_summary_table
+  ],
   artma / libs / core / validation[validate, assert],
   artma / econometric / vcov[robust_vcov]
 )
@@ -702,32 +705,6 @@ run_exogeneity_tests <- function(df, options) {
 #' instead of leaking raw `NA`/`<NA>` formatting.
 NOT_COMPUTABLE <- "not computable"
 
-#' @title Replace NA entries in a character vector with the placeholder
-#' @param x *[character]* Vector to sanitize.
-#' @return *[character]* Vector with `NA` values replaced by `NOT_COMPUTABLE`.
-na_to_not_computable <- function(x) {
-  x[is.na(x)] <- NOT_COMPUTABLE
-  x
-}
-
-#' @title Fit a summary column to the table's row count
-#' @description
-#' Each summary column is assembled by concatenating per-metric values, any of
-#' which can come back zero-length when the underlying model did not produce
-#' the statistic. A short column makes the data frame assignment fail with an
-#' opaque `replacement has N rows` error, so pad it with the placeholder
-#' instead and keep the table printable.
-#' @param values *[character]* The assembled column.
-#' @param n *[integer]* The number of rows the table has.
-#' @return *[character]* A column of exactly `n` entries.
-fit_summary_column <- function(values, n) {
-  values <- as.character(values)
-  if (length(values) < n) {
-    values <- c(values, rep(NOT_COMPUTABLE, n - length(values)))
-  }
-  values[seq_len(n)]
-}
-
 build_exogeneity_summary <- function(iv_results, puniform_results, options) {
   row_labels <- c(
     "Publication Bias",
@@ -739,11 +716,7 @@ build_exogeneity_summary <- function(iv_results, puniform_results, options) {
     "F-test (AR)"
   )
 
-  summary <- data.frame(
-    Metric = row_labels,
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
+  columns <- list()
 
   # IV column
   if (!is.null(iv_results$coefficients)) {
@@ -756,7 +729,7 @@ build_exogeneity_summary <- function(iv_results, puniform_results, options) {
       first_stage_str <- paste0(first_stage_str, " (weak instrument)")
     }
 
-    summary[["IV"]] <- na_to_not_computable(fit_summary_column(c(
+    columns[["IV"]] <- c(
       if (nrow(pb) > 0) pb$estimate_formatted else NA_character_,
       if (nrow(pb) > 0) pb$std_error_formatted else NA_character_,
       if (nrow(eff) > 0) eff$estimate_formatted else NA_character_,
@@ -764,9 +737,9 @@ build_exogeneity_summary <- function(iv_results, puniform_results, options) {
       if (nrow(iv_coef) > 0) format_number(iv_coef$n_obs[1], 0) else NA_character_,
       first_stage_str,
       format_number(as_scalar_stat(iv_results$ar_fstat), options$round_to)
-    ), length(row_labels)))
+    )
   } else {
-    summary[["IV"]] <- rep(NOT_COMPUTABLE, length(row_labels))
+    columns[["IV"]] <- rep(NOT_COMPUTABLE, length(row_labels))
   }
 
   # p-uniform* column
@@ -788,7 +761,7 @@ build_exogeneity_summary <- function(iv_results, puniform_results, options) {
       NA_character_
     }
 
-    summary[["p-Uniform*"]] <- na_to_not_computable(fit_summary_column(c(
+    columns[["p-Uniform*"]] <- c(
       pb_test_str,
       pb_p_str,
       if (nrow(eff) > 0) eff$estimate_formatted else NA_character_,
@@ -796,13 +769,12 @@ build_exogeneity_summary <- function(iv_results, puniform_results, options) {
       if (nrow(pu_coef) > 0) format_number(pu_coef$n_obs[1], 0) else NA_character_,
       "", # No first-stage F for p-uniform
       "" # No F-test for p-uniform
-    ), length(row_labels)))
+    )
   } else {
-    summary[["p-Uniform*"]] <- rep(NOT_COMPUTABLE, length(row_labels))
+    columns[["p-Uniform*"]] <- rep(NOT_COMPUTABLE, length(row_labels))
   }
 
-  attr(summary, "row.names") <- row_labels
-  summary
+  shared_build_summary_table(row_labels, columns, missing_value = NOT_COMPUTABLE)
 }
 
 box::export(

@@ -13,6 +13,9 @@ box::use(
     format_standard_error
   ],
   artma / calc / meta[normal_p_value],
+  artma / libs / formatting / summary_table[
+    shared_build_summary_table = build_summary_table
+  ],
   artma / calc / methods / stem[stem, stem_funnel, stem_MSE, STEM_MIN_STUDIES],
   artma / calc / methods / selection_model[metastudies_estimation],
   artma / calc / methods / endo_kink[run_endogenous_kink],
@@ -471,7 +474,7 @@ build_summary_table <- function(coefficients, digits) {
     "Total observations",
     "Model observations"
   )
-  summary <- data.frame(Metric = row_labels, check.names = FALSE, stringsAsFactors = FALSE)
+  columns <- list()
   for (model in unique(coefficients$model)) {
     model_rows <- coefficients[coefficients$model == model, , drop = FALSE]
     pb_row <- model_rows[model_rows$term == "publication_bias", , drop = FALSE]
@@ -480,7 +483,7 @@ build_summary_table <- function(coefficients, digits) {
     total_obs <- total_obs[is.finite(total_obs)]
     model_obs <- unique(model_rows$n_obs_model)
     model_obs <- model_obs[is.finite(model_obs)]
-    column <- c(
+    columns[[model_rows$model_label[1]]] <- c(
       if (nrow(pb_row)) pb_row$estimate_formatted else "",
       if (nrow(pb_row)) pb_row$std_error_formatted else "",
       if (nrow(eff_row)) eff_row$estimate_formatted else "",
@@ -488,11 +491,8 @@ build_summary_table <- function(coefficients, digits) {
       if (length(total_obs)) format_number(total_obs[1], 0) else "",
       if (length(model_obs)) format_number(model_obs[1], 0) else ""
     )
-    column[is.na(column)] <- ""
-    summary[[model_rows$model_label[1]]] <- column
   }
-  attr(summary, "row.names") <- row_labels
-  summary
+  shared_build_summary_table(row_labels, columns, missing_value = "")
 }
 
 run_nonlinear_methods <- function(df, options) {

@@ -15,6 +15,9 @@ box::use(
     format_se,
     format_ci
   ],
+  artma / libs / formatting / summary_table[
+    shared_build_summary_table = build_summary_table
+  ],
   artma / econometric / vcov[robust_vcov]
 )
 
@@ -743,7 +746,6 @@ build_summary_table <- function(coefficients, digits) {
     return(data.frame())
   }
 
-  models <- unique(coefficients$model)
   row_labels <- c(
     "Publication Bias",
     "(Std. Error)",
@@ -754,13 +756,8 @@ build_summary_table <- function(coefficients, digits) {
     "Total Observations"
   )
 
-  summary <- data.frame(
-    Metric = row_labels,
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
-
-  for (model in models) {
+  columns <- list()
+  for (model in unique(coefficients$model)) {
     model_rows <- coefficients[coefficients$model == model, , drop = FALSE]
     pb <- model_rows[model_rows$term == "publication_bias", , drop = FALSE]
     eff <- model_rows[model_rows$term == "effect", , drop = FALSE]
@@ -773,7 +770,8 @@ build_summary_table <- function(coefficients, digits) {
       n_obs_value <- n_obs_value[1]
     }
 
-    col_values <- c(
+    column_name <- model_rows$model_label[1]
+    columns[[column_name]] <- c(
       if (nrow(pb)) pb$estimate_formatted else NA_character_,
       if (nrow(pb)) pb$std_error_formatted else NA_character_,
       if (nrow(pb)) pb$bootstrap_formatted else NA_character_,
@@ -782,13 +780,9 @@ build_summary_table <- function(coefficients, digits) {
       if (nrow(eff)) eff$bootstrap_formatted else NA_character_,
       if (nrow(model_rows)) format_number(n_obs_value, 0) else NA_character_
     )
-
-    column_name <- model_rows$model_label[1]
-    summary[[column_name]] <- col_values
   }
 
-  attr(summary, "row.names") <- row_labels
-  summary
+  shared_build_summary_table(row_labels, columns)
 }
 
 box::export(
