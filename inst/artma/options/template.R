@@ -279,30 +279,8 @@ prompt_user_for_option_value <- function(opt) {
     )
     Sys.sleep(0.5) # Allow tk to print the closing message into the console
   } else if (input_val == "mock" && prompt_type == "file") {
-    # Generate mock data and save to temp file
-    box::use(
-      artma / data / mock[create_mock_df],
-      artma / libs / core / utils[get_verbosity]
-    )
-
-    if (get_verbosity() >= 3) {
-      cli::cli_alert_info("Generating mock data...")
-    }
-
-    # Create temp file in R temp directory
-    temp_file <- tempfile(pattern = "artma-mock-data-", fileext = ".csv")
-
-    # Generate mock data frame and save to temp file
-    mock_df <- create_mock_df(
-      with_file_creation = TRUE,
-      file_path = temp_file
-    )
-
-    if (get_verbosity() >= 3) {
-      cli::cli_alert_success("Mock data generated and saved to {.path {temp_file}}")
-    }
-
-    input_val <- temp_file
+    box::use(artma / data / mock[materialize_mock_data_path])
+    input_val <- materialize_mock_data_path()
   }
 
   val_is_empty <- (!nzchar(input_val) || rlang::is_empty(input_val))
@@ -330,6 +308,8 @@ resolve_option_value <- function(
   opt,
   user_input
 ) {
+  box::use(artma / const[CONST])
+
   is_interactive <- interactive()
 
   if (opt$name %in% names(user_input)) {

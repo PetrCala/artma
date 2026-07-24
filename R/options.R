@@ -881,6 +881,19 @@ options.create <- function(
     cli::format_inline("Invalid options file path: {.path {options_path}}")
   )
 
+  leaf_set <- collect_leaf_paths(template_path)
+  # Flatten user_input against the template leaf set so a nested user_input
+  # (e.g. list(data = list(source_path = ...))) resolves to the same flat
+  # dotted keys as list("data.source_path" = ...) on both branches below.
+  user_input <- flatten_user_options(user_options = user_input, leaf_set = leaf_set)
+
+  # Honor the "mock" data-source shortcut programmatically, not only in the
+  # interactive prompt: generate the mock dataset and point the option at it.
+  if (identical(user_input[["data.source_path"]], "mock")) {
+    box::use(artma / data / mock[materialize_mock_data_path])
+    user_input[["data.source_path"]] <- materialize_mock_data_path()
+  }
+
   parsed_options <- if (!file.exists(options_path)) {
     parse_options_from_template(
       path         = template_path,
@@ -905,14 +918,8 @@ options.create <- function(
         cli::cli_abort("Aborting the overwriting of a user options file.")
       }
     }
-    leaf_set <- collect_leaf_paths(template_path)
     current_options <- flatten_user_options(user_options = read_options_file(options_path), leaf_set = leaf_set)
-    # Flatten user_input against the same leaf set so a nested user_input (or
-    # a partial edit to a list-type option) merges into the matching flat key
-    # instead of adding a colliding sibling that flat_to_nested() later
-    # overwrites the flat entries with (see options.modify()).
-    flat_user_input <- flatten_user_options(user_options = user_input, leaf_set = leaf_set)
-    utils::modifyList(current_options, flat_user_input)
+    utils::modifyList(current_options, user_input)
   }
 
   nested_options <- flat_to_nested(parsed_options)
