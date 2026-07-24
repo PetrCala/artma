@@ -65,7 +65,7 @@ Suggests:
     writexl (>= 1.4.0)
 VignetteBuilder:
     knitr
-Config/Needs/coverage: covr, xml2
+Config/Needs/coverage: covr, pkgload, xml2
 Config/Needs/dev: box.linters, devtools, languageserver, remotes
 Config/Needs/e2e: remotes
 Config/Needs/lint: box.linters, devtools, remotes

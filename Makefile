@@ -159,15 +159,16 @@ clean:
 	@find . -name ".Rhistory" -delete
 	@find . -name ".DS_Store" -delete
 
-# Generate test coverage report
+# Generate test coverage report (inst/artma, the primary metric)
 coverage:
-	@echo "Generating test coverage report..."
-	@Rscript -e "covr::package_coverage()"
+	@echo "Generating inst/artma test coverage report..."
+	@Rscript scripts/R/inst_coverage.R
 
 # Interactive coverage report
 coverage-report:
 	@echo "Opening interactive coverage report..."
-	@Rscript -e "covr::report(covr::package_coverage())"
+	@ARTMA_COVERAGE_RDS=$(CURDIR)/.artma-coverage.rds Rscript scripts/R/inst_coverage.R
+	@Rscript -e "covr::report(readRDS('.artma-coverage.rds'))"
 
 # Auto-format code with styler
 style:

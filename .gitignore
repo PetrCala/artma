@@ -64,6 +64,8 @@ share/python-wheels/
 MANIFEST
 
 # Unit test / coverage reports
+.artma-coverage.rds
+cobertura-inst.xml
 htmlcov/
 .tox/
 .nox/
