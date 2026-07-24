@@ -170,6 +170,116 @@ test_that("score_rename_candidate uses the pattern engine when the role is known
   expect_true(with_role >= MATCH_THRESHOLDS$rename_auto)
 })
 
+# Mapping conflicts: a role mapped to a source column while a different raw
+# column already occupies the standard name.
+
+test_that("detect_schema_drift flags a mapping conflict with an occupying raw column", {
+  box::use(artma / data / schema_reconcile[detect_schema_drift])
+
+  # study_id is mapped from "study", but the df also has its own study_id
+  # column with different content.
+  raw_df <- base_df(study_id = c("X", "Y", "Z"))
+
+  result <- detect_schema_drift(raw_df, base_store())
+
+  expect_true(result$has_drift)
+  expect_equal(result$conflicts[["study_id"]], "study")
+  expect_equal(length(result$missing_roles), 0L)
+  # The occupying column carries a standard name, so it is not "added" either.
+  expect_false("study_id" %in% result$added)
+})
+
+test_that("detect_schema_drift ignores a byte-identical occupying column", {
+  box::use(artma / data / schema_reconcile[detect_schema_drift])
+
+  # Identical content: standardize_column_names() resolves this quietly.
+  raw_df <- base_df()
+  raw_df$study_id <- raw_df$study
+
+  result <- detect_schema_drift(raw_df, base_store())
+
+  expect_equal(length(result$conflicts), 0L)
+})
+
+test_that("detect_schema_drift skips conflicts already resolved via drop_conflicting_raw", {
+  box::use(artma / data / schema_reconcile[detect_schema_drift])
+
+  raw_df <- base_df(study_id = c("X", "Y", "Z"))
+  store <- base_store(
+    list(study_id = list(source_name = "study", drop_conflicting_raw = TRUE))
+  )
+
+  result <- detect_schema_drift(raw_df, store)
+
+  expect_equal(length(result$conflicts), 0L)
+})
+
+test_that("detect_schema_drift reports a missing source, not a conflict, when the source vanished", {
+  box::use(artma / data / schema_reconcile[detect_schema_drift])
+
+  # "study" is gone; the occupying study_id column is a rename candidate, not
+  # a conflict.
+  raw_df <- data.frame(
+    effect_size = 1:3, se_col = 0.1, study_id = "A", n_obs = 10L
+  )
+
+  result <- detect_schema_drift(raw_df, base_store())
+
+  expect_true("study_id" %in% names(result$missing_roles))
+  expect_equal(length(result$conflicts), 0L)
+})
+
+test_that("reconcile_schema auto resolves a conflict by keeping the mapping", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  raw_df <- base_df(study_id = c("X", "Y", "Z"))
+
+  withr::with_options(
+    base_reconcile_opts(),
+    {
+      reconcile_schema(raw_df, mode = "auto")
+
+      store <- getOption("artma.data.columns")
+      expect_equal(store$study_id$source_name, "study")
+      expect_true(isTRUE(store$study_id$drop_conflicting_raw))
+      expect_true("study_id" %in% getOption("artma.data.expected_schema_columns"))
+    }
+  )
+})
+
+test_that("reconcile_schema resolves conflicts even on the first run without a baseline", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  raw_df <- base_df(study_id = c("X", "Y", "Z"))
+
+  withr::with_options(
+    base_reconcile_opts(
+      list("artma.data.expected_schema_columns" = NA_character_)
+    ),
+    {
+      reconcile_schema(raw_df, mode = "auto")
+
+      store <- getOption("artma.data.columns")
+      expect_true(isTRUE(store$study_id$drop_conflicting_raw))
+      expect_true("study_id" %in% getOption("artma.data.expected_schema_columns"))
+    }
+  )
+})
+
+test_that("reconcile_schema strict aborts on a mapping conflict", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  raw_df <- base_df(study_id = c("X", "Y", "Z"))
+
+  withr::with_options(
+    base_reconcile_opts(),
+    expect_error(
+      reconcile_schema(raw_df, mode = "strict"),
+      "Mapping conflict"
+    )
+  )
+})
+
 # reconcile_schema (strict mode)
 #
 # The strict-mode abort paths (missing required column, missing moderator, added

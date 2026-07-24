@@ -922,6 +922,10 @@ data:
       a {.strong source_name} field naming the column in your data file that maps to
       that standard column. Records for moderator variables are keyed by the column's
       own (syntactic) name.
+      A role record may also set {.strong drop_conflicting_raw} to true: when its
+      source_name mapping collides with a different raw column that already carries
+      the standard name, the raw column is dropped from the analysis instead of
+      aborting the run.
       Besides {.strong source_name}, each record can override analysis fields such as
       var_name_verbose, var_name_description, data_type, group_category,
       variable_summary, effect_sum_stats, equal, gltl, bma, bma_reference_var,
