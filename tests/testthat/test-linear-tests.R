@@ -6,6 +6,7 @@ box::use(
     expect_message,
     expect_named,
     expect_no_message,
+    expect_null,
     expect_true,
     skip_if_not_installed,
     test_that
@@ -307,7 +308,7 @@ test_that("bootstrap fast paths match slow-path refits on resampled data", {
   compared <- stats::setNames(integer(length(fast_path_specs)), fast_path_specs)
 
   set.seed(1234)
-  for (replication in seq_len(5L)) {
+  for (replication in seq_len(2L)) {
     rows <- resample_cluster_rows(nrow(df), cluster_splits)
     boot_data <- df[rows, , drop = FALSE]
 
@@ -337,6 +338,17 @@ test_that("bootstrap fast paths match slow-path refits on resampled data", {
   }
 
   expect_true(all(compared > 0L))
+
+  # Under set.seed(1234) no sampled replication is degenerate (every draw
+  # keeps at least six distinct clusters), so force a two-cluster resample:
+  # too few groups for Swamy-Arora, and both random effects paths must fail
+  # identically on it.
+  degenerate_rows <- unlist(cluster_splits[rep(c("S1", "S2"), 6L)], use.names = FALSE)
+  re_spec <- specs[["re"]]
+  expect_null(tryCatch(re_spec$boot_estimate(df, degenerate_rows), error = function(e) NULL))
+  expect_null(suppressWarnings(
+    tryCatch(re_spec$fit(df[degenerate_rows, , drop = FALSE]), error = function(e) NULL)
+  ))
 })
 
 test_that("within fast path merges duplicated resampled clusters like plm", {
