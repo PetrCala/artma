@@ -57,8 +57,10 @@ configure_data <- function(df_raw) {
   reconcile_schema(df_raw, mode = mode)
 
   # Decide the missing-value and zero-SE strategies on the cleaned, standardized
-  # frame so the compute phase can handle both without prompting.
-  df_std <- standardize_column_names(df_raw)
+  # frame so the compute phase can handle both without prompting. Standardize
+  # quietly: this frame is a configure-phase intermediate, and the compute phase
+  # standardizes the same raw frame again with messages on.
+  df_std <- standardize_column_names(df_raw, quiet = TRUE)
   df_clean <- clean_data(df_std)
   resolve_na_handling(df_clean)
   resolve_se_zero_handling(df_clean)

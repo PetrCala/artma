@@ -76,8 +76,11 @@ get_number_of_studies <- function(df) {
 #'   `artma / data / interactive_mapping`) and persist the result before
 #'   calling this function.
 #' @param df *\[data.frame\]* The data frame to standardize
+#' @param quiet *\[logical, optional\]* Suppress informational messages. Used by
+#'   callers that standardize an intermediate frame (e.g. the configure phase)
+#'   so a single run does not announce the same action twice. Defaults to `FALSE`.
 #' @return *\[data.frame\]* The standardized data frame
-standardize_column_names <- function(df) {
+standardize_column_names <- function(df, quiet = FALSE) {
   box::use(
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[validate, assert]
@@ -141,7 +144,7 @@ standardize_column_names <- function(df) {
 
     store_entry <- column_store[[target_col]]
     if (is.list(store_entry) && isTRUE(store_entry[["drop_conflicting_raw"]])) {
-      if (get_verbosity() >= 3) {
+      if (!quiet && get_verbosity() >= 3) {
         cli::cli_alert_info(
           "Dropping the raw {.val {target_col}} column: {.val {source_col}} is configured to supply it."
         )

@@ -245,6 +245,28 @@ test_that("standardize_column_names drops the raw column when drop_conflicting_r
   )
 })
 
+test_that("standardize_column_names with quiet = TRUE drops the raw column without a message", {
+  box::use(artma / data / utils[standardize_column_names])
+
+  mock_df <- build_collision_df("study_name", paste("Study", 1:5))
+
+  withr::with_options(
+    list(
+      "artma.data.columns" = list(
+        study_id = list(source_name = "study_name", drop_conflicting_raw = TRUE)
+      ),
+      "artma.verbose" = 3L
+    ),
+    {
+      expect_message(standardize_column_names(mock_df), "Dropping the raw")
+      expect_no_message(standardize_column_names(mock_df, quiet = TRUE))
+      standardized_df <- standardize_column_names(mock_df, quiet = TRUE)
+      expect_equal(standardized_df$study_id, paste("Study", 1:5))
+      expect_false("study_name" %in% colnames(standardized_df))
+    }
+  )
+})
+
 test_that("standardize_column_names allows an identity mapping through quietly", {
   box::use(artma / data / utils[standardize_column_names])
 
