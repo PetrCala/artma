@@ -1,0 +1,8 @@
+#!/usr/bin/env Rscript
+# artma command-line launcher. It resolves nothing from its own path and relies
+# solely on the installed artma package. Install it onto your PATH with
+# artma::cli.install(), or invoke the CLI directly via
+# Rscript -e 'artma::cli.run()' <command> [options].
+status <- artma::cli.run()
+if (!is.numeric(status) || length(status) != 1L || is.na(status)) status <- 1L
+quit(save = "no", status = as.integer(status))
