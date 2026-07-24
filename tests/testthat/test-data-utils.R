@@ -1,5 +1,5 @@
 box::use(
-  testthat[expect_equal, expect_error, expect_false, expect_true, test_that]
+  testthat[expect_equal, expect_error, expect_false, expect_message, expect_no_message, expect_true, test_that]
 )
 
 box::use(
