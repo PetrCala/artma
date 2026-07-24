@@ -1,3 +1,7 @@
+box::use(
+  artma / data / profile[profile_column]
+)
+
 #' Single home for every confidence threshold the column-matching engine uses.
 #' Both the recognition flow (options creation, auto-detection) and the schema
 #' reconciliation flow (rename proposals) read from this list, so the
@@ -240,69 +244,12 @@ match_column_name <- function(col_name, patterns) {
 
 
 #' @title Analyze column values to determine semantic type
-#' @description Analyzes actual data values to help discriminate between ambiguous column matches
+#' @description Analyzes actual data values to help discriminate between
+#'   ambiguous column matches. Thin re-export of the shared
+#'   `data/profile.R::profile_column` profiler.
 #' @param values *\[vector\]* Column values to analyze
 #' @return *\[list\]* Analysis results with various heuristics
-analyze_column_values <- function(values) {
-  # Remove NA values for analysis
-  values_clean <- values[!is.na(values)]
-
-  if (length(values_clean) == 0) {
-    return(list(
-      is_sequential = FALSE,
-      is_unique = FALSE,
-      is_numeric = FALSE,
-      uniqueness_ratio = 0,
-      mean = NA,
-      variance = NA,
-      min = NA,
-      max = NA
-    ))
-  }
-
-  # Check if numeric (coercible to numeric)
-  is_numeric <- is.numeric(values_clean) || !any(is.na(suppressWarnings(as.numeric(values_clean))))
-  numeric_values <- if (is_numeric) {
-    if (is.numeric(values_clean)) values_clean else as.numeric(values_clean)
-  } else {
-    numeric(0)
-  }
-
-  # Sequential pattern detection (like 1, 2, 3, 4, 5...)
-  is_sequential <- FALSE
-  if (is_numeric && length(numeric_values) >= 3) {
-    diffs <- diff(numeric_values)
-    # Check if differences are constant (allowing for some tolerance)
-    is_sequential <- all(abs(diffs - diffs[1]) < 1e-10) && abs(diffs[1] - 1) < 1e-10
-  }
-
-  # Uniqueness analysis
-  is_unique <- length(unique(values_clean)) == length(values_clean)
-  uniqueness_ratio <- length(unique(values_clean)) / length(values_clean)
-
-  # Statistical properties
-  stats <- if (is_numeric && length(numeric_values) > 0) {
-    list(
-      mean = mean(numeric_values, na.rm = TRUE),
-      variance = stats::var(numeric_values, na.rm = TRUE),
-      min = min(numeric_values, na.rm = TRUE),
-      max = max(numeric_values, na.rm = TRUE)
-    )
-  } else {
-    list(mean = NA, variance = NA, min = NA, max = NA)
-  }
-
-  list(
-    is_sequential = is_sequential,
-    is_unique = is_unique,
-    is_numeric = is_numeric,
-    uniqueness_ratio = uniqueness_ratio,
-    mean = stats$mean,
-    variance = stats$variance,
-    min = stats$min,
-    max = stats$max
-  )
-}
+analyze_column_values <- profile_column
 
 
 #' @title Detect if a column is likely a numeric identifier

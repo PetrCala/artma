@@ -2,42 +2,19 @@
 #' @description
 #' Provides functionality to automatically detect variable groups in a dataset.
 #' Identifies patterns in data (dummy groups, transformations, etc.).
-
-#' Empty group-detection result skeleton
 #'
-#' @return Zero-row data frame with the group-detection columns
-#' @keywords internal
-empty_group_df <- function() {
-  data.frame(
-    var_name = character(0),
-    group_id = character(0),
-    group_type = character(0),
-    group_base = character(0),
-    is_reference = logical(0),
-    stringsAsFactors = FALSE
-  )
-}
+#' The column-profiling primitives (`empty_group_df`, `group_row`,
+#' `bind_group_rows`, `detect_dummy_groups`) live in `data/profile.R` so the
+#' data layer can reuse them without importing from `variable/`.
 
-#' Build a single group-detection result row
-#'
-#' @keywords internal
-group_row <- function(var_name, group_id, group_type, group_base, is_reference) {
-  data.frame(
-    var_name = var_name,
-    group_id = group_id,
-    group_type = group_type,
-    group_base = group_base,
-    is_reference = is_reference,
-    stringsAsFactors = FALSE
-  )
-}
-
-#' Bind group-detection rows, returning the empty skeleton when there are none
-#'
-#' @keywords internal
-bind_group_rows <- function(results) {
-  if (length(results)) do.call(rbind, results) else empty_group_df()
-}
+box::use(
+  artma / data / profile[
+    empty_group_df,
+    group_row,
+    bind_group_rows,
+    detect_dummy_groups
+  ]
+)
 
 #' Detect variable groups in a dataset
 #'
@@ -169,95 +146,6 @@ detect_variable_groups <- function(df, var_names = NULL, config = NULL) {
   }
 
   groups
-}
-
-
-#' Detect dummy variable groups
-#'
-#' @description
-#' Identifies groups of dummy (binary 0/1) variables that share a common prefix,
-#' suggesting they represent categories of the same underlying variable.
-#'
-#' @param var_names *\[character\]* Vector of variable names
-#' @param df *\[data.frame\]* Data frame to check if variables are binary
-#'
-#' @return Data frame with group information for dummy variables
-#'
-#' @keywords internal
-detect_dummy_groups <- function(var_names, df) {
-  box::use(artma / libs / core / validation[validate])
-
-  validate(is.character(var_names), is.data.frame(df))
-
-  results <- list()
-
-  # Check if variable is binary (0/1 or TRUE/FALSE)
-  is_binary <- function(var_name) {
-    if (!var_name %in% names(df)) {
-      return(FALSE)
-    }
-    vals <- unique(df[[var_name]][!is.na(df[[var_name]])])
-    length(vals) == 2 && all(vals %in% c(0, 1, TRUE, FALSE))
-  }
-
-  # Find variables with common prefixes
-  binary_vars <- var_names[vapply(var_names, is_binary, logical(1))]
-
-  if (!length(binary_vars)) {
-    return(empty_group_df())
-  }
-
-  # Extract potential base names (everything before last underscore)
-  extract_base <- function(name) {
-    parts <- strsplit(name, "_")[[1]]
-    if (length(parts) > 1) {
-      paste(parts[-length(parts)], collapse = "_")
-    } else {
-      NA_character_
-    }
-  }
-
-  bases <- vapply(binary_vars, extract_base, character(1))
-  base_table <- table(bases[!is.na(bases)])
-
-  # Only consider groups with 2+ variables
-  valid_bases <- names(base_table)[base_table >= 2]
-
-  if (!length(valid_bases)) {
-    return(empty_group_df())
-  }
-
-  for (base in valid_bases) {
-    group_vars <- binary_vars[!is.na(bases) & bases == base]
-
-    # Try to detect reference variable (often has "other", "ref", "base" suffix)
-    ref_patterns <- c("other", "ref", "reference", "base", "baseline")
-    is_ref <- rep(FALSE, length(group_vars))
-
-    for (i in seq_along(group_vars)) {
-      suffix <- tolower(sub(paste0("^", base, "_"), "", group_vars[i]))
-      if (suffix %in% ref_patterns) {
-        is_ref[i] <- TRUE
-      }
-    }
-
-    # If no explicit reference, mark the first as reference
-    if (!any(is_ref) && length(group_vars) > 0) {
-      is_ref[1] <- TRUE
-    }
-
-    for (i in seq_along(group_vars)) {
-      results[[length(results) + 1]] <- group_row(
-        var_name = group_vars[i],
-        group_id = paste0("dummy_", base),
-        group_type = "dummy",
-        group_base = base,
-        is_reference = is_ref[i]
-      )
-    }
-  }
-
-  bind_group_rows(results)
 }
 
 
