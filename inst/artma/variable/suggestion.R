@@ -231,7 +231,10 @@ decide_variable_suggestion <- function(var_data, effect_data, data_type,
                                        is_reference, group_type,
                                        min_obs_per_split, min_variance_ratio,
                                        exclude_reference) {
-  box::use(artma / libs / core / validation[validate])
+  box::use(
+    artma / libs / core / validation[validate],
+    artma / data / profile[is_binary_column]
+  )
 
   validate(
     is.numeric(var_data),
@@ -249,8 +252,9 @@ decide_variable_suggestion <- function(var_data, effect_data, data_type,
   unique_vals <- unique(var_data)
   n_unique <- length(unique_vals)
 
-  # DUMMY VARIABLES (binary 0/1)
-  if (data_type == "dummy" || (n_unique == 2 && all(unique_vals %in% c(0, 1)))) {
+  # DUMMY VARIABLES (binary 0/1). var_data is numeric here, so is_binary_column
+  # (which allows 0/1/TRUE/FALSE) is equivalent to the previous 0/1-only test.
+  if (data_type == "dummy" || is_binary_column(var_data)) {
     # Check both splits have sufficient observations
     n_zero <- sum(var_data == 0)
     n_one <- sum(var_data == 1)

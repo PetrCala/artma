@@ -201,7 +201,7 @@ handle_na_interpolate <- function(df) {
 #' @return *\[data.frame\]* The data frame with imputed values
 #' @keywords internal
 handle_na_mice <- function(df) {
-  box::use(artma / variable / detection[detect_dummy_groups])
+  box::use(artma / data / profile[detect_dummy_groups])
 
   if (!requireNamespace("mice", quietly = TRUE)) {
     cli::cli_abort(c(
