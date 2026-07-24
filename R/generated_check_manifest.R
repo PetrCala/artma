@@ -117,7 +117,6 @@ utils::globalVariables(c(
 .artma_check_manifest_keep_alive <- function() {
   invisible(list(
     ggplot2::aes,
-    ggtext::element_markdown,
     lmtest::coeftest,
     memoise::cache_filesystem,
     parallel::clusterExport,
