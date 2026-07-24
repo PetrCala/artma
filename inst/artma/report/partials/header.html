@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}}</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --accent: #0b5fa5;
+    --surface: #f6f8fa;
+    --row-alt: #f6f8fa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --fg: #e6edf3;
+      --muted: #9aa5b1;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --surface: #161b22;
+      --row-alt: #161b22;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 1.5rem 4rem;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-size: 15px;
+  }
+  .report-wrap { max-width: 960px; margin: 0 auto; }
+  header.report-header {
+    padding: 2rem 0 1rem;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+  header.report-header h1 {
+    margin: 0 0 0.75rem;
+    font-size: 1.8rem;
+    line-height: 1.2;
+  }
+  dl.report-meta {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0;
+    font-size: 0.9rem;
+  }
+  dl.report-meta dt { color: var(--muted); font-weight: 600; }
+  dl.report-meta dd { margin: 0; word-break: break-word; }
+  nav.report-toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+  }
+  nav.report-toc h2 { margin: 0 0 0.5rem; font-size: 1rem; }
+  nav.report-toc ul { margin: 0; padding-left: 1.25rem; }
+  nav.report-toc li { margin: 0.15rem 0; }
+  nav.report-toc a { color: var(--accent); text-decoration: none; }
+  nav.report-toc a:hover { text-decoration: underline; }
+  section.report-section {
+    margin: 0 0 2.5rem;
+    padding-top: 0.5rem;
+    scroll-margin-top: 1rem;
+  }
+  section.report-section h2 {
+    font-size: 1.35rem;
+    margin: 0 0 0.75rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3.table-caption { font-size: 1rem; margin: 1.25rem 0 0.5rem; color: var(--muted); }
+  .table-scroll { overflow-x: auto; margin: 0 0 1rem; }
+  table.report-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.88rem;
+  }
+  table.report-table th, table.report-table td {
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.6rem;
+    text-align: right;
+    white-space: nowrap;
+  }
+  table.report-table th { background: var(--surface); font-weight: 600; }
+  table.report-table td.text-cell, table.report-table th.text-cell { text-align: left; }
+  table.report-table tbody tr:nth-child(even) { background: var(--row-alt); }
+  .report-plot { margin: 1rem 0; }
+  .report-plot img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: #ffffff;
+  }
+  .report-note {
+    color: var(--muted);
+    font-style: italic;
+    margin: 0.75rem 0;
+  }
+  .report-skip {
+    background: var(--surface);
+    border-left: 4px solid var(--accent);
+    padding: 0.75rem 1rem;
+    border-radius: 0 4px 4px 0;
+  }
+  footer.report-footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  @media print {
+    body { padding: 0; font-size: 11pt; color: #000; background: #fff; }
+    nav.report-toc { break-inside: avoid; }
+    section.report-section { break-inside: avoid-page; }
+    table.report-table th { background: #eee; }
+    .report-plot img { border-color: #999; }
+  }
+</style>
+</head>
+<body>
+<div class="report-wrap">
+<header class="report-header">
+  <h1>{{title}}</h1>
+  <dl class="report-meta">
+    <dt>Package version</dt><dd>{{package_version}}</dd>
+    <dt>Rendered</dt><dd>{{render_date}}</dd>
+    <dt>Data source</dt><dd>{{data_source}}</dd>
+    <dt>Options file</dt><dd>{{options_file}}</dd>
+    <dt>Autonomy level</dt><dd>{{autonomy_level}}</dd>
+  </dl>
+</header>
+<nav class="report-toc">
+  <h2>Contents</h2>
+  {{toc}}
+</nav>

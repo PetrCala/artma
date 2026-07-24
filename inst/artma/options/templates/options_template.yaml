@@ -1035,6 +1035,17 @@ output:
     help: |
       The number of decimals to round the output to. Defaults to 3.
 
+  report:
+    type: "logical"
+    default: false
+    help: |
+      If `TRUE`, render a single self-contained HTML report of the run into the
+      output directory (as {.file report.html}) after each analysis. The report
+      collects every method's tables and plots into one shareable file with no
+      external dependencies (plots are embedded as PNG images). A render failure
+      warns rather than aborting the run. You can also build the report on demand
+      from a run's results with `artma::report.render()`. Defaults to `FALSE`.
+
 cli:
   editor:
     type: "character"
