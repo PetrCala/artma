@@ -223,7 +223,8 @@ run <- register_runtime_method(
   stage = "robma",
   required_columns = c("effect", "se"),
   suggests = "RoBMA",
-  opt_in = TRUE
+  opt_in = TRUE,
+  cached = TRUE
 )
 
 box::export(robma, run)

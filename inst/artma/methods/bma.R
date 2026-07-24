@@ -793,7 +793,8 @@ run <- register_runtime_method(
   bma,
   stage = "bma",
   required_columns = c("effect", "se"),
-  suggests = "BMS"
+  suggests = "BMS",
+  cached = TRUE
 )
 
 # prepare_bma_inputs is exported because the fma method reuses it directly.

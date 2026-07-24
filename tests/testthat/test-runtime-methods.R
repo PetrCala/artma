@@ -96,6 +96,57 @@ test_that("register_runtime_method attaches declarative metadata", {
   expect_equal(meta$opt_in, FALSE)
 })
 
+test_that("register_runtime_method leaves cheap methods uncached by default", {
+  box::use(
+    artma / modules / runtime_methods[register_runtime_method]
+  )
+
+  local_options(list(artma.cache.use_cache = TRUE))
+
+  calls <- 0L
+  impl <- function(df, ...) {
+    calls <<- calls + 1L
+    calls
+  }
+  run <- register_runtime_method(impl, stage = "cheap")
+
+  df <- data.frame(x = 1)
+  run(df = df)
+  run(df = df)
+
+  # No caching layer wraps the method, so the implementation runs every call.
+  expect_equal(calls, 2L)
+})
+
+test_that("register_runtime_method caches a method opted into caching", {
+  box::use(
+    artma / modules / runtime_methods[register_runtime_method]
+  )
+
+  local_options(list(artma.cache.use_cache = TRUE))
+
+  calls <- 0L
+  impl <- function(df, ...) {
+    calls <<- calls + 1L
+    calls
+  }
+  run <- register_runtime_method(
+    impl,
+    stage = "pricey",
+    cached = TRUE,
+    key_builder = function(...) list(fixed = TRUE),
+    cache = memoise::cache_memory()
+  )
+
+  df <- data.frame(x = 1)
+  first <- run(df = df)
+  second <- run(df = df)
+
+  # The second identical call is served from cache: the implementation ran once.
+  expect_equal(calls, 1L)
+  expect_equal(first, second)
+})
+
 test_that("register_runtime_method records the opt-in flag", {
   box::use(
     artma / modules / runtime_methods[get_method_metadata, register_runtime_method]

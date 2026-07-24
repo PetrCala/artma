@@ -3,9 +3,11 @@ box::use(
   testing / fixtures / index[FIXTURES]
 )
 
-# Caching is on by default, so every component of the cache signature needs a
+# Caching is opt-in per method (`cached = TRUE`), reserved for the expensive
+# stages. For a cached method, every component of the cache signature needs a
 # test that proves a change to it produces a miss. A stale hit is a correctness
-# bug, not a performance one.
+# bug, not a performance one. The demo method below opts in so it exercises the
+# full signature stack the expensive methods rely on.
 
 cache_test_options <- function() {
   list(
@@ -33,6 +35,7 @@ make_counted_method <- function(stage = "cache_signature_demo") {
   state$run <- register_runtime_method(
     impl,
     stage = stage,
+    cached = TRUE,
     cache = memoise::cache_memory()
   )
 
