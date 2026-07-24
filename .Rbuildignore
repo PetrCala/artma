@@ -29,6 +29,7 @@
 ^releaes_notes\.md$
 ^release-notes\.md$
 ^AGENTS\.md$
+^box-to-r-migration-plan\.md$
 ^CLAUDE\.md$
 ^Makefile$
 ^\.claude$
