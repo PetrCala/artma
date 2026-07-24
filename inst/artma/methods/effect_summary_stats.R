@@ -9,6 +9,11 @@ effect_summary_stats <- function(df) {
   box::use(
     artma / const[CONST],
     artma / data_config / read[get_data_config],
+    artma / libs / core / grouping[
+      is_group_value_na,
+      resolve_group_threshold,
+      resolve_variable_groups
+    ],
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate, validate_columns],
     artma / modules / runtime_methods[new_method_result],
@@ -104,24 +109,6 @@ effect_summary_stats <- function(df) {
       effect = effect_values[mask],
       study_size = study_sizes[mask]
     )
-  }
-
-  format_label <- function(base_label, suffix) {
-    if (nzchar(suffix)) {
-      paste0(base_label, suffix)
-    } else {
-      base_label
-    }
-  }
-
-  format_equal_suffix <- function(value) {
-    if (is.numeric(value)) {
-      return(paste0(" = ", round(value, round_to)))
-    }
-    if (is.character(value) && nzchar(value)) {
-      return(paste0(" = ", value))
-    }
-    ""
   }
 
   # Determine which variables to analyse ------------------------------------
@@ -229,35 +216,29 @@ effect_summary_stats <- function(df) {
     valid_mask <- !is.na(var_data) & is.finite(effect_values) & is.finite(study_sizes)
     filtered_var_data <- var_data[valid_mask]
 
-    added_any <- FALSE
+    # The threshold basis (filtered_var_data) intentionally differs from the
+    # grouping basis (var_data): mean/median thresholds are computed only over
+    # rows whose effect and study size are finite.
+    groups <- resolve_variable_groups(
+      var_label = var_label,
+      equal_val = equal_val,
+      gltl_val = gltl_val,
+      var_values = var_data,
+      round_to = round_to,
+      threshold_values = filtered_var_data
+    )
 
-    if (!is.na(equal_val)) {
-      subset <- prepare_subset(!is.na(var_data) & var_data == equal_val)
-      label <- format_label(var_label, format_equal_suffix(equal_val))
-      added_any <- add_row(label, var_class, subset) || added_any
+    added_any <- FALSE
+    for (group in groups) {
+      subset <- prepare_subset(seq_along(var_data) %in% group$row_idx)
+      added_any <- add_row(group$label, var_class, subset) || added_any
     }
 
-    if (!is.na(gltl_val)) {
-      if (is.character(gltl_val)) {
-        gltl_val <- switch(gltl_val,
-          mean = if (length(filtered_var_data)) mean(filtered_var_data, na.rm = TRUE) else NA_real_,
-          median = if (length(filtered_var_data)) stats::median(filtered_var_data, na.rm = TRUE) else NA_real_,
-          suppressWarnings(as.numeric(gltl_val))
-        )
-      }
-
-      if (is.na(gltl_val)) {
-        missing_vars <- c(missing_vars, var_name)
-      } else {
-        subset_ge <- prepare_subset(!is.na(var_data) & var_data >= gltl_val)
-        subset_lt <- prepare_subset(!is.na(var_data) & var_data < gltl_val)
-
-        label_ge <- format_label(var_label, paste0(" >= ", round(gltl_val, round_to)))
-        label_lt <- format_label(var_label, paste0(" < ", round(gltl_val, round_to)))
-
-        added_any <- add_row(label_ge, var_class, subset_ge) || added_any
-        added_any <- add_row(label_lt, var_class, subset_lt) || added_any
-      }
+    # A gltl split whose threshold cannot resolve to a number marks the
+    # variable as missing, as it did before the split logic was extracted.
+    if (!is_group_value_na(gltl_val) &&
+      is.na(resolve_group_threshold(gltl_val, filtered_var_data))) {
+      missing_vars <- c(missing_vars, var_name)
     }
 
     if (!added_any) {
