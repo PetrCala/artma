@@ -119,7 +119,7 @@ utils::globalVariables(c(
     ggplot2::aes,
     lmtest::coeftest,
     memoise::cache_filesystem,
-    parallel::clusterExport,
+    parallel::detectCores,
     sandwich::vcovCL,
     yaml::read_yaml
   ))

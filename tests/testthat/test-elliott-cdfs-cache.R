@@ -4,22 +4,20 @@ box::use(
     expect_identical,
     expect_length,
     expect_true,
-    skip_if_not,
     test_that
   ],
   withr[local_options, local_tempdir],
-  artma / calc / methods / elliott[simulate_cdfs_block_cpp, simulate_cdfs_parallel],
+  artma / calc / methods / elliott[simulate_cdfs_parallel],
   artma / calc / methods / elliott_cache[make_simulate_cdfs_cached]
 )
 
-# Deterministic, quiet defaults for every test: the R fallback keeps results
-# identical across platforms, and caching stays on unless a test disables it.
+# Quiet defaults for every test: the compiled C++ kernel is the only
+# production backend, and caching stays on unless a test disables it.
 local_sim_options <- function(env = parent.frame()) {
   local_options(
     list(
       artma.verbose = 1,
-      artma.cache.use_cache = TRUE,
-      artma.methods.p_hacking_tests.simulate_cdfs.use_cpp = FALSE
+      artma.cache.use_cache = TRUE
     ),
     .local_envir = env
   )
@@ -114,27 +112,4 @@ test_that("the cache key separates seeds, iteration counts, and grid sizes", {
 
   inst$simulate(iterations = 3, grid_points = 20, show_progress = FALSE, seed = 123)
   expect_equal(inst$calls(), 4L)
-})
-
-test_that("the cache key separates the compiled backend from the R fallback", {
-  cpp_available <- tryCatch(
-    {
-      simulate_cdfs_block_cpp(matrix(0, nrow = 1, ncol = 1))
-      TRUE
-    },
-    error = function(e) FALSE
-  )
-  skip_if_not(cpp_available, "compiled simulate_cdfs backend is unavailable")
-
-  local_options(list(artma.verbose = 1, artma.cache.use_cache = TRUE))
-  inst <- new_cached_instance()
-
-  local_options(list(artma.methods.p_hacking_tests.simulate_cdfs.use_cpp = TRUE))
-  inst$simulate(iterations = 3, grid_points = 20, show_progress = FALSE, seed = 123)
-  expect_equal(inst$calls(), 1L)
-
-  local_options(list(artma.methods.p_hacking_tests.simulate_cdfs.use_cpp = FALSE))
-  inst$simulate(iterations = 3, grid_points = 20, show_progress = FALSE, seed = 123)
-  expect_equal(inst$calls(), 2L)
-  expect_length(inst$cache$keys(), 2L)
 })

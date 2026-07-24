@@ -8,18 +8,18 @@ box::use(
     test_that
   ],
   withr[local_options],
-  artma / calc / methods / elliott[simulate_cdfs_parallel]
+  artma / calc / methods / elliott[simulate_cdfs_parallel],
+  testing / reference / elliott[simulate_cdfs_reference]
 )
 
+# The compiled C++ kernel is the single production implementation, so every
+# generic property test below exercises it directly.
 run_simulation <- function(seed, iterations, grid_points, show_progress = FALSE, verbose = 0,
-                           use_cpp = FALSE, workers = NULL) {
+                           workers = NULL) {
   old_kind <- RNGkind()
   on.exit(do.call(RNGkind, as.list(old_kind)), add = TRUE)
   RNGkind(kind = "Mersenne-Twister", normal.kind = "Inversion", sample.kind = "Rejection")
-  local_options(list(
-    artma.verbose = verbose,
-    artma.methods.p_hacking_tests.simulate_cdfs.use_cpp = use_cpp
-  ))
+  local_options(list(artma.verbose = verbose))
   set.seed(seed)
   simulate_cdfs_parallel(
     iterations = iterations,
@@ -27,6 +27,14 @@ run_simulation <- function(seed, iterations, grid_points, show_progress = FALSE,
     workers = workers,
     show_progress = show_progress
   )
+}
+
+run_reference <- function(seed, iterations, grid_points) {
+  old_kind <- RNGkind()
+  on.exit(do.call(RNGkind, as.list(old_kind)), add = TRUE)
+  RNGkind(kind = "Mersenne-Twister", normal.kind = "Inversion", sample.kind = "Rejection")
+  set.seed(seed)
+  simulate_cdfs_reference(iterations = iterations, grid_points = grid_points)
 }
 
 test_that("simulate_cdfs returns numeric vectors with expected shape", {
@@ -84,7 +92,7 @@ test_that("simulate_cdfs responds to different RNG seeds", {
   expect_true(any(abs(res_a - res_b) > 0))
 })
 
-test_that("pure R fallback matches the compiled implementation elementwise", {
+test_that("the production C++ kernel matches the pure R reference elementwise", {
   cpp_available <- tryCatch(
     {
       .Call("_artma_simulate_cdfs_block_cpp", PACKAGE = "artma", matrix(0, 1, 1))
@@ -95,7 +103,7 @@ test_that("pure R fallback matches the compiled implementation elementwise", {
   skip_if_not(cpp_available, "compiled simulate_cdfs_block_cpp is unavailable")
 
   # Grid sizes where some gcmlcm x-knots times grid_points land just below an
-  # integer (e.g. 86.999...). The fallback used to index with those raw
+  # integer (e.g. 86.999...). The reference used to index with those raw
   # products, so truncation wrote hull chords one grid slot too low and its
   # suprema drifted from the C++ results by up to ~0.9 on a few draws.
   configs <- list(
@@ -106,11 +114,10 @@ test_that("pure R fallback matches the compiled implementation elementwise", {
   for (cf in configs) {
     res_cpp <- run_simulation(
       seed = 42, iterations = cf$iterations, grid_points = cf$grid_points,
-      use_cpp = TRUE, workers = 1L
+      workers = 1L
     )
-    res_r <- run_simulation(
-      seed = 42, iterations = cf$iterations, grid_points = cf$grid_points,
-      use_cpp = FALSE, workers = 1L
+    res_r <- run_reference(
+      seed = 42, iterations = cf$iterations, grid_points = cf$grid_points
     )
 
     expect_length(res_r, cf$iterations)

@@ -11,7 +11,7 @@
 NULL
 
 box::use(
-  artma / calc / methods / elliott[simulate_cdfs_block_cpp, simulate_cdfs_parallel],
+  artma / calc / methods / elliott[simulate_cdfs_parallel],
   artma / libs / infrastructure / cache[cache_cli],
   artma / libs / infrastructure / source_fingerprint[hash_source_files],
   artma / paths[PATHS]
@@ -22,27 +22,6 @@ STAGE <- "lcm_critical_values"
 # Resolved at module load time: the directory holding this module and the
 # simulation implementation it fingerprints.
 MODULE_DIR <- box::file()
-
-#' @title Decide whether the compiled simulation backend will run
-#' @description Mirror the backend selection inside
-#'   `simulate_cdfs_parallel()`, without its fallback warning: the option gate
-#'   first, then a probe of the compiled routine. The C++ path and the R
-#'   fallback can differ per draw, so the resolved backend has to be part of
-#'   the cache key.
-#' @return *\[logical\]* `TRUE` when the C++ implementation will run.
-#' @keywords internal
-uses_cpp_backend <- function() {
-  if (!isTRUE(getOption("artma.methods.p_hacking_tests.simulate_cdfs.use_cpp", TRUE))) {
-    return(FALSE)
-  }
-  tryCatch(
-    {
-      simulate_cdfs_block_cpp(matrix(0, nrow = 1, ncol = 1))
-      TRUE
-    },
-    error = function(e) FALSE
-  )
-}
 
 #' @title Fingerprint the simulation implementation
 #' @description Hash the two source files that define the simulation (the R
@@ -93,10 +72,11 @@ restore_rng_state <- function(state) {
 #' @title Build a cached variant of `simulate_cdfs_parallel()`
 #' @description
 #' Wrap `sim_fun` in a disk cache keyed narrowly on the inputs that determine
-#' the simulated table: iteration count, grid size, seed, RNG kind, the
-#' resolved backend, and the implementation fingerprint. Scheduling arguments
-#' (workers, block size, progress display) cannot change the result, so they
-#' stay out of the key and are forwarded out of band.
+#' the simulated table: iteration count, grid size, seed, RNG kind, and the
+#' implementation fingerprint. Scheduling arguments (workers, block size,
+#' progress display) cannot change the result, so they stay out of the key and
+#' are forwarded out of band. The compiled C++ kernel is the only production
+#' backend, so the implementation fingerprint alone captures it.
 #'
 #' A `NULL` seed deliberately consumes the caller's RNG state and is never
 #' cached. `options(artma.cache.use_cache = FALSE)` bypasses the cache like
@@ -167,7 +147,6 @@ make_simulate_cdfs_cached <- function(cache = NULL, sim_fun = simulate_cdfs_para
       grid_points = as.integer(grid_points),
       seed = as.integer(seed),
       rng_kind = RNGkind(),
-      use_cpp = uses_cpp_backend(),
       implementation = implementation_fingerprint()
     )
 

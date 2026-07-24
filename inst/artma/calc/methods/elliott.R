@@ -57,12 +57,7 @@ simulate_cdfs_parallel <- function(
     workers <- 1L
   }
 
-  inv_gp <- 1 / gp
   inv_sqrt_gp <- 1 / sqrt(gp)
-
-  c_grid <- seq_len(gp) * inv_gp
-  c_values <- c(0, c_grid)
-  n_values <- gp + 1L
 
   bb_sup <- numeric(it)
 
@@ -79,112 +74,28 @@ simulate_cdfs_parallel <- function(
     )
   }
 
-  use_cpp <- isTRUE(getOption("artma.methods.p_hacking_tests.simulate_cdfs.use_cpp", TRUE))
-  if (use_cpp) {
-    use_cpp <- tryCatch(
-      {
-        simulate_cdfs_block_cpp(matrix(0, nrow = 1, ncol = 1))
-        TRUE
-      },
-      error = function(e) {
-        cli::cli_warn(c(
-          "The compiled C++ implementation for CDF simulation is unavailable ({e$message}).",
-          "i" = "Falling back to the pure R implementation."
-        ))
-        FALSE
-      }
-    )
-  }
-  if (use_cpp) {
-    use_fork <- (.Platform$OS.type != "windows")
-    if (!use_fork && workers > 1L) {
-      workers <- 1L
-    }
-
-    done <- 0L
-    while (done < it) {
-      k <- min(block_size, it - done)
-      start <- done + 1L
-      end <- done + k
-
-      eps_block <- matrix(stats::rnorm(gp * k), nrow = gp) * inv_sqrt_gp
-
-      if (workers == 1L || k == 1L) {
-        bb_sup[start:end] <- simulate_cdfs_block_cpp(eps_block)
-      } else {
-        cols_split <- split(seq_len(k), rep_len(seq_len(min(workers, k)), k))
-        res_list <- parallel::mclapply(
-          cols_split,
-          function(cols) {
-            list(
-              idx = (start - 1L) + cols,
-              val = simulate_cdfs_block_cpp(eps_block[, cols, drop = FALSE])
-            )
-          },
-          mc.cores = min(workers, length(cols_split)),
-          mc.preschedule = TRUE
-        )
-        for (r in res_list) bb_sup[r$idx] <- r$val
-      }
-
-      done <- end
-      if (show_pb) cli::cli_progress_update(set = done)
-    }
-
-    if (show_pb) cli::cli_progress_done()
-    return(bb_sup)
-  }
-
-  worker_chunk <- function(eps_sub, idx_sub, c_grid, c_values, gp, inv_gp, n_values) {
-    out <- numeric(length(idx_sub))
-    b_values <- numeric(n_values)
-    y <- numeric(n_values)
-
-    for (jj in seq_along(idx_sub)) {
-      w <- cumsum(eps_sub[, jj])
-      w_end <- w[gp]
-
-      b_values[1L] <- 0
-      b_values[2L:n_values] <- w - c_grid * w_end
-
-      hull <- fdrtool::gcmlcm(c_values, b_values, type = "lcm")
-
-      y[] <- 0
-      y[1L] <- 0
-
-      hkx <- hull$x.knots
-      hky <- hull$y.knots
-      hks <- hull$slope.knots
-
-      # The x-knots are grid points j / gp, but the product hkx * gp can land
-      # just below the integer j (e.g. 86.999...); indexing with it truncates
-      # and writes the chord one grid slot too low. Round to recover j exactly.
-      ki <- as.integer(round(hkx * gp))
-
-      for (s in 2:length(ki)) {
-        a <- hky[s] - hks[s - 1L] * hkx[s]
-        b_slope <- hks[s - 1L]
-        idx <- (ki[s - 1L] + 1L):ki[s]
-        y[idx] <- a + b_slope * (idx * inv_gp)
-      }
-
-      out[jj] <- max(abs(y - b_values))
-    }
-
-    list(idx = idx_sub, val = out)
+  # The compiled C++ kernel is the single production implementation. It ships
+  # with the package (LinkingTo Rcpp), so an unavailable kernel means a broken
+  # install rather than a supported configuration; abort with a clear message.
+  # The pure R equivalent survives only as a test-only numeric reference (see
+  # tests/testthat/modules/testing/reference/elliott.R).
+  cpp_available <- tryCatch(
+    {
+      simulate_cdfs_block_cpp(matrix(0, nrow = 1, ncol = 1))
+      TRUE
+    },
+    error = function(e) FALSE
+  )
+  if (!cpp_available) {
+    cli::cli_abort(c(
+      "The compiled C++ implementation for CDF simulation is unavailable.",
+      "i" = "artma ships this routine as compiled code. Reinstall the package so its C++ sources are built."
+    ))
   }
 
   use_fork <- (.Platform$OS.type != "windows")
-
-  cl <- NULL
   if (!use_fork && workers > 1L) {
-    cl <- parallel::makeCluster(workers)
-    on.exit(parallel::stopCluster(cl), add = TRUE)
-    parallel::clusterExport(
-      cl,
-      varlist = c("worker_chunk", "c_grid", "c_values", "gp", "inv_gp", "n_values"),
-      envir = environment()
-    )
+    workers <- 1L
   }
 
   done <- 0L
@@ -193,59 +104,23 @@ simulate_cdfs_parallel <- function(
     start <- done + 1L
     end <- done + k
 
-    # Critical: pre-generate RNG in master in serial order
-    # This preserves the same random stream as the non-parallel version.
     eps_block <- matrix(stats::rnorm(gp * k), nrow = gp) * inv_sqrt_gp
 
     if (workers == 1L || k == 1L) {
-      res <- worker_chunk(
-        eps_sub = eps_block,
-        idx_sub = start:end,
-        c_grid = c_grid, c_values = c_values,
-        gp = gp, inv_gp = inv_gp, n_values = n_values
-      )
-      bb_sup[res$idx] <- res$val
+      bb_sup[start:end] <- simulate_cdfs_block_cpp(eps_block)
     } else {
       cols_split <- split(seq_len(k), rep_len(seq_len(min(workers, k)), k))
-
-      if (use_fork) {
-        # Unix/macOS: forked workers (fast, low overhead)
-        res_list <- parallel::mclapply(
-          cols_split,
-          function(cols) {
-            worker_chunk(
-              eps_sub = eps_block[, cols, drop = FALSE],
-              idx_sub = (start - 1L) + cols,
-              c_grid = c_grid, c_values = c_values,
-              gp = gp, inv_gp = inv_gp, n_values = n_values
-            )
-          },
-          mc.cores = min(workers, length(cols_split)),
-          mc.preschedule = TRUE
-        )
-      } else {
-        # Windows: PSOCK cluster
-        tasks <- lapply(cols_split, function(cols) {
+      res_list <- parallel::mclapply(
+        cols_split,
+        function(cols) {
           list(
-            eps_sub = eps_block[, cols, drop = FALSE],
-            idx_sub = (start - 1L) + cols
+            idx = (start - 1L) + cols,
+            val = simulate_cdfs_block_cpp(eps_block[, cols, drop = FALSE])
           )
-        })
-
-        res_list <- parallel::parLapply(
-          cl,
-          tasks,
-          function(task) {
-            worker_chunk(
-              eps_sub = task$eps_sub,
-              idx_sub = task$idx_sub,
-              c_grid = c_grid, c_values = c_values,
-              gp = gp, inv_gp = inv_gp, n_values = n_values
-            )
-          }
-        )
-      }
-
+        },
+        mc.cores = min(workers, length(cols_split)),
+        mc.preschedule = TRUE
+      )
       for (r in res_list) bb_sup[r$idx] <- r$val
     }
 
