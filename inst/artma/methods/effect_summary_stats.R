@@ -15,9 +15,10 @@ effect_summary_stats <- function(df) {
       resolve_variable_groups
     ],
     artma / libs / core / utils[get_verbosity],
-    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / validation[validate, validate_columns],
     artma / modules / runtime_methods[new_method_result],
-    artma / options / index[get_option_group]
+    artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options]
   )
 
   validate(is.data.frame(df))
@@ -29,20 +30,24 @@ effect_summary_stats <- function(df) {
 
   config <- get_data_config()
   opt <- get_option_group("artma.methods.effect_summary_stats")
-  conf_level <- opt$conf_level %||% 0.95
-  formal_output <- opt$formal_output %||% FALSE
-  round_to <- getOption("artma.output.number_of_decimals", 3)
 
-  validate(
-    length(conf_level) == 1,
-    is.numeric(conf_level),
-    length(formal_output) == 1,
-    is.logical(formal_output),
-    is.numeric(round_to)
-  )
+  resolved <- resolve_options(opt, list(
+    conf_level = opt_spec(
+      default = 0.95, type = "numeric", scalar = TRUE,
+      constraint = function(x) x >= 0 && x <= 1,
+      constraint_msg = "Confidence level must be between 0 and 1."
+    ),
+    formal_output = opt_spec(default = FALSE, type = "logical", scalar = TRUE),
+    round_to = opt_spec(
+      default = 3L, type = "numeric", key = "artma.output.number_of_decimals",
+      constraint = function(x) x >= 0,
+      constraint_msg = "Number of decimals must be greater than or equal to 0."
+    )
+  ))
 
-  assert(conf_level >= 0 && conf_level <= 1, "Confidence level must be between 0 and 1.")
-  assert(round_to >= 0, "Number of decimals must be greater than or equal to 0.")
+  conf_level <- resolved$conf_level
+  formal_output <- resolved$formal_output
+  round_to <- resolved$round_to
 
   z_value <- stats::qnorm((1 - conf_level) / 2, lower.tail = FALSE)
 

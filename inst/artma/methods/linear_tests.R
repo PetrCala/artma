@@ -5,43 +5,19 @@
 #' coefficient estimates and a publication-ready summary table.
 linear_tests <- function(df) {
   box::use(
-    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / validation[validate, validate_columns],
     artma / libs / core / utils[get_verbosity],
     artma / libs / formatting / results[print_summary_table],
     artma / econometric / linear[run_linear_models],
-    artma / modules / runtime_methods[new_method_result],
-    artma / options / index[get_option_group],
-    artma / options / significance_marks[resolve_add_significance_marks]
+    artma / modules / runtime_methods[new_method_result]
   )
 
   validate(is.data.frame(df))
   validate_columns(df, c("effect", "se", "study_id"))
 
-  opt <- get_option_group("artma.methods.linear_tests")
-
-  add_marks <- resolve_add_significance_marks()
-  bootstrap_replications <- opt$bootstrap_replications %||% 999L
-  conf_level <- opt$conf_level %||% 0.95
-  round_to <- as.integer(getOption("artma.output.number_of_decimals", 3))
-
-  validate(
-    is.logical(add_marks),
-    is.numeric(bootstrap_replications),
-    is.numeric(conf_level),
-    is.numeric(round_to)
-  )
-
-  bootstrap_replications <- as.integer(bootstrap_replications)
-  assert(bootstrap_replications >= 0, "Bootstrap replications must be greater than or equal to 0.")
-  assert(conf_level > 0 && conf_level < 1, "Confidence level must lie in the (0, 1) interval.")
-  assert(round_to >= 0, "Number of decimals must be non-negative.")
-
-  resolved_options <- list(
-    add_significance_marks = add_marks,
-    bootstrap_replications = bootstrap_replications,
-    conf_level = conf_level,
-    round_to = round_to
-  )
+  resolved_options <- resolve_linear_tests_options()
+  bootstrap_replications <- resolved_options$bootstrap_replications
+  conf_level <- resolved_options$conf_level
 
   verbosity <- get_verbosity()
 
@@ -100,6 +76,43 @@ linear_tests <- function(df) {
   ))
 }
 
+#' @title Resolve the linear_tests options
+#' @description Read and validate the option group for `linear_tests` through
+#'   the declarative option-spec resolver, returning the `resolved_options` list
+#'   the method passes to `run_linear_models`. Exposed as its own function so a
+#'   characterization test can pin the resolved values.
+#' @return *\[list\]* The resolved options.
+resolve_linear_tests_options <- function() {
+  box::use(
+    artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options],
+    artma / options / significance_marks[resolve_add_significance_marks]
+  )
+
+  opt <- get_option_group("artma.methods.linear_tests")
+
+  resolved <- resolve_options(opt, list(
+    bootstrap_replications = opt_spec(
+      default = 999L, type = "numeric", cast = as.integer,
+      constraint = function(x) x >= 0,
+      constraint_msg = "Bootstrap replications must be greater than or equal to 0."
+    ),
+    conf_level = opt_spec(
+      default = 0.95, type = "numeric",
+      constraint = function(x) x > 0 && x < 1,
+      constraint_msg = "Confidence level must lie in the (0, 1) interval."
+    ),
+    round_to = opt_spec(
+      default = 3L, type = "numeric", key = "artma.output.number_of_decimals",
+      cast = as.integer,
+      constraint = function(x) x >= 0,
+      constraint_msg = "Number of decimals must be non-negative."
+    )
+  ))
+
+  c(list(add_significance_marks = resolve_add_significance_marks()), resolved)
+}
+
 box::use(
   artma / modules / runtime_methods[register_runtime_method]
 )
@@ -110,4 +123,4 @@ run <- register_runtime_method(
   required_columns = c("effect", "se", "study_id")
 )
 
-box::export(linear_tests, run)
+box::export(linear_tests, resolve_linear_tests_options, run)

@@ -8,10 +8,11 @@ fma <- function(df, bma_result = NULL) {
     artma / econometric / bma[handle_bma_params, run_bma],
     artma / econometric / fma[run_fma],
     artma / libs / core / utils[get_verbosity],
-    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / validation[validate, validate_columns],
     artma / methods / bma[prepare_bma_inputs, unwrap_bma_result],
     artma / modules / runtime_methods[new_method_result],
-    artma / options / index[get_option_group]
+    artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options]
   )
 
   validate(is.data.frame(df))
@@ -25,43 +26,42 @@ fma <- function(df, bma_result = NULL) {
   fma_opt <- get_option_group("artma.methods.fma")
   bma_opt <- get_option_group("artma.methods.bma")
 
-  verbose_output <- fma_opt$verbose_output %||% FALSE
-  print_results <- fma_opt$print_results %||% "fast"
-  round_to <- fma_opt$round_to %||% NA_integer_
+  fma_resolved <- resolve_options(fma_opt, list(
+    verbose_output = opt_spec(default = FALSE, type = "logical"),
+    print_results = opt_spec(
+      default = "fast", type = "character",
+      constraint = function(x) x %in% c("none", "fast", "verbose", "all"),
+      constraint_msg = "print_results must be one of: none, fast, verbose, all"
+    ),
+    round_to = opt_spec(default = NA_integer_, type = "numeric", allow_na = TRUE)
+  ))
 
-  validate(
-    is.logical(verbose_output),
-    is.character(print_results),
-    is.numeric(round_to) || is.na(round_to)
-  )
-
-  assert(
-    print_results %in% c("none", "fast", "verbose", "all"),
-    "print_results must be one of: none, fast, verbose, all"
-  )
+  verbose_output <- fma_resolved$verbose_output
+  print_results <- fma_resolved$print_results
+  round_to <- fma_resolved$round_to
 
   # Suppress individual FMA text output unless verbose_output is enabled
   effective_print <- if (verbose_output) print_results else "none"
 
-  burn <- bma_opt$burn %||% 10000L
-  iter <- bma_opt$iter %||% 50000L
-  g <- bma_opt$g %||% "UIP"
-  mprior <- bma_opt$mprior %||% "uniform"
-  nmodel <- bma_opt$nmodel %||% 1000L
-  mcmc <- bma_opt$mcmc %||% "bd"
-  use_vif_optimization <- bma_opt$use_vif_optimization %||% FALSE
-  max_groups_to_remove <- bma_opt$max_groups_to_remove %||% 30L
+  bma_resolved <- resolve_options(bma_opt, list(
+    burn = opt_spec(default = 10000L, type = "numeric"),
+    iter = opt_spec(default = 50000L, type = "numeric"),
+    g = opt_spec(default = "UIP", type = "character"),
+    mprior = opt_spec(default = "uniform", type = "character"),
+    nmodel = opt_spec(default = 1000L, type = "numeric"),
+    mcmc = opt_spec(default = "bd", type = "character"),
+    use_vif_optimization = opt_spec(default = FALSE, type = "logical"),
+    max_groups_to_remove = opt_spec(default = 30L, type = "numeric")
+  ))
 
-  validate(
-    is.numeric(burn),
-    is.numeric(iter),
-    is.character(g),
-    is.character(mprior),
-    is.numeric(nmodel),
-    is.character(mcmc),
-    is.logical(use_vif_optimization),
-    is.numeric(max_groups_to_remove)
-  )
+  burn <- bma_resolved$burn
+  iter <- bma_resolved$iter
+  g <- bma_resolved$g
+  mprior <- bma_resolved$mprior
+  nmodel <- bma_resolved$nmodel
+  mcmc <- bma_resolved$mcmc
+  use_vif_optimization <- bma_resolved$use_vif_optimization
+  max_groups_to_remove <- bma_resolved$max_groups_to_remove
 
   bma_params_list <- list(
     burn = as.integer(burn),

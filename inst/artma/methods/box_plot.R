@@ -7,10 +7,11 @@ box_plot <- function(df) {
   box::use(
     artma / data_config / read[get_data_config],
     artma / libs / core / utils[get_verbosity],
-    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / validation[validate, validate_columns],
     artma / libs / core / autonomy[should_prompt_user],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options],
     artma / visualization / options[get_visualization_options],
     artma / visualization / export[export_named_plots]
   )
@@ -26,22 +27,25 @@ box_plot <- function(df) {
   opt <- get_option_group("artma.methods.box_plot")
   vis <- get_visualization_options()
 
-  factor_by <- opt$factor_by %||% NA_character_
-  max_per_plot <- opt$max_boxes_per_plot %||% 60L
+  resolved <- resolve_options(opt, list(
+    factor_by = opt_spec(default = NA_character_, type = "character", allow_na = TRUE),
+    max_per_plot = opt_spec(
+      default = 60L, type = "numeric", from = "max_boxes_per_plot",
+      constraint = function(x) x > 0,
+      constraint_msg = "max_boxes_per_plot must be positive"
+    ),
+    show_mean_line = opt_spec(default = TRUE, type = "logical"),
+    effect_label = opt_spec(default = "effect", type = "character")
+  ))
+
+  factor_by <- resolved$factor_by
+  max_per_plot <- resolved$max_per_plot
+  show_mean_line <- resolved$show_mean_line
+  effect_label <- resolved$effect_label
   theme_name <- vis$theme
-  show_mean_line <- opt$show_mean_line %||% TRUE
-  effect_label <- opt$effect_label %||% "effect"
   export_graphics <- vis$export_graphics
   export_path <- vis$export_path
   graph_scale <- vis$graph_scale
-
-  validate(
-    is.numeric(max_per_plot),
-    is.logical(show_mean_line),
-    is.character(effect_label)
-  )
-
-  assert(max_per_plot > 0, "max_boxes_per_plot must be positive")
 
   factor_by <- resolve_factor_by(df, config, factor_by)
 

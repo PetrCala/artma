@@ -6,9 +6,10 @@
 funnel_plot <- function(df) {
   box::use(
     artma / libs / core / utils[get_verbosity],
-    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / validation[validate, validate_columns],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options],
     artma / visualization / options[get_visualization_options],
     artma / visualization / export[export_named_plots]
   )
@@ -23,32 +24,31 @@ funnel_plot <- function(df) {
   opt <- get_option_group("artma.methods.funnel_plot")
   vis <- get_visualization_options()
 
-  effect_proximity <- opt$effect_proximity %||% 0.2
-  maximum_precision <- opt$maximum_precision %||% 0.2
-  precision_to_log <- opt$precision_to_log %||% FALSE
-  use_study_medians <- opt$use_study_medians %||% FALSE
-  add_zero <- opt$add_zero %||% TRUE
+  resolved <- resolve_options(opt, list(
+    effect_proximity = opt_spec(
+      default = 0.2, type = "numeric",
+      constraint = function(x) x >= 0 && x <= 1,
+      constraint_msg = "effect_proximity must be between 0 and 1"
+    ),
+    maximum_precision = opt_spec(
+      default = 0.2, type = "numeric",
+      constraint = function(x) x >= 0 && x <= 1,
+      constraint_msg = "maximum_precision must be between 0 and 1"
+    ),
+    precision_to_log = opt_spec(default = FALSE, type = "logical"),
+    use_study_medians = opt_spec(default = FALSE, type = "logical"),
+    add_zero = opt_spec(default = TRUE, type = "logical")
+  ))
+
+  effect_proximity <- resolved$effect_proximity
+  maximum_precision <- resolved$maximum_precision
+  precision_to_log <- resolved$precision_to_log
+  use_study_medians <- resolved$use_study_medians
+  add_zero <- resolved$add_zero
   theme_name <- vis$theme
   export_graphics <- vis$export_graphics
   export_path <- vis$export_path
   graph_scale <- vis$graph_scale
-
-  validate(
-    is.numeric(effect_proximity),
-    is.numeric(maximum_precision),
-    is.logical(precision_to_log),
-    is.logical(use_study_medians),
-    is.logical(add_zero)
-  )
-
-  assert(
-    effect_proximity >= 0 && effect_proximity <= 1,
-    "effect_proximity must be between 0 and 1"
-  )
-  assert(
-    maximum_precision >= 0 && maximum_precision <= 1,
-    "maximum_precision must be between 0 and 1"
-  )
 
   if (use_study_medians) {
     validate_columns(df, c("study_id"))

@@ -9,11 +9,12 @@
 #' than a test, and its diagnostics do not read as p-hacking p-values.
 p_hacking_tests <- function(df) {
   box::use(
-    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / validation[validate, validate_columns],
     artma / libs / core / utils[get_verbosity],
     artma / econometric / p_hacking[run_p_hacking_tests],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options],
     artma / options / significance_marks[resolve_add_significance_marks]
   )
 
@@ -22,97 +23,99 @@ p_hacking_tests <- function(df) {
 
   opt <- get_option_group("artma.methods.p_hacking_tests")
 
-  # Caliper options
-  include_caliper <- opt$include_caliper %||% TRUE
-  caliper_thresholds <- opt$caliper_thresholds %||% c(1.645, 1.96, 2.58)
-  caliper_widths <- opt$caliper_widths %||% c(0.05, 0.1, 0.15)
-  caliper_display_ratios <- opt$caliper_display_ratios %||% TRUE
-  caliper_tail <- opt$caliper_tail %||% "auto"
-  caliper_cluster <- opt$caliper_cluster %||% TRUE
+  resolved <- resolve_options(opt, list(
+    include_caliper = opt_spec(default = TRUE, type = "logical"),
+    caliper_thresholds = opt_spec(
+      default = c(1.645, 1.96, 2.58), type = "numeric",
+      constraint = function(x) length(x) > 0,
+      constraint_msg = "caliper_thresholds must not be empty"
+    ),
+    caliper_widths = opt_spec(
+      default = c(0.05, 0.1, 0.15), type = "numeric",
+      constraint = function(x) length(x) > 0,
+      constraint_msg = "caliper_widths must not be empty"
+    ),
+    caliper_display_ratios = opt_spec(default = TRUE, type = "logical"),
+    caliper_tail = opt_spec(
+      default = "auto", type = "character",
+      constraint = function(x) x %in% c("auto", "positive", "negative", "absolute"),
+      constraint_msg = "caliper_tail must be one of: auto, positive, negative, absolute"
+    ),
+    caliper_cluster = opt_spec(default = TRUE, type = "logical"),
+    include_elliott = opt_spec(default = TRUE, type = "logical"),
+    lcm_iterations = opt_spec(
+      default = 10000L, type = "numeric", cast = as.integer,
+      constraint = function(x) x > 0, constraint_msg = "lcm_iterations must be positive"
+    ),
+    lcm_grid_points = opt_spec(
+      default = 3000L, type = "numeric", cast = as.integer,
+      constraint = function(x) x > 0, constraint_msg = "lcm_grid_points must be positive"
+    ),
+    simulate_cdfs_chunk_size = opt_spec(
+      default = 512L, type = "numeric", from = "simulate_cdfs.chunk_size", cast = as.integer,
+      constraint = function(x) x > 0, constraint_msg = "simulate_cdfs.chunk_size must be positive"
+    ),
+    simulate_cdfs_seed = opt_spec(
+      default = 123L, type = "numeric", from = "simulate_cdfs.seed",
+      allow_na = TRUE, cast = as.integer
+    ),
+    include_discontinuity = opt_spec(default = TRUE, type = "logical"),
+    discontinuity_bandwidth = opt_spec(
+      default = NA_real_, type = "numeric", allow_na = TRUE,
+      constraint = function(x) x > 0, constraint_msg = "discontinuity_bandwidth must be positive"
+    ),
+    include_cox_shi = opt_spec(default = TRUE, type = "logical"),
+    cox_shi_bins = opt_spec(
+      default = 10L, type = "numeric", cast = as.integer,
+      constraint = function(x) x > 0, constraint_msg = "cox_shi_bins must be positive"
+    ),
+    cox_shi_order = opt_spec(
+      default = 2L, type = "numeric", cast = as.integer,
+      constraint = function(x) x >= 0, constraint_msg = "cox_shi_order must be non-negative"
+    ),
+    cox_shi_bounds = opt_spec(
+      default = 1L, type = "numeric", cast = as.integer,
+      constraint = function(x) x %in% c(0, 1), constraint_msg = "cox_shi_bounds must be 0 or 1"
+    ),
+    round_to = opt_spec(
+      default = 3L, type = "numeric", key = "artma.output.number_of_decimals", cast = as.integer,
+      constraint = function(x) x >= 0, constraint_msg = "Number of decimals must be non-negative"
+    )
+  ))
 
-  # Elliott options
-  include_elliott <- opt$include_elliott %||% TRUE
-  lcm_iterations <- opt$lcm_iterations %||% 10000L
-  lcm_grid_points <- opt$lcm_grid_points %||% 3000L
-  simulate_cdfs_chunk_size <- opt[["simulate_cdfs.chunk_size"]] %||% 512L
-  simulate_cdfs_seed <- opt[["simulate_cdfs.seed"]] %||% 123L
-  if (length(simulate_cdfs_seed) == 1 && is.na(simulate_cdfs_seed)) {
-    simulate_cdfs_seed <- NULL
+  # An NA sentinel means "unset" for these two; convert to NULL, matching the
+  # prior code that turned an unset seed/bandwidth into NULL before dispatch.
+  simulate_cdfs_seed <- if (length(resolved$simulate_cdfs_seed) == 1 && is.na(resolved$simulate_cdfs_seed)) {
+    NULL
+  } else {
+    resolved$simulate_cdfs_seed
   }
-  include_discontinuity <- opt$include_discontinuity %||% TRUE
-  discontinuity_bandwidth <- opt$discontinuity_bandwidth %||% NA
-  if (length(discontinuity_bandwidth) == 1 && is.na(discontinuity_bandwidth)) {
-    discontinuity_bandwidth <- NULL
+  discontinuity_bandwidth <- if (length(resolved$discontinuity_bandwidth) == 1 && is.na(resolved$discontinuity_bandwidth)) {
+    NULL
+  } else {
+    resolved$discontinuity_bandwidth
   }
-  include_cox_shi <- opt$include_cox_shi %||% TRUE
-  cox_shi_bins <- opt$cox_shi_bins %||% 10L
-  cox_shi_order <- opt$cox_shi_order %||% 2L
-  cox_shi_bounds <- opt$cox_shi_bounds %||% 1L
-
-  # General options
-  add_significance_marks <- resolve_add_significance_marks()
-  round_to <- as.integer(getOption("artma.output.number_of_decimals", 3))
-
-  validate(
-    is.logical(include_caliper),
-    is.numeric(caliper_thresholds),
-    is.numeric(caliper_widths),
-    is.logical(caliper_display_ratios),
-    is.character(caliper_tail),
-    is.logical(caliper_cluster),
-    is.logical(include_elliott),
-    is.numeric(lcm_iterations),
-    is.numeric(lcm_grid_points),
-    is.numeric(simulate_cdfs_chunk_size),
-    is.null(simulate_cdfs_seed) || is.numeric(simulate_cdfs_seed),
-    is.logical(include_discontinuity),
-    is.null(discontinuity_bandwidth) || is.numeric(discontinuity_bandwidth),
-    is.logical(include_cox_shi),
-    is.numeric(cox_shi_bins),
-    is.numeric(cox_shi_order),
-    is.numeric(cox_shi_bounds),
-    is.logical(add_significance_marks),
-    is.numeric(round_to)
-  )
-
-  assert(length(caliper_thresholds) > 0, "caliper_thresholds must not be empty")
-  assert(
-    caliper_tail %in% c("auto", "positive", "negative", "absolute"),
-    "caliper_tail must be one of: auto, positive, negative, absolute"
-  )
-  assert(length(caliper_widths) > 0, "caliper_widths must not be empty")
-  assert(lcm_iterations > 0, "lcm_iterations must be positive")
-  assert(lcm_grid_points > 0, "lcm_grid_points must be positive")
-  assert(simulate_cdfs_chunk_size > 0, "simulate_cdfs.chunk_size must be positive")
-  assert(
-    is.null(discontinuity_bandwidth) || discontinuity_bandwidth > 0,
-    "discontinuity_bandwidth must be positive"
-  )
-  assert(cox_shi_bins > 0, "cox_shi_bins must be positive")
-  assert(cox_shi_order >= 0, "cox_shi_order must be non-negative")
-  assert(cox_shi_bounds %in% c(0, 1), "cox_shi_bounds must be 0 or 1")
-  assert(round_to >= 0, "Number of decimals must be non-negative")
 
   resolved_options <- list(
-    include_caliper = include_caliper,
-    caliper_thresholds = caliper_thresholds,
-    caliper_widths = caliper_widths,
-    caliper_display_ratios = caliper_display_ratios,
-    caliper_tail = caliper_tail,
-    caliper_cluster = caliper_cluster,
-    include_elliott = include_elliott,
-    lcm_iterations = as.integer(lcm_iterations),
-    lcm_grid_points = as.integer(lcm_grid_points),
-    simulate_cdfs_chunk_size = as.integer(simulate_cdfs_chunk_size),
-    simulate_cdfs_seed = if (is.null(simulate_cdfs_seed)) NULL else as.integer(simulate_cdfs_seed),
-    include_discontinuity = include_discontinuity,
+    include_caliper = resolved$include_caliper,
+    caliper_thresholds = resolved$caliper_thresholds,
+    caliper_widths = resolved$caliper_widths,
+    caliper_display_ratios = resolved$caliper_display_ratios,
+    caliper_tail = resolved$caliper_tail,
+    caliper_cluster = resolved$caliper_cluster,
+    include_elliott = resolved$include_elliott,
+    lcm_iterations = resolved$lcm_iterations,
+    lcm_grid_points = resolved$lcm_grid_points,
+    simulate_cdfs_chunk_size = resolved$simulate_cdfs_chunk_size,
+    simulate_cdfs_seed = simulate_cdfs_seed,
+    include_discontinuity = resolved$include_discontinuity,
     discontinuity_bandwidth = discontinuity_bandwidth,
-    include_cox_shi = include_cox_shi,
-    cox_shi_bins = as.integer(cox_shi_bins),
-    cox_shi_order = as.integer(cox_shi_order),
-    cox_shi_bounds = as.integer(cox_shi_bounds),
-    add_significance_marks = add_significance_marks,
-    round_to = round_to
+    include_cox_shi = resolved$include_cox_shi,
+    cox_shi_bins = resolved$cox_shi_bins,
+    cox_shi_order = resolved$cox_shi_order,
+    cox_shi_bounds = resolved$cox_shi_bounds,
+    add_significance_marks = resolve_add_significance_marks(),
+    round_to = resolved$round_to
   )
 
   results <- run_p_hacking_tests(df, resolved_options)

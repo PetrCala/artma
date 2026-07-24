@@ -11,6 +11,7 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     artma / libs / core / validation[assert, validate, validate_columns],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options],
     artma / visualization / options[get_visualization_options],
     artma / visualization / export[export_named_plots]
   )
@@ -23,46 +24,46 @@ best_practice_estimate <- function(df, bma_result = NULL) {
   }
 
   opt <- get_option_group("artma.methods.best_practice_estimate")
-  conf_level <- opt$conf_level %||% 0.95
-  include_intercept <- opt$include_intercept %||% TRUE
-  include_author_row <- opt$include_author_row %||% TRUE
-  include_study_rows <- opt$include_study_rows %||% TRUE
-  run_bma_if_missing <- opt$run_bma_if_missing %||% TRUE
-  include_economic_significance <- opt$include_economic_significance %||% TRUE
-  economic_significance_pip_threshold <- as.numeric(opt$economic_significance_pip_threshold %||% NA_real_)
-  include_factor_summary <- opt$include_factor_summary %||% TRUE
-  round_to <- as.integer(getOption("artma.output.number_of_decimals", 3))
 
-  validate(
-    is.numeric(conf_level),
-    length(conf_level) == 1,
-    is.logical(include_intercept),
-    length(include_intercept) == 1,
-    is.logical(include_author_row),
-    length(include_author_row) == 1,
-    is.logical(include_study_rows),
-    length(include_study_rows) == 1,
-    is.logical(run_bma_if_missing),
-    length(run_bma_if_missing) == 1,
-    is.logical(include_economic_significance),
-    length(include_economic_significance) == 1,
-    is.numeric(economic_significance_pip_threshold),
-    length(economic_significance_pip_threshold) == 1,
-    is.logical(include_factor_summary),
-    length(include_factor_summary) == 1,
-    is.numeric(round_to),
-    length(round_to) == 1
-  )
+  resolved <- resolve_options(opt, list(
+    conf_level = opt_spec(
+      default = 0.95, type = "numeric", scalar = TRUE,
+      constraint = function(x) x > 0 && x < 1,
+      constraint_msg = "conf_level must be between 0 and 1."
+    ),
+    include_intercept = opt_spec(default = TRUE, type = "logical", scalar = TRUE),
+    include_author_row = opt_spec(default = TRUE, type = "logical", scalar = TRUE),
+    include_study_rows = opt_spec(default = TRUE, type = "logical", scalar = TRUE),
+    run_bma_if_missing = opt_spec(default = TRUE, type = "logical", scalar = TRUE),
+    include_economic_significance = opt_spec(default = TRUE, type = "logical", scalar = TRUE),
+    economic_significance_pip_threshold = opt_spec(
+      default = NA_real_, type = "numeric", allow_na = TRUE, scalar = TRUE,
+      cast = as.numeric,
+      constraint = function(x) x >= 0 && x <= 1,
+      constraint_msg = "economic_significance_pip_threshold must be between 0 and 1."
+    ),
+    include_factor_summary = opt_spec(default = TRUE, type = "logical", scalar = TRUE),
+    round_to = opt_spec(
+      default = 3L, type = "numeric", key = "artma.output.number_of_decimals",
+      cast = as.integer, scalar = TRUE
+    )
+  ))
 
-  assert(conf_level > 0 && conf_level < 1, "conf_level must be between 0 and 1.")
+  conf_level <- resolved$conf_level
+  include_intercept <- resolved$include_intercept
+  include_author_row <- resolved$include_author_row
+  include_study_rows <- resolved$include_study_rows
+  run_bma_if_missing <- resolved$run_bma_if_missing
+  include_economic_significance <- resolved$include_economic_significance
+  economic_significance_pip_threshold <- resolved$economic_significance_pip_threshold
+  include_factor_summary <- resolved$include_factor_summary
+  round_to <- resolved$round_to
+
+  # Cross-option constraint: at least one row scope must remain enabled. Kept
+  # outside the per-option resolver because it spans two options.
   assert(
     include_author_row || include_study_rows,
     "At least one of include_author_row or include_study_rows must be TRUE."
-  )
-  assert(
-    is.na(economic_significance_pip_threshold) ||
-      (economic_significance_pip_threshold >= 0 && economic_significance_pip_threshold <= 1),
-    "economic_significance_pip_threshold must be between 0 and 1."
   )
 
   resolved_bma <- resolve_bma_input_for_bpe(

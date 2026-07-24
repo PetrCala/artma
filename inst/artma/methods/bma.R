@@ -17,9 +17,10 @@ bma <- function(df) {
       render_bma_comparison_plot
     ],
     artma / libs / core / utils[get_verbosity],
-    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / validation[validate, validate_columns],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options],
     artma / visualization / options[get_visualization_options]
   )
 
@@ -34,41 +35,48 @@ bma <- function(df) {
   opt <- get_option_group("artma.methods.bma")
   vis <- get_visualization_options()
 
-  burn <- opt$burn %||% 10000L
-  iter <- opt$iter %||% 50000L
-  g <- opt$g %||% "UIP"
-  mprior <- opt$mprior %||% "uniform"
-  nmodel <- opt$nmodel %||% 1000L
-  mcmc <- opt$mcmc %||% "bd"
-  use_vif_optimization <- opt$use_vif_optimization %||% FALSE
-  max_groups_to_remove <- opt$max_groups_to_remove %||% 30L
-  verbose_output <- opt$verbose_output %||% FALSE
-  print_results <- opt$print_results %||% "fast"
+  resolved <- resolve_options(opt, list(
+    burn = opt_spec(
+      default = 10000L, type = "numeric",
+      constraint = function(x) x > 0, constraint_msg = "burn must be positive"
+    ),
+    iter = opt_spec(
+      default = 50000L, type = "numeric",
+      constraint = function(x) x > 0, constraint_msg = "iter must be positive"
+    ),
+    g = opt_spec(default = "UIP", type = "character"),
+    mprior = opt_spec(default = "uniform", type = "character"),
+    nmodel = opt_spec(
+      default = 1000L, type = "numeric",
+      constraint = function(x) x > 0, constraint_msg = "nmodel must be positive"
+    ),
+    mcmc = opt_spec(default = "bd", type = "character"),
+    use_vif_optimization = opt_spec(default = FALSE, type = "logical"),
+    max_groups_to_remove = opt_spec(
+      default = 30L, type = "numeric",
+      constraint = function(x) x > 0, constraint_msg = "max_groups_to_remove must be positive"
+    ),
+    verbose_output = opt_spec(default = FALSE, type = "logical"),
+    print_results = opt_spec(
+      default = "fast", type = "character",
+      constraint = function(x) x %in% c("none", "fast", "verbose", "all", "table"),
+      constraint_msg = "print_results must be one of: none, fast, verbose, all, table"
+    )
+  ))
+
+  burn <- resolved$burn
+  iter <- resolved$iter
+  g <- resolved$g
+  mprior <- resolved$mprior
+  nmodel <- resolved$nmodel
+  mcmc <- resolved$mcmc
+  use_vif_optimization <- resolved$use_vif_optimization
+  max_groups_to_remove <- resolved$max_groups_to_remove
+  verbose_output <- resolved$verbose_output
+  print_results <- resolved$print_results
   export_graphics <- vis$export_graphics
   export_path <- vis$export_path
   graph_scale <- vis$graph_scale
-
-  validate(
-    is.numeric(burn),
-    is.numeric(iter),
-    is.character(g),
-    is.character(mprior),
-    is.numeric(nmodel),
-    is.character(mcmc),
-    is.logical(use_vif_optimization),
-    is.numeric(max_groups_to_remove),
-    is.logical(verbose_output),
-    is.character(print_results)
-  )
-
-  assert(burn > 0, "burn must be positive")
-  assert(iter > 0, "iter must be positive")
-  assert(nmodel > 0, "nmodel must be positive")
-  assert(max_groups_to_remove > 0, "max_groups_to_remove must be positive")
-  assert(
-    print_results %in% c("none", "fast", "verbose", "all", "table"),
-    "print_results must be one of: none, fast, verbose, all, table"
-  )
 
   prepared <- prepare_bma_inputs(
     df = df,

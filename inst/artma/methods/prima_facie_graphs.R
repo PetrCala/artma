@@ -7,10 +7,11 @@ prima_facie_graphs <- function(df) {
   box::use(
     artma / data_config / read[get_data_config],
     artma / libs / core / utils[get_verbosity],
-    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / validation[validate, validate_columns],
     artma / libs / core / autonomy[should_prompt_user],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options],
     artma / variable / detection[detect_variable_groups],
     artma / visualization / options[get_visualization_options],
     artma / visualization / export[export_named_plots]
@@ -27,25 +28,29 @@ prima_facie_graphs <- function(df) {
   opt <- get_option_group("artma.methods.prima_facie_graphs")
   vis <- get_visualization_options()
 
-  graph_type <- opt$type %||% "automatic"
-  hide_outliers <- opt$hide_outliers %||% TRUE
-  n_bins <- opt$n_bins %||% 80L
-  legend_font_size <- opt$legend_font_size %||% 14
+  resolved <- resolve_options(opt, list(
+    graph_type = opt_spec(
+      default = "automatic", type = "character", from = "type",
+      constraint = function(x) x %in% c("density", "histogram", "automatic"),
+      constraint_msg = "type must be one of: density, histogram, automatic"
+    ),
+    hide_outliers = opt_spec(default = TRUE, type = "logical"),
+    n_bins = opt_spec(
+      default = 80L, type = "numeric",
+      constraint = function(x) x > 0,
+      constraint_msg = "n_bins must be positive"
+    ),
+    legend_font_size = opt_spec(default = 14, type = "numeric")
+  ))
+
+  graph_type <- resolved$graph_type
+  hide_outliers <- resolved$hide_outliers
+  n_bins <- resolved$n_bins
+  legend_font_size <- resolved$legend_font_size
   theme_name <- vis$theme
   export_graphics <- vis$export_graphics
   export_path <- vis$export_path
   graph_scale <- vis$graph_scale
-
-  validate(
-    is.character(graph_type),
-    is.logical(hide_outliers),
-    is.numeric(n_bins), n_bins > 0,
-    is.numeric(legend_font_size)
-  )
-  assert(
-    graph_type %in% c("density", "histogram", "automatic"),
-    "type must be one of: density, histogram, automatic"
-  )
 
   groups <- resolve_groups(df, config, opt)
 
