@@ -15,6 +15,7 @@
 
 box::use(
   artma / libs / core / autonomy[get_autonomy_level, get_default_autonomy_level],
+  artma / libs / core / utils[opt_or],
   artma / libs / core / validation[assert],
   artma / visualization / fork_safety[graphics_survive_fork, with_forked_worker_flag]
 )
@@ -118,7 +119,7 @@ resolve_worker_count <- function(n_tasks,
     return(1L)
   }
 
-  if (!isTRUE(getOption("artma.general.parallel", TRUE))) {
+  if (!isTRUE(opt_or("artma.general.parallel", TRUE))) {
     return(1L)
   }
 
@@ -241,7 +242,13 @@ with_captured_output <- function(expr) {
     withCallingHandlers(
       list(value = expr, error = NULL),
       message = function(cond) {
-        cat(conditionMessage(cond), file = con, sep = "") # nolint: undesirable_function_linter.
+        msg <- conditionMessage(cond)
+        # base::message() ends with a newline, cli conditions do not; without
+        # one, consecutive captured cli lines concatenate on replay.
+        if (!grepl("\n$", msg)) {
+          msg <- paste0(msg, "\n")
+        }
+        cat(msg, file = con, sep = "") # nolint: undesirable_function_linter.
         invokeRestart("muffleMessage")
       },
       warning = function(cond) {
