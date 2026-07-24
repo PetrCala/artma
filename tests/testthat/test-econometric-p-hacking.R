@@ -704,8 +704,13 @@ test_that("run_p_hacking_tests reports numeric Cox-Shi rows on clustered data", 
 # Direct transcription of the pre-refactor compute_bounds, which evaluated
 # lambda2 per order (and per pair within an order) instead of sharing the
 # adjacent-pair vectors. Guards the refactor against any numeric drift.
+#
+# The h grid is 10x coarser than production's seq(0, 100, by = 0.001): each
+# bound is a max over the grid, so density only affects the max's resolution.
+# On the configs below the coarser max stays within 1.3e-5 relative of the
+# fine-grid value, well inside the 1e-4 tolerance used in the comparison.
 reference_bounds <- function(p_min, p_max, n_bins, order) {
-  h <- seq(0, 100, by = 0.001)
+  h <- seq(0, 100, by = 0.01)
   grid <- linspace(p_min, p_max, n_bins + 1)
   width <- c(n_bins, n_bins - 1, n_bins - 2)[order + 1]
   bounds <- numeric(width)
@@ -739,7 +744,8 @@ test_that("compute_bounds matches the per-order lambda2 formulas", {
     for (order in 0:2) {
       expect_equal(
         shared[[order + 1]],
-        reference_bounds(config$p_min, config$p_max, config$n_bins, order)
+        reference_bounds(config$p_min, config$p_max, config$n_bins, order),
+        tolerance = 1e-4
       )
     }
     expect_equal(bound0(config$p_min, config$p_max, config$n_bins), shared[[1]])
