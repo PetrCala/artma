@@ -902,6 +902,19 @@ data:
 
       If this option is not set (NA), you will be prompted interactively when missing values are detected.
 
+  max_imputation_missingness:
+    type: "numeric"
+    default: 0.5
+    help: |
+      Maximum share of missing values an optional numeric column may have and
+      still be imputed by the {.val median}, {.val mean}, {.val interpolate},
+      and {.val mice} strategies. Columns above the threshold keep their
+      missing values and are reported with a warning: imputing a mostly-missing
+      column collapses it to a near-constant, which can then distort moderator
+      sets (e.g. in BMA). Required numeric columns (effect, se, n_obs) are
+      always imputed regardless of this threshold, since leaving them missing
+      would break the analysis. Set to 1 to disable the guard.
+
   columns:
     type: "list"
     default: .na

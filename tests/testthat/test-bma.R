@@ -4,6 +4,7 @@ box::use(
     expect_false,
     expect_length,
     expect_match,
+    expect_message,
     expect_named,
     expect_null,
     expect_true,
@@ -337,4 +338,51 @@ test_that("bma skips with an explanatory reason instead of crashing on a single 
   expect_equal(nrow(result$tables$coefficients), 0)
   expect_true(is.null(result$meta$model))
   expect_match(result$meta$skipped, "at least 2 candidate moderator variables")
+})
+
+test_that("prepare_bma_inputs excludes constant moderators before scaling", {
+  local_options(list("artma.verbose" = 1))
+
+  df <- make_demo_bma_data()
+  # A constant column (the shape an over-imputed, mostly-missing column takes)
+  # would scale to all-NaN and let na.omit drop every observation.
+  df$const_mod <- 1
+  config <- list(
+    se = list(var_name = "se", bma = TRUE),
+    moderator1 = list(var_name = "moderator1", bma = TRUE),
+    const_mod = list(var_name = "const_mod", bma = TRUE)
+  )
+
+  prepared <- prepare_bma_inputs(
+    df, config,
+    use_vif_optimization = FALSE,
+    max_groups_to_remove = 3,
+    verbosity = 1
+  )
+
+  expect_true(is.null(prepared$skipped))
+  expect_false("const_mod" %in% colnames(prepared$bma_data))
+  expect_true(all(c("effect", "se", "moderator1") %in% colnames(prepared$bma_data)))
+  expect_true(nrow(prepared$bma_data) > 0)
+})
+
+test_that("prepare_bma_inputs warns about the excluded constant moderator", {
+  local_options(list("artma.verbose" = 1))
+
+  df <- make_demo_bma_data()
+  df$const_mod <- 1
+  config <- list(
+    moderator1 = list(var_name = "moderator1", bma = TRUE),
+    const_mod = list(var_name = "const_mod", bma = TRUE)
+  )
+
+  expect_message(
+    prepare_bma_inputs(
+      df, config,
+      use_vif_optimization = FALSE,
+      max_groups_to_remove = 3,
+      verbosity = 2
+    ),
+    "constant"
+  )
 })

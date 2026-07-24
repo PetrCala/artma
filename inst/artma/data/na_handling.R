@@ -93,12 +93,13 @@ handle_na_remove <- function(df) {
 #' @param df *\[data.frame\]* The data frame to process
 #' @param stat_fun *\[function\]* Summary function applied with `na.rm = TRUE`
 #' @param strategy *\[character\]* Strategy label used in messages
+#' @param exclude_cols *\[character, optional\]* Columns to leave unimputed
 #' @return *\[data.frame\]* The data frame with imputed values
 #' @keywords internal
-impute_with_column_stat <- function(df, stat_fun, strategy) {
+impute_with_column_stat <- function(df, stat_fun, strategy, exclude_cols = character(0)) {
   imputed_count <- 0
 
-  for (col in colnames(df)) {
+  for (col in setdiff(colnames(df), exclude_cols)) {
     if (is.numeric(df[[col]]) && any(is.na(df[[col]]))) {
       na_indices <- is.na(df[[col]])
       stat_val <- stat_fun(df[[col]], na.rm = TRUE)
@@ -124,31 +125,34 @@ impute_with_column_stat <- function(df, stat_fun, strategy) {
 
 #' @title Handle missing values with median imputation
 #' @param df *\[data.frame\]* The data frame to process
+#' @param exclude_cols *\[character, optional\]* Columns to leave unimputed
 #' @return *\[data.frame\]* The data frame with imputed values
 #' @keywords internal
-handle_na_median <- function(df) {
-  impute_with_column_stat(df, stats::median, "median")
+handle_na_median <- function(df, exclude_cols = character(0)) {
+  impute_with_column_stat(df, stats::median, "median", exclude_cols = exclude_cols)
 }
 
 
 #' @title Handle missing values with mean imputation
 #' @param df *\[data.frame\]* The data frame to process
+#' @param exclude_cols *\[character, optional\]* Columns to leave unimputed
 #' @return *\[data.frame\]* The data frame with imputed values
 #' @keywords internal
-handle_na_mean <- function(df) {
-  impute_with_column_stat(df, mean, "mean")
+handle_na_mean <- function(df, exclude_cols = character(0)) {
+  impute_with_column_stat(df, mean, "mean", exclude_cols = exclude_cols)
 }
 
 
 #' @title Handle missing values with linear interpolation
 #' @description Use linear interpolation to fill missing values based on neighboring values. Works on all numeric columns (both required and optional).
 #' @param df *\[data.frame\]* The data frame to process
+#' @param exclude_cols *\[character, optional\]* Columns to leave unimputed
 #' @return *\[data.frame\]* The data frame with interpolated values
 #' @keywords internal
-handle_na_interpolate <- function(df) {
+handle_na_interpolate <- function(df, exclude_cols = character(0)) {
   imputed_count <- 0
 
-  for (col in colnames(df)) {
+  for (col in setdiff(colnames(df), exclude_cols)) {
     if (is.numeric(df[[col]]) && any(is.na(df[[col]]))) {
       na_indices <- is.na(df[[col]])
       initial_na_count <- sum(na_indices)
@@ -196,11 +200,14 @@ handle_na_interpolate <- function(df) {
 #' @title Handle missing values with MICE
 #' @description Use Multiple Imputation by Chained Equations to fill missing values.
 #' Includes automatic detection and exclusion of problematic columns (dummy groups,
-#' near-zero variance, high-NA) to prevent singularity errors.
+#' near-zero variance) to prevent singularity errors.
 #' @param df *\[data.frame\]* The data frame to process
+#' @param exclude_cols *\[character, optional\]* Columns to leave unimputed and
+#'   keep out of the MICE predictor set (e.g. mostly-missing columns caught by
+#'   the missingness-ratio guard)
 #' @return *\[data.frame\]* The data frame with imputed values
 #' @keywords internal
-handle_na_mice <- function(df) {
+handle_na_mice <- function(df, exclude_cols = character(0)) {
   box::use(artma / data / profile[detect_dummy_groups])
 
   if (!requireNamespace("mice", quietly = TRUE)) {
@@ -227,7 +234,7 @@ handle_na_mice <- function(df) {
   # --- Pre-MICE validation: detect problematic columns ---
 
   df_for_mice <- df
-  excluded_cols <- character(0)
+  excluded_cols <- exclude_cols
   dummy_groups <- data.frame()
 
   # 1. Detect dummy groups (e.g., gender_male/gender_female) - exclude non-reference
@@ -264,35 +271,13 @@ handle_na_mice <- function(df) {
     }
   }
 
-  # 3. Detect high-NA columns (>80% missing) - impute separately with median
-  high_na_threshold <- 0.8
-  high_na_cols <- vapply(cols_with_na, function(col) {
-    mean(is.na(df[[col]])) > high_na_threshold
-  }, logical(1))
-  high_na_col_names <- cols_with_na[high_na_cols]
-  if (length(high_na_col_names) > 0) {
-    excluded_cols <- c(excluded_cols, high_na_col_names)
-    if (get_verbosity() >= 3) {
-      cli::cli_alert_info(
-        "Excluding {length(high_na_col_names)} high-NA column{?s} (>{high_na_threshold * 100}% missing) from MICE: {.val {high_na_col_names}}"
-      )
-    }
-    # Pre-impute high-NA columns with median
-    for (col in high_na_col_names) {
-      col_median <- stats::median(df[[col]], na.rm = TRUE)
-      if (!is.na(col_median)) {
-        df[[col]][is.na(df[[col]])] <- col_median
-      }
-    }
-  }
-
   # Remove excluded columns from MICE predictor set
   excluded_cols <- unique(excluded_cols)
   keep_cols <- setdiff(colnames(df), excluded_cols)
   df_for_mice <- df[, keep_cols, drop = FALSE]
 
   # Update cols_with_na to exclude already-handled columns
-  cols_to_impute <- setdiff(cols_with_na, c(high_na_col_names, excluded_cols))
+  cols_to_impute <- setdiff(cols_with_na, excluded_cols)
   cols_to_impute <- intersect(cols_to_impute, keep_cols)
 
   if (length(cols_to_impute) == 0) {
@@ -321,13 +306,13 @@ handle_na_mice <- function(df) {
         }
         return(NULL)
       }
-      cli::cli_abort(e)
+      cli::cli_abort("MICE imputation failed: {conditionMessage(e)}")
     }
   )
 
   # Fallback to median if MICE failed
   if (is.null(mice_obj)) {
-    return(handle_na_median(df))
+    return(handle_na_median(df, exclude_cols = exclude_cols))
   }
 
   # Extract completed dataset and update original
@@ -378,6 +363,27 @@ handle_na_mice <- function(df) {
 }
 
 
+#' @title Identify columns too missing to impute
+#' @description Find optional numeric columns whose share of missing values
+#'   exceeds `threshold`. Imputing such columns collapses them to a
+#'   near-constant (e.g. a column with one valid value median-imputes into a
+#'   constant), so they are better left unimputed. Required numeric columns are
+#'   exempt: leaving them missing would break the analysis downstream.
+#' @param df *\[data.frame\]* The data frame to analyze
+#' @param threshold *\[numeric\]* Maximum tolerated missingness ratio in \[0, 1\]
+#' @return *\[numeric\]* Named vector of missingness ratios, one entry per
+#'   column exceeding the threshold
+#' @keywords internal
+identify_unimputable_columns <- function(df, threshold) {
+  optional_numeric <- setdiff(
+    colnames(df)[vapply(df, is.numeric, logical(1))],
+    get_required_colnames()
+  )
+  ratios <- vapply(optional_numeric, function(col) mean(is.na(df[[col]])), numeric(1))
+  ratios[ratios > threshold]
+}
+
+
 #' @title Handle missing values
 #' @description Main function to handle missing values according to the selected strategy.
 #'
@@ -386,13 +392,18 @@ handle_na_mice <- function(df) {
 #' - Numeric required columns (e.g., effect, se, n_obs) can be imputed if a non-"stop" strategy is selected
 #' - Optional columns are handled according to the selected strategy
 #'
+#' Imputation strategies skip optional numeric columns whose missingness ratio
+#' exceeds `artma.data.max_imputation_missingness`; those columns keep their
+#' missing values and a warning is emitted.
+#'
 #' @param df *\[data.frame\]* The data frame to process
 #' @return *\[data.frame\]* The processed data frame
 #' @keywords internal
 handle_missing_values <- function(df) {
   box::use(
     artma / const[CONST],
-    artma / options / typed_accessors[get_na_handling]
+    artma / libs / core / validation[assert],
+    artma / options / typed_accessors[get_na_handling, get_max_imputation_missingness]
   )
 
   # Detect missing values
@@ -477,6 +488,32 @@ handle_missing_values <- function(df) {
     cli::cli_alert_warning("Missing values detected in optional columns: {optional_cols_msg}")
   }
 
+  # Missingness-ratio guard: mostly-missing optional columns are left as-is
+  # instead of being imputed into near-constants.
+  skip_cols <- character(0)
+  if (na_handling %in% c("median", "mean", "interpolate", "mice")) {
+    max_missingness <- get_max_imputation_missingness()
+    assert(
+      is.numeric(max_missingness) && length(max_missingness) == 1 &&
+        !is.na(max_missingness) && max_missingness >= 0 && max_missingness <= 1,
+      "The option 'artma.data.max_imputation_missingness' must be a single number between 0 and 1."
+    )
+    skip_ratios <- identify_unimputable_columns(df, max_missingness)
+    skip_cols <- names(skip_ratios)
+    if (length(skip_cols) > 0 && get_verbosity() >= 2) {
+      skip_msg <- paste0(
+        skip_cols, " (", round(skip_ratios * 100, 1), "% missing)",
+        collapse = ", "
+      )
+      cli::cli_alert_warning(
+        "Skipping imputation for {length(skip_cols)} column{?s} with more than {.val {max_missingness * 100}%} missing values: {skip_msg}."
+      )
+      cli::cli_alert_info(
+        "These columns keep their missing values; adjust {.field artma.data.max_imputation_missingness} to change this."
+      )
+    }
+  }
+
   # Apply the selected strategy
   df_processed <- switch(na_handling,
     "stop" = {
@@ -488,10 +525,10 @@ handle_missing_values <- function(df) {
       ))
     },
     "remove" = handle_na_remove(df),
-    "median" = handle_na_median(df),
-    "mean" = handle_na_mean(df),
-    "interpolate" = handle_na_interpolate(df),
-    "mice" = handle_na_mice(df),
+    "median" = handle_na_median(df, exclude_cols = skip_cols),
+    "mean" = handle_na_mean(df, exclude_cols = skip_cols),
+    "interpolate" = handle_na_interpolate(df, exclude_cols = skip_cols),
+    "mice" = handle_na_mice(df, exclude_cols = skip_cols),
     {
       cli::cli_abort("Unknown missing value handling strategy: {.val {na_handling}}")
     }
