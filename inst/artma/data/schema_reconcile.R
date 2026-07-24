@@ -111,7 +111,10 @@ emit_reconcile_complete <- function() {
 #'   name for role columns and by the column's own name for moderators.
 #' @return *\[list\]* Drift report with fields: `missing_roles` (named character
 #'   vector, names = standard names, values = the stored source columns that
-#'   vanished), `missing_moderators`, `added`, and `has_drift`.
+#'   vanished), `missing_moderators`, `added`, `conflicts` (named character
+#'   vector, names = standard names whose non-identity mapping collides with a
+#'   different raw column of the same name, values = the mapped source
+#'   columns), and `has_drift`.
 #' @keywords internal
 detect_schema_drift <- function(raw_df, columns_store) {
   box::use(
@@ -147,6 +150,31 @@ detect_schema_drift <- function(raw_df, columns_store) {
   missing_role_std <- names(role_values)[!role_values %in% df_cols]
   missing_roles <- vapply(role_sources[missing_role_std], identity, character(1))
 
+  # --- Mapping conflicts ---
+  # A role mapped (non-identity) to a source column collides when the raw data
+  # also contains a *different* column named exactly like the standard name.
+  # Renaming the source would then produce two columns sharing that name, so
+  # `standardize_column_names()` aborts. Flag it here so reconciliation can
+  # resolve it up front. Byte-identical occupants are excluded (the pipeline
+  # drops those quietly), as are conflicts the user already resolved via
+  # `drop_conflicting_raw`.
+  conflicts <- character(0)
+  raw_df_cols <- make.names(colnames(raw_df))
+  for (std in names(role_values)) {
+    src_norm <- role_values[[std]]
+    if (identical(src_norm, std)) next
+    if (!std %in% df_cols || !src_norm %in% df_cols) next
+
+    entry <- columns_store[[std]]
+    if (is.list(entry) && isTRUE(entry[["drop_conflicting_raw"]])) next
+
+    src_values <- raw_df[[which(raw_df_cols == src_norm)[[1]]]]
+    std_values <- raw_df[[which(raw_df_cols == std)[[1]]]]
+    if (identical(src_values, std_values)) next
+
+    conflicts[[std]] <- role_sources[[std]]
+  }
+
   # --- Moderator columns (non-role record keys) ---
   # Computed columns are added by the pipeline, not by the user's data, so they
   # will never be present in the raw df and must not be flagged as missing.
@@ -172,10 +200,12 @@ detect_schema_drift <- function(raw_df, columns_store) {
     missing_roles = missing_roles, # named: std name -> stored source column
     missing_moderators = missing_moderators,
     added = added,
+    conflicts = conflicts, # named: std name -> mapped source column
     has_drift = (
       length(missing_roles) > 0 ||
         length(missing_moderators) > 0 ||
-        length(added) > 0
+        length(added) > 0 ||
+        length(conflicts) > 0
     )
   )
 }
@@ -250,7 +280,11 @@ show_drift_summary <- function(drift, proposals_roles, proposals_moderators, rol
   cli::cli_h3("Standard columns")
   for (std in names(role_sources)) {
     stored <- role_sources[[std]]
-    if (std %in% names(drift$missing_roles)) {
+    if (std %in% names(drift$conflicts)) {
+      cli::cli_alert_warning(
+        "{.val {stored}} {cli::symbol$arrow_right} {.val {std}} CONFLICTS with an existing {.val {std}} column in the data"
+      )
+    } else if (std %in% names(drift$missing_roles)) {
       prop <- proposals_roles[[std]]
       if (!is.null(prop) && !is.na(prop$candidate)) {
         cli::cli_alert_warning(
@@ -299,6 +333,19 @@ auto_decisions <- function(drift, proposals_roles, proposals_moderators) {
   renames <- list()
   drops <- character(0)
   remaps <- list()
+  conflicts <- list()
+
+  # Mapping conflicts: the explicit mapping is a deliberate user choice, so it
+  # wins over a colliding raw column; the raw column is dropped with a warning.
+  for (std in names(drift$conflicts)) {
+    src <- drift$conflicts[[std]]
+    conflicts[[std]] <- "keep_mapping"
+    if (get_verbosity() >= 2) {
+      cli::cli_alert_warning(
+        "Column {.val {std}} is mapped from {.val {src}}, but the data also contains a different {.val {std}} column. Keeping the mapping and dropping the raw {.val {std}} column. Run {.code artma::config.reset(\"{std}\")} to use the raw column instead."
+      )
+    }
+  }
 
   # Role columns: accept high-confidence proposals, abort if unresolvable
   for (std in names(drift$missing_roles)) {
@@ -347,7 +394,7 @@ auto_decisions <- function(drift, proposals_roles, proposals_moderators) {
     }
   }
 
-  list(renames = renames, drops = drops, remaps = remaps)
+  list(renames = renames, drops = drops, remaps = remaps, conflicts = conflicts)
 }
 
 #' @title Ask for reconciliation decisions interactively
@@ -357,8 +404,31 @@ ask_decisions <- function(drift, proposals_roles, proposals_moderators, raw_df) 
   renames <- list()
   drops <- character(0)
   remaps <- list()
+  conflicts <- list()
 
   all_df_cols <- make.names(colnames(raw_df))
+
+  # --- Mapping conflicts ---
+  for (std in names(drift$conflicts)) {
+    src <- drift$conflicts[[std]]
+
+    prompt_text <- cli::format_inline(
+      "Column {.val {std}} is mapped from {.val {src}}, but the data also contains a different column named {.val {std}}. Which one should supply {.val {std}}?"
+    )
+    choices <- c(
+      cli::format_inline("Keep the mapping: use {.val {src}} and drop the raw {.val {std}} column"),
+      cli::format_inline("Use the raw {.val {std}} column (removes the mapping from {.val {src}})"),
+      "Abort"
+    )
+
+    choice <- climenu::select(choices = choices, prompt = prompt_text)
+
+    if (is.null(choice) || grepl("^Abort", choice)) {
+      cli::cli_abort("Reconciliation aborted by user.")
+    }
+
+    conflicts[[std]] <- if (grepl("^Keep", choice)) "keep_mapping" else "use_existing"
+  }
 
   # --- Role columns ---
   for (std in names(drift$missing_roles)) {
@@ -456,7 +526,7 @@ ask_decisions <- function(drift, proposals_roles, proposals_moderators, raw_df) 
     }
   }
 
-  list(renames = renames, drops = drops, remaps = remaps)
+  list(renames = renames, drops = drops, remaps = remaps, conflicts = conflicts)
 }
 
 # -- Confirmation and summary --
@@ -471,6 +541,20 @@ confirm_decisions <- function(decisions, drift, role_sources) {
     old_raw <- role_sources[[std]]
     new_raw <- decisions$renames[[std]]
     cli::cli_alert_success("Mapped: {.val {old_raw}} {cli::symbol$arrow_right} {.val {new_raw}}")
+  }
+
+  # Mapping conflict resolutions
+  for (std in names(decisions$conflicts)) {
+    src <- role_sources[[std]]
+    if (identical(decisions$conflicts[[std]], "keep_mapping")) {
+      cli::cli_alert_success(
+        "Kept mapping: {.val {src}} {cli::symbol$arrow_right} {.val {std}} (the raw {.val {std}} column will be dropped from the analysis)"
+      )
+    } else {
+      cli::cli_alert_success(
+        "Using the raw {.val {std}} column (removed the mapping from {.val {src}})"
+      )
+    }
   }
 
   # Moderator drops
@@ -492,7 +576,10 @@ confirm_decisions <- function(decisions, drift, role_sources) {
   }
 
   # Unchanged role columns
-  unchanged <- setdiff(names(role_sources), names(drift$missing_roles))
+  unchanged <- setdiff(
+    names(role_sources),
+    c(names(drift$missing_roles), names(drift$conflicts))
+  )
   if (length(unchanged) > 0) {
     unchanged_raw <- unlist(role_sources[unchanged], use.names = FALSE)
     cli::cli_alert_success("Unchanged: {.val {unchanged_raw}}")
@@ -551,6 +638,22 @@ apply_reconciliation <- function(decisions) {
     }
   }
 
+  # 4. Mapping conflict resolutions: either the mapping wins and the raw
+  #    column is flagged for dropping at standardization time, or the mapping
+  #    is removed so the raw column backs the role directly.
+  for (std in names(decisions$conflicts)) {
+    entry <- store[[std]]
+    if (!is.list(entry)) entry <- list()
+    if (identical(decisions$conflicts[[std]], "keep_mapping")) {
+      entry$drop_conflicting_raw <- TRUE
+      store[[std]] <- entry
+    } else {
+      entry$source_name <- NULL
+      entry$drop_conflicting_raw <- NULL
+      store[[std]] <- if (length(entry) == 0) NULL else entry
+    }
+  }
+
   write_unified_columns(store)
 
   invisible(NULL)
@@ -579,30 +682,37 @@ reconcile_schema <- function(raw_df, mode = NULL) {
     getOption("artma.data.expected_schema_columns", NA_character_)
   )
 
-  # Initialize baseline schema on first run. Until this baseline exists, drift
-  # details are suppressed regardless of reconcile mode.
-  if (length(expected_schema_cols) == 0L) {
-    persist_expected_schema_cols(current_schema_cols)
-    emit_reconcile_complete()
-    return(invisible(NULL))
-  }
+  first_run <- length(expected_schema_cols) == 0L
 
   columns_store <- get_columns_store()
 
   # Detect drift
   drift <- detect_schema_drift(raw_df, columns_store)
 
-  # "Added" columns should only include columns that are new relative to the
-  # stored baseline schema. Baseline columns that are simply not mapped should
-  # not be treated as drift on every run.
-  drift$added <- setdiff(drift$added, expected_schema_cols)
+  if (first_run) {
+    # No baseline schema yet: missing/added comparisons are meaningless, so
+    # suppress them. Mapping conflicts are baseline-independent (an explicit
+    # mapping colliding with a raw column) and stay actionable even now;
+    # left unresolved they would abort the pipeline later anyway.
+    drift$missing_roles <- stats::setNames(character(0), character(0))
+    drift$missing_moderators <- character(0)
+    drift$added <- character(0)
+  } else {
+    # "Added" columns should only include columns that are new relative to the
+    # stored baseline schema. Baseline columns that are simply not mapped
+    # should not be treated as drift on every run.
+    drift$added <- setdiff(drift$added, expected_schema_cols)
+  }
+
   drift$has_drift <- (
     length(drift$missing_roles) > 0 ||
       length(drift$missing_moderators) > 0 ||
-      length(drift$added) > 0
+      length(drift$added) > 0 ||
+      length(drift$conflicts) > 0
   )
 
   if (!drift$has_drift) {
+    if (first_run) persist_expected_schema_cols(current_schema_cols)
     emit_reconcile_complete()
     return(invisible(NULL))
   }
@@ -623,6 +733,12 @@ reconcile_schema <- function(raw_df, mode = NULL) {
     if (length(drift$added) > 0) {
       msgs <- c(msgs, "i" = cli::format_inline(
         "New column{?s} not in config: {.val {drift$added}}"
+      ))
+    }
+    if (length(drift$conflicts) > 0) {
+      conflict_pairs <- paste0(unname(drift$conflicts), " -> ", names(drift$conflicts))
+      msgs <- c(msgs, "i" = cli::format_inline(
+        "Mapping conflict{?s}: {.val {conflict_pairs}} while the data also contains a different raw column of the same standard name"
       ))
     }
     msgs <- c(msgs,

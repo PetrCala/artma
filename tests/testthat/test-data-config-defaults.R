@@ -80,7 +80,7 @@ test_that("build_default_config_entry: entry has all expected fields", {
 
   entry <- build_default_config_entry("x", c(1, 2, 3))
   expected_fields <- c(
-    "source_name", "is_computed",
+    "source_name", "drop_conflicting_raw", "is_computed",
     "var_name", "var_name_verbose", "var_name_description",
     "data_type", "group_category", "variable_summary",
     "effect_sum_stats", "equal", "gltl", "bma", "bma_reference_var",

@@ -166,9 +166,13 @@ standardize_column_names <- function(df, auto_detect = TRUE) {
   # A rename target already occupied by a different column would otherwise
   # silently produce two columns sharing a name; `df$<name>` would then return
   # whichever comes first, ignoring the user's explicit mapping. Detect this
-  # before renaming and abort, except for the two cases where no collision
-  # actually results: an identity mapping (source == target, a no-op), or the
-  # occupying column being renamed away itself in this same pass.
+  # before renaming and abort, except for the cases where no collision
+  # actually results: an identity mapping (source == target, a no-op), the
+  # occupying column being renamed away itself in this same pass, or the user
+  # having resolved the conflict in favor of the mapping (drop_conflicting_raw).
+  column_store <- getOption("artma.data.columns", list())
+  if (!is.list(column_store)) column_store <- list()
+
   for (i in seq_along(rename_from)) {
     source_col <- rename_from[[i]]
     target_col <- rename_to[[i]]
@@ -183,9 +187,22 @@ standardize_column_names <- function(df, auto_detect = TRUE) {
       next
     }
 
+    store_entry <- column_store[[target_col]]
+    if (is.list(store_entry) && isTRUE(store_entry[["drop_conflicting_raw"]])) {
+      if (get_verbosity() >= 3) {
+        cli::cli_alert_info(
+          "Dropping the raw {.val {target_col}} column: {.val {source_col}} is configured to supply it."
+        )
+      }
+      df[[target_col]] <- NULL
+      next
+    }
+
     cli::cli_abort(c(
       "x" = "Cannot map {.val {source_col}} to standard column {.val {target_col}}: the data frame already has a different column named {.val {target_col}}.",
-      "i" = "Resolve this by remapping {.val {target_col}} to a different source column, removing that mapping (e.g. via {.code artma::config.set()} or your options file), or renaming the raw {.val {target_col}} column in your data."
+      "i" = "Keep the mapping and drop the raw column: {.code artma::config.set(\"{target_col}\", drop_conflicting_raw = TRUE)}",
+      "i" = "Use the raw {.val {target_col}} column instead: {.code artma::config.reset(\"{target_col}\")}",
+      "i" = "Or map {.val {target_col}} to another source column: {.code artma::config.set(\"{target_col}\", source_name = \"<column>\")}"
     ))
   }
 

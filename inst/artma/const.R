@@ -42,6 +42,7 @@ CONST <- list(
   DATA_CONFIG = list(
     KEYS = list(
       SOURCE_NAME = "source_name",
+      DROP_CONFLICTING_RAW = "drop_conflicting_raw",
       IS_COMPUTED = "is_computed",
       VAR_NAME = "var_name",
       VAR_NAME_VERBOSE = "var_name_verbose",

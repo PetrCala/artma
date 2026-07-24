@@ -34,7 +34,10 @@ config.get <- function(var_name = NULL, options_file_name = NULL, options_dir = 
 #'   values are persisted to the options file.
 #' @param var_name *\[character\]* The variable name to configure.
 #' @param ... Named arguments for config fields to set
-#'   (e.g., `bma = TRUE, bma_to_log = TRUE`).
+#'   (e.g., `bma = TRUE, bma_to_log = TRUE`). Column mappings are set the same
+#'   way: `source_name = "study_name"` maps the variable to that column in the
+#'   data file, and `drop_conflicting_raw = TRUE` keeps such a mapping while
+#'   dropping a different raw column that occupies the standard name.
 #' @param options_file_name *\[character, optional\]* The name of the options
 #'   file. If `NULL` (default), the user will be prompted interactively.
 #' @param options_dir *\[character, optional\]* The directory containing options
@@ -49,7 +52,11 @@ config.set <- function(var_name, ..., options_file_name = NULL, options_dir = NU
       box::use(artma / data_config / write[update_data_config])
       fields <- list(...)
       if (length(fields) == 0) {
-        cli::cli_abort("No config fields provided. Use named arguments, e.g., {.code bma = TRUE}.")
+        cli::cli_abort(c(
+          "x" = "No config fields provided.",
+          "i" = "Usage: {.code artma::config.set(\"<variable>\", <field> = <value>)}, e.g. {.code artma::config.set(\"study_id\", source_name = \"study_name\")}.",
+          "i" = "To inspect current values, use {.code artma::config.get()}."
+        ))
       }
       changes <- list()
       changes[[make.names(var_name)]] <- fields

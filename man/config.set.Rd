@@ -10,7 +10,10 @@ config.set(var_name, ..., options_file_name = NULL, options_dir = NULL)
 \item{var_name}{\emph{[character]} The variable name to configure.}
 
 \item{...}{Named arguments for config fields to set
-(e.g., \verb{bma = TRUE, bma_to_log = TRUE}).}
+(e.g., \verb{bma = TRUE, bma_to_log = TRUE}). Column mappings are set the same
+way: \code{source_name = "study_name"} maps the variable to that column in the
+data file, and \code{drop_conflicting_raw = TRUE} keeps such a mapping while
+dropping a different raw column that occupies the standard name.}
 
 \item{options_file_name}{\emph{[character, optional]} The name of the options
 file. If \code{NULL} (default), the user will be prompted interactively.}

@@ -205,6 +205,45 @@ test_that("standardize_column_names aborts when a rename target is already occup
   )
 })
 
+test_that("the collision abort message names the exact remediation commands", {
+  box::use(artma / data / utils[standardize_column_names])
+
+  mock_df <- build_collision_df("study_name", paste("Study", 1:5))
+
+  withr::with_options(
+    list("artma.data.columns" = list(study_id = list(source_name = "study_name"))),
+    {
+      err <- tryCatch(
+        standardize_column_names(mock_df, auto_detect = FALSE),
+        error = function(e) conditionMessage(e)
+      )
+      expect_true(grepl('config.set("study_id", drop_conflicting_raw = TRUE)', err, fixed = TRUE))
+      expect_true(grepl('config.reset("study_id")', err, fixed = TRUE))
+    }
+  )
+})
+
+test_that("standardize_column_names drops the raw column when drop_conflicting_raw is set", {
+  box::use(artma / data / utils[standardize_column_names])
+
+  mock_df <- build_collision_df("study_name", paste("Study", 1:5))
+
+  withr::with_options(
+    list(
+      "artma.data.columns" = list(
+        study_id = list(source_name = "study_name", drop_conflicting_raw = TRUE)
+      ),
+      "artma.verbose" = 1L
+    ),
+    {
+      standardized_df <- standardize_column_names(mock_df, auto_detect = FALSE)
+      expect_equal(sum(colnames(standardized_df) == "study_id"), 1)
+      expect_equal(standardized_df$study_id, paste("Study", 1:5))
+      expect_false("study_name" %in% colnames(standardized_df))
+    }
+  )
+})
+
 test_that("standardize_column_names allows an identity mapping through quietly", {
   box::use(artma / data / utils[standardize_column_names])
 
