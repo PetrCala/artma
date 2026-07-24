@@ -109,6 +109,15 @@ Method-specific parameters for each analysis method:
 - `export_graphics`: Whether to export plots
 - `export_path`: Directory for exported graphics
 
+Note on moderator selection: when moderators are selected automatically, the
+standard error (`se`) and sample size (`study_size`) are always added to the
+BMA moderator set on top of your configured moderators and protected from
+collinearity pruning. Including the standard error term inside BMA is a
+publication-bias control by convention. These variables therefore appear in
+the Model Averaging results (and downstream `fma` and best-practice-estimate
+output) even if you did not flag them yourself; a note is printed during
+variable selection when this happens.
+
 #### `p_hacking_tests`
 
 - `include_caliper`: Whether to include Caliper tests
