@@ -1,10 +1,12 @@
 box::use(
   testthat[
     expect_equal,
+    expect_error,
     expect_false,
     expect_null,
     expect_true,
     skip_if,
+    skip_if_not_installed,
     test_that
   ]
 )
@@ -205,6 +207,33 @@ test_that("resolve_worker_count stays sequential when a fork cannot draw", {
     ),
     4L
   )
+})
+
+test_that("with_single_threaded_blas evaluates and returns expr's value", {
+  box::use(artma / visualization / fork_safety[with_single_threaded_blas])
+
+  expect_equal(with_single_threaded_blas(1 + 1), 2)
+  expect_error(with_single_threaded_blas(stop("boom")), "boom")
+})
+
+test_that("with_single_threaded_blas pins BLAS/OpenMP to one thread and restores them", {
+  box::use(artma / visualization / fork_safety[with_single_threaded_blas])
+
+  skip_if_not_installed("RhpcBLASctl")
+  # RhpcBLASctl reports NA for every OpenMP query when R itself was not built
+  # with OpenMP support (common on macOS toolchains); there is nothing to pin
+  # or restore in that case.
+  skip_if(is.na(RhpcBLASctl::omp_get_max_threads()), "R was not built with OpenMP support")
+
+  # Start from a known, non-default OpenMP thread count so restoration can be
+  # told apart from the pinned-down value used during `expr`.
+  RhpcBLASctl::omp_set_num_threads(2L)
+  withr::defer(RhpcBLASctl::omp_set_num_threads(RhpcBLASctl::omp_get_num_procs()))
+
+  during <- with_single_threaded_blas(RhpcBLASctl::omp_get_max_threads())
+
+  expect_equal(during, 1L)
+  expect_equal(RhpcBLASctl::omp_get_max_threads(), 2L)
 })
 
 test_that("resolve_worker_count ignores fork-unsafe graphics when not exporting", {
