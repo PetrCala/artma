@@ -7,9 +7,10 @@ box::use(
   testing / fixtures / index[FIXTURES]
 )
 
-# Note: These tests use auto_detect = FALSE to test core logic without interaction.
-# When auto_detect = TRUE, the new confirmation flow is triggered which requires
-# user interaction via climenu. Those tests are in E2E tests (tests/E2E/).
+# Note: standardize_column_names() is a pure standardizer with no interactive
+# fallback. Interactive column mapping is a separate workflow (see
+# artma / data / interactive_mapping) that callers run and persist before
+# invoking this function; those tests live in tests/E2E/.
 
 test_that("standardize_column_names handles missing required columns in options correctly", {
   box::use(
@@ -74,7 +75,7 @@ test_that("standardize_column_names handles missing required columns in options 
   for (scenario in scenarios) {
     withr::with_options(build_scenario_options(scenario$mock_colnames), {
       expect_error(
-        standardize_column_names(df = mock_df, auto_detect = FALSE),
+        standardize_column_names(df = mock_df),
         scenario$expected_error,
         info = paste("Scenario:", scenario$name)
       )
@@ -90,7 +91,7 @@ test_that("standardize_column_names accepts identity columns without a stored re
   mock_df <- MOCKS$create_mock_df()
 
   withr::with_options(list("artma.data.columns" = list()), {
-    standardized_df <- standardize_column_names(mock_df, auto_detect = FALSE)
+    standardized_df <- standardize_column_names(mock_df)
     expect_true(all(c("study_id", "effect", "se", "n_obs") %in% colnames(standardized_df)))
   })
 })
@@ -125,7 +126,7 @@ test_that("standardize_column_names handles missing required columns in data cor
     mock_df <- mock_df[, -which(names(mock_df) %in% scenario$missing_colnames), drop = FALSE]
 
     expect_error(
-      standardize_column_names(mock_df, auto_detect = FALSE),
+      standardize_column_names(mock_df),
       scenario$expected_error,
       info = paste("Scenario:", scenario$name)
     )
@@ -146,7 +147,7 @@ test_that("standardize_column_names standardizes non-standard column names", {
   expect_true(non_standard_name %in% colnames(mock_df))
   expect_true(!"study_id" %in% colnames(mock_df))
 
-  standardized_df <- standardize_column_names(mock_df, auto_detect = FALSE)
+  standardized_df <- standardize_column_names(mock_df)
   expect_true(!non_standard_name %in% colnames(standardized_df))
   expect_true("study_id" %in% colnames(standardized_df))
 })
@@ -159,7 +160,7 @@ test_that("standardize_column_names passes when all required columns are present
   mock_df <- MOCKS$create_mock_df(colnames_map = mock_colnames)
 
   expect_error(
-    standardize_column_names(mock_df, auto_detect = FALSE),
+    standardize_column_names(mock_df),
     NA,
     info = "Standardizing column names should pass when all required columns are present"
   )
@@ -198,7 +199,7 @@ test_that("standardize_column_names aborts when a rename target is already occup
     list("artma.data.columns" = list(study_id = list(source_name = "study_name"))),
     {
       expect_error(
-        standardize_column_names(mock_df, auto_detect = FALSE),
+        standardize_column_names(mock_df),
         "already has a different column named"
       )
     }
@@ -213,7 +214,7 @@ test_that("standardize_column_names allows an identity mapping through quietly",
   withr::with_options(
     list("artma.data.columns" = list(study_id = list(source_name = "study_id"))),
     {
-      standardized_df <- standardize_column_names(mock_df, auto_detect = FALSE)
+      standardized_df <- standardize_column_names(mock_df)
       expect_equal(anyDuplicated(colnames(standardized_df)), 0)
       expect_true("study_id" %in% colnames(standardized_df))
     }
@@ -230,7 +231,7 @@ test_that("standardize_column_names drops a byte-identical duplicate target colu
   withr::with_options(
     list("artma.data.columns" = list(study_id = list(source_name = "study_name"))),
     {
-      standardized_df <- standardize_column_names(mock_df, auto_detect = FALSE)
+      standardized_df <- standardize_column_names(mock_df)
       expect_equal(sum(colnames(standardized_df) == "study_id"), 1)
       expect_equal(standardized_df$study_id, 1:5)
     }
@@ -246,7 +247,7 @@ test_that("standardize_column_names still performs normal renames without collis
   FIXTURES$with_custom_colnames(mock_colnames)
   mock_df <- MOCKS$create_mock_df(colnames_map = mock_colnames)
 
-  standardized_df <- standardize_column_names(mock_df, auto_detect = FALSE)
+  standardized_df <- standardize_column_names(mock_df)
   expect_equal(anyDuplicated(colnames(standardized_df)), 0)
   expect_true("study_id" %in% colnames(standardized_df))
   expect_false("study_id_raw" %in% colnames(standardized_df))

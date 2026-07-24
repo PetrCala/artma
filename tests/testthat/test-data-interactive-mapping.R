@@ -12,9 +12,9 @@ box::use(
 box::use(
   artma / data / interactive_mapping[
     confirm_column_mapping,
-    save_column_mapping_to_options,
     format_mapping_display
   ],
+  artma / data_config / column_mapping[save_column_mapping_to_options],
   artma / data / column_recognition[get_required_column_names]
 )
 
@@ -227,7 +227,7 @@ test_that("format_mapping_display handles empty optional columns", {
 
 test_that("read_stored_columns seeds from the options file, not the session", {
   box::use(
-    artma / data / interactive_mapping[read_stored_columns],
+    artma / data_config / column_mapping[read_stored_columns],
     artma / options / files[write_options_file]
   )
 
@@ -253,7 +253,7 @@ test_that("read_stored_columns seeds from the options file, not the session", {
 
 test_that("save_column_mapping_to_options keeps records already in the file", {
   box::use(
-    artma / data / interactive_mapping[save_column_mapping_to_options],
+    artma / data_config / column_mapping[save_column_mapping_to_options],
     artma / options / files[options_file_path, read_options_file, write_options_file]
   )
 
@@ -302,7 +302,7 @@ test_that("save_column_mapping_to_options keeps records already in the file", {
 
 
 test_that("read_stored_columns falls back to the session store when absent", {
-  box::use(artma / data / interactive_mapping[read_stored_columns])
+  box::use(artma / data_config / column_mapping[read_stored_columns])
 
   withr::local_options(list(
     "artma.verbose" = 1,
