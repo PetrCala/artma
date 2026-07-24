@@ -69,8 +69,6 @@ linters <- c(
     namespace_linter = lintr::namespace_linter()
   ),
   # Custom linters
-  # Disable the usage of 'dir.create' in favor of 'fs::dir_create'
-  dir_create_linter = custom_linters_env$dir_create_linter(),
   # Flag literal '<U+XXXX>' escape text left behind by C-locale rewrites
   unicode_escape_linter = custom_linters_env$unicode_escape_linter(),
   # Flag calls to functions neither defined in the file nor imported via

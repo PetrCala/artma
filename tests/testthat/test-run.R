@@ -214,7 +214,7 @@ test_that("partial results from a run with a failing method are exported", {
   results <- artma:::invoke_runtime_methods(methods = "all", df = df, modules_dir = methods_dir)
 
   output_dir <- withr::local_tempdir()
-  fs::dir_create(file.path(output_dir, "tables"))
+  dir.create(file.path(output_dir, "tables"), recursive = TRUE)
   export_results(results, output_dir)
 
   expect_true(file.exists(file.path(output_dir, "tables", "method_a.csv")))
