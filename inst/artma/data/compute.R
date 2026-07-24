@@ -203,10 +203,11 @@ add_reg_dof_column <- function(df) {
 add_precision_column <- function(df) {
   box::use(
     calc = artma / calc / index,
-    artma / libs / core / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity],
+    artma / options / typed_accessors[get_precision_type, get_winsorization_level]
   )
 
-  winsorization_level <- getOption("artma.data.winsorization_level", default = 0)
+  winsorization_level <- get_winsorization_level()
   winsorization_active <- !is.null(winsorization_level) &&
     !is.na(winsorization_level) && winsorization_level != 0
 
@@ -238,7 +239,7 @@ add_precision_column <- function(df) {
     }
   } else {
     # Calculate precision based on option
-    precision_type <- getOption("artma.calc.precision_type", default = "1/SE")
+    precision_type <- get_precision_type()
     df$precision <- calc$precision(se = df$se, reg_dof = df$reg_dof)
 
     if (get_verbosity() >= 4) {

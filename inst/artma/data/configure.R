@@ -16,6 +16,7 @@ resolve_na_handling <- function(df) {
     artma / libs / core / utils[get_verbosity],
     artma / data / na_handling[detect_missing_values],
     artma / options / prompts[prompt_na_handling],
+    artma / options / typed_accessors[NA_HANDLING_DEFAULT],
     artma / interactive / save_preference[prompt_save_preference]
   )
 
@@ -55,7 +56,7 @@ resolve_na_handling <- function(df) {
     if (get_verbosity() >= 2) {
       cli::cli_warn("Running in non-interactive mode with missing values. Defaulting to 'stop' strategy.")
     }
-    options(artma.data.na_handling = "stop")
+    options(artma.data.na_handling = NA_HANDLING_DEFAULT)
   }
 
   invisible(NULL)
@@ -79,6 +80,7 @@ resolve_se_zero_handling <- function(df) {
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / autonomy[should_prompt_user],
     artma / options / prompts[prompt_se_zero_handling],
+    artma / options / typed_accessors[SE_ZERO_HANDLING_DEFAULT],
     artma / interactive / save_preference[prompt_save_preference]
   )
 
@@ -124,7 +126,7 @@ resolve_se_zero_handling <- function(df) {
         "i" = "Defaulting to the {.val remove} strategy. Set {.field artma.calc.se_zero_handling} to {.val stop} for stricter validation."
       ))
     }
-    options(artma.calc.se_zero_handling = "remove")
+    options(artma.calc.se_zero_handling = SE_ZERO_HANDLING_DEFAULT)
   }
 
   invisible(NULL)
