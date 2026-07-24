@@ -14,7 +14,8 @@ box::use(
     format_number,
     format_se,
     format_ci
-  ]
+  ],
+  artma / econometric / vcov[robust_vcov]
 )
 
 # nocov start: glue/cli heavy formatting helpers ---------------------------
@@ -325,9 +326,13 @@ tidy_from_coeftest <- function(coef_matrix) {
 }
 
 tidy_lm_model <- function(model, data, cluster_column) {
-  vcov <- tryCatch(
-    sandwich::vcovCL(model, cluster = data[[cluster_column]], type = "HC1"),
-    error = function(e) sandwich::vcovHC(model, type = "HC1")
+  vcov <- robust_vcov(
+    model = model,
+    cluster = data[[cluster_column]],
+    engine = "sandwich",
+    clustered_type = "HC1",
+    fallback_types = "HC1",
+    final_vcov_fallback = FALSE
   )
 
   coef_matrix <- lmtest::coeftest(model, vcov. = vcov)
@@ -343,14 +348,12 @@ tidy_lm_model <- function(model, data, cluster_column) {
 }
 
 tidy_plm_generic <- function(model, data) {
-  vcov <- tryCatch(
-    plm::vcovHC(model, type = "HC1", cluster = "group"),
-    error = function(e) {
-      tryCatch(
-        plm::vcovHC(model, type = "HC0"),
-        error = function(e2) stats::vcov(model)
-      )
-    }
+  vcov <- robust_vcov(
+    model = model,
+    cluster = "group",
+    engine = "plm",
+    clustered_type = "HC1",
+    fallback_types = "HC0"
   )
   coef_matrix <- lmtest::coeftest(model, vcov = vcov)
 
@@ -366,9 +369,13 @@ tidy_plm_generic <- function(model, data) {
 }
 
 tidy_plm_within <- function(model, data) {
-  vcov <- tryCatch(
-    plm::vcovHC(model, type = "HC1", cluster = "group"),
-    error = function(e) plm::vcovHC(model, type = "HC0")
+  vcov <- robust_vcov(
+    model = model,
+    cluster = "group",
+    engine = "plm",
+    clustered_type = "HC1",
+    fallback_types = "HC0",
+    final_vcov_fallback = FALSE
   )
 
   coef_matrix <- lmtest::coeftest(model, vcov = vcov)
