@@ -1,3 +1,7 @@
+box::use(
+  artma / visualization / fork_safety[in_forked_worker]
+)
+
 #' Format a numeric value with a fixed number of decimals
 format_decimal <- function(x, k) trimws(format(round(x, k), nsmall = k))
 
@@ -45,6 +49,13 @@ simulate_cdfs_parallel <- function(
   }
   workers <- as.integer(max(1L, workers))
   block_size <- as.integer(max(1L, block_size))
+
+  # This function forks its own workers via `mclapply()`/`makeCluster()`. When
+  # it runs inside a worker already forked by the method-execution orchestrator,
+  # forking again is unsafe, so stay sequential in that case.
+  if (in_forked_worker()) {
+    workers <- 1L
+  }
 
   inv_gp <- 1 / gp
   inv_sqrt_gp <- 1 / sqrt(gp)
