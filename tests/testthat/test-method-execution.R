@@ -188,6 +188,23 @@ test_that("with_captured_output keeps cli formatting intact", {
   expect_true(grepl("\033[", captured, fixed = TRUE))
 })
 
+test_that("with_captured_output keeps consecutive cli messages on separate lines", {
+  box::use(artma / modules / method_execution[with_captured_output])
+
+  # cli condition messages carry no trailing newline (unlike base::message()),
+  # so without an explicit newline they concatenate into one line (issue #321).
+  outcome <- with_captured_output({
+    cli::cli_inform("first line")
+    cli::cli_inform("second line")
+  })
+
+  first_idx <- grep("first line", outcome$output)
+  second_idx <- grep("second line", outcome$output)
+  expect_equal(length(first_idx), 1L)
+  expect_equal(length(second_idx), 1L)
+  expect_false(identical(first_idx, second_idx))
+})
+
 test_that("with_captured_output records errors and restores the sinks", {
   box::use(artma / modules / method_execution[with_captured_output])
 
