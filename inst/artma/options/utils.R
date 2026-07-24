@@ -152,43 +152,26 @@ get_expected_type <- function(opt_def) {
 validate_option_value <- function(val, opt_type, opt_name, allow_na = FALSE) {
   box::use(
     artma / const[CONST],
-    artma / libs / core / validation[validate]
+    artma / libs / core / validation[validate],
+    artma / options / type_registry[get_option_type_spec]
   )
 
   validate(is.character(opt_type), is.character(opt_name)) # 'allow_na' can be NULL
 
-  # Helper function for uniform error formatting:
-  format_error <- function(opt_name, expected_type, val) {
-    cli::format_inline("Option {CONST$STYLES$OPTIONS$NAME(opt_name)} must be {CONST$STYLES$OPTIONS$TYPE(expected_type)}, got: {CONST$STYLES$OPTIONS$VALUE(val)}")
-  }
+  spec <- get_option_type_spec(opt_type)
+  na_allowed <- isTRUE(allow_na) && isTRUE(spec$allows_na)
 
   if (is.null(val) || (length(val) == 1 && is.na(val))) {
-    if (!isTRUE(allow_na)) {
+    if (!na_allowed) {
       return(cli::format_inline("Option {CONST$STYLES$OPTIONS$NAME(opt_name)} cannot be NULL or NA."))
     }
     return(NULL) # NA/NULL is allowed
   }
 
-  # Handle enumerations, e.g. "enum: red|blue|green"
-  if (startsWith(opt_type, "enum:")) {
-    valid_values <- parse_template_enum_value(opt_type)
-    if (!val %in% valid_values) {
-      return(
-        cli::format_inline(
-          "Option {CONST$STYLES$OPTIONS$NAME(opt_name)} must be one of {.emph {toString(valid_values)}}; got {CONST$STYLES$OPTIONS$VALUE(val)}."
-        )
-      )
-    }
-    return(NULL)
-  }
-
-  switch(opt_type,
-    character = if (!is.character(val)) format_error(opt_name, "character", val),
-    integer = if (!is.numeric(val) || any(val != as.integer(val), na.rm = TRUE)) format_error(opt_name, "integer", val),
-    logical = if (!is.logical(val)) format_error(opt_name, "logical", val),
-    numeric = if (!is.numeric(val)) format_error(opt_name, "numeric", val),
-    NULL
-  )
+  # Per-type validation (character/integer/logical/numeric/enum, pass-through for
+  # anything else) lives in the option type registry, shared with
+  # coerce_option_value.
+  spec$validate(val, opt_name, opt_type)
 }
 
 #' @title Validate user input
