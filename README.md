@@ -113,8 +113,11 @@ List them at any time with `artma::methods.list()`. The current set:
 | `bma` | Bayesian Model Averaging over moderator variables for heterogeneity analysis |
 | `fma` | Frequentist Model Averaging, reusing the BMA model to order predictors |
 | `best_practice_estimate` | Best-practice estimates computed from the BMA coefficients |
+| `robma` | Robust Bayesian meta-analysis via the `RoBMA` package (opt-in: run it by requesting it by name) |
 
 Some methods rely on optional packages (for example, `bma` needs `BMS`). If one is missing, artma tells you and offers to install it in interactive sessions; in scripts the method is skipped, unless it's the only method you asked for, in which case the run stops with a clear error.
+
+`robma` additionally needs a working JAGS installation (via `rjags`). On Windows, CRAN's `RoBMA` source can fail to compile against JAGS 4.3.1; until a compatible JAGS/RoBMA pairing is available, expect the `robma` method to be unavailable there (it is skipped with an explanation, like any method with missing packages).
 
 # Options files
 

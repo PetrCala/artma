@@ -63,8 +63,20 @@ These methods examine how the effect varies with moderator variables. `fma` and 
 | `bma` | Bayesian Model Averaging over moderator variables, estimating posterior inclusion probability and posterior mean/SD for each candidate moderator | none | `effect`, `se` |
 | `fma` | Frequentist Model Averaging over the same moderators, using the BMA model (computed on demand if not already available) to order and select predictors | `bma` | `effect`, `se` |
 | `best_practice_estimate` | A "best-practice" point estimate and CI for the effect, plugging literature-informed or user-supplied moderator values into the BMA coefficients; also computes economic-significance metrics | `bma` | `effect`, `study_id` |
+| `robma` | Robust Bayesian meta-analysis (model-averaged publication-bias correction) via the `RoBMA` package; opt-in, run it by requesting it by name | none | `effect`, `se` |
 
 `bma`, `fma`, and `best_practice_estimate` all need the `BMS` package; `fma` additionally needs `quadprog`. If you request both `bma` and `fma` (directly or via a dependency) and both produce coefficient tables, artma adds a unified `ma_table` entry to the results combining them.
+
+When moderators are selected automatically, `bma` always adds the standard
+error (`se`) and sample size (`study_size`) to the moderator set as priority
+variables; the standard-error term acts as a publication-bias control inside
+BMA by convention. They show up in the Model Averaging results alongside your
+own moderators, and a note is printed during variable selection.
+
+`robma` needs the `RoBMA` package, which in turn requires a working JAGS
+installation (via `rjags`). On Windows, CRAN's RoBMA source can fail to
+compile against JAGS 4.3.1; if RoBMA is not installed, the method is skipped
+with an explanation rather than aborting the run.
 
 ## Choosing methods
 
