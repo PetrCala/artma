@@ -1,0 +1,29 @@
+name: Setup JAGS
+description: >
+  Install the JAGS system library needed by RoBMA (Suggests). On Linux
+  setup-r-dependencies installs it from the declared sysreqs; macOS and
+  Windows need it installed explicitly.
+inputs:
+  jags-version:
+    description: JAGS version to install on Windows.
+    required: false
+    default: "4.3.1"
+runs:
+  using: composite
+  steps:
+    - name: Install JAGS (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: brew install jags
+
+    - name: Install JAGS (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        version="${{ inputs.jags-version }}"
+        installer="$RUNNER_TEMP/jags-installer.exe"
+        curl -L -o "$installer" \
+          "https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Windows/JAGS-${version}.exe/download"
+        "$installer" //S
+        echo "JAGS_HOME=C:/Program Files/JAGS/JAGS-${version}" >> "$GITHUB_ENV"
+        echo "C:/Program Files/JAGS/JAGS-${version}/x64/bin" >> "$GITHUB_PATH"
