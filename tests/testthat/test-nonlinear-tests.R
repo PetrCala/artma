@@ -3,6 +3,7 @@ box::use(
     expect_equal,
     expect_false,
     expect_gt,
+    expect_identical,
     expect_match,
     expect_named,
     expect_s3_class,
@@ -123,6 +124,46 @@ make_degenerate_options <- function() {
     hierarchical_iterations = 10L
   )
 }
+
+# Characterization test for B7 (formatting-helper consolidation): pins the
+# exact formatted cells produced by the deterministic estimators (WAAP, STEM),
+# including the current literal "NA" string rendered for a model that has no
+# publication-bias term. This must stay byte-for-byte identical across the
+# format_estimate()/format_standard_error()/normal_p_value() consolidation.
+test_that("WAAP and STEM formatted cells are pinned across the formatting refactor", {
+  df <- make_demo_data()
+  options <- list(
+    add_significance_marks = TRUE,
+    round_to = 2L,
+    stem_representative_sample = "medians",
+    selection_cutoffs = c(1.96, 2.58),
+    selection_symmetric = FALSE,
+    selection_model = "normal",
+    hierarchical_iterations = 50L
+  )
+
+  res <- suppressWarnings(run_nonlinear_methods(df, options))
+
+  waap_rows <- res$coefficients[res$coefficients$model == "waap", ]
+  waap_pb <- waap_rows[waap_rows$term == "publication_bias", ]
+  waap_eff <- waap_rows[waap_rows$term == "effect", ]
+  expect_identical(waap_pb$estimate_formatted, "NA")
+  expect_identical(waap_pb$std_error_formatted, "")
+  expect_identical(waap_eff$estimate_formatted, "0.13***")
+  expect_identical(waap_eff$std_error_formatted, "(0.01)")
+
+  stem_rows <- res$coefficients[res$coefficients$model == "stem", ]
+  stem_pb <- stem_rows[stem_rows$term == "publication_bias", ]
+  stem_eff <- stem_rows[stem_rows$term == "effect", ]
+  expect_identical(stem_pb$estimate_formatted, "NA")
+  expect_identical(stem_pb$std_error_formatted, "")
+  expect_identical(stem_eff$estimate_formatted, "0.15***")
+  expect_identical(stem_eff$std_error_formatted, "(0.02)")
+
+  summary <- res$summary
+  expect_identical(summary$WAAP[summary$Metric == "Publication Bias"], "NA")
+  expect_identical(summary$Stem[summary$Metric == "Publication Bias"], "NA")
+})
 
 test_that("WAAP and Top10 are skipped when a single observation dominates the weights", {
   n_moderate <- 20

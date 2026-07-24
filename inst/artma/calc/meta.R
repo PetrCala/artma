@@ -62,8 +62,24 @@ precision <- function(se = NULL, reg_dof = NULL) {
 }
 
 
+#' @title Two-sided normal p-value for an estimate/standard-error pair
+#' @description Calculate the p-value from a Wald z-statistic under a normal
+#'   approximation, used by the non-linear publication-bias estimators.
+#' @param estimate *\[numeric\]* The point estimate.
+#' @param std_error *\[numeric\]* The standard error of the estimate.
+#' @return *\[numeric\]* The two-sided p-value, or `NA_real_` if the inputs
+#'   are not finite or `std_error` is non-positive.
+normal_p_value <- function(estimate, std_error) {
+  if (!is.finite(estimate) || !is.finite(std_error) || std_error <= 0) {
+    return(NA_real_)
+  }
+  2 * stats::pnorm(abs(estimate / std_error), lower.tail = FALSE)
+}
+
+
 box::export(
   t_stat,
   precision,
-  reg_dof
+  reg_dof,
+  normal_p_value
 )

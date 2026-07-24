@@ -124,3 +124,29 @@ test_that("format_estimate returns an empty vector for empty input", {
 
   expect_identical(format_estimate(numeric(0), 2L), character(0))
 })
+
+test_that("format_estimate_with_pvalue renders a non-finite estimate as literal \"NA\"", {
+  box::use(artma / libs / formatting / results[format_estimate_with_pvalue])
+
+  # Unlike format_estimate(), marks are pasted on before the finiteness check,
+  # so a non-finite estimate becomes the literal string "NA" rather than
+  # NA_character_. This mirrors the moved nonlinear.R behaviour and is pinned
+  # deliberately, not fixed, by the B7 consolidation.
+  expect_identical(
+    format_estimate_with_pvalue(NA_real_, NA_real_, 2L, TRUE),
+    "NA"
+  )
+})
+
+test_that("format_estimate_with_pvalue appends marks only when add_marks is TRUE", {
+  box::use(artma / libs / formatting / results[format_estimate_with_pvalue])
+
+  expect_identical(format_estimate_with_pvalue(0.5, 0.001, 2L, TRUE), "0.50***")
+  expect_identical(format_estimate_with_pvalue(0.5, 0.001, 2L, FALSE), "0.50")
+})
+
+test_that("format_standard_error blanks non-finite standard errors", {
+  box::use(artma / libs / formatting / results[format_standard_error])
+
+  expect_identical(format_standard_error(c(0.05, NA_real_, Inf), 2L), c("(0.05)", "", ""))
+})

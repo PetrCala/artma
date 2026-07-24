@@ -67,6 +67,42 @@ format_estimate <- function(x, digits, marks = "") {
   formatted
 }
 
+#' @title Format an estimate whose marks are derived from a raw p-value
+#' @description
+#' Companion to [format_estimate()] for callers that hold a raw p-value and an
+#' "append marks or not" flag rather than a precomputed marks vector.
+#' Note: unlike [format_estimate()], a non-finite `x` here ends up as the
+#' literal string `"NA"` rather than `NA_character_`, because the marks are
+#' pasted on before the finiteness check. This mirrors the historical
+#' behaviour of the callers this consolidates and is preserved intentionally.
+#' @param x *[numeric]* Estimates to format.
+#' @param p_value *[numeric]* Two-sided p-values used to derive marks.
+#' @param digits *[integer]* Number of decimals.
+#' @param add_marks *[logical]* Whether to append significance marks.
+#' @return *[character]* Formatted estimates.
+format_estimate_with_pvalue <- function(x, p_value, digits, add_marks) {
+  formatted <- format_number(x, digits)
+  if (!length(formatted)) {
+    return(character(0))
+  }
+  marks <- if (isTRUE(add_marks)) significance_mark(p_value) else ""
+  formatted <- paste0(formatted, marks)
+  formatted[is.na(formatted)] <- ""
+  formatted
+}
+
+#' @title Format a standard error, blanking non-finite values
+#' @description Like [format_se()], but renders non-finite standard errors as
+#'   an empty string instead of `NA_character_`.
+#' @param se *[numeric]* Standard errors to format.
+#' @param digits *[integer]* Number of decimals.
+#' @return *[character]* Formatted, parenthesised standard errors.
+format_standard_error <- function(se, digits) {
+  formatted <- format_se(se, digits)
+  formatted[is.na(formatted)] <- ""
+  formatted
+}
+
 format_se <- function(se, digits) {
   if (!length(se)) {
     return(character(0))
@@ -252,7 +288,9 @@ box::export(
   significance_mark,
   format_number,
   format_estimate,
+  format_estimate_with_pvalue,
   format_se,
+  format_standard_error,
   format_ci,
   print_summary_table,
   print_sectioned_table,
