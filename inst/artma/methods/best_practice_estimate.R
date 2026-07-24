@@ -749,16 +749,13 @@ resolve_bpe_context <- function(df, bma_data) {
 }
 
 resolve_bpe_vcov <- function(ols_model, cluster_ids = NULL) {
-  tryCatch(
-    {
-      if (!is.null(cluster_ids) && length(cluster_ids) == stats::nobs(ols_model)) {
-        return(sandwich::vcovCL(ols_model, cluster = cluster_ids, type = "HC0"))
-      }
-      sandwich::vcovHC(ols_model, type = "HC0")
-    },
-    error = function(e) {
-      stats::vcov(ols_model)
-    }
+  box::use(artma / econometric / vcov[robust_vcov])
+  robust_vcov(
+    model = ols_model,
+    cluster = cluster_ids,
+    engine = "sandwich",
+    clustered_type = "HC0",
+    match_cluster_length = TRUE
   )
 }
 

@@ -16,55 +16,30 @@ box::use(
     format_se,
     format_ci
   ],
-  artma / libs / core / validation[validate, assert]
+  artma / libs / core / validation[validate, assert],
+  artma / econometric / vcov[robust_vcov]
 )
 
 # Robust variance-covariance matrix helper ---------------------------------
 
 #' @title Get robust variance-covariance matrix with fallbacks
 #' @description
-#' Computes robust variance-covariance matrix using multiple fallback strategies
-#' to avoid numerical instability warnings. Tries clustered standard errors first,
-#' then falls back to non-clustered robust standard errors, and finally to standard
-#' variance-covariance matrix.
+#' Thin wrapper over the shared [robust_vcov()] helper pinning this call site's
+#' ladder: clustered HC1, then non-clustered HC1, then HC0, then `stats::vcov`,
+#' with the robust steps run under `suppressWarnings()` and a required cluster.
 #' @param model *[model object]* Regression model (e.g., from AER::ivreg).
 #' @param cluster *[vector]* Clustering variable (e.g., study_id).
 #' @return *[matrix]* Variance-covariance matrix.
 get_robust_vcov <- function(model, cluster) {
-  validate(!is.null(model), !is.null(cluster))
-
-  # Try vcovCL with HC1 (clustered, most stable)
-  vcov_result <- tryCatch(
-    suppressWarnings(sandwich::vcovCL(model, cluster = cluster, type = "HC1")),
-    error = function(e) NULL
+  robust_vcov(
+    model = model,
+    cluster = cluster,
+    engine = "sandwich",
+    clustered_type = "HC1",
+    fallback_types = c("HC1", "HC0"),
+    require_cluster = TRUE,
+    suppress_warnings = TRUE
   )
-
-  if (!is.null(vcov_result)) {
-    return(vcov_result)
-  }
-
-  # Fall back to vcovHC with HC1 (non-clustered, stable)
-  vcov_result <- tryCatch(
-    suppressWarnings(sandwich::vcovHC(model, type = "HC1")),
-    error = function(e) NULL
-  )
-
-  if (!is.null(vcov_result)) {
-    return(vcov_result)
-  }
-
-  # Fall back to vcovHC with HC0 (less stable but more robust)
-  vcov_result <- tryCatch(
-    suppressWarnings(sandwich::vcovHC(model, type = "HC0")),
-    error = function(e) NULL
-  )
-
-  if (!is.null(vcov_result)) {
-    return(vcov_result)
-  }
-
-  # Last resort: standard vcov
-  stats::vcov(model)
 }
 
 # IV regression utilities --------------------------------------------------
