@@ -7,61 +7,43 @@ is_auto_output_dir <- function(output_dir) {
   is.null(output_dir) || is.na(output_dir) || identical(output_dir, "auto")
 }
 
-persist_auto_output_dir <- function(output_dir) {
-  box::use(artma / libs / core / utils[get_verbosity])
-
-  options_file_name <- getOption("artma.temp.file_name", NULL)
-  options_dir <- getOption("artma.temp.dir_name", NULL)
-
-  if (is.null(options_file_name) || is.null(options_dir)) {
-    if (get_verbosity() >= 4) {
-      cli::cli_inform("No options file available to persist output directory.")
-    }
-    return(invisible(FALSE))
+#' Derive the per-options-file subdirectory for auto output
+#'
+#' @description
+#' Uses the stem of the loaded options file (`artma.temp.file_name`) so that
+#' runs driven by different options files never share an output directory.
+#' The stem is sanitized to a portable character set; when no options file is
+#' loaded (or the stem sanitizes to nothing), `"default"` is used.
+#'
+#' @return *\[character\]* A safe directory name.
+#' @keywords internal
+auto_output_subdir <- function() {
+  file_name <- getOption("artma.temp.file_name", NULL)
+  if (is.null(file_name) || length(file_name) != 1L || is.na(file_name) || !nzchar(file_name)) {
+    return("default")
   }
-
-  saved <- tryCatch(
-    {
-      suppressMessages(
-        artma::options.modify(
-          options_file_name = options_file_name,
-          options_dir = options_dir,
-          user_input = list("output.dir" = output_dir),
-          should_validate = TRUE
-        )
-      )
-      TRUE
-    },
-    error = function(e) {
-      if (get_verbosity() >= 2) {
-        cli::cli_alert_warning(
-          "Failed to persist output directory: {e$message}"
-        )
-      }
-      FALSE
-    }
-  )
-
-  if (isTRUE(saved)) {
-    options("artma.output.dir" = output_dir)
-  }
-
-  invisible(saved)
+  stem <- tools::file_path_sans_ext(basename(file_name))
+  stem <- gsub("[^A-Za-z0-9._-]+", "_", stem)
+  stem <- gsub("^[_.]+|[_.]+$", "", stem)
+  if (!nzchar(stem)) "default" else stem
 }
 
 #' Resolve the output directory path
 #'
 #' @description
 #' Reads the `artma.output.dir` option. If set to `"auto"` (default) or `NA`,
-#' returns a session-specific temporary directory. Otherwise returns the
-#' configured path as-is.
+#' returns a durable per-options-file directory under
+#' `tools::R_user_dir("artma", "data")`. Otherwise returns the configured path
+#' as-is. The `"auto"` value is never rewritten in the options file; the
+#' directory is resolved fresh on every call, so switching options files
+#' mid-session switches the output directory with it.
 #'
 #' @return *\[character\]* The resolved output directory path.
 resolve_output_dir <- function() {
   output_dir <- getOption("artma.output.dir", "auto")
 
   if (is_auto_output_dir(output_dir)) {
-    return(file.path(tempdir(), "artma-results"))
+    return(file.path(tools::R_user_dir("artma", "data"), "results", auto_output_subdir()))
   }
 
   output_dir
@@ -90,10 +72,6 @@ resolve_graphics_dir <- function(output_dir) {
 ensure_output_dirs <- function(output_dir) {
   dir.create(file.path(output_dir, "tables"), recursive = TRUE, showWarnings = FALSE)
   dir.create(resolve_graphics_dir(output_dir), recursive = TRUE, showWarnings = FALSE)
-
-  if (is_auto_output_dir(getOption("artma.output.dir", "auto"))) {
-    persist_auto_output_dir(output_dir)
-  }
 }
 
 SUPPORTED_TABLE_FORMATS <- c("csv", "tex")
