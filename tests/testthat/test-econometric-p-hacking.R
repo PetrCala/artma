@@ -414,8 +414,7 @@ test_that("run_p_hacking_tests dedupes duplicated caliper thresholds/widths with
 test_that("run_p_hacking_tests runs the Elliott suite when requested", {
   local_options(
     artma.verbose = 1,
-    artma.cache.use_cache = FALSE,
-    artma.methods.p_hacking_tests.simulate_cdfs.use_cpp = FALSE
+    artma.cache.use_cache = FALSE
   )
   set.seed(202)
   df <- make_p_hacking_df()
@@ -674,8 +673,7 @@ test_that("run_cox_shi preserves the skip reason for the caller to record", {
 test_that("run_p_hacking_tests reports numeric Cox-Shi rows on clustered data", {
   local_options(
     artma.verbose = 1,
-    artma.cache.use_cache = FALSE,
-    artma.methods.p_hacking_tests.simulate_cdfs.use_cpp = FALSE
+    artma.cache.use_cache = FALSE
   )
   panel <- cox_shi_panel(202)
   df <- data.frame(
