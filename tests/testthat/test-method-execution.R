@@ -112,6 +112,19 @@ test_that("resolve_worker_count falls back to sequential execution", {
   expect_equal(worker_count(4L, n_cores = NA_integer_), 1L)
 })
 
+test_that("resolve_worker_count stays sequential inside an already-forked worker", {
+  box::use(artma / visualization / fork_safety[with_forked_worker_flag])
+
+  withr::local_options(list(artma.general.parallel = TRUE))
+
+  # Forking again from inside a forked worker is unsafe, so the nested-fork
+  # guard must win even though every other input here would otherwise allow
+  # several workers.
+  result <- with_forked_worker_flag(worker_count(4L, n_cores = 8L))
+
+  expect_equal(result, 1L)
+})
+
 test_that("resolve_worker_count honours the artma.general.parallel flag", {
   withr::local_options(list(artma.general.parallel = FALSE))
   expect_equal(worker_count(4L, n_cores = 8L), 1L)

@@ -84,6 +84,27 @@ test_that("simulate_cdfs responds to different RNG seeds", {
   expect_true(any(abs(res_a - res_b) > 0))
 })
 
+test_that("simulate_cdfs_parallel clamps workers to 1 inside a forked worker", {
+  box::use(artma / visualization / fork_safety[with_forked_worker_flag])
+
+  # A forked worker cannot safely fork again (see fork_safety.R). If that guard
+  # were missing, requesting 4 workers here would reach parallel::mclapply()
+  # and hit this mock instead of running sequentially.
+  testthat::local_mocked_bindings(
+    mclapply = function(...) stop("simulate_cdfs_parallel forked from inside a forked worker"),
+    .package = "parallel"
+  )
+
+  for (use_cpp in c(TRUE, FALSE)) {
+    res <- with_forked_worker_flag(
+      run_simulation(seed = 1, iterations = 5, grid_points = 20, workers = 4, use_cpp = use_cpp)
+    )
+
+    expect_length(res, 5L)
+    expect_true(all(is.finite(res)))
+  }
+})
+
 test_that("pure R fallback matches the compiled implementation elementwise", {
   cpp_available <- tryCatch(
     {
