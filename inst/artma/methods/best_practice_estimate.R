@@ -334,7 +334,11 @@ resolve_bma_input_for_bpe <- function(df, bma_result, run_bma_if_missing) {
   computed <- unwrap_bma_result(bma(df))
   assert(
     is_bma_input_ready(computed),
-    "BMA did not produce a usable model/data bundle for best-practice estimation."
+    if (!is.null(computed$skipped)) {
+      sprintf("Best-practice estimate requires BMA, but BMA was skipped: %s.", computed$skipped)
+    } else {
+      "BMA did not produce a usable model/data bundle for best-practice estimation."
+    }
   )
 
   computed$formula <- build_bma_formula_from_data(computed$data)

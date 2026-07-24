@@ -95,7 +95,7 @@ fma <- function(df, bma_result = NULL) {
 
     if (!is.null(prepared$skipped)) {
       if (get_verbosity() >= 2) {
-        cli::cli_alert_warning("No valid BMA variables available. Skipping FMA analysis.")
+        cli::cli_alert_warning("{prepared$skipped}. Skipping FMA analysis.")
       }
       empty_coefs <- data.frame(
         variable = character(0),
