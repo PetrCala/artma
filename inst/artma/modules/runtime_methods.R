@@ -67,6 +67,14 @@ METHOD_META_ATTR <- "artma_method_meta"
 #' * `opt_in`: when `TRUE`, the method is left out of `methods = "all"` and must
 #'   be requested by name. Use it for methods too expensive to run by default.
 #'
+#' Disk caching is opt-in. Only the expensive stages (BMA, RoBMA) set
+#' `cached = TRUE`; the Elliott simulation keeps its own narrow cache in
+#' `calc/methods/elliott_cache.R`. Every other method runs uncached: for a
+#' method that recomputes in well under a second, building the cache signature
+#' (a fingerprint of the whole `inst/artma` source tree plus the full option
+#' group) and revalidating recorded output files costs more than the
+#' recomputation it would save.
+#'
 #' @param impl *\[function\]* The method implementation (its `run` worker).
 #' @param stage *\[character\]* Stage label used for cache keys and the cache
 #'   hit notice. Conventionally matches the implementation's name.
@@ -79,45 +87,57 @@ METHOD_META_ATTR <- "artma_method_meta"
 #' @param opt_in *\[logical, optional\]* If `TRUE`, exclude the method from
 #'   `methods = "all"`; it then runs only when named explicitly. Defaults to
 #'   `FALSE`.
+#' @param cached *\[logical, optional\]* If `TRUE`, wrap the method in the full
+#'   disk-caching stack (memoise, cache signature, package source fingerprint,
+#'   output-file revalidation). Defaults to `FALSE`, which returns the
+#'   implementation unwrapped so cheap methods carry no caching overhead.
 #' @param label *\[character, optional\]* Human-readable display label. Defaults
 #'   to `stage`.
-#' @param key_builder *\[function, optional\]* Cache signature builder. Defaults
-#'   to the standard data cache signature. Whatever it returns, the method's own
-#'   source hash is appended, so editing a method file invalidates that method's
-#'   cache without disturbing the others.
-#' @param ... *\[any\]* Extra arguments forwarded to `cache_cli_runner`.
-#' @return *\[function\]* The cached `run` wrapper, carrying the method metadata
-#'   in its `artma_method_meta` attribute.
+#' @param key_builder *\[function, optional\]* Cache signature builder, used only
+#'   when `cached = TRUE`. Defaults to the standard data cache signature.
+#'   Whatever it returns, the method's own source hash is appended, so editing a
+#'   method file invalidates that method's cache without disturbing the others.
+#' @param ... *\[any\]* Extra arguments forwarded to `cache_cli_runner` when
+#'   `cached = TRUE`; ignored otherwise.
+#' @return *\[function\]* The `run` wrapper (cached when `cached = TRUE`, the bare
+#'   implementation otherwise), carrying the method metadata in its
+#'   `artma_method_meta` attribute.
 register_runtime_method <- function(impl, stage,
                                     depends_on = character(),
                                     required_columns = character(),
                                     suggests = character(),
                                     opt_in = FALSE,
+                                    cached = FALSE,
                                     label = NULL,
                                     key_builder = NULL, ...) {
-  box::use(
-    artma / libs / infrastructure / cache[cache_cli_runner],
-    artma / libs / infrastructure / source_fingerprint[method_source_hash],
-    artma / data / cache_signatures[build_data_cache_signature]
-  )
+  if (isTRUE(cached)) {
+    box::use(
+      artma / libs / infrastructure / cache[cache_cli_runner],
+      artma / libs / infrastructure / source_fingerprint[method_source_hash],
+      artma / data / cache_signatures[build_data_cache_signature]
+    )
 
-  base_key_builder <- key_builder
-  if (is.null(base_key_builder)) {
-    base_key_builder <- function(...) build_data_cache_signature()
-  }
-
-  # The data frame and any upstream `<dependency>_result` reach the cache key
-  # as ordinary call arguments, which `memoise` hashes; the signature adds the
-  # inputs that are not arguments (options, data source, package source).
-  signature_builder <- function(...) {
-    signature <- base_key_builder(...)
-    if (!is.list(signature)) {
-      signature <- list(value = signature)
+    base_key_builder <- key_builder
+    if (is.null(base_key_builder)) {
+      base_key_builder <- function(...) build_data_cache_signature()
     }
-    c(signature, list(method_source = method_source_hash(stage)))
-  }
 
-  run <- cache_cli_runner(impl, stage = stage, key_builder = signature_builder, ...)
+    # The data frame and any upstream `<dependency>_result` reach the cache key
+    # as ordinary call arguments, which `memoise` hashes; the signature adds the
+    # inputs that are not arguments (options, data source, package source).
+    signature_builder <- function(...) {
+      signature <- base_key_builder(...)
+      if (!is.list(signature)) {
+        signature <- list(value = signature)
+      }
+      c(signature, list(method_source = method_source_hash(stage)))
+    }
+
+    run <- cache_cli_runner(impl, stage = stage, key_builder = signature_builder, ...)
+  } else {
+    # Cheap methods run uncached: the bare implementation is the `run` wrapper.
+    run <- impl
+  }
 
   attr(run, METHOD_META_ATTR) <- list(
     stage = stage,
