@@ -17,7 +17,7 @@ box::use(
   artma / libs / core / autonomy[get_autonomy_level, get_default_autonomy_level],
   artma / libs / core / utils[opt_or],
   artma / libs / core / validation[assert],
-  artma / visualization / fork_safety[graphics_survive_fork, with_forked_worker_flag]
+  artma / visualization / fork_safety[graphics_survive_fork, in_forked_worker, with_forked_worker_flag]
 )
 
 #' @title Group methods into dependency layers
@@ -93,7 +93,8 @@ max_parallel_workers <- function() {
 #' Decide how many forked workers a layer of `n_tasks` methods may use. Returns
 #' `1` (sequential execution) whenever forking is unavailable or unsafe:
 #' on Windows, on single-core machines, when the `artma.general.parallel`
-#' option is `FALSE`, or in an interactive session whose autonomy level still
+#' option is `FALSE`, when already running inside a forked worker (nested
+#' forking is unsafe), or in an interactive session whose autonomy level still
 #' allows methods to prompt (forked children cannot prompt).
 #' @param n_tasks *\[integer\]* Number of methods in the layer.
 #' @param is_interactive *\[logical, optional\]* Whether the session is
@@ -116,6 +117,13 @@ resolve_worker_count <- function(n_tasks,
                                  graphics_fork_safe = NULL) {
   n_tasks <- as.integer(n_tasks)
   if (is.na(n_tasks) || n_tasks < 2L) {
+    return(1L)
+  }
+
+  # A layer's methods can themselves call back into this orchestrator (e.g. a
+  # method invoking sub-methods). Forking again from inside an already-forked
+  # worker is unsafe on most platforms, so stay sequential in that case.
+  if (in_forked_worker()) {
     return(1L)
   }
 
