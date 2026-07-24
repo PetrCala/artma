@@ -11,7 +11,7 @@ box::use(testing / fixtures / index[FIXTURES])
 #   2. every template leaf is consumed somewhere in the sources.
 #
 # Consumption evidence is collected with a grep over the package sources:
-#   - literal reads:        getOption("artma.<key>")
+#   - literal reads:        getOption("artma.<key>") or opt_or("artma.<key>")
 #   - constant-built reads: paste0(CONST$PACKAGE_NAME, ".<key>")
 #   - group reads:          get_option_group("artma.<prefix>") counts for
 #     every template leaf under <prefix>
@@ -63,7 +63,7 @@ extract_keys <- function(lines, pattern) {
 }
 
 collect_consumed_option_keys <- function(files) {
-  exact_pattern <- "getOption\\(\\s*\"artma\\.([A-Za-z0-9_.]+)\""
+  exact_pattern <- "(?:getOption|opt_or)\\(\\s*\"artma\\.([A-Za-z0-9_.]+)\""
   const_pattern <- "paste0\\(CONST\\$PACKAGE_NAME,\\s*\"\\.([A-Za-z0-9_.]+)\"\\)"
   group_pattern <- "get_option_group\\(\\s*\"artma\\.([A-Za-z0-9_.]+)\""
 

@@ -253,7 +253,7 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
   box::use(
     artma / const[CONST],
     artma / libs / core / string[pluralize],
-    artma / libs / core / utils[get_verbosity],
+    artma / libs / core / utils[get_verbosity, opt_or],
     artma / modules / method_execution[
       build_rng_streams,
       execute_method_layer,
@@ -370,7 +370,7 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
   # concurrently. Every method gets its own RNG stream up front, so a run is
   # reproducible given the seed whether it executed in forks or sequentially.
   layers <- group_methods_into_layers(methods, deps_map)
-  rng_streams <- build_rng_streams(methods, seed = getOption("artma.general.seed", 20240101L))
+  rng_streams <- build_rng_streams(methods, seed = opt_or("artma.general.seed", 20240101L))
 
   for (layer in layers) {
     runnable <- character()

@@ -237,7 +237,7 @@ resolve_se_zero_handling <- function(df) {
 #' @return *\[data.frame\]* The data frame with the invalid values enforced
 #' @keywords internal
 enforce_correct_values <- function(df) {
-  box::use(artma / libs / core / utils[get_verbosity])
+  box::use(artma / libs / core / utils[get_verbosity, opt_or])
 
   if (get_verbosity() >= 4) {
     cli::cli_inform("Checking for invalid values...")
@@ -245,7 +245,7 @@ enforce_correct_values <- function(df) {
 
   box::use(artma / libs / core / validation[assert])
 
-  se_zero_handling <- getOption("artma.calc.se_zero_handling", "remove")
+  se_zero_handling <- opt_or("artma.calc.se_zero_handling", "remove")
 
   zero_se_rows <- which(df$se == 0)
 
