@@ -12,6 +12,7 @@ t_stat_histogram <- function(df) {
     artma / libs / core / validation[assert, validate, validate_columns],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options],
     artma / visualization / options[get_visualization_options],
     artma / visualization / export[export_named_plots]
   )
@@ -26,47 +27,52 @@ t_stat_histogram <- function(df) {
   opt <- get_option_group("artma.methods.t_stat_histogram")
   vis <- get_visualization_options()
 
-  lower_cutoff <- opt$lower_cutoff %||% -120
-  upper_cutoff <- opt$upper_cutoff %||% 120
-  critical_values <- opt$critical_values %||% 1.96
-  n_bins <- opt$n_bins %||% 80L
-  show_mean_line <- opt$show_mean_line %||% TRUE
-  show_density_curve <- opt$show_density_curve %||% TRUE
-  min_tick_distance <- opt$min_tick_distance %||% 0.5
-  close_up_enabled <- opt$close_up_enabled %||% TRUE
-  close_up_lower <- opt$close_up_lower %||% -10
-  close_up_upper <- opt$close_up_upper %||% 10
-  close_up_min_tick_distance <- opt$close_up_min_tick_distance %||% 0.3
+  resolved <- resolve_options(opt, list(
+    lower_cutoff = opt_spec(default = -120, type = "numeric"),
+    upper_cutoff = opt_spec(default = 120, type = "numeric"),
+    critical_values = opt_spec(
+      default = 1.96, type = "numeric",
+      constraint = function(x) all(x > 0),
+      constraint_msg = "critical_values must be positive (symmetric +/- applied automatically)"
+    ),
+    n_bins = opt_spec(
+      default = 80L, type = "numeric", cast = as.integer,
+      constraint = function(x) x > 0,
+      constraint_msg = "n_bins must be positive"
+    ),
+    show_mean_line = opt_spec(default = TRUE, type = "logical"),
+    show_density_curve = opt_spec(default = TRUE, type = "logical"),
+    min_tick_distance = opt_spec(
+      default = 0.5, type = "numeric",
+      constraint = function(x) x > 0,
+      constraint_msg = "min_tick_distance must be positive"
+    ),
+    close_up_enabled = opt_spec(default = TRUE, type = "logical"),
+    close_up_lower = opt_spec(default = -10, type = "numeric"),
+    close_up_upper = opt_spec(default = 10, type = "numeric"),
+    close_up_min_tick_distance = opt_spec(default = 0.3, type = "numeric")
+  ))
+
+  lower_cutoff <- resolved$lower_cutoff
+  upper_cutoff <- resolved$upper_cutoff
+  critical_values <- resolved$critical_values
+  n_bins <- resolved$n_bins
+  show_mean_line <- resolved$show_mean_line
+  show_density_curve <- resolved$show_density_curve
+  min_tick_distance <- resolved$min_tick_distance
+  close_up_enabled <- resolved$close_up_enabled
+  close_up_lower <- resolved$close_up_lower
+  close_up_upper <- resolved$close_up_upper
+  close_up_min_tick_distance <- resolved$close_up_min_tick_distance
   theme_name <- vis$theme
   export_graphics <- vis$export_graphics
   export_path <- vis$export_path
   graph_scale <- vis$graph_scale
 
-  validate(
-    is.numeric(lower_cutoff),
-    is.numeric(upper_cutoff),
-    is.numeric(critical_values),
-    is.numeric(n_bins),
-    is.logical(show_mean_line),
-    is.logical(show_density_curve),
-    is.numeric(min_tick_distance),
-    is.logical(close_up_enabled),
-    is.numeric(close_up_lower),
-    is.numeric(close_up_upper),
-    is.numeric(close_up_min_tick_distance)
-  )
-
-  n_bins <- as.integer(n_bins)
   assert(
     lower_cutoff < upper_cutoff,
     "lower_cutoff must be less than upper_cutoff"
   )
-  assert(n_bins > 0, "n_bins must be positive")
-  assert(
-    all(critical_values > 0),
-    "critical_values must be positive (symmetric +/- applied automatically)"
-  )
-  assert(min_tick_distance > 0, "min_tick_distance must be positive")
 
   if (close_up_enabled) {
     assert(

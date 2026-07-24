@@ -17,9 +17,10 @@ MIN_OBSERVATIONS <- 3L
 robma <- function(df) {
   box::use(
     artma / libs / core / utils[get_verbosity],
-    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / validation[validate, validate_columns],
     artma / modules / runtime_methods[new_method_result],
-    artma / options / index[get_option_group]
+    artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options]
   )
 
   validate(is.data.frame(df))
@@ -31,44 +32,62 @@ robma <- function(df) {
 
   opt <- get_option_group("artma.methods.robma")
 
-  chains <- opt$chains %||% 3L
-  samples <- opt$samples %||% 5000L
-  burnin <- opt$burnin %||% 2000L
-  adapt <- opt$adapt %||% 500L
+  resolved <- resolve_options(opt, list(
+    chains = opt_spec(
+      default = 3L, type = "numeric",
+      constraint = function(x) x > 0, constraint_msg = "chains must be positive"
+    ),
+    samples = opt_spec(
+      default = 5000L, type = "numeric",
+      constraint = function(x) x > 0, constraint_msg = "samples must be positive"
+    ),
+    burnin = opt_spec(
+      default = 2000L, type = "numeric",
+      constraint = function(x) x > 0, constraint_msg = "burnin must be positive"
+    ),
+    adapt = opt_spec(
+      default = 500L, type = "numeric",
+      constraint = function(x) x > 0, constraint_msg = "adapt must be positive"
+    ),
+    autofit = opt_spec(default = TRUE, type = "logical"),
+    measure = opt_spec(
+      default = "SMD", type = "character",
+      constraint = function(x) x %in% c("SMD", "ZCOR", "RR", "OR", "HR", "RD", "IRR", "GEN"),
+      constraint_msg = "measure must be one of: SMD, ZCOR, RR, OR, HR, RD, IRR, GEN"
+    ),
+    effect_prior_scale = opt_spec(
+      default = 0.707, type = "numeric",
+      constraint = function(x) x > 0, constraint_msg = "effect_prior_scale must be positive"
+    ),
+    heterogeneity_shape = opt_spec(
+      default = 1, type = "numeric",
+      constraint = function(x) x > 0, constraint_msg = "heterogeneity_shape must be positive"
+    ),
+    heterogeneity_scale = opt_spec(
+      default = 0.15, type = "numeric",
+      constraint = function(x) x > 0, constraint_msg = "heterogeneity_scale must be positive"
+    ),
+    round_to = opt_spec(
+      default = 3L, type = "numeric", key = "artma.output.number_of_decimals"
+    )
+  ))
+
+  chains <- resolved$chains
+  samples <- resolved$samples
+  burnin <- resolved$burnin
+  adapt <- resolved$adapt
+  autofit <- resolved$autofit
+  measure <- resolved$measure
+  effect_prior_scale <- resolved$effect_prior_scale
+  heterogeneity_shape <- resolved$heterogeneity_shape
+  heterogeneity_scale <- resolved$heterogeneity_scale
+  round_to <- resolved$round_to
+
+  # parallel is auto-detected from a possibly-NA option and seed permits NA, so
+  # both stay outside the spec-driven block.
   parallel <- resolve_parallel(opt$parallel, chains)
-  autofit <- opt$autofit %||% TRUE
   seed <- opt$seed %||% NA_integer_
-  measure <- opt$measure %||% "SMD"
-  effect_prior_scale <- opt$effect_prior_scale %||% 0.707
-  heterogeneity_shape <- opt$heterogeneity_shape %||% 1
-  heterogeneity_scale <- opt$heterogeneity_scale %||% 0.15
-  round_to <- getOption("artma.output.number_of_decimals", 3)
-
-  validate(
-    is.numeric(chains),
-    is.numeric(samples),
-    is.numeric(burnin),
-    is.numeric(adapt),
-    is.logical(parallel),
-    is.logical(autofit),
-    is.numeric(seed) || is.na(seed),
-    is.character(measure),
-    is.numeric(effect_prior_scale),
-    is.numeric(heterogeneity_shape),
-    is.numeric(heterogeneity_scale)
-  )
-
-  assert(
-    measure %in% c("SMD", "ZCOR", "RR", "OR", "HR", "RD", "IRR", "GEN"),
-    "measure must be one of: SMD, ZCOR, RR, OR, HR, RD, IRR, GEN"
-  )
-  assert(chains > 0, "chains must be positive")
-  assert(samples > 0, "samples must be positive")
-  assert(burnin > 0, "burnin must be positive")
-  assert(adapt > 0, "adapt must be positive")
-  assert(effect_prior_scale > 0, "effect_prior_scale must be positive")
-  assert(heterogeneity_shape > 0, "heterogeneity_shape must be positive")
-  assert(heterogeneity_scale > 0, "heterogeneity_scale must be positive")
+  validate(is.numeric(seed) || is.na(seed))
 
   usable <- is.finite(df$effect) & is.finite(df$se) & df$se > 0
   fit_data <- df[usable, , drop = FALSE]

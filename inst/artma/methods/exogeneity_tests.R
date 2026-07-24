@@ -5,12 +5,13 @@
 #' The function returns both detailed coefficients and a publication-ready summary table.
 exogeneity_tests <- function(df) {
   box::use(
-    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / validation[validate, validate_columns],
     artma / libs / core / utils[get_verbosity],
     artma / libs / formatting / results[print_summary_table],
     artma / econometric / exogeneity[run_exogeneity_tests],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options],
     artma / options / significance_marks[resolve_add_significance_marks]
   )
 
@@ -19,29 +20,23 @@ exogeneity_tests <- function(df) {
 
   opt <- get_option_group("artma.methods.exogeneity_tests")
 
-  add_marks <- resolve_add_significance_marks()
-  iv_instrument <- opt$iv_instrument %||% "automatic"
-  puniform_alpha <- opt$puniform_alpha %||% 0.05
-  puniform_method <- opt$puniform_method %||% "ML"
-  round_to <- as.integer(getOption("artma.output.number_of_decimals", 3))
-
-  validate(
-    is.logical(add_marks),
-    is.character(iv_instrument),
-    is.numeric(puniform_alpha),
-    is.character(puniform_method),
-    is.numeric(round_to)
-  )
-
-  assert(puniform_alpha > 0 && puniform_alpha < 1, "puniform_alpha must lie in the (0, 1) interval.")
-  assert(round_to >= 0, "Number of decimals must be non-negative.")
-
-  resolved_options <- list(
-    add_significance_marks = add_marks,
-    iv_instrument = iv_instrument,
-    puniform_alpha = puniform_alpha,
-    puniform_method = puniform_method,
-    round_to = round_to
+  resolved_options <- c(
+    list(add_significance_marks = resolve_add_significance_marks()),
+    resolve_options(opt, list(
+      iv_instrument = opt_spec(default = "automatic", type = "character"),
+      puniform_alpha = opt_spec(
+        default = 0.05, type = "numeric",
+        constraint = function(x) x > 0 && x < 1,
+        constraint_msg = "puniform_alpha must lie in the (0, 1) interval."
+      ),
+      puniform_method = opt_spec(default = "ML", type = "character"),
+      round_to = opt_spec(
+        default = 3L, type = "numeric", key = "artma.output.number_of_decimals",
+        cast = as.integer,
+        constraint = function(x) x >= 0,
+        constraint_msg = "Number of decimals must be non-negative."
+      )
+    ))
   )
 
   results <- run_exogeneity_tests(df, resolved_options)

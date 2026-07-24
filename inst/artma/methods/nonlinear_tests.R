@@ -8,6 +8,7 @@ nonlinear_tests <- function(df) {
     artma / econometric / nonlinear[run_nonlinear_methods],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options],
     artma / options / significance_marks[resolve_add_significance_marks]
   )
 
@@ -16,47 +17,41 @@ nonlinear_tests <- function(df) {
 
   opt <- get_option_group("artma.methods.nonlinear_tests")
 
-  add_marks <- resolve_add_significance_marks()
+  # round_to has a bespoke default: the method's own (NA) option falls back to
+  # the global output decimals rather than a fixed literal, so it is resolved
+  # before the spec-driven block.
   round_to_opt <- opt$round_to
   if (length(round_to_opt) == 1 && is.na(round_to_opt)) {
     round_to_opt <- NULL
   }
-  round_to <- round_to_opt %||% as.integer(getOption("artma.output.number_of_decimals", 3))
-  stem_sample <- opt$stem_representative_sample %||% "medians"
-  selection_cutoffs <- opt$selection_cutoffs %||% c(1.96)
-  selection_symmetric <- opt$selection_symmetric %||% FALSE
-  selection_model <- opt$selection_model %||% "normal"
-  hierarchical_iterations <- opt$hierarchical_iterations %||% 6000L
-
-  validate(
-    is.logical(add_marks),
-    is.numeric(round_to),
-    is.character(stem_sample),
-    is.numeric(selection_cutoffs),
-    is.logical(selection_symmetric),
-    is.character(selection_model),
-    is.numeric(hierarchical_iterations)
-  )
-
-  round_to <- as.integer(round_to)
-  hierarchical_iterations <- as.integer(hierarchical_iterations)
-
+  round_to <- as.integer(round_to_opt %||% getOption("artma.output.number_of_decimals", 3))
   assert(round_to >= 0, "Number of decimals must be non-negative.")
-  assert(length(selection_cutoffs) > 0, "Selection model requires at least one cutoff value.")
-  assert(all(selection_cutoffs > 0), "Selection cutoffs must be positive.")
-  assert(selection_model %in% c("normal", "t"), "Selection model must be either 'normal' or 't'.")
-  assert(hierarchical_iterations > 0, "Hierarchical iterations must be positive.")
-  assert(stem_sample %in% c("medians", "first", "all"), "Invalid STEM representative sample option.")
 
-  resolved_options <- list(
-    add_significance_marks = add_marks,
-    round_to = round_to,
-    stem_representative_sample = stem_sample,
-    selection_cutoffs = selection_cutoffs,
-    selection_symmetric = selection_symmetric,
-    selection_model = selection_model,
-    hierarchical_iterations = hierarchical_iterations
+  resolved_options <- c(
+    list(add_significance_marks = resolve_add_significance_marks(), round_to = round_to),
+    resolve_options(opt, list(
+      stem_representative_sample = opt_spec(
+        default = "medians", type = "character",
+        constraint = function(x) x %in% c("medians", "first", "all"),
+        constraint_msg = "Invalid STEM representative sample option."
+      ),
+      selection_cutoffs = opt_spec(default = c(1.96), type = "numeric"),
+      selection_symmetric = opt_spec(default = FALSE, type = "logical"),
+      selection_model = opt_spec(
+        default = "normal", type = "character",
+        constraint = function(x) x %in% c("normal", "t"),
+        constraint_msg = "Selection model must be either 'normal' or 't'."
+      ),
+      hierarchical_iterations = opt_spec(
+        default = 6000L, type = "numeric", cast = as.integer,
+        constraint = function(x) x > 0,
+        constraint_msg = "Hierarchical iterations must be positive."
+      )
+    ))
   )
+
+  assert(length(resolved_options$selection_cutoffs) > 0, "Selection model requires at least one cutoff value.")
+  assert(all(resolved_options$selection_cutoffs > 0), "Selection cutoffs must be positive.")
 
   results <- run_nonlinear_methods(df, resolved_options)
 

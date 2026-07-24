@@ -7,12 +7,13 @@
 #' model (PET, PEESE, PET-PEESE, or the endogenous kink).
 maive_estimator <- function(df) {
   box::use(
-    artma / libs / core / validation[assert, validate, validate_columns],
+    artma / libs / core / validation[validate, validate_columns],
     artma / libs / core / utils[get_verbosity],
     artma / libs / formatting / results[print_sectioned_table, print_paragraph],
     artma / econometric / maive[maive_first_stage_f, maive_first_stage_is_weak, run_maive],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options],
     artma / options / significance_marks[resolve_add_significance_marks]
   )
 
@@ -21,54 +22,63 @@ maive_estimator <- function(df) {
 
   opt <- get_option_group("artma.methods.maive")
 
-  method <- opt$method %||% 3L
-  weight <- opt$weight %||% 0L
-  instrument <- opt$instrument %||% 1L
-  studylevel <- opt$studylevel %||% 2L
-  se <- opt$se %||% 1L
-  ar <- opt$ar %||% 0L
-  first_stage <- opt$first_stage %||% 0L
-  seed <- opt$seed %||% 123L
-  show_interpretation <- opt$show_interpretation %||% TRUE
+  resolved_options <- resolve_options(opt, list(
+    method = opt_spec(
+      default = 3L, type = "numeric", cast = as.integer,
+      constraint = function(x) x %in% c(1, 2, 3, 4),
+      constraint_msg = "maive method must be 1, 2, 3, or 4"
+    ),
+    weight = opt_spec(
+      default = 0L, type = "numeric", cast = as.integer,
+      constraint = function(x) x %in% c(0, 1, 2),
+      constraint_msg = "maive weight must be 0, 1, or 2"
+    ),
+    instrument = opt_spec(
+      default = 1L, type = "numeric", cast = as.integer,
+      constraint = function(x) x %in% c(0, 1),
+      constraint_msg = "maive instrument must be 0 or 1"
+    ),
+    studylevel = opt_spec(
+      default = 2L, type = "numeric", cast = as.integer,
+      constraint = function(x) x %in% c(0, 1, 2),
+      constraint_msg = "maive studylevel must be 0, 1, or 2"
+    ),
+    se = opt_spec(
+      default = 1L, type = "numeric", cast = as.integer,
+      constraint = function(x) x %in% c(1, 2, 3, 4, 5),
+      constraint_msg = "maive se must be 1, 2, 3, 4, or 5"
+    ),
+    ar = opt_spec(
+      default = 0L, type = "numeric", cast = as.integer,
+      constraint = function(x) x %in% c(0, 1),
+      constraint_msg = "maive ar must be 0 or 1"
+    ),
+    first_stage = opt_spec(
+      default = 0L, type = "numeric", cast = as.integer,
+      constraint = function(x) x %in% c(0, 1, 2),
+      constraint_msg = "maive first_stage must be 0, 1, or 2"
+    ),
+    seed = opt_spec(default = 123L, type = "numeric", cast = as.integer),
+    add_significance_marks = opt_spec(
+      default = TRUE, type = "logical", key = "artma.methods.add_significance_marks"
+    ),
+    round_to = opt_spec(
+      default = 3L, type = "numeric", key = "artma.output.number_of_decimals",
+      cast = as.integer,
+      constraint = function(x) x >= 0,
+      constraint_msg = "Number of decimals must be non-negative"
+    )
+  ))
 
-  add_significance_marks <- resolve_add_significance_marks()
-  round_to <- as.integer(getOption("artma.output.number_of_decimals", 3))
+  # show_interpretation drives display only and is not part of resolved_options
+  # (which is echoed into the method result meta), so it is resolved separately.
+  show_interpretation <- resolve_options(opt, list(
+    show_interpretation = opt_spec(default = TRUE, type = "logical")
+  ))$show_interpretation
 
-  validate(
-    is.numeric(method),
-    is.numeric(weight),
-    is.numeric(instrument),
-    is.numeric(studylevel),
-    is.numeric(se),
-    is.numeric(ar),
-    is.numeric(first_stage),
-    is.numeric(seed),
-    is.logical(show_interpretation),
-    is.logical(add_significance_marks),
-    is.numeric(round_to)
-  )
-
-  assert(method %in% c(1, 2, 3, 4), "maive method must be 1, 2, 3, or 4")
-  assert(weight %in% c(0, 1, 2), "maive weight must be 0, 1, or 2")
-  assert(instrument %in% c(0, 1), "maive instrument must be 0 or 1")
-  assert(studylevel %in% c(0, 1, 2), "maive studylevel must be 0, 1, or 2")
-  assert(se %in% c(1, 2, 3, 4, 5), "maive se must be 1, 2, 3, 4, or 5")
-  assert(ar %in% c(0, 1), "maive ar must be 0 or 1")
-  assert(first_stage %in% c(0, 1, 2), "maive first_stage must be 0, 1, or 2")
-  assert(round_to >= 0, "Number of decimals must be non-negative")
-
-  resolved_options <- list(
-    method = as.integer(method),
-    weight = as.integer(weight),
-    instrument = as.integer(instrument),
-    studylevel = as.integer(studylevel),
-    se = as.integer(se),
-    ar = as.integer(ar),
-    first_stage = as.integer(first_stage),
-    seed = as.integer(seed),
-    add_significance_marks = add_significance_marks,
-    round_to = round_to
-  )
+  method <- resolved_options$method
+  instrument <- resolved_options$instrument
+  add_significance_marks <- resolved_options$add_significance_marks
 
   result <- run_maive(df, resolved_options)
 

@@ -9,15 +9,26 @@
 variable_summary_stats <- function(df) {
   box::use(
     artma / const[CONST],
-    artma / libs / core / validation[assert],
     artma / data_config / read[get_data_config],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
+    artma / options / resolver[opt_spec, resolve_options],
     artma / libs / core / utils[get_verbosity]
   )
 
   config <- get_data_config()
   opt <- get_option_group("artma.methods.variable_summary_stats")
+
+  resolved <- resolve_options(opt, list(
+    use_verbose_names = opt_spec(default = TRUE, type = "logical"),
+    round_to = opt_spec(
+      default = 3L, type = "numeric", key = "artma.output.number_of_decimals",
+      constraint = function(x) x >= 0,
+      constraint_msg = "Number of decimals must be greater than or equal to 0."
+    )
+  ))
+  use_verbose_names <- resolved$use_verbose_names
+  round_to <- resolved$round_to
 
   if (get_verbosity() >= 4) {
     cli::cli_alert_info("Computing variable summary statistics")
@@ -37,16 +48,13 @@ variable_summary_stats <- function(df) {
   df_out <- data.frame(matrix(nrow = length(desired_vars), ncol = length(variable_stat_names)))
   colnames(df_out) <- variable_stat_names
 
-  round_to <- getOption("artma.output.number_of_decimals", 3)
-  assert(round_to >= 0, "Number of decimals must be greater than or equal to 0.")
-
   # Iterate over all desired variables and append summary statistics to the main DF
   missing_data_vars <- c()
   for (row_idx in seq_along(desired_vars)) {
     var_name <- desired_vars[[row_idx]]
     var_data <- as.vector(unlist(subset(df, select = var_name))) # Roundabout way, because types
     var_class <- config[[var_name]]$data_type
-    var_name_display <- if (isTRUE(opt$use_verbose_names %||% TRUE)) config[[var_name]]$var_name_verbose else var_name
+    var_name_display <- if (isTRUE(use_verbose_names)) config[[var_name]]$var_name_verbose else var_name
 
     # Missing all data
     if (!any(is.numeric(var_data), na.rm = TRUE) || all(is.na(var_data))) {
