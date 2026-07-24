@@ -14,7 +14,7 @@ prima_facie_graphs <- function(df) {
     artma / options / resolver[opt_spec, resolve_options],
     artma / variable / detection[detect_variable_groups],
     artma / visualization / options[get_visualization_options],
-    artma / visualization / export[export_named_plots]
+    artma / visualization / export[export_named_plots, preview_plot]
   )
 
   validate(is.data.frame(df))
@@ -111,7 +111,7 @@ prima_facie_graphs <- function(df) {
           "Displaying plot {i}/{length(plots)}: {.field {names(plots)[i]}}"
         )
       }
-      suppressWarnings(print(plots[[i]])) # nolint: undesirable_function_linter.
+      preview_plot(plots[[i]])
     }
   }
 

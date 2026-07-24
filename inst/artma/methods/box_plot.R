@@ -13,7 +13,7 @@ box_plot <- function(df) {
     artma / options / index[get_option_group],
     artma / options / resolver[opt_spec, resolve_options],
     artma / visualization / options[get_visualization_options],
-    artma / visualization / export[export_named_plots]
+    artma / visualization / export[export_named_plots, preview_plot]
   )
 
   validate(is.data.frame(df))
@@ -80,7 +80,7 @@ box_plot <- function(df) {
       if (n_plots > 1) {
         cli::cli_alert_info("Displaying plot {i}/{n_plots}")
       }
-      suppressWarnings(print(result$plots[[i]])) # nolint: undesirable_function_linter.
+      preview_plot(result$plots[[i]])
     }
   }
 
