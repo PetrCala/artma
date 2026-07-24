@@ -346,7 +346,7 @@ coerce_option_value <- function(val, opt) {
   box::use(
     artma / const[CONST],
     artma / libs / core / utils[get_verbosity],
-    artma / options / utils[parse_template_enum_value]
+    artma / options / type_registry[get_option_type_spec]
   )
 
   # If the value is NULL, there's nothing to coerce
@@ -354,61 +354,24 @@ coerce_option_value <- function(val, opt) {
     return(val)
   }
 
-  if (length(val) == 1 && is.na(val) && isTRUE(opt$allow_na)) {
+  spec <- get_option_type_spec(opt$type)
+  na_allowed <- isTRUE(opt$allow_na) && isTRUE(spec$allows_na)
+
+  if (length(val) == 1 && is.na(val) && na_allowed) {
     return(val)
   }
 
   enforce_na_allowed <- function(v) {
-    if (any(is.na(v)) && !isTRUE(opt$allow_na)) {
+    if (any(is.na(v)) && !na_allowed) {
       cli::cli_abort("Option {CONST$STYLES$OPTIONS$NAME(opt$name)} does not allow NA values.")
     }
   }
 
-  abort_coercion <- function(expected_type) {
-    cli::cli_abort(c(
-      "Cannot coerce option {CONST$STYLES$OPTIONS$NAME(opt$name)} to {CONST$STYLES$OPTIONS$TYPE(expected_type)}.",
-      "x" = "Raw value: {CONST$STYLES$OPTIONS$VALUE(val)}."
-    ))
-  }
-
   enforce_na_allowed(val)
 
-  # Enumerations, e.g. "enum: red|blue|green": coerce to character and validate membership.
-  if (startsWith(opt$type, "enum:")) {
-    coerced_val <- as.character(val)
-    valid_values <- parse_template_enum_value(opt$type)
-    if (!all(coerced_val %in% valid_values)) {
-      cli::cli_abort(c(
-        "Option {CONST$STYLES$OPTIONS$NAME(opt$name)} must be one of {.emph {toString(valid_values)}}.",
-        "x" = "Got: {CONST$STYLES$OPTIONS$VALUE(val)}."
-      ))
-    }
-    return(coerced_val)
-  }
-
-  coerce_numeric <- function(expected_type, as_fun) {
-    coerced <- suppressWarnings(as_fun(val))
-    # Coercion that manufactures NA out of a non-NA value is a failure, not a
-    # silent downgrade: surface it with the option name and raw value.
-    if (any(is.na(coerced) & !is.na(val))) {
-      abort_coercion(expected_type)
-    }
-    coerced
-  }
-
-  coerced_val <- switch(opt$type,
-    character = as.character(val),
-    integer = {
-      if (!is.numeric(val)) abort_coercion("integer")
-      non_na <- val[!is.na(val)]
-      if (any(non_na != as.integer(non_na))) abort_coercion("integer")
-      as.integer(val)
-    },
-    logical = coerce_numeric("logical", as.logical),
-    numeric = coerce_numeric("numeric", as.numeric),
-    list = as.list(val),
-    val
-  )
+  # Per-type coercion (character/integer/logical/numeric/list/enum) lives in the
+  # option type registry, shared with validate_option_value.
+  coerced_val <- spec$coerce(val, opt)
 
   if (isTRUE(opt$standardize) && opt$type == "character") {
     standard_val <- make.names(coerced_val)
