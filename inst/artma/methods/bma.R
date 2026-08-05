@@ -339,6 +339,11 @@ prepare_bma_inputs <- function(df, config, use_vif_optimization, max_groups_to_r
     include_reference_groups = FALSE
   )
 
+  # Column subsetting below drops custom attributes, so hold the scaling
+  # metadata aside and re-attach it (pruned to surviving columns) at the end.
+  scale_centers <- attr(bma_data, "bpe_scale_centers")
+  scale_scales <- attr(bma_data, "bpe_scale_scales")
+
   if (!"effect" %in% colnames(bma_data)) {
     cli::cli_abort("BMA data must include an {.code effect} column.")
   }
@@ -465,6 +470,11 @@ prepare_bma_inputs <- function(df, config, use_vif_optimization, max_groups_to_r
         sole_moderator
       )
     ))
+  }
+
+  if (!is.null(scale_centers)) {
+    attr(bma_data, "bpe_scale_centers") <- scale_centers[colnames(bma_data)]
+    attr(bma_data, "bpe_scale_scales") <- scale_scales[colnames(bma_data)]
   }
 
   list(

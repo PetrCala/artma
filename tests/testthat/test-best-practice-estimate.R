@@ -17,6 +17,7 @@ box::use(ggplot2[is_ggplot])
 box::use(
   artma / methods / bma[bma],
   artma / methods / best_practice_estimate[best_practice_estimate],
+  artma / econometric / bma[get_bma_data],
   artma / econometric / best_practice_estimate[
     infer_bpe_recommendation,
     format_bpe_recommendation
@@ -333,6 +334,87 @@ test_that("best_practice_estimate returns an empty factor summary table with no 
   result <- best_practice_estimate(df, bma_result = bma_result)
 
   expect_equal(nrow(result$tables$summary_by_factor), 0L)
+})
+
+test_that("get_bma_data records scaling metadata and keeps NA dummies binary", {
+  df <- data.frame(
+    effect = c(0.1, 0.2, 0.3, 0.4),
+    se = c(0.05, 0.10, 0.15, 0.20),
+    dummy = c(0, 1, NA, 1)
+  )
+  var_list <- data.frame(
+    var_name = c("effect", "se", "dummy"),
+    var_name_verbose = c("Effect", "SE", "Dummy"),
+    bma = c(TRUE, TRUE, TRUE),
+    to_log_for_bma = c(FALSE, FALSE, FALSE),
+    bma_reference_var = c(FALSE, FALSE, FALSE),
+    stringsAsFactors = FALSE
+  )
+
+  scaled <- get_bma_data(
+    df, var_list,
+    variable_info = c("effect", "se", "dummy"),
+    scale_data = TRUE, from_vector = TRUE, include_reference_groups = FALSE
+  )
+
+  centers <- attr(scaled, "bpe_scale_centers")
+  scales <- attr(scaled, "bpe_scale_scales")
+  expect_equal(centers[["effect"]], mean(df$effect))
+  expect_equal(scales[["se"]], stats::sd(df$se))
+  # A 0/1 dummy with an NA must not be z-scored (NA is not a third level).
+  expect_equal(centers[["dummy"]], 0)
+  expect_equal(scales[["dummy"]], 1)
+  expect_equal(sort(unique(stats::na.omit(scaled$dummy))), c(0, 1))
+})
+
+test_that("bpe applies the se = 0 correction on the raw effect scale", {
+  skip_if_not_installed("BMS")
+
+  # Strong publication-bias DGP: effect = 0.1 + 1.0 * se + small noise. The
+  # naive mean is ~0.28; the best-practice estimate at se = 0 must land near
+  # the bias-free 0.1. Before the scaling fix the override "0" plugged in the
+  # SAMPLE MEAN of se (standardized zero) and the output stayed on the
+  # z-scored effect scale, reporting ~0 here.
+  set.seed(99)
+  n_studies <- 16L
+  rows_per_study <- 6L
+  n <- n_studies * rows_per_study
+  se <- stats::runif(n, min = 0.05, max = 0.3)
+  moderator <- stats::rnorm(n)
+  df <- data.frame(
+    study_id = rep(seq_len(n_studies), each = rows_per_study),
+    effect = 0.1 + 1.0 * se + 0.05 * moderator + stats::rnorm(n, sd = 0.02),
+    se = se,
+    moderator = moderator,
+    stringsAsFactors = FALSE
+  )
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = list(
+      effect = list(var_name = "effect", var_name_verbose = "Effect", bma = FALSE, bpe = NA),
+      se = list(var_name = "se", var_name_verbose = "SE", bma = TRUE, bpe = 0),
+      moderator = list(var_name = "moderator", var_name_verbose = "Moderator", bma = TRUE, bpe = "mean")
+    ),
+    artma.visualization.export_graphics = FALSE,
+    artma.methods.bma.burn = 100L,
+    artma.methods.bma.iter = 1000L,
+    artma.methods.bma.nmodel = 20L,
+    artma.methods.bma.g = "UIP",
+    artma.methods.bma.mprior = "uniform",
+    artma.methods.bma.mcmc = "bd",
+    artma.methods.best_practice_estimate.include_study_rows = FALSE
+  ))
+
+  bma_result <- bma(df)
+  result <- best_practice_estimate(df, bma_result = bma_result)
+  author <- result$tables$summary[result$tables$summary$scope == "author", ]
+
+  expect_gt(author$estimate, 0.03)
+  expect_lt(author$estimate, 0.2)
+  expect_true(is.finite(author$standard_error))
+  expect_gt(author$standard_error, 0)
 })
 
 test_that("infer_bpe_recommendation returns NA (no recommendation) for unmatched variables", {

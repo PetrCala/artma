@@ -311,14 +311,24 @@ get_bma_data <- function(input_data, input_var_list, variable_info, scale_data =
 
   if (scale_data) {
     source_colnames <- colnames(bma_data)
+    # NA is not a level: a 0/1 dummy with missing values must stay a dummy,
+    # not get z-scored because NA inflated its unique count.
     is_binary <- function(x) {
-      length(unique(x)) == 2
+      length(unique(stats::na.omit(x))) == 2
     }
     binary_cols <- vapply(bma_data, is_binary, logical(1))
-    bma_data[, !binary_cols] <- lapply(bma_data[, !binary_cols, drop = FALSE], function(x) {
-      as.numeric(scale(x))
-    })
-    colnames(bma_data) <- source_colnames
+    centers <- stats::setNames(rep(0, length(source_colnames)), source_colnames)
+    scales <- stats::setNames(rep(1, length(source_colnames)), source_colnames)
+    for (column in source_colnames[!binary_cols]) {
+      scaled <- scale(bma_data[[column]])
+      bma_data[[column]] <- as.numeric(scaled)
+      centers[[column]] <- as.numeric(attr(scaled, "scaled:center"))
+      scales[[column]] <- as.numeric(attr(scaled, "scaled:scale"))
+    }
+    # Consumed by the best-practice estimate to move raw-scale overrides onto
+    # the standardized scale and to move its outputs back off it.
+    attr(bma_data, "bpe_scale_centers") <- centers
+    attr(bma_data, "bpe_scale_scales") <- scales
   }
 
   bma_data

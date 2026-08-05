@@ -32,6 +32,12 @@ resolve_bpe_context <- function(df, bma_data) {
   }
 
   if (is.null(aligned_df)) {
+    # Singleton clusters mean the "clustered" vcov collapses to a plain
+    # heteroskedasticity-robust one and study rows become per-observation
+    # rows; that must never happen silently.
+    cli::cli_alert_warning(
+      "Could not align BMA rows with the source data; study clustering is disabled and study rows are per-observation."
+    )
     fallback <- seq_len(nrow(bma_data))
     return(list(study_id = fallback, study_label = as.character(fallback)))
   }
@@ -53,7 +59,7 @@ resolve_bpe_vcov <- function(ols_model, cluster_ids = NULL) {
     model = ols_model,
     cluster = cluster_ids,
     engine = "sandwich",
-    clustered_type = "HC0",
+    clustered_type = "HC1",
     match_cluster_length = TRUE
   )
 }
@@ -70,7 +76,8 @@ compute_bpe_point_estimate <- function(predictor_values, coef_post_mean, include
 }
 
 build_bpe_row <- function(scope, study_id, study_label, predictor_values, coef_post_mean,
-                          include_intercept, vcov_matrix, z_value) {
+                          include_intercept, vcov_matrix, z_value,
+                          effect_center = 0, effect_scale = 1) {
   estimate <- compute_bpe_point_estimate(
     predictor_values = predictor_values,
     coef_post_mean = coef_post_mean,
@@ -81,6 +88,12 @@ build_bpe_row <- function(scope, study_id, study_label, predictor_values, coef_p
     include_intercept = include_intercept,
     vcov_matrix = vcov_matrix
   )
+
+  # The BMA fit (and thus the linear combination) is on the standardized
+  # effect scale whenever the pipeline z-scored the data; report on the raw
+  # effect scale.
+  estimate <- effect_center + effect_scale * estimate
+  standard_error <- effect_scale * standard_error
 
   ci_lower <- if (is.finite(estimate) && is.finite(standard_error)) {
     estimate - z_value * standard_error
@@ -141,7 +154,7 @@ compute_linear_combo_se <- function(predictor_values, include_intercept, vcov_ma
 #' @keywords internal
 compute_bpe_economic_significance <- function(predictors, bma_data, coef_post_mean,
                                               bpe_reference_estimate, pip_values, config,
-                                              round_to, pip_threshold) {
+                                              round_to, pip_threshold, effect_scale = 1) {
   empty <- data.frame(
     variable = character(0),
     var_label = character(0),
@@ -164,8 +177,11 @@ compute_bpe_economic_significance <- function(predictors, bma_data, coef_post_me
     values <- values[is.finite(values)]
     beta <- coef_post_mean[[var_name]]
 
-    sd_change <- if (length(values) > 1) beta * stats::sd(values) else NA_real_
-    range_change <- if (length(values)) beta * (max(values) - min(values)) else NA_real_
+    # beta and values share the (possibly standardized) model scale, so
+    # beta * delta is a change in standardized effect units; effect_scale
+    # converts it to the raw effect scale the reference estimate lives on.
+    sd_change <- if (length(values) > 1) effect_scale * beta * stats::sd(values) else NA_real_
+    range_change <- if (length(values)) effect_scale * beta * (max(values) - min(values)) else NA_real_
 
     config_key <- find_config_key_for_var(var_name, config)
     var_label <- var_name
@@ -208,7 +224,8 @@ compute_bpe_economic_significance <- function(predictors, bma_data, coef_post_me
 #' override.
 #' @keywords internal
 compute_bpe_factor_summary <- function(predictors, config, bma_data, coef_post_mean, include_intercept,
-                                       vcov_matrix, z_value, overrides, round_to) {
+                                       vcov_matrix, z_value, overrides, round_to,
+                                       centers = NULL, scales = NULL) {
   empty <- data.frame(
     scope = character(0),
     study_id = character(0),
@@ -235,11 +252,18 @@ compute_bpe_factor_summary <- function(predictors, config, bma_data, coef_post_m
     }
 
     var_label <- var_cfg$var_name_verbose %||% var_name
+    # Configured equal/threshold values are on the raw data scale; compare
+    # them against raw values (and label groups with raw boundaries), not the
+    # z-scored column, where a raw threshold lands tens of SDs out and turns
+    # the split into "everything vs nothing".
+    var_center <- centers[[var_name]] %||% 0
+    var_scale <- scales[[var_name]] %||% 1
+    raw_values <- var_center + var_scale * as.numeric(bma_data[[var_name]])
     groups <- resolve_variable_groups(
       var_label = var_label,
       equal_val = var_cfg$bpe_equal,
       gltl_val = var_cfg$bpe_gltl,
-      var_values = bma_data[[var_name]],
+      var_values = raw_values,
       round_to = round_to,
       auto_levels = TRUE
     )
@@ -253,7 +277,9 @@ compute_bpe_factor_summary <- function(predictors, config, bma_data, coef_post_m
         bma_data = bma_data,
         row_idx = group$row_idx,
         predictors = predictors,
-        overrides = overrides
+        overrides = overrides,
+        centers = centers,
+        scales = scales
       )
 
       row <- build_bpe_row(
@@ -264,7 +290,9 @@ compute_bpe_factor_summary <- function(predictors, config, bma_data, coef_post_m
         coef_post_mean = coef_post_mean,
         include_intercept = include_intercept,
         vcov_matrix = vcov_matrix,
-        z_value = z_value
+        z_value = z_value,
+        effect_center = centers[["effect"]] %||% 0,
+        effect_scale = scales[["effect"]] %||% 1
       )
       row$n_obs <- length(group$row_idx)
       rows[[length(rows) + 1]] <- row
@@ -284,17 +312,20 @@ compute_bpe_factor_summary <- function(predictors, config, bma_data, coef_post_m
   out
 }
 
-compute_context_values <- function(bma_data, row_idx, predictors, overrides) {
+compute_context_values <- function(bma_data, row_idx, predictors, overrides,
+                                   centers = NULL, scales = NULL) {
   values <- vapply(predictors, function(var_name) {
     resolve_bpe_value(
       values = bma_data[row_idx, var_name, drop = TRUE],
-      override = overrides[[var_name]]
+      override = overrides[[var_name]],
+      center = centers[[var_name]] %||% 0,
+      scale = scales[[var_name]] %||% 1
     )
   }, numeric(1))
   values
 }
 
-resolve_bpe_value <- function(values, override) {
+resolve_bpe_value <- function(values, override, center = 0, scale = 1) {
   numeric_values <- as.numeric(values)
   numeric_values <- numeric_values[is.finite(numeric_values)]
 
@@ -312,7 +343,12 @@ resolve_bpe_value <- function(values, override) {
   }
 
   if (is.numeric(parsed) && length(parsed) == 1 && !is.na(parsed)) {
-    return(as.numeric(parsed))
+    # Configured overrides are on the raw data scale; the stored column may be
+    # z-scored, so move the override onto the column's actual scale. On an
+    # unscaled column center/scale are 0/1 and this is the identity. Without
+    # this shift, the flagship "se = 0" correction plugged in the SAMPLE MEAN
+    # of se (the standardized zero), erasing the publication-bias adjustment.
+    return((as.numeric(parsed) - center) / scale)
   }
 
   switch(parsed,
