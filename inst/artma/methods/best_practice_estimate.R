@@ -157,13 +157,26 @@ best_practice_estimate <- function(df, bma_result = NULL) {
   context <- resolve_bpe_context(df = df, bma_data = bma_data)
   ols_model <- stats::lm(formula = bma_formula, data = bma_data)
   vcov_matrix <- resolve_bpe_vcov(ols_model = ols_model, cluster_ids = context$study_id)
-  z_value <- stats::qnorm((1 + conf_level) / 2)
+
+  # SEs are study-clustered, so t quantiles use G - 1 degrees of freedom (the
+  # normal quantile understates critical values at typical study counts).
+  n_clusters <- length(unique(context$study_id))
+  z_value <- stats::qt((1 + conf_level) / 2, df = max(n_clusters - 1L, 1L))
+
+  # Scaling metadata recorded by get_bma_data(); absent (identity) when the
+  # BMA data was never standardized.
+  scale_centers <- as.list(attr(bma_data, "bpe_scale_centers") %||% numeric(0))
+  scale_scales <- as.list(attr(bma_data, "bpe_scale_scales") %||% numeric(0))
+  effect_center <- scale_centers[["effect"]] %||% 0
+  effect_scale <- scale_scales[["effect"]] %||% 1
 
   author_values <- compute_context_values(
     bma_data = bma_data,
     row_idx = seq_len(nrow(bma_data)),
     predictors = predictors,
-    overrides = resolved_overrides
+    overrides = resolved_overrides,
+    centers = scale_centers,
+    scales = scale_scales
   )
 
   # Computed unconditionally (regardless of include_author_row/include_study_rows)
@@ -176,7 +189,9 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     coef_post_mean = coef_post_mean,
     include_intercept = include_intercept,
     vcov_matrix = vcov_matrix,
-    z_value = z_value
+    z_value = z_value,
+    effect_center = effect_center,
+    effect_scale = effect_scale
   )
 
   # First-appearance level order keeps summary rows in data order; NA study
@@ -193,7 +208,9 @@ best_practice_estimate <- function(df, bma_result = NULL) {
       bma_data = bma_data,
       row_idx = row_idx,
       predictors = predictors,
-      overrides = resolved_overrides
+      overrides = resolved_overrides,
+      centers = scale_centers,
+      scales = scale_scales
     )
 
     study_rows[[i]] <- build_bpe_row(
@@ -204,7 +221,9 @@ best_practice_estimate <- function(df, bma_result = NULL) {
       coef_post_mean = coef_post_mean,
       include_intercept = include_intercept,
       vcov_matrix = vcov_matrix,
-      z_value = z_value
+      z_value = z_value,
+      effect_center = effect_center,
+      effect_scale = effect_scale
     )
   }
 
@@ -237,7 +256,14 @@ best_practice_estimate <- function(df, bma_result = NULL) {
       character(1)
     ),
     has_recommendation = as.logical(has_recommendation[predictors]),
-    author_value = round_if_finite(as.numeric(author_values[predictors]), round_to),
+    # Report the plugged-in values on the raw data scale, not the z-scored one.
+    author_value = round_if_finite(
+      vapply(predictors, function(var_name) {
+        (scale_centers[[var_name]] %||% 0) +
+          (scale_scales[[var_name]] %||% 1) * as.numeric(author_values[[var_name]])
+      }, numeric(1)),
+      round_to
+    ),
     stringsAsFactors = FALSE
   )
 
@@ -260,7 +286,8 @@ best_practice_estimate <- function(df, bma_result = NULL) {
       pip_values = pip_values,
       config = config,
       round_to = round_to,
-      pip_threshold = economic_significance_pip_threshold
+      pip_threshold = economic_significance_pip_threshold,
+      effect_scale = effect_scale
     )
   }
 
@@ -274,7 +301,9 @@ best_practice_estimate <- function(df, bma_result = NULL) {
       vcov_matrix = vcov_matrix,
       z_value = z_value,
       overrides = resolved_overrides,
-      round_to = round_to
+      round_to = round_to,
+      centers = scale_centers,
+      scales = scale_scales
     )
   }
 
