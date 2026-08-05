@@ -76,3 +76,59 @@ test_that("run_fma returns coefficients and weights", {
   expect_true(abs(sum(result$weights) - 1) < 1e-06)
   expect_true(all(result$weights >= -1e-08))
 })
+
+test_that("Mallows penalty favors small models on pure-noise predictors", {
+  skip_if_not_installed("BMS")
+  skip_if_not_installed("quadprog")
+
+  set.seed(42)
+  n <- 200L
+  df <- data.frame(
+    effect = rnorm(n),
+    noise1 = rnorm(n),
+    noise2 = rnorm(n),
+    noise3 = rnorm(n),
+    noise4 = rnorm(n),
+    noise5 = rnorm(n),
+    stringsAsFactors = FALSE
+  )
+
+  var_list <- data.frame(
+    var_name = colnames(df),
+    var_name_verbose = colnames(df),
+    bma = rep(TRUE, ncol(df)),
+    to_log_for_bma = rep(FALSE, ncol(df)),
+    bma_reference_var = rep(FALSE, ncol(df)),
+    stringsAsFactors = FALSE
+  )
+
+  bma_data <- get_bma_data(
+    df,
+    var_list,
+    variable_info = colnames(df),
+    scale_data = FALSE,
+    from_vector = TRUE,
+    include_reference_groups = FALSE
+  )
+
+  params <- list(
+    burn = 100L, iter = 500L, nmodel = 10L,
+    g = "UIP", mprior = "uniform", mcmc = "bd"
+  )
+  bma_model <- run_bma(bma_data, params)
+
+  result <- run_fma(
+    bma_data = bma_data,
+    bma_model = bma_model,
+    input_var_list = var_list,
+    print_results = "none"
+  )
+
+  # None of the predictors carry signal, so the complexity penalty must pull
+  # weight onto the smallest models. The sign-flipped criterion concentrated
+  # nearly all weight on the largest model instead.
+  m <- length(result$weights)
+  small_half <- sum(result$weights[seq_len(ceiling(m / 2))])
+  expect_true(small_half > 0.5)
+  expect_true(result$weights[m] < 0.5)
+})
