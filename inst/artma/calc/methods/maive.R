@@ -1,6 +1,8 @@
 # 0.2.5 is the first release that returns unrounded estimates; older versions
 # round beta, SE, and Egger terms to 3 decimals, distorting the p-values and
 # CIs derived from them and zeroing out standard errors below 0.0005.
+# DESCRIPTION pins only the newest CRAN release so dependency resolution
+# works; this constant enforces the real floor at runtime.
 MAIVE_MIN_VERSION <- "0.2.5"
 
 #' @title Check whether the installed MAIVE version meets the minimum requirement
@@ -91,4 +93,4 @@ maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2
   result
 }
 
-box::export(maive, maive_version_ok)
+box::export(maive, maive_version_ok, MAIVE_MIN_VERSION)

@@ -6,7 +6,7 @@ box::use(
     skip_if_not_installed,
     test_that
   ],
-  artma / calc / methods / maive[maive, maive_version_ok]
+  artma / calc / methods / maive[maive, maive_version_ok, MAIVE_MIN_VERSION]
 )
 
 make_maive_data <- function(seed = 9, n = 40) {
@@ -19,7 +19,7 @@ make_maive_data <- function(seed = 9, n = 40) {
 }
 
 test_that("maive dispatches to the MAIVE package and returns its contract", {
-  skip_if_not_installed("MAIVE")
+  skip_if_not_installed("MAIVE", minimum_version = MAIVE_MIN_VERSION)
   dat <- make_maive_data()
 
   # Numeric method/weight args are coerced to integer before dispatch.
@@ -32,7 +32,9 @@ test_that("maive dispatches to the MAIVE package and returns its contract", {
 })
 
 test_that("maive aborts when required columns are missing", {
-  skip_if_not_installed("MAIVE")
+  # The version gate fires before the column check, so an old MAIVE would
+  # produce the wrong error here.
+  skip_if_not_installed("MAIVE", minimum_version = MAIVE_MIN_VERSION)
   expect_error(maive(data.frame(bs = 1:3, sebs = rep(0.1, 3)), SE = 1L), regexp = "Ns")
 })
 
