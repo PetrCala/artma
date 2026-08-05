@@ -18,7 +18,9 @@ t_stat <- function(effect, se) {
     if (get_verbosity() >= 2) {
       cli::cli_alert_warning("Introducing infinite t-values for {length(zero_se_rows)} rows with zero standard errors")
     }
-    t_values[zero_se_rows] <- Inf
+    # Keep the sign of the effect; 0/0 carries no direction and becomes NA.
+    t_values[zero_se_rows] <- sign(effect[zero_se_rows]) * Inf
+    t_values[zero_se_rows][effect[zero_se_rows] == 0] <- NA_real_
   }
 
   t_values

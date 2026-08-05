@@ -2,10 +2,13 @@ box::use(
   testthat[
     expect_equal,
     expect_error,
+    expect_message,
+    expect_no_message,
     expect_true,
     skip_if_not_installed,
     test_that
   ],
+  withr[local_options],
   artma / econometric / vcov[robust_vcov]
 )
 
@@ -72,6 +75,60 @@ test_that("get_robust_vcov ladder falls back to non-clustered HC1 on cluster err
 
   oracle <- suppressWarnings(sandwich::vcovHC(model, type = "HC1"))
   expect_equal(result, oracle)
+})
+
+test_that("robust_vcov warns when clustering is silently lost", {
+  skip_if_not_installed("sandwich")
+  df <- make_vcov_fixture()
+  model <- stats::lm(effect ~ se, data = df)
+
+  # Clustered step fails on a wrong-length cluster: the fallback must announce
+  # that the returned SEs are not clustered.
+  expect_message(
+    robust_vcov(
+      model = model,
+      cluster = c(1, 2, 3),
+      engine = "sandwich",
+      clustered_type = "HC1",
+      fallback_types = c("HC1", "HC0"),
+      suppress_warnings = TRUE
+    ),
+    regexp = "NOT clustered"
+  )
+
+  # The match_cluster_length guard is the same downgrade and must also warn.
+  expect_message(
+    robust_vcov(
+      model = model,
+      cluster = c(1, 2, 3),
+      engine = "sandwich",
+      clustered_type = "HC0",
+      match_cluster_length = TRUE
+    ),
+    regexp = "NOT clustered"
+  )
+
+  # A working clustered step stays quiet.
+  expect_no_message(
+    robust_vcov(
+      model = model,
+      cluster = df$study_id,
+      engine = "sandwich",
+      clustered_type = "HC1"
+    )
+  )
+
+  # Verbosity 1 keeps the run errors-only.
+  local_options("artma.verbose" = 1)
+  expect_no_message(
+    robust_vcov(
+      model = model,
+      cluster = c(1, 2, 3),
+      engine = "sandwich",
+      clustered_type = "HC1",
+      fallback_types = c("HC1", "HC0")
+    )
+  )
 })
 
 test_that("robust_vcov errors when a required cluster is NULL", {

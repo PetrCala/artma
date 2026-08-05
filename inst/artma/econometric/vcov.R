@@ -7,6 +7,7 @@
 NULL
 
 box::use(
+  artma / libs / core / utils[get_verbosity],
   artma / libs / core / validation[validate]
 )
 
@@ -88,6 +89,20 @@ robust_vcov <- function(model,
     TRUE
   }
 
+  # Downgrading from clustered to non-clustered inference changes reported
+  # SEs materially (usually shrinking them); never do it silently.
+  warn_downgrade <- function(reason) {
+    if (get_verbosity() >= 2) {
+      cli::cli_alert_warning(
+        "Clustered vcov unavailable ({reason}); standard errors are NOT clustered."
+      )
+    }
+  }
+
+  if (!is.null(cluster) && !use_cluster) {
+    warn_downgrade("cluster length does not match the model's observations")
+  }
+
   # A robust (sandwich/plm) vcov step, optionally clustered, wrapped in
   # suppressWarnings() when requested.
   robust_step <- function(type, clustered) {
@@ -130,10 +145,16 @@ robust_vcov <- function(model,
     }
     result <- tryCatch(run_robust(steps[[i]]), error = function(e) NULL)
     if (!is.null(result)) {
+      if (i > 1L && use_cluster) {
+        warn_downgrade("the clustered estimator failed")
+      }
       return(result)
     }
   }
 
+  if (use_cluster || length(steps) > 1L) {
+    warn_downgrade("all robust estimators failed; using stats::vcov()")
+  }
   final_step()
 }
 
