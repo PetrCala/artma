@@ -141,7 +141,9 @@ test_that("nonlinear_tests summary table is pinned on fixture data", {
         "Publication Bias", "(Std. Error)", "Effect Beyond Bias",
         "(Std. Error)", "Total observations", "Model observations"
       ),
-      WAAP = c("NA", "", "0.13***", "(0.01)", "90", "15"),
+      # The WAAP standard error is the study-clustered WLS regression SE; the
+      # fixture effects are nearly homogeneous, so it rounds below 0.01 here.
+      WAAP = c("NA", "", "0.13***", "(0.00)", "90", "15"),
       Stem = c("NA", "", "0.15***", "(0.02)", "90", "14"),
       Hierarch = c("0.56***", "(0.16)", "0.08", "(0.15)", "90", "90"),
       `Endogenous Kink` = c("0.57***", "(0.03)", "0.10***", "(0.00)", "90", "90")
