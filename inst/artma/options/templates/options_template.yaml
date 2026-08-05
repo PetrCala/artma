@@ -175,8 +175,12 @@ methods:
       type: "numeric"
       default: [1.96]
       help: |
-        Cut-off values supplied to the selection model. Provide one or more
-        positive values corresponding to the publication probability thresholds.
+        Cut-off values supplied to the selection model, expressed as
+        t-statistic thresholds delimiting the publication probability
+        intervals. Provide one or more strictly increasing values without
+        duplicates; zero and negative values are allowed, e.g.
+        [-1.96, 0, 1.96] for literatures with negative effects or [0] for
+        selection on the sign of the estimate.
 
     selection_symmetric:
       type: "logical"

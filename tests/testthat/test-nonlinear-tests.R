@@ -1,6 +1,7 @@
 box::use(
   testthat[
     expect_equal,
+    expect_error,
     expect_false,
     expect_gt,
     expect_identical,
@@ -74,8 +75,9 @@ test_that("nonlinear tests return tidy coefficients and summary", {
   expect_named(
     res$meta$coefficients,
     c(
-      "model", "model_label", "term", "estimate", "std_error", "p_value",
-      "n_obs_total", "n_obs_model", "estimate_formatted", "std_error_formatted"
+      "model", "model_label", "term", "term_label", "estimate", "std_error",
+      "p_value", "n_obs_total", "n_obs_model", "estimate_formatted",
+      "std_error_formatted"
     )
   )
   expect_setequal(unique(res$meta$coefficients$term), c("publication_bias", "effect"))
@@ -110,6 +112,103 @@ test_that("nonlinear tests writes STEM diagnostic plot files when export is enab
   expect_setequal(list.files(dir), c("stem_funnel.png", "stem_mse.png"))
   expect_s3_class(res$plots$stem_funnel, "recordedplot")
   expect_s3_class(res$plots$stem_mse, "recordedplot")
+})
+
+# Model-generated data with genuine study-level heterogeneity and effects of
+# mixed sign and significance, so every publication-probability interval of
+# the standard cutoff specs is populated and the selection model converges to
+# an interior solution.
+make_mixed_significance_data <- function() {
+  set.seed(2024)
+  n_studies <- 15L
+  per_study <- 6L
+  n <- n_studies * per_study
+  study_ids <- rep(paste0("S", seq_len(n_studies)), each = per_study)
+  study_effect <- rnorm(n_studies, mean = 0.1, sd = 0.3)
+  se_vals <- runif(n, 0.05, 0.35)
+  effect_vals <- rep(study_effect, each = per_study) + rnorm(n, 0, se_vals)
+  data.frame(
+    study_id = study_ids,
+    effect = effect_vals,
+    se = se_vals,
+    stringsAsFactors = FALSE
+  )
+}
+
+test_that("selection model runs with negative and zero cutoffs and restructured labels", {
+  df <- make_mixed_significance_data()
+
+  local_options(
+    "artma.methods.nonlinear_tests.selection_cutoffs" = c(-1.96, 0, 1.96),
+    "artma.methods.nonlinear_tests.selection_symmetric" = FALSE,
+    "artma.methods.nonlinear_tests.selection_model" = "normal",
+    "artma.methods.nonlinear_tests.hierarchical_iterations" = 20L,
+    "artma.visualization.export_graphics" = FALSE,
+    "artma.verbose" = 0L
+  )
+
+  res <- suppressWarnings(suppressMessages(nonlinear_tests(df)))
+
+  expect_false("selection" %in% names(res$meta$skipped))
+  selection <- res$meta$coefficients[res$meta$coefficients$model == "selection", , drop = FALSE]
+  expect_setequal(
+    selection$term,
+    c(
+      "publication_bias", "effect", "effect_heterogeneity",
+      "pub_prob_1", "pub_prob_2", "pub_prob_3"
+    )
+  )
+  expect_setequal(
+    selection$term_label[grepl("^pub_prob_", selection$term)],
+    c(
+      "Rel. Pub. Probability (-Inf, -1.96]",
+      "Rel. Pub. Probability (-1.96, 0]",
+      "Rel. Pub. Probability (0, 1.96]"
+    )
+  )
+
+  # tau is reported as heterogeneity, not as publication bias: the selection
+  # model carries no publication-bias estimate at all.
+  expect_true(is.na(selection$estimate[selection$term == "publication_bias"]))
+  tau_row <- selection[selection$term == "effect_heterogeneity", , drop = FALSE]
+  expect_identical(tau_row$term_label, "Effect Heterogeneity (tau)")
+  expect_true(is.finite(tau_row$estimate) && is.finite(tau_row$std_error))
+
+  summary <- res$tables$summary
+  expect_true("Effect Heterogeneity (tau)" %in% summary$Metric)
+  expect_true(any(grepl("Rel. Pub. Probability", summary$Metric, fixed = TRUE)))
+  expect_identical(summary$Selection[summary$Metric == "Publication Bias"], "NA")
+})
+
+test_that("selection model runs with a single zero cutoff (sign selection)", {
+  df <- make_mixed_significance_data()
+
+  local_options(
+    "artma.methods.nonlinear_tests.selection_cutoffs" = c(0),
+    "artma.methods.nonlinear_tests.selection_symmetric" = FALSE,
+    "artma.methods.nonlinear_tests.selection_model" = "normal",
+    "artma.methods.nonlinear_tests.hierarchical_iterations" = 20L,
+    "artma.visualization.export_graphics" = FALSE,
+    "artma.verbose" = 0L
+  )
+
+  res <- suppressWarnings(suppressMessages(nonlinear_tests(df)))
+
+  expect_false("selection" %in% names(res$meta$skipped))
+  selection <- res$meta$coefficients[res$meta$coefficients$model == "selection", , drop = FALSE]
+  expect_true("pub_prob_1" %in% selection$term)
+  expect_true("Rel. Pub. Probability (-Inf, 0]" %in% selection$term_label)
+})
+
+test_that("selection cutoffs must be strictly increasing without duplicates", {
+  df <- make_mixed_significance_data()
+
+  local_options(
+    "artma.methods.nonlinear_tests.selection_cutoffs" = c(1.96, 1.96),
+    "artma.verbose" = 0L
+  )
+
+  expect_error(suppressWarnings(nonlinear_tests(df)), "strictly increasing")
 })
 
 make_degenerate_options <- function() {

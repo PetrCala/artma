@@ -154,12 +154,19 @@ variation_variance_loglikelihood <- function(lambdabar, tauhat, betap, cutoffs, 
 #' @param cutoffs [numeric] Cut-off thresholds.
 #' @param symmetric [logical] Should symmetry be enforced?
 #' @param model [character] Either "normal" or "t".
+#' @param cluster_id [vector] Optional cluster identifiers (e.g. study ids),
+#'   one per observation. When at least two distinct clusters are present the
+#'   robust standard errors aggregate score contributions by cluster; with a
+#'   single cluster, incomplete identifiers, or a failed clustered
+#'   computation, the estimation falls back to unclustered standard errors
+#'   with a message.
 #' @return A list with parameter estimates and robust standard errors, plus
-#'   `convergence` (the optimiser's exit code, 0 for success) and
+#'   `convergence` (the optimiser's exit code, 0 for success),
 #'   `boundary_hit` (TRUE when a variance or publication-probability
 #'   parameter landed on its lower constraint of 0, a corner solution rather
-#'   than a genuine optimum).
-metastudies_estimation <- function(X, sigma, cutoffs, symmetric, model = "normal") {
+#'   than a genuine optimum), and `clustered` (TRUE when the reported
+#'   standard errors are clustered by `cluster_id`).
+metastudies_estimation <- function(X, sigma, cutoffs, symmetric, model = "normal", cluster_id = NULL) {
   max_eval <- 1e5
   max_iter <- 1e5
   tol <- 1e-8
@@ -181,10 +188,33 @@ metastudies_estimation <- function(X, sigma, cutoffs, symmetric, model = "normal
   upper <- rep(Inf, length(start))
   optimum <- stats::nlminb(start = start, objective = objective, lower = lower, upper = upper, control = list(eval.max = max_eval, iter.max = max_iter, abs.tol = tol))
   params <- optimum$par
+  cluster_index <- seq_len(n)
+  clustered <- FALSE
+  if (!is.null(cluster_id)) {
+    if (length(cluster_id) != n || anyNA(cluster_id)) {
+      cli::cli_inform("Cluster identifiers are missing or incomplete; reporting unclustered standard errors.")
+    } else if (length(unique(cluster_id)) < 2L) {
+      cli::cli_inform("Only one cluster is present; reporting unclustered standard errors.")
+    } else {
+      cluster_index <- as.integer(factor(cluster_id))
+      clustered <- TRUE
+    }
+  }
   covariance <- tryCatch(
-    robust_variance(stepsize, n, params, llh, seq_len(n)),
-    error = function(e) matrix(NA_real_, length(params), length(params))
+    robust_variance(stepsize, n, params, llh, cluster_index),
+    error = function(e) NULL
   )
+  if (is.null(covariance) && clustered) {
+    cli::cli_inform("Clustered variance estimation failed; falling back to unclustered standard errors.")
+    clustered <- FALSE
+    covariance <- tryCatch(
+      robust_variance(stepsize, n, params, llh, seq_len(n)),
+      error = function(e) NULL
+    )
+  }
+  if (is.null(covariance)) {
+    covariance <- matrix(NA_real_, length(params), length(params))
+  }
   standard_errors <- suppressWarnings(base::sqrt(base::diag(covariance)))
   boundary_tolerance <- 1e-4
   boundary_hit <- any(abs(params[-1]) < boundary_tolerance)
@@ -193,7 +223,8 @@ metastudies_estimation <- function(X, sigma, cutoffs, symmetric, model = "normal
     SE = standard_errors,
     convergence = optimum$convergence,
     message = optimum$message,
-    boundary_hit = boundary_hit
+    boundary_hit = boundary_hit,
+    clustered = clustered
   )
 }
 
@@ -255,5 +286,6 @@ box::export(
   VariationVarianceLogLikelihood,
   estimatestable,
   metastudies_estimation,
-  compute_score_matrix
+  compute_score_matrix,
+  compute_information_matrix
 )

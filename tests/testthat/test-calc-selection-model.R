@@ -1,7 +1,9 @@
 box::use(
   testthat[
     expect_equal,
+    expect_false,
     expect_length,
+    expect_message,
     expect_true,
     test_that
   ],
@@ -9,10 +11,27 @@ box::use(
     compute_tpowers,
     variation_variance_loglikelihood,
     clustered_covariance_estimate,
+    compute_information_matrix,
+    compute_score_matrix,
     estimates_table,
     metastudies_estimation
   ]
 )
+
+# Synthetic meta-analytic sample with genuine study-level heterogeneity, so
+# study clustering changes the standard errors and the selection model's
+# publication-probability parameters sit in the interior of their cells.
+make_clustered_selection_data <- function() {
+  set.seed(2024)
+  n_studies <- 15L
+  per_study <- 6L
+  n <- n_studies * per_study
+  study <- rep(seq_len(n_studies), each = per_study)
+  study_effect <- rnorm(n_studies, mean = 0.1, sd = 0.3)
+  se <- runif(n, 0.05, 0.35)
+  effect <- study_effect[study] + rnorm(n, 0, se)
+  list(effect = effect, se = se, study = study, n = n)
+}
 
 # compute_tpowers -----------------------------------------------------------
 
@@ -99,4 +118,84 @@ test_that("metastudies_estimation recovers a homogeneous true effect", {
   expect_equal(fit$Psihat[1], 0.3, tolerance = 0.1)
   expect_length(fit$SE, length(fit$Psihat))
   expect_true(all(fit$Psihat[-1] >= 0))
+})
+
+test_that("metastudies_estimation supports zero and negative cutoffs", {
+  d <- make_clustered_selection_data()
+
+  fit <- metastudies_estimation(
+    d$effect, d$se,
+    cutoffs = c(-1.96, 0, 1.96), symmetric = FALSE, model = "normal",
+    cluster_id = d$study
+  )
+
+  # mu, tau, and one publication probability per interval below a cutoff.
+  expect_length(fit$Psihat, 5L)
+  expect_equal(fit$convergence, 0)
+  expect_false(fit$boundary_hit)
+})
+
+test_that("metastudies_estimation clusters standard errors by study", {
+  d <- make_clustered_selection_data()
+
+  fit_clustered <- metastudies_estimation(
+    d$effect, d$se,
+    cutoffs = 1.96, symmetric = FALSE, model = "normal",
+    cluster_id = d$study
+  )
+  fit_unclustered <- metastudies_estimation(
+    d$effect, d$se,
+    cutoffs = 1.96, symmetric = FALSE, model = "normal"
+  )
+
+  # Clustering only changes the variance estimate, not the point estimates.
+  expect_equal(fit_clustered$Psihat, fit_unclustered$Psihat)
+  expect_true(fit_clustered$clustered)
+  expect_false(fit_unclustered$clustered)
+  expect_false(isTRUE(all.equal(fit_clustered$SE, fit_unclustered$SE)))
+})
+
+test_that("clustered standard errors match an independently computed cluster sandwich", {
+  d <- make_clustered_selection_data()
+
+  fit <- metastudies_estimation(
+    d$effect, d$se,
+    cutoffs = 1.96, symmetric = FALSE, model = "normal",
+    cluster_id = d$study
+  )
+
+  tpowers <- compute_tpowers(d$effect / d$se, cutoffs = 1.96, symmetric = FALSE)
+  llh <- function(psi) {
+    variation_variance_loglikelihood(
+      psi[1], psi[2], c(psi[3], 1), 1.96, FALSE, d$effect, d$se, tpowers
+    )
+  }
+  scores <- compute_score_matrix(fit$Psihat, 1e-6, llh)
+  centered <- sweep(scores, 2, colMeans(scores))
+  meat <- crossprod(rowsum(centered, d$study)) / (d$n - 1)
+  bread <- solve(compute_information_matrix(fit$Psihat, 1e-6, llh))
+  expected_se <- sqrt(diag(bread %*% meat %*% bread * d$n))
+
+  expect_equal(unname(fit$SE), unname(expected_se), tolerance = 1e-8)
+})
+
+test_that("metastudies_estimation falls back to unclustered errors with a single cluster", {
+  d <- make_clustered_selection_data()
+
+  fit_single <- NULL
+  expect_message(
+    fit_single <- metastudies_estimation(
+      d$effect, d$se,
+      cutoffs = 1.96, symmetric = FALSE, model = "normal",
+      cluster_id = rep(1L, d$n)
+    ),
+    "unclustered"
+  )
+  fit_unclustered <- metastudies_estimation(
+    d$effect, d$se,
+    cutoffs = 1.96, symmetric = FALSE, model = "normal"
+  )
+
+  expect_false(fit_single$clustered)
+  expect_equal(fit_single$SE, fit_unclustered$SE)
 })
