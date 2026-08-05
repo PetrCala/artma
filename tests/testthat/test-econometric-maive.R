@@ -11,6 +11,7 @@ box::use(
     test_that
   ],
   withr[local_options],
+  artma / calc / methods / maive[MAIVE_MIN_VERSION],
   artma / econometric / maive[
     ar_ci_verdict,
     build_maive_interpretation,
@@ -513,7 +514,7 @@ test_that("run_maive reports the installed version when it is too old", {
 })
 
 test_that("run_maive builds a summary and interpretation from real MAIVE output", {
-  skip_if_not_installed("MAIVE")
+  skip_if_not_installed("MAIVE", minimum_version = MAIVE_MIN_VERSION)
   local_options(artma.verbose = 1)
 
   result <- run_maive(make_maive_df(), base_maive_options())
@@ -525,7 +526,7 @@ test_that("run_maive builds a summary and interpretation from real MAIVE output"
 })
 
 test_that("run_maive resolves the first stage from the data and reports it", {
-  skip_if_not_installed("MAIVE")
+  skip_if_not_installed("MAIVE", minimum_version = MAIVE_MIN_VERSION)
   local_options(artma.verbose = 1)
 
   df <- make_maive_df()
@@ -541,7 +542,7 @@ test_that("run_maive resolves the first stage from the data and reports it", {
 })
 
 test_that("run_maive is reproducible across two bootstrap runs", {
-  skip_if_not_installed("MAIVE")
+  skip_if_not_installed("MAIVE", minimum_version = MAIVE_MIN_VERSION)
   local_options(artma.verbose = 1)
   opts <- base_maive_options(se = 3L) # Wild cluster bootstrap: needs the threaded seed.
 
