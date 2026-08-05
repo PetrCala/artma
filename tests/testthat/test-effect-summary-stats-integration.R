@@ -144,8 +144,9 @@ test_that("effect_summary_stats computes the All Data row exactly", {
   #   mean   = 0.32   median = 0.30   min = 0.10   max = 0.50
   #   sd     = 0.164 (rounded)        obs = 5
   #   z_0.95 = qnorm(0.975) = 1.959964
-  #   se     = round(sd, 3) / sqrt(5); ci = mean +/- z * se -> [0.176, 0.464]
-  #   weighted mean with w = 1 / study_size^2 -> 0.165
+  #   se     = sd / sqrt(5); ci = mean +/- z * se -> [0.177, 0.463]
+  #   weighted mean with w = 1 / study_size -> 0.234, its CI from
+  #   se_w = sqrt(sum(w_norm^2 * (x - wm)^2)) -> [0.100, 0.369]
   df <- data.frame(
     effect = c(0.10, 0.24, 0.30, 0.46, 0.50),
     study_size = c(10, 20, 30, 40, 50),
@@ -180,9 +181,11 @@ test_that("effect_summary_stats computes the All Data row exactly", {
   expect_equal(all_data$Max, 0.50)
   expect_equal(all_data$SD, 0.164)
   expect_equal(all_data$Obs, 5L)
-  expect_equal(all_data$`CI lower`, 0.176)
-  expect_equal(all_data$`CI upper`, 0.464)
-  expect_equal(all_data$`Weighted Mean`, 0.165)
+  expect_equal(all_data$`CI lower`, 0.177)
+  expect_equal(all_data$`CI upper`, 0.463)
+  expect_equal(all_data$`Weighted Mean`, 0.234)
+  expect_equal(all_data$`WM CI lower`, 0.100)
+  expect_equal(all_data$`WM CI upper`, 0.369)
 })
 
 test_that("effect_summary_stats confidence interval widens with the confidence level", {
