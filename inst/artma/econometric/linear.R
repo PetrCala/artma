@@ -135,6 +135,16 @@ make_boot_estimate_weighted_ols <- function(weight_column) {
   }
 }
 
+# Study-weighted OLS gives each study equal total weight: an estimate from a
+# study contributing k estimates enters with lm weight 1/k (`study_size` is
+# the per-study estimate count). This breaks the w^2 convention of
+# make_boot_estimate_weighted_ols(), so it carries its own fast path.
+boot_estimate_study_weighted_ols <- function(data, rows) {
+  weights <- 1 / data$study_size[rows]
+  fit <- stats::lm.wfit(cbind(1, data$se[rows]), data$effect[rows], weights)
+  c(effect = fit$coefficients[[1L]], publication_bias = fit$coefficients[[2L]])
+}
+
 # Within (fixed effects) estimator. Duplicated resampled clusters keep their
 # original id, so they merge into one group during demeaning, exactly as plm
 # treats the resampled frame. The overall intercept is what
@@ -387,8 +397,15 @@ tidy_plm_within <- function(model, data) {
   slope$term_raw <- NULL
   slope$term <- "publication_bias"
 
+  # within_intercept() applies the supplied vcov function to its own auxiliary
+  # model (intercept + regressor), so it must compute a fresh clustered vcov
+  # for whatever model it receives; the slope-only matrix above would make the
+  # intercept SE read the slope's variance.
   intercept <- tryCatch(
-    plm::within_intercept(model, vcov = function(x) vcov),
+    plm::within_intercept(
+      model,
+      vcov = function(m) plm::vcovHC(m, method = "arellano", type = "HC1", cluster = "group")
+    ),
     error = function(e) NA_real_
   )
 
@@ -560,10 +577,10 @@ linear_model_specs <- function() {
       cluster_column = "study_id",
       weight_column = "study_size",
       terms = c("effect", "publication_bias"),
-      fit = function(df) stats::lm(effect ~ se, data = df, weights = (df$study_size^2)),
+      fit = function(df) stats::lm(effect ~ se, data = df, weights = (1 / df$study_size)),
       tidy = function(model, data) tidy_lm_model(model, data, "study_id"),
       boot_coefs = boot_coefs_intercept_slope,
-      boot_estimate = make_boot_estimate_weighted_ols("study_size"),
+      boot_estimate = boot_estimate_study_weighted_ols,
       supports_bootstrap = TRUE
     ),
     list(

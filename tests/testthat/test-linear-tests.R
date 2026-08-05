@@ -40,6 +40,24 @@ make_demo_data <- function() {
   )
 }
 
+# Studies contribute unequal numbers of estimates, which is essential for the
+# study-weighted regression tests: with equal counts, every per-observation
+# weight is the same constant and any (mis)weighting collapses to plain OLS.
+make_unbalanced_data <- function() {
+  set.seed(2026)
+  sizes <- c(2L, 3L, 5L, 7L, 11L, 4L)
+  study_ids <- rep(paste0("S", seq_along(sizes)), times = sizes)
+  se_vals <- runif(sum(sizes), min = 0.05, max = 0.2)
+  data.frame(
+    study_id = study_ids,
+    effect = rnorm(sum(sizes), mean = 0.2, sd = 0.05) + 0.3 * se_vals,
+    se = se_vals,
+    study_size = rep(sizes, times = sizes),
+    precision = 1 / se_vals,
+    check.names = FALSE
+  )
+}
+
 # A study with an extreme, trend-breaking `se`/`effect` pair gives the
 # unweighted specs a high-leverage point: the analytic clustered-vcov test and
 # the percentile bootstrap CI reliably disagree on several rows, which is
@@ -256,7 +274,10 @@ test_that("bootstrap CIs are deterministic and seed-identical to the tidy-path i
   # against per-replication refits (see the fast-path tests below). The ols
   # and fe values match the pre-optimization clustered-vcov tidy path;
   # enabling the be bootstrap shifted the RNG stream for the specs after it,
-  # so those values were regenerated from the verified implementation.
+  # so those values were regenerated from the verified implementation. The
+  # ols_study_weighted values were regenerated again when its weighting was
+  # corrected to equal-total-weight per study (issue #365); the resamples are
+  # unchanged, only the estimator applied to them.
   expected <- data.frame(
     model = rep(
       c("ols", "fe", "be", "re", "ols_study_weighted", "ols_precision_weighted"),
@@ -268,7 +289,7 @@ test_that("bootstrap CIs are deterministic and seed-identical to the tidy-path i
       0.140819890400399, -0.600311615629511,
       -0.211101307249788, -2.575829691320434,
       0.152547356054246, -0.570520287992651,
-      0.152639814703079, -0.689380694259938,
+      0.135891505542401, -0.603062744099735,
       0.164684612181770, -0.583949862340950
     ),
     bootstrap_upper = c(
@@ -276,13 +297,76 @@ test_that("bootstrap CIs are deterministic and seed-identical to the tidy-path i
       0.243966037478644, 0.440057444128715,
       0.481753330561316, 3.827252082114144,
       0.243411054603044, 0.301689687613106,
-      0.262852372824379, 0.247400389358160,
+      0.240079968258059, 0.404233453422908,
       0.244794965444753, 0.172746267850587
     ),
     stringsAsFactors = FALSE
   )
 
   expect_equal(ci, expected, tolerance = 1e-8, ignore_attr = TRUE)
+})
+
+test_that("FE effect-beyond-bias SE comes from the auxiliary intercept model, not the slope", {
+  skip_if_not_installed("plm")
+
+  df <- make_unbalanced_data()
+  res <- run_linear_models(
+    df,
+    options = list(
+      add_significance_marks = FALSE,
+      bootstrap_replications = 0L,
+      conf_level = 0.95,
+      round_to = 3L
+    )
+  )
+
+  fe <- res$coefficients[res$coefficients$model == "fe", , drop = FALSE]
+  se_slope <- fe$std_error[fe$term == "publication_bias"]
+  se_effect <- fe$std_error[fe$term == "effect"]
+
+  expect_false(isTRUE(all.equal(se_effect, se_slope)))
+
+  model <- plm::plm(effect ~ se, data = df, model = "within", index = "study_id")
+  expected <- plm::within_intercept(
+    model,
+    vcov = function(m) plm::vcovHC(m, method = "arellano", type = "HC1", cluster = "group")
+  )
+
+  expect_equal(fe$estimate[fe$term == "effect"], expected[[1L]], tolerance = 1e-12)
+  expect_equal(se_effect, attr(expected, "se")[[1L]], tolerance = 1e-12)
+})
+
+test_that("study-weighted OLS gives each study equal total weight", {
+  df <- make_unbalanced_data()
+  res <- run_linear_models(
+    df,
+    options = list(
+      add_significance_marks = FALSE,
+      bootstrap_replications = 0L,
+      conf_level = 0.95,
+      round_to = 3L
+    )
+  )
+
+  sw <- res$coefficients[res$coefficients$model == "ols_study_weighted", , drop = FALSE]
+
+  # Independent per-study estimate counts; each study's estimates must enter
+  # with lm weight 1/count so every study carries the same total weight.
+  counts <- as.vector(table(df$study_id)[as.character(df$study_id)])
+  expect_equal(df$study_size, counts)
+
+  reference <- stats::lm(effect ~ se, data = df, weights = 1 / counts)
+
+  expect_equal(
+    sw$estimate[sw$term == "effect"],
+    stats::coef(reference)[["(Intercept)"]],
+    tolerance = 1e-12
+  )
+  expect_equal(
+    sw$estimate[sw$term == "publication_bias"],
+    stats::coef(reference)[["se"]],
+    tolerance = 1e-12
+  )
 })
 
 test_that("bootstrap fast paths match slow-path refits on resampled data", {
