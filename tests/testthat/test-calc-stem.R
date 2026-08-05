@@ -100,3 +100,23 @@ test_that("stem is deterministic for identical input", {
 
   expect_equal(stem(effect, se, c(1e-4, 100)), stem(effect, se, c(1e-4, 100)))
 })
+
+test_that("stem MSE table rows are internally aligned", {
+  set.seed(5)
+  n <- 40
+  se <- runif(n, 0.05, 0.5)
+  effect <- 0.3 + rnorm(n, 0, se)
+
+  out <- stem(effect, se, c(1e-4, 100))
+  mse_table <- out$MSE
+
+  # One row per candidate stem size (n_stem = 3..n), no trailing NA row, and
+  # bias_squared must be the same row's MSE minus variance. The previous code
+  # shifted bias_squared one row up.
+  expect_equal(nrow(mse_table), n - 2)
+  expect_true(all(is.finite(mse_table)))
+  expect_equal(
+    unname(mse_table[, "bias_squared"]),
+    unname(mse_table[, "MSE"] - mse_table[, "variance"])
+  )
+})
