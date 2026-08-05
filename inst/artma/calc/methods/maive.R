@@ -19,11 +19,11 @@ maive_version_ok <- function(installed_version, min_version = MAIVE_MIN_VERSION)
 #' @param weight *[integer]* Weighting scheme: 0=none (default), 1=weights, 2=adjusted.
 #' @param instrument *[integer]* Instrument SEs: 0=no, 1=yes (default).
 #' @param studylevel *[integer]* Study-level correlation: 0=none, 1=fixed, 2=cluster (default).
-#' @param SE *[integer]* SE estimation: 1=Asymptotic (default), 2=Pairs cluster boot, 3=Wild boot,
-#'   4=Wild cluster boot, 5=Pairs boot.
+#' @param SE *[integer]* SE estimation: 0=CR0, 1=CR1 (default), 2=CR2,
+#'   3=wild cluster bootstrap.
 #' @param AR *[integer]* Anderson-Rubin CI: 0=no (default), 1=yes.
 #' @param first_stage *[integer]* First stage option (default 0).
-#' @param seed *[integer]* RNG seed for bootstrap SE modes (SE = 2..5), so
+#' @param seed *[integer]* RNG seed for the wild cluster bootstrap (SE = 3), so
 #'   repeated runs on the same data reproduce identical results (default 123).
 #' @return *[list]* MAIVE output with beta, SE, F-test, Hausman test, etc.
 maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2L,
