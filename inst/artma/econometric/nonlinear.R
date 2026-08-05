@@ -391,9 +391,31 @@ run_hierarchical <- function(df, total_n, options) {
   )
 }
 
+#' Label the t-statistic intervals of the selection model's publication
+#' probabilities
+#'
+#' @param cutoffs *\[numeric\]* Cut-off thresholds, strictly increasing.
+#' @param symmetric *\[logical\]* Whether the model applies cutoffs to `|t|`.
+#' @return *\[character\]* One label per estimated publication-probability
+#'   parameter; the interval above the last cutoff is the reference category
+#'   with its probability normalised to 1.
+#' @keywords internal
+selection_interval_labels <- function(cutoffs, symmetric) {
+  bounds <- c(if (symmetric) "0" else "-Inf", as.character(cutoffs))
+  vapply(seq_along(cutoffs), function(i) {
+    left <- if (i == 1 && symmetric) "[" else "("
+    paste0(left, bounds[i], ", ", bounds[i + 1], "]")
+  }, character(1))
+}
+
 run_selection <- function(df, total_n, options) {
   validate_columns(df, c("effect", "se"))
-  data <- df[, c("effect", "se"), drop = FALSE]
+  columns <- c("effect", "se")
+  has_study_id <- "study_id" %in% colnames(df)
+  if (has_study_id) {
+    columns <- c(columns, "study_id")
+  }
+  data <- df[, columns, drop = FALSE]
   data <- data[is.finite(data$effect) & is.finite(data$se) & data$se > 0, , drop = FALSE]
   if (nrow(data) < 2) {
     cli::cli_abort("Not enough observations to run the selection model.")
@@ -406,26 +428,47 @@ run_selection <- function(df, total_n, options) {
     sigma = data$se,
     cutoffs = cutoffs,
     symmetric = symmetric,
-    model = model
+    model = model,
+    cluster_id = if (has_study_id) data$study_id else NULL
   )
-  if (length(estimates$Psihat) < 2 || length(estimates$SE) < 2) {
-    cli::cli_abort("Selection model did not return effect and publication bias parameters.")
+  n_shape_params <- if (model == "t") 3L else 2L
+  n_params <- n_shape_params + length(cutoffs)
+  if (length(estimates$Psihat) != n_params || length(estimates$SE) != n_params) {
+    cli::cli_abort("Selection model did not return the expected parameter vector.")
   }
   effect_est <- estimates$Psihat[1]
   effect_se <- estimates$SE[1]
-  pub_bias_est <- estimates$Psihat[2]
-  pub_bias_se <- estimates$SE[2]
+  tau_est <- estimates$Psihat[2]
+  tau_se <- estimates$SE[2]
+  extra_terms <- list(list(
+    term = "effect_heterogeneity",
+    term_label = "Effect Heterogeneity (tau)",
+    estimate = tau_est,
+    std_error = tau_se,
+    p_value = normal_p_value(tau_est, tau_se)
+  ))
+  interval_labels <- selection_interval_labels(cutoffs, symmetric)
+  pub_prob_index <- seq.int(n_shape_params + 1L, n_params)
+  for (i in seq_along(pub_prob_index)) {
+    pub_prob_est <- estimates$Psihat[pub_prob_index[i]]
+    pub_prob_se <- estimates$SE[pub_prob_index[i]]
+    extra_terms[[i + 1L]] <- list(
+      term = paste0("pub_prob_", i),
+      term_label = paste0("Rel. Pub. Probability ", interval_labels[i]),
+      estimate = pub_prob_est,
+      std_error = pub_prob_se,
+      # Publication probabilities are relative to the reference interval above
+      # the last cutoff, so the no-selection null is 1, not 0.
+      p_value = normal_p_value(pub_prob_est - 1, pub_prob_se)
+    )
+  }
   list(
     effect = list(
       estimate = effect_est,
       std_error = effect_se,
       p_value = normal_p_value(effect_est, effect_se)
     ),
-    publication_bias = list(
-      estimate = pub_bias_est,
-      std_error = pub_bias_se,
-      p_value = normal_p_value(pub_bias_est, pub_bias_se)
-    ),
+    extra_terms = extra_terms,
     n_model = nrow(data),
     convergence = estimates$convergence,
     boundary_hit = estimates$boundary_hit
@@ -466,11 +509,15 @@ build_summary_table <- function(coefficients, digits) {
   if (!nrow(coefficients)) {
     return(data.frame())
   }
+  is_extra <- !coefficients$term %in% c("publication_bias", "effect")
+  extra_labels <- unique(coefficients$term_label[is_extra])
+  extra_row_labels <- as.vector(rbind(extra_labels, rep("(Std. Error)", length(extra_labels))))
   row_labels <- c(
     "Publication Bias",
     "(Std. Error)",
     "Effect Beyond Bias",
     "(Std. Error)",
+    extra_row_labels,
     "Total observations",
     "Model observations"
   )
@@ -479,6 +526,15 @@ build_summary_table <- function(coefficients, digits) {
     model_rows <- coefficients[coefficients$model == model, , drop = FALSE]
     pb_row <- model_rows[model_rows$term == "publication_bias", , drop = FALSE]
     eff_row <- model_rows[model_rows$term == "effect", , drop = FALSE]
+    extra_cells <- character(0)
+    for (extra_label in extra_labels) {
+      extra_row <- model_rows[model_rows$term_label == extra_label & !model_rows$term %in% c("publication_bias", "effect"), , drop = FALSE]
+      extra_cells <- c(
+        extra_cells,
+        if (nrow(extra_row)) extra_row$estimate_formatted else "",
+        if (nrow(extra_row)) extra_row$std_error_formatted else ""
+      )
+    }
     total_obs <- unique(model_rows$n_obs_total)
     total_obs <- total_obs[is.finite(total_obs)]
     model_obs <- unique(model_rows$n_obs_model)
@@ -488,6 +544,7 @@ build_summary_table <- function(coefficients, digits) {
       if (nrow(pb_row)) pb_row$std_error_formatted else "",
       if (nrow(eff_row)) eff_row$estimate_formatted else "",
       if (nrow(eff_row)) eff_row$std_error_formatted else "",
+      extra_cells,
       if (length(total_obs)) format_number(total_obs[1], 0) else "",
       if (length(model_obs)) format_number(model_obs[1], 0) else ""
     )
@@ -510,6 +567,12 @@ run_nonlinear_methods <- function(df, options) {
         if (is.null(degenerate_reason)) {
           degenerate_reason <- degenerate_effect_reason(method_result$publication_bias, "Publication-bias estimate")
         }
+        if (is.null(degenerate_reason)) {
+          for (extra in method_result$extra_terms %||% list()) {
+            degenerate_reason <- degenerate_effect_reason(extra, paste(extra$term_label, "estimate"))
+            if (!is.null(degenerate_reason)) break
+          }
+        }
         if (is.null(degenerate_reason) && !is.null(spec$degenerate_check)) {
           degenerate_reason <- spec$degenerate_check(method_result)
         }
@@ -527,6 +590,7 @@ run_nonlinear_methods <- function(df, options) {
           model = spec$name,
           model_label = spec$label,
           term = "publication_bias",
+          term_label = "Publication Bias",
           estimate = pb$estimate,
           std_error = pb$std_error,
           p_value = pb$p_value,
@@ -538,6 +602,7 @@ run_nonlinear_methods <- function(df, options) {
           model = spec$name,
           model_label = spec$label,
           term = "effect",
+          term_label = "Effect Beyond Bias",
           estimate = effect$estimate,
           std_error = effect$std_error,
           p_value = effect$p_value,
@@ -545,6 +610,20 @@ run_nonlinear_methods <- function(df, options) {
           n_obs_model = n_model,
           stringsAsFactors = FALSE
         )
+        for (extra in method_result$extra_terms %||% list()) {
+          coefficients[[length(coefficients) + 1]] <- data.frame(
+            model = spec$name,
+            model_label = spec$label,
+            term = extra$term,
+            term_label = extra$term_label,
+            estimate = extra$estimate,
+            std_error = extra$std_error,
+            p_value = extra$p_value,
+            n_obs_total = total_n,
+            n_obs_model = n_model,
+            stringsAsFactors = FALSE
+          )
+        }
         results[[length(results) + 1]] <- do.call(rbind, coefficients)
       },
       error = function(e) {
@@ -557,6 +636,7 @@ run_nonlinear_methods <- function(df, options) {
       model = character(),
       model_label = character(),
       term = character(),
+      term_label = character(),
       estimate = numeric(),
       std_error = numeric(),
       p_value = numeric(),

@@ -50,8 +50,13 @@ nonlinear_tests <- function(df) {
     ))
   )
 
-  assert(length(resolved_options$selection_cutoffs) > 0, "Selection model requires at least one cutoff value.")
-  assert(all(resolved_options$selection_cutoffs > 0), "Selection cutoffs must be positive.")
+  selection_cutoffs <- resolved_options$selection_cutoffs
+  assert(length(selection_cutoffs) > 0, "Selection model requires at least one cutoff value.")
+  assert(all(is.finite(selection_cutoffs)), "Selection cutoffs must be finite numbers.")
+  assert(
+    !is.unsorted(selection_cutoffs, strictly = TRUE),
+    "Selection cutoffs must be strictly increasing, without duplicates."
+  )
 
   results <- run_nonlinear_methods(df, resolved_options)
 
