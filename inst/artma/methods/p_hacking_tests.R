@@ -43,6 +43,14 @@ p_hacking_tests <- function(df) {
     ),
     caliper_cluster = opt_spec(default = TRUE, type = "logical"),
     include_elliott = opt_spec(default = TRUE, type = "logical"),
+    elliott_supports = opt_spec(
+      default = c(0.05, 0.1), type = "numeric",
+      constraint = function(x) {
+        length(x) > 0 && all(is.finite(x) & x > 0 & x <= 1) &&
+          !is.unsorted(x, strictly = TRUE)
+      },
+      constraint_msg = "elliott_supports must be strictly increasing p-value bounds in (0, 1]"
+    ),
     lcm_iterations = opt_spec(
       default = 10000L, type = "numeric", cast = as.integer,
       constraint = function(x) x > 0, constraint_msg = "lcm_iterations must be positive"
@@ -104,6 +112,7 @@ p_hacking_tests <- function(df) {
     caliper_tail = resolved$caliper_tail,
     caliper_cluster = resolved$caliper_cluster,
     include_elliott = resolved$include_elliott,
+    elliott_supports = resolved$elliott_supports,
     lcm_iterations = resolved$lcm_iterations,
     lcm_grid_points = resolved$lcm_grid_points,
     simulate_cdfs_chunk_size = resolved$simulate_cdfs_chunk_size,
@@ -162,6 +171,12 @@ p_hacking_tests <- function(df) {
         print(results$elliott, row.names = FALSE) # nolint: undesirable_function_linter.
       )
       cli::cli_verbatim(elliott_lines)
+
+      # Footnote the NA cells: each skipped test carries a reason (e.g. a
+      # singular Cox-Shi bin covariance) that would otherwise be lost.
+      for (item in results$skipped) {
+        cli::cli_alert_warning("Skipped {item$label}: {item$reason}")
+      }
       cli::cli_text("")
     }
 
@@ -171,12 +186,6 @@ p_hacking_tests <- function(df) {
       cli::cli_text("Significance marks: * p <= 0.1, ** p <= 0.05, *** p <= 0.01")
     } else {
       cli::cli_alert_warning("No p-hacking tests were successfully completed.")
-    }
-
-    if (!is.null(results$skipped) && verbosity >= 2) {
-      for (key in names(results$skipped)) {
-        cli::cli_alert_warning("Skipped {key}: {results$skipped[[key]]}")
-      }
     }
   }
 

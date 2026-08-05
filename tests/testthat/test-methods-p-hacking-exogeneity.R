@@ -2,12 +2,14 @@ box::use(
   testthat[
     expect_equal,
     expect_error,
+    expect_false,
+    expect_match,
     expect_no_error,
     expect_true,
     skip_if_not_installed,
     test_that
   ],
-  withr[local_options],
+  withr[local_options, with_options],
   artma / data / mock[create_mock_df],
   artma / methods / p_hacking_tests[p_hacking_tests],
   artma / methods / exogeneity_tests[exogeneity_tests]
@@ -59,6 +61,97 @@ test_that("p_hacking_tests prints a significance legend matching significance_ma
   output <- utils::capture.output(p_hacking_tests(make_p_hacking_df()), type = "message")
 
   expect_true(any(grepl("Significance marks: \\* p <= 0.1, \\*\\* p <= 0.05, \\*\\*\\* p <= 0.01", output)))
+})
+
+# Elliott supports and Cox-Shi skip reasons ----------------------------------
+
+elliott_base_options <- function() {
+  list(
+    artma.verbose = 1,
+    artma.cache.use_cache = FALSE,
+    artma.methods.p_hacking_tests.include_caliper = FALSE,
+    artma.methods.p_hacking_tests.include_discontinuity = FALSE,
+    artma.methods.p_hacking_tests.lcm_iterations = 50,
+    artma.methods.p_hacking_tests.lcm_grid_points = 50
+  )
+}
+
+# Deterministic p-curve: strictly declining over [0, 0.10], plus a bump in
+# (0.12, 0.13] that only a wider support window can see. Points are spread
+# evenly inside each 0.01-wide bin so no Cox-Shi binning leaves a bin empty.
+make_bumped_pcurve_df <- function() {
+  counts <- c(40, 34, 28, 24, 20, 16, 12, 10, 8, 6, 5, 5, 30, 5, 5)
+  edges <- seq(0, 0.15, by = 0.01)
+  pvalues <- unlist(lapply(seq_along(counts), function(j) {
+    seq(edges[j], edges[j + 1], length.out = counts[j] + 2)[2:(counts[j] + 1)]
+  }))
+  t_stats <- stats::qnorm(1 - pvalues / 2)
+  data.frame(
+    effect = t_stats,
+    se = rep(1, length(t_stats)),
+    t_stat = t_stats,
+    study_id = seq_along(t_stats)
+  )
+}
+
+test_that("a custom elliott_supports option flows through to the Cox-Shi call", {
+  skip_if_not_installed("NlcOptim")
+  skip_if_not_installed("quadprog")
+  df <- make_bumped_pcurve_df()
+
+  run_with_supports <- function(supports) {
+    opts <- elliott_base_options()
+    opts$artma.methods.p_hacking_tests.elliott_supports <- supports
+    with_options(opts, p_hacking_tests(df))
+  }
+
+  default_result <- run_with_supports(c(0.05, 0.1))
+  custom_result <- run_with_supports(c(0.05, 0.15))
+
+  expect_true("Cox-Shi [0, 0.15]" %in% custom_result$tables$elliott$Test)
+  expect_false(any(grepl("[0, 0.10]", custom_result$tables$elliott$Test, fixed = TRUE)))
+
+  default_p <- default_result$tables$elliott[
+    default_result$tables$elliott$Test == "Cox-Shi [0, 0.10]", "P-value"
+  ]
+  custom_p <- custom_result$tables$elliott[
+    custom_result$tables$elliott$Test == "Cox-Shi [0, 0.15]", "P-value"
+  ]
+  # Both windows yield a numeric p-value and the support choice changes it.
+  expect_false(grepl("NA", default_p))
+  expect_false(grepl("NA", custom_p))
+  expect_false(identical(default_p, custom_p))
+})
+
+test_that("p_hacking_tests surfaces the Cox-Shi skip reason in output and meta", {
+  # P-values heaped on two points leave most Cox-Shi bins empty, making the
+  # bin covariance singular, so the test must skip with a visible reason.
+  pvalues <- rep(c(0.001, 0.045), each = 100)
+  t_stats <- stats::qnorm(1 - pvalues / 2)
+  df <- data.frame(
+    effect = t_stats,
+    se = rep(1, length(t_stats)),
+    t_stat = t_stats,
+    study_id = rep(seq_len(20), each = 10)
+  )
+
+  messages <- with_options(
+    elliott_base_options(),
+    utils::capture.output(result <- p_hacking_tests(df), type = "message")
+  )
+
+  # The summary table keeps NA in the p-value column.
+  cox_rows <- result$tables$elliott[grepl("^Cox-Shi", result$tables$elliott$Test), ]
+  expect_equal(nrow(cox_rows), 2L)
+  expect_true(all(grepl("NA", cox_rows$`P-value`)))
+
+  # The reason lands in meta for programmatic consumers.
+  expect_match(result$meta$skipped$cox_shi_005$reason, "singular")
+  expect_equal(result$meta$skipped$cox_shi_005$label, "Cox-Shi [0, 0.05]")
+
+  # And it is printed after the summary table instead of a bare NA.
+  expect_true(any(grepl("singular", messages)))
+  expect_true(any(grepl("Cox-Shi \\[0, 0.05\\]", messages)))
 })
 
 # exogeneity_tests wrapper --------------------------------------------------

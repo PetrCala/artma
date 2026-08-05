@@ -346,6 +346,7 @@ base_p_hacking_options <- function(...) {
     caliper_widths = c(0.05, 0.1),
     caliper_display_ratios = TRUE,
     include_elliott = FALSE,
+    elliott_supports = c(0.05, 0.1),
     lcm_iterations = 50L,
     lcm_grid_points = 50L,
     simulate_cdfs_chunk_size = 512L,
@@ -431,6 +432,95 @@ test_that("run_p_hacking_tests runs the Elliott suite when requested", {
   expect_false("Observations <= 0.1" %in% result$elliott$Test)
 })
 
+# Elliott supports ------------------------------------------------------------
+
+# Deterministic p-curve on [0, 0.15]: strictly declining bin counts over
+# [0, 0.10] (so the default Cox-Shi windows read as monotone) plus a bump in
+# (0.12, 0.13] that only a wider support can see. Points are spread evenly
+# inside each 0.01-wide bin so no window binning leaves a bin empty.
+bumped_pcurve_df <- function() {
+  counts <- c(40, 34, 28, 24, 20, 16, 12, 10, 8, 6, 5, 5, 30, 5, 5)
+  edges <- seq(0, 0.15, by = 0.01)
+  pvalues <- unlist(lapply(seq_along(counts), function(j) {
+    seq(edges[j], edges[j + 1], length.out = counts[j] + 2)[2:(counts[j] + 1)]
+  }))
+  t_stats <- stats::qnorm(1 - pvalues / 2)
+  data.frame(
+    effect = t_stats,
+    se = rep(1, length(t_stats)),
+    t_stat = t_stats,
+    study_id = seq_along(t_stats)
+  )
+}
+
+test_that("run_p_hacking_tests honours custom Elliott supports", {
+  local_options(artma.verbose = 1, artma.cache.use_cache = FALSE)
+  df <- bumped_pcurve_df()
+
+  result <- run_p_hacking_tests(
+    df,
+    base_p_hacking_options(
+      include_caliper = FALSE,
+      include_elliott = TRUE,
+      elliott_supports = c(0.05, 0.15)
+    )
+  )
+
+  expect_true("Binomial [0, 0.15]" %in% result$elliott$Test)
+  expect_true("Fisher [0, 0.15]" %in% result$elliott$Test)
+  expect_true("Observations in [0, 0.15]" %in% result$elliott$Test)
+  # The default [0, 0.10] rows are replaced, not appended.
+  expect_false(any(grepl("[0, 0.10]", result$elliott$Test, fixed = TRUE)))
+  expect_false(any(grepl("Observations in [0, 0.1]", result$elliott$Test, fixed = TRUE)))
+  # The wider window sees 60 more p-values than [0, 0.10] would.
+  obs_row <- result$elliott[result$elliott$Test == "Observations in [0, 0.15]", ]
+  expect_equal(obs_row$`P-value`, as.character(nrow(df)))
+})
+
+test_that("a custom support changes the Cox-Shi result relative to the default supports", {
+  local_options(artma.verbose = 1, artma.cache.use_cache = FALSE)
+  df <- bumped_pcurve_df()
+
+  run_with_supports <- function(supports) {
+    run_p_hacking_tests(
+      df,
+      base_p_hacking_options(
+        include_caliper = FALSE,
+        include_elliott = TRUE,
+        include_cox_shi = TRUE,
+        cox_shi_bins = 10L,
+        elliott_supports = supports
+      )
+    )
+  }
+
+  default_run <- run_with_supports(c(0.05, 0.1))
+  custom_run <- run_with_supports(c(0.05, 0.15))
+
+  default_row <- default_run$elliott[default_run$elliott$Test == "Cox-Shi [0, 0.10]", ]
+  custom_row <- custom_run$elliott[custom_run$elliott$Test == "Cox-Shi [0, 0.15]", ]
+  expect_equal(nrow(default_row), 1L)
+  expect_equal(nrow(custom_row), 1L)
+  # Both windows produce a numeric p-value, and widening the support changes it.
+  expect_false(grepl("NA", default_row$`P-value`))
+  expect_false(grepl("NA", custom_row$`P-value`))
+  expect_false(identical(default_row$`P-value`, custom_row$`P-value`))
+})
+
+test_that("run_p_hacking_tests rejects invalid Elliott supports", {
+  local_options(artma.verbose = 1, artma.cache.use_cache = FALSE)
+  df <- make_p_hacking_df()
+
+  bad_options <- function(supports) {
+    base_p_hacking_options(include_caliper = FALSE, include_elliott = TRUE, elliott_supports = supports)
+  }
+
+  expect_error(run_p_hacking_tests(df, bad_options(numeric(0))), "must not be empty")
+  expect_error(run_p_hacking_tests(df, bad_options(c(0, 0.1))), "\\(0, 1\\]")
+  expect_error(run_p_hacking_tests(df, bad_options(c(0.05, 1.5))), "\\(0, 1\\]")
+  expect_error(run_p_hacking_tests(df, bad_options(c(0.1, 0.05))), "strictly increasing")
+})
+
 # Skip reasons ---------------------------------------------------------------
 
 test_that("run_p_hacking_tests records a skip reason when the CDF simulation yields no draws", {
@@ -446,8 +536,9 @@ test_that("run_p_hacking_tests records a skip reason when the CDF simulation yie
     )
   )
 
-  expect_true(!is.null(result$skipped$lcm_005))
-  expect_true(!is.null(result$skipped$lcm_01))
+  expect_true(!is.null(result$skipped$lcm_005$reason))
+  expect_true(!is.null(result$skipped$lcm_01$reason))
+  expect_equal(result$skipped$lcm_005$label, "LCM [0, 0.05]")
   # The row is still reported (not silently absent), just as NA.
   lcm_rows <- result$elliott[grepl("^LCM", result$elliott$Test), ]
   expect_equal(nrow(lcm_rows), 2L)
@@ -469,7 +560,8 @@ test_that("run_p_hacking_tests records a skip reason for a singular Cox-Shi cova
     )
   )
 
-  expect_match(result$skipped$cox_shi_005, "singular")
+  expect_match(result$skipped$cox_shi_005$reason, "singular")
+  expect_equal(result$skipped$cox_shi_005$label, "Cox-Shi [0, 0.05]")
 })
 
 test_that("run_lcm skips with a reason instead of failing silently", {
