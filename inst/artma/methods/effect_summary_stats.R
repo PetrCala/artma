@@ -3,8 +3,9 @@
 #' Compute summary statistics for the main effect grouped by variables that are
 #' flagged in the data configuration. The function supports equality based
 #' splits as well as threshold splits (numeric, mean or median based). It
-#' returns the arithmetic mean, weighted mean (weighted by the inverse squared
-#' study size), confidence intervals, and additional distribution statistics.
+#' returns the arithmetic mean, weighted mean (weighted by the inverse of the
+#' number of estimates per study, so every study contributes equally),
+#' confidence intervals, and additional distribution statistics.
 effect_summary_stats <- function(df) {
   box::use(
     artma / const[CONST],
@@ -69,8 +70,7 @@ effect_summary_stats <- function(df) {
 
     mean_val <- mean(values)
     sd_val <- stats::sd(values)
-    sd_for_ci <- round(sd_val, round_to)
-    se_val <- if (!is.na(sd_for_ci) && length(values) > 1) sd_for_ci / sqrt(length(values)) else NA_real_
+    se_val <- if (!is.na(sd_val) && length(values) > 1) sd_val / sqrt(length(values)) else NA_real_
     ci <- if (!is.na(se_val)) c(mean_val - z_value * se_val, mean_val + z_value * se_val) else c(NA_real_, NA_real_)
 
     list(
@@ -99,10 +99,11 @@ effect_summary_stats <- function(df) {
     }
     norm_weights <- weights / weights_sum
     mean_val <- stats::weighted.mean(values, w = weights)
-    # Weighted variance without Bessel correction keeps behaviour stable
-    variance <- stats::weighted.mean((values - mean_val)^2, w = norm_weights)
-    sd_val <- sqrt(variance)
-    se_val <- if (!is.na(sd_val) && length(values) > 1) sd_val / sqrt(length(values)) else NA_real_
+    # Var(sum(w_i * x_i)) = sum(w_i^2 * Var(x_i)); estimate each Var(x_i) by the
+    # squared deviation, so the SE reflects the effective sample size implied by
+    # unequal weights rather than the raw observation count.
+    variance <- sum(norm_weights^2 * (values - mean_val)^2)
+    se_val <- if (length(values) > 1) sqrt(variance) else NA_real_
     ci <- if (!is.na(se_val)) c(mean_val - z_value * se_val, mean_val + z_value * se_val) else c(NA_real_, NA_real_)
 
     list(mean = mean_val, ci = ci)
@@ -171,7 +172,9 @@ effect_summary_stats <- function(df) {
       return(FALSE)
     }
 
-    weights <- 1 / (subset_data$study_size^2)
+    # study_size is the number of estimates the study reports; weighting each
+    # estimate by its inverse gives every study equal total weight.
+    weights <- 1 / subset_data$study_size
     unweighted <- compute_unweighted_stats(subset_data$effect)
     weighted <- compute_weighted_stats(subset_data$effect, weights)
 
