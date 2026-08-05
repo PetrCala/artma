@@ -2,12 +2,14 @@ box::use(
   testthat[
     expect_equal,
     expect_error,
+    expect_false,
+    expect_match,
     expect_no_error,
     expect_true,
     skip_if_not_installed,
     test_that
   ],
-  withr[local_options],
+  withr[local_options, with_options],
   artma / data / mock[create_mock_df],
   artma / methods / p_hacking_tests[p_hacking_tests],
   artma / methods / exogeneity_tests[exogeneity_tests]
@@ -59,6 +61,106 @@ test_that("p_hacking_tests prints a significance legend matching significance_ma
   output <- utils::capture.output(p_hacking_tests(make_p_hacking_df()), type = "message")
 
   expect_true(any(grepl("Significance marks: \\* p <= 0.1, \\*\\* p <= 0.05, \\*\\*\\* p <= 0.01", output)))
+})
+
+# Elliott supports and Cox-Shi skip reasons ----------------------------------
+
+elliott_base_options <- function() {
+  list(
+    artma.verbose = 1,
+    artma.cache.use_cache = FALSE,
+    artma.methods.p_hacking_tests.include_caliper = FALSE,
+    artma.methods.p_hacking_tests.include_discontinuity = FALSE,
+    artma.methods.p_hacking_tests.lcm_iterations = 50,
+    artma.methods.p_hacking_tests.lcm_grid_points = 50
+  )
+}
+
+# A realistic clustered p-curve (it respects the Elliott theoretical bounds,
+# so the default Cox-Shi windows stay quiet), plus a heap of p-values at
+# 0.125. The heap is invisible to the default supports but breaks monotonicity
+# on a [0, 0.15] window, so widening the support flips the conclusion.
+make_heap_bump_df <- function() {
+  set.seed(202, kind = "Mersenne-Twister", normal.kind = "Inversion")
+  panel_t <- abs(stats::rnorm(800, mean = 1.5, sd = 1))
+  heap_t <- rep(stats::qnorm(1 - 0.125 / 2), 150)
+  t_stats <- c(panel_t, heap_t)
+  study_id <- c(
+    1 + ((seq_along(panel_t) - 1) %/% 20),
+    41 + ((seq_along(heap_t) - 1) %/% 20)
+  )
+  data.frame(
+    effect = t_stats,
+    se = rep(1, length(t_stats)),
+    t_stat = t_stats,
+    study_id = study_id
+  )
+}
+
+# Strip significance marks from a formatted p-value cell.
+formatted_p_to_num <- function(x) as.numeric(sub("\\*+$", "", x))
+
+test_that("a custom elliott_supports option flows through to the Cox-Shi call", {
+  skip_if_not_installed("NlcOptim")
+  skip_if_not_installed("quadprog")
+  df <- make_heap_bump_df()
+
+  run_with_supports <- function(supports) {
+    opts <- elliott_base_options()
+    opts$artma.methods.p_hacking_tests.elliott_supports <- supports
+    with_options(opts, p_hacking_tests(df))
+  }
+
+  default_result <- run_with_supports(c(0.05, 0.1))
+  custom_result <- run_with_supports(c(0.05, 0.15))
+
+  expect_true("Cox-Shi [0, 0.15]" %in% custom_result$tables$elliott$Test)
+  expect_false(any(grepl("[0, 0.10]", custom_result$tables$elliott$Test, fixed = TRUE)))
+
+  default_p <- default_result$tables$elliott[
+    default_result$tables$elliott$Test == "Cox-Shi [0, 0.10]", "P-value"
+  ]
+  custom_p <- custom_result$tables$elliott[
+    custom_result$tables$elliott$Test == "Cox-Shi [0, 0.15]", "P-value"
+  ]
+  # Both windows yield a numeric p-value and the support choice changes it:
+  # the heap at p = 0.125 rejects only on the wider window.
+  expect_false(grepl("NA", default_p))
+  expect_false(grepl("NA", custom_p))
+  expect_true(formatted_p_to_num(default_p) > 0.05)
+  expect_true(formatted_p_to_num(custom_p) < 0.05)
+  expect_false(identical(default_p, custom_p))
+})
+
+test_that("p_hacking_tests surfaces the Cox-Shi skip reason in output and meta", {
+  # P-values heaped on two points leave most Cox-Shi bins empty, making the
+  # bin covariance singular, so the test must skip with a visible reason.
+  pvalues <- rep(c(0.001, 0.045), each = 100)
+  t_stats <- stats::qnorm(1 - pvalues / 2)
+  df <- data.frame(
+    effect = t_stats,
+    se = rep(1, length(t_stats)),
+    t_stat = t_stats,
+    study_id = rep(seq_len(20), each = 10)
+  )
+
+  messages <- with_options(
+    elliott_base_options(),
+    utils::capture.output(result <- p_hacking_tests(df), type = "message")
+  )
+
+  # The summary table keeps NA in the p-value column.
+  cox_rows <- result$tables$elliott[grepl("^Cox-Shi", result$tables$elliott$Test), ]
+  expect_equal(nrow(cox_rows), 2L)
+  expect_true(all(grepl("NA", cox_rows$`P-value`)))
+
+  # The reason lands in meta for programmatic consumers.
+  expect_match(result$meta$skipped$cox_shi_005$reason, "singular")
+  expect_equal(result$meta$skipped$cox_shi_005$label, "Cox-Shi [0, 0.05]")
+
+  # And it is printed after the summary table instead of a bare NA.
+  expect_true(any(grepl("singular", messages)))
+  expect_true(any(grepl("Cox-Shi \\[0, 0.05\\]", messages)))
 })
 
 # exogeneity_tests wrapper --------------------------------------------------

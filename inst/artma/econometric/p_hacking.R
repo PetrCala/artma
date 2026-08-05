@@ -32,6 +32,22 @@ skip_reason <- function(value) {
   attr(value, "reason")
 }
 
+DEFAULT_ELLIOTT_SUPPORTS <- c(0.05, 0.1)
+
+#' @title Result-list key suffix for an Elliott support upper bound
+#' @param p_max *[numeric]* Support upper bound, e.g. `0.05`.
+#' @return *[character]* Suffix such as `"005"` (0.05) or `"01"` (0.1).
+support_key <- function(p_max) {
+  gsub(".", "", format(p_max), fixed = TRUE)
+}
+
+#' @title Display label for an Elliott support upper bound
+#' @param p_max *[numeric]* Support upper bound, e.g. `0.1`.
+#' @return *[character]* Label such as `"0.10"`, always with two decimals.
+support_label <- function(p_max) {
+  format(p_max, nsmall = 2)
+}
+
 # Caliper tests (Gerber & Malhotra, 2008) ---------------------------------
 
 CALIPER_TAILS <- c("auto", "positive", "negative", "absolute")
@@ -547,8 +563,8 @@ run_discontinuity <- function(pvalues, cutoff = 0.05, bandwidth = NULL) {
 #' @title Run Cox-Shi test wrapper
 #' @description
 #' `n_bins` fixes the bin *count*, not the bin *width*, so the same value
-#' applied to the [0, 0.05] and [0, 0.10] windows makes the wider window twice
-#' as coarse. A spike in the p-curve narrower than one bin can be averaged away
+#' applied to nested windows (e.g. [0, 0.05] and [0, 0.10]) makes the wider
+#' window coarser. A spike in the p-curve narrower than one bin can be averaged away
 #' on the wider window while remaining visible on the narrower one, and the two
 #' windows are then not comparable, nor need their p-values be ordered. Compare
 #' windows at a matched bin width (double `n_bins` when doubling `p_max`)
@@ -611,12 +627,18 @@ run_p_hacking_tests <- function(df, options) {
   t_stats <- resolve_t_stats(df)
   pvalues <- 2 * stats::pnorm(-abs(t_stats))
 
+  supports <- options$elliott_supports %||% DEFAULT_ELLIOTT_SUPPORTS
+  validate(is.numeric(supports))
+  assert(length(supports) > 0, "elliott_supports must not be empty")
+  assert(all(supports > 0 & supports <= 1), "elliott_supports must lie in (0, 1]")
+  assert(!is.unsorted(supports, strictly = TRUE), "elliott_supports must be strictly increasing")
+
   output <- list()
   skipped <- list()
-  record_skip <- function(key, value) {
+  record_skip <- function(key, label, value) {
     reason <- skip_reason(value)
     if (!is.null(reason)) {
-      skipped[[key]] <<- reason
+      skipped[[key]] <<- list(label = label, reason = reason)
     }
     invisible(NULL)
   }
@@ -664,44 +686,34 @@ run_p_hacking_tests <- function(df, options) {
     )
 
     # Binomial tests
-    elliott_tests$binomial_005 <- list(
-      test = "Binomial [0, 0.05]",
-      p_value = run_binomial(pvalues, 0, 0.05, type = "c")
-    )
-
-    elliott_tests$binomial_01 <- list(
-      test = "Binomial [0, 0.10]",
-      p_value = run_binomial(pvalues, 0, 0.1, type = "c")
-    )
+    for (p_max in supports) {
+      elliott_tests[[paste0("binomial_", support_key(p_max))]] <- list(
+        test = paste0("Binomial [0, ", support_label(p_max), "]"),
+        p_value = run_binomial(pvalues, 0, p_max, type = "c")
+      )
+    }
 
     # LCM tests (always reported, even when the CDF simulation failed, so the
     # skip reason surfaces instead of the rows silently disappearing)
-    if (length(cdfs) > 0) {
-      elliott_tests$lcm_005 <- list(
-        test = "LCM [0, 0.05]",
-        p_value = run_lcm(pvalues, 0, 0.05, cdfs)
-      )
-
-      elliott_tests$lcm_01 <- list(
-        test = "LCM [0, 0.10]",
-        p_value = run_lcm(pvalues, 0, 0.1, cdfs)
-      )
+    lcm_skip <- if (length(cdfs) == 0) {
+      skipped_result(cdfs_reason %||% "CDF simulation returned no draws")
     } else {
-      lcm_skip <- skipped_result(cdfs_reason %||% "CDF simulation returned no draws")
-      elliott_tests$lcm_005 <- list(test = "LCM [0, 0.05]", p_value = lcm_skip)
-      elliott_tests$lcm_01 <- list(test = "LCM [0, 0.10]", p_value = lcm_skip)
+      NULL
+    }
+    for (p_max in supports) {
+      elliott_tests[[paste0("lcm_", support_key(p_max))]] <- list(
+        test = paste0("LCM [0, ", support_label(p_max), "]"),
+        p_value = lcm_skip %||% run_lcm(pvalues, 0, p_max, cdfs)
+      )
     }
 
     # Fisher tests
-    elliott_tests$fisher_005 <- list(
-      test = "Fisher [0, 0.05]",
-      p_value = run_fisher(pvalues, 0, 0.05)
-    )
-
-    elliott_tests$fisher_01 <- list(
-      test = "Fisher [0, 0.10]",
-      p_value = run_fisher(pvalues, 0, 0.1)
-    )
+    for (p_max in supports) {
+      elliott_tests[[paste0("fisher_", support_key(p_max))]] <- list(
+        test = paste0("Fisher [0, ", support_label(p_max), "]"),
+        p_value = run_fisher(pvalues, 0, p_max)
+      )
+    }
 
     # Discontinuity test
     if (options$include_discontinuity) {
@@ -713,29 +725,21 @@ run_p_hacking_tests <- function(df, options) {
 
     # Cox-Shi tests
     if (options$include_cox_shi) {
-      elliott_tests$cox_shi_005 <- list(
-        test = "Cox-Shi [0, 0.05]",
-        p_value = run_cox_shi(
-          pvalues, study_id, 0, 0.05,
-          n_bins = options$cox_shi_bins,
-          monotonicity_order = options$cox_shi_order,
-          use_bounds = options$cox_shi_bounds
+      for (p_max in supports) {
+        elliott_tests[[paste0("cox_shi_", support_key(p_max))]] <- list(
+          test = paste0("Cox-Shi [0, ", support_label(p_max), "]"),
+          p_value = run_cox_shi(
+            pvalues, study_id, 0, p_max,
+            n_bins = options$cox_shi_bins,
+            monotonicity_order = options$cox_shi_order,
+            use_bounds = options$cox_shi_bounds
+          )
         )
-      )
-
-      elliott_tests$cox_shi_01 <- list(
-        test = "Cox-Shi [0, 0.10]",
-        p_value = run_cox_shi(
-          pvalues, study_id, 0, 0.1,
-          n_bins = options$cox_shi_bins,
-          monotonicity_order = options$cox_shi_order,
-          use_bounds = options$cox_shi_bounds
-        )
-      )
+      }
     }
 
     for (key in names(elliott_tests)) {
-      record_skip(key, elliott_tests[[key]]$p_value)
+      record_skip(key, elliott_tests[[key]]$test, elliott_tests[[key]]$p_value)
     }
 
     output$elliott <- build_elliott_summary(elliott_tests, pvalues, options)
@@ -772,13 +776,20 @@ build_elliott_summary <- function(elliott_tests, pvalues, options) {
     check.names = FALSE
   )
 
-  # Add observation count rows
-  n_01_range <- sum(pvalues >= 0 & pvalues <= 0.1, na.rm = TRUE)
-  n_005_range <- sum(pvalues >= 0 & pvalues <= 0.05, na.rm = TRUE)
+  # Add observation count rows, widest support first
+  supports <- sort(options$elliott_supports %||% DEFAULT_ELLIOTT_SUPPORTS, decreasing = TRUE)
 
   obs_rows <- data.frame(
-    Test = c("Observations in [0, 0.1]", "Observations in [0, 0.05]"),
-    `P-value` = c(as.character(n_01_range), as.character(n_005_range)),
+    Test = vapply(
+      supports,
+      function(p_max) paste0("Observations in [0, ", format(p_max), "]"),
+      character(1)
+    ),
+    `P-value` = vapply(
+      supports,
+      function(p_max) as.character(sum(pvalues >= 0 & pvalues <= p_max, na.rm = TRUE)),
+      character(1)
+    ),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
