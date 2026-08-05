@@ -83,7 +83,10 @@ stem_compute <- function(beta, se, sigma0) {
   sigma_stem <- sqrt(var_stem)
   estimates <- cbind(beta_stem, se_stem, sigma_stem, n_stem)
   colnames(estimates) <- c("beta_stem", "se_stem", "sigma_stem", "n_stem")
-  mse_table <- rbind(mse, var_all[n_stem_min:n], bias[(n_stem_min - 1):(n - 1)])
+  # mse and bias are both already aligned to n_stem = n_stem_min..n; subsetting
+  # bias again would shift it one row up (a bug inherited from the reference
+  # implementation).
+  mse_table <- rbind(mse, var_all[n_stem_min:n], bias)
   rownames(mse_table) <- c("MSE", "", "")
   list(estimates = estimates, MSE = mse_table)
 }
@@ -196,12 +199,14 @@ stem_MSE <- function(MSE_matrix) { # nolint: object_name_linter.
   bias_sq <- MSE_matrix[, 3]
   variance <- MSE_matrix[, 2]
   n_study <- nrow(MSE_matrix)
-  n_min <- 2
-  num_study <- (n_min + 1):(n_study + 1)
+  # Row k of the MSE matrix belongs to n_stem = k + 2 (stems start at 3
+  # studies); plotting rows against their own stem size keeps the minimum at
+  # the reported n_stem.
+  num_study <- seq_len(n_study) + 2
   graphics::layout(matrix(c(1, 2, 3, 3), 2, 2, byrow = TRUE))
-  graphics::plot(num_study, bias_sq[n_min:n_study], type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(Bias^2 - b[0]^2))
-  graphics::plot(num_study, variance[n_min:n_study], type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(Variance))
-  graphics::plot(num_study, mse[n_min:n_study], type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(MSE - b[0]^2))
+  graphics::plot(num_study, bias_sq, type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(Bias^2 - b[0]^2))
+  graphics::plot(num_study, variance, type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(Variance))
+  graphics::plot(num_study, mse, type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(MSE - b[0]^2))
 }
 
 #' Compute median data within clusters

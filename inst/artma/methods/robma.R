@@ -92,6 +92,15 @@ robma <- function(df) {
   usable <- is.finite(df$effect) & is.finite(df$se) & df$se > 0
   fit_data <- df[usable, , drop = FALSE]
 
+  # RoBMA's likelihood treats rows as independent; meta-analysis data carries
+  # several estimates per study, so pass study ids for multilevel clustering.
+  cluster_ids <- if ("study_id" %in% colnames(fit_data)) fit_data$study_id else NULL
+  if (is.null(cluster_ids) && get_verbosity() >= 2) {
+    cli::cli_alert_warning(
+      "No study_id column: RoBMA treats all estimates as independent."
+    )
+  }
+
   if (nrow(fit_data) < MIN_OBSERVATIONS) {
     reason <- sprintf(
       "fewer than %d usable observations (%d available)",
@@ -125,6 +134,7 @@ robma <- function(df) {
   fit <- RoBMA::RoBMA(
     yi = fit_data$effect,
     sei = fit_data$se,
+    cluster = cluster_ids,
     measure = measure,
     prior_effect = effect_prior,
     prior_heterogeneity = heterogeneity_prior,
