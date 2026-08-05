@@ -91,7 +91,7 @@ run <- register_runtime_method(
   exogeneity_tests,
   stage = "exogeneity_tests",
   required_columns = c("effect", "se", "study_id", "n_obs", "study_size"),
-  suggests = c("AER", "ivmodel")
+  suggests = "AER"
 )
 
 box::export(exogeneity_tests, run)

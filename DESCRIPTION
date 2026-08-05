@@ -42,7 +42,6 @@ Suggests:
     fdrtool (>= 1.2.17),
     haven (>= 2.5.0),
     htmlwidgets (>= 1.6.0),
-    ivmodel (>= 1.9.0),
     jsonlite (>= 1.8.0),
     knitr (>= 1.50),
     lintr (>= 3.2.0),

@@ -52,7 +52,7 @@ These methods test for publication bias and selective reporting; none depend on 
 | `p_hacking_tests` | Caliper tests around significance thresholds and the Elliott et al. (2022) battery | `effect`, `se`, `t_stat`, `study_id` |
 | `maive` | The MAIVE estimator: corrects the mean effect for publication bias, p-hacking, and spurious precision by instrumenting reported variances with the inverse sample size | `effect`, `se`, `n_obs` |
 
-`exogeneity_tests` needs the `AER` and `ivmodel` packages and `maive` needs the `MAIVE` package (>= 0.2.4); the others in this group work with the package's own dependencies.
+`exogeneity_tests` needs the `AER` package and `maive` needs the `MAIVE` package (>= 0.2.4); the others in this group work with the package's own dependencies.
 
 ## Moderator and heterogeneity analysis
 
