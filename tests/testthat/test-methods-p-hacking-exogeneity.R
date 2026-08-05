@@ -181,7 +181,6 @@ make_exogeneity_df <- function(seed = 2024, n = 200) {
 
 test_that("exogeneity_tests returns the standard contract with IV results", {
   skip_if_not_installed("AER")
-  skip_if_not_installed("ivmodel")
   local_options(artma.verbose = 1)
 
   result <- exogeneity_tests(make_exogeneity_df())
@@ -203,7 +202,6 @@ test_that("exogeneity_tests aborts when a required column is missing", {
 
 test_that("exogeneity_tests handles mock data with too few significant p-uniform studies", {
   skip_if_not_installed("AER")
-  skip_if_not_installed("ivmodel")
   local_options(artma.verbose = 1)
 
   # The package's own mock generator spreads effect/se uniformly at random, so

@@ -75,7 +75,6 @@ default_exogeneity_options <- function(...) {
 
 test_that("run_iv_regression recovers the effect and bias from a known DGP", {
   skip_if_not_installed("AER")
-  skip_if_not_installed("ivmodel")
   local_options(artma.verbose = 1)
 
   df <- make_exogeneity_df()
@@ -96,7 +95,6 @@ test_that("run_iv_regression recovers the effect and bias from a known DGP", {
 
 test_that("run_iv_regression auto-selects the sample-size instrument", {
   skip_if_not_installed("AER")
-  skip_if_not_installed("ivmodel")
   local_options(artma.verbose = 1)
 
   df <- make_exogeneity_df()
@@ -114,7 +112,6 @@ test_that("run_iv_regression rejects an instrument without n_obs", {
 
 test_that("run_iv_regression warns and flags a weak instrument", {
   skip_if_not_installed("AER")
-  skip_if_not_installed("ivmodel")
   local_options(artma.verbose = 1)
 
   df <- make_weak_instrument_df()
@@ -267,11 +264,11 @@ test_that("run_puniform_star with method = 'P' returns NA estimates without enou
   expect_true(is.na(res$test_p_value))
 })
 
-test_that("run_puniform_star ML publication-bias test is not degenerately zero", {
-  # Regression test: the null model of the likelihood-ratio test used to start
-  # an *unconstrained* BFGS search at theta = 0, so it simply re-found the
-  # full model's optimum and collapsed the statistic to ~0 regardless of the
-  # data (observed in production as "L = 0.000" with p = 1 on every dataset).
+test_that("publication-bias test does not flag a bias-free literature with a real effect", {
+  # Regression test: the statistic used to be a test of theta = 0 (no effect),
+  # so any genuine nonzero effect was reported as strong "publication bias".
+  # The Fisher-type test at the fixed-effect estimate must stay quiet here:
+  # every study is drawn from the same normal model with no selection.
   set.seed(11)
   n <- 120
   df <- data.frame(
@@ -286,9 +283,54 @@ test_that("run_puniform_star ML publication-bias test is not degenerately zero",
   test_row <- res$coefficients[res$coefficients$term == "publication_bias_test", ]
 
   expect_true(is.finite(test_row$statistic))
-  expect_gt(test_row$statistic, 0.01)
   expect_true(is.finite(test_row$p_value))
-  expect_lt(test_row$p_value, 1)
+  expect_gt(test_row$p_value, 0.05)
+})
+
+test_that("publication-bias test flags a literature censored at significance", {
+  # Simulate one-directional selective reporting: draw a null-effect
+  # literature and keep only studies significantly POSITIVE. The naive
+  # fixed-effect estimate is then inflated above the truth, and the
+  # conditional transforms evaluated at it deviate from uniformity.
+  set.seed(21)
+  n <- 4000
+  effect <- rnorm(n, 0, 0.06)
+  se <- rep(0.05, n)
+  keep <- effect / se >= stats::qnorm(0.975)
+  kept <- which(keep)[seq_len(80)]
+  df <- data.frame(
+    effect = effect[kept],
+    se = se[kept],
+    study_id = seq_along(kept),
+    study_size = rep(100L, length(kept)),
+    n_obs = rep(100L, length(kept))
+  )
+
+  res <- run_puniform_star(df, method = "P")
+  test_row <- res$coefficients[res$coefficients$term == "publication_bias_test", ]
+
+  expect_true(is.finite(test_row$p_value))
+  expect_lt(test_row$p_value, 0.05)
+})
+
+test_that("run_puniform_mm recovers negative effects", {
+  # Regression test: the root search used to cover [0, upper] only, so
+  # meta-analyses of genuinely negative effects returned "not estimable".
+  set.seed(13)
+  n <- 120
+  df <- data.frame(
+    effect = rnorm(n, -3, 0.05),
+    se = rep(0.05, n),
+    study_id = rep(seq_len(30), each = 4),
+    study_size = rep(50, n),
+    n_obs = rep(50, n)
+  )
+
+  res <- run_puniform_star(df, method = "P")
+  eff <- res$coefficients[res$coefficients$term == "effect", ]
+
+  expect_true(is.finite(eff$estimate))
+  expect_lt(eff$estimate, -2)
 })
 
 test_that("run_puniform_star falls back to method 'P' when ML does not converge", {
@@ -337,7 +379,6 @@ test_that("run_puniform_star reports a note when the ML Hessian is not invertibl
 
 test_that("run_exogeneity_tests assembles IV and p-uniform results", {
   skip_if_not_installed("AER")
-  skip_if_not_installed("ivmodel")
   local_options(artma.verbose = 1)
 
   df <- make_exogeneity_df()
@@ -355,7 +396,6 @@ test_that("run_exogeneity_tests assembles IV and p-uniform results", {
 
 test_that("run_exogeneity_tests flags a weak instrument in the summary table", {
   skip_if_not_installed("AER")
-  skip_if_not_installed("ivmodel")
   local_options(artma.verbose = 1)
 
   df <- make_weak_instrument_df()
@@ -367,7 +407,6 @@ test_that("run_exogeneity_tests flags a weak instrument in the summary table", {
 
 test_that("run_exogeneity_tests skips gracefully when columns are missing", {
   skip_if_not_installed("AER")
-  skip_if_not_installed("ivmodel")
   local_options(artma.verbose = 1)
 
   res <- run_exogeneity_tests(data.frame(effect = 1:3, se = rep(1, 3)), default_exogeneity_options())
@@ -384,19 +423,9 @@ test_that("run_exogeneity_tests aborts when a required package is absent", {
   expect_error(run_exogeneity_tests(df, default_exogeneity_options()), regexp = "AER")
 })
 
-test_that("run_exogeneity_tests aborts when ivmodel is absent", {
-  skip_if_not_installed("AER")
-  local_options(artma.verbose = 1)
-  df <- make_exogeneity_df(n = 30)
-
-  local_pretend_packages_absent("ivmodel")
-  expect_error(run_exogeneity_tests(df, default_exogeneity_options()), regexp = "ivmodel")
-})
-
 test_that("build_exogeneity_summary survives a zero-length test statistic", {
-  # ivmodel returns NULL for AR whenever the test is not computable. The
-  # resulting zero-length statistic used to shorten the IV column and abort the
-  # table assembly with "replacement has N rows, data has 7".
+  # A NULL AR statistic (test not computable) used to shorten the IV column
+  # and abort the table assembly with "replacement has N rows, data has 7".
   iv_results <- list(
     coefficients = data.frame(
       term = c("effect", "publication_bias"),

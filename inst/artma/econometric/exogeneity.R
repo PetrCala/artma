@@ -45,6 +45,27 @@ get_robust_vcov <- function(model, cluster) {
   )
 }
 
+#' @title Clustered vcov as a function of the model
+#' @description
+#' `summary.ivreg` accepts either a vcov matrix or a function. Only the
+#' function form reaches the diagnostic (weak-instruments) Wald tests: AER's
+#' internal `wald()` falls back to the classical homoskedastic F whenever
+#' `vcov.` is not a function. The function form also lets each (auxiliary)
+#' model subset the cluster vector to its own model frame, so rows dropped
+#' for missingness cannot silently break the clustered step.
+#' @param df *[data.frame]* The data the models are fit on, with `study_id`.
+#' @return *[function]* A one-argument function returning a vcov matrix.
+make_cluster_vcov_fun <- function(df) {
+  function(model) {
+    idx <- match(rownames(stats::model.frame(model)), rownames(df))
+    cluster <- df$study_id[idx]
+    if (anyNA(cluster)) {
+      cluster <- df$study_id
+    }
+    get_robust_vcov(model, cluster)
+  }
+}
+
 # IV regression utilities --------------------------------------------------
 
 #' @title Conventional threshold for the first-stage weak-instruments F-test
@@ -122,7 +143,7 @@ find_best_instrument <- function(df, instruments, instruments_verbose) {
     }
 
     model_summary <- tryCatch(
-      summary(model, vcov = get_robust_vcov(model, df$study_id), diagnostics = TRUE),
+      summary(model, vcov = make_cluster_vcov_fun(df), diagnostics = TRUE),
       error = function(e) NULL
     )
 
@@ -196,19 +217,31 @@ run_iv_regression <- function(df, iv_instrument = "automatic", add_significance_
     best_instrument_values <- eval(parse(text = gsub("n_obs", "df$n_obs", best_instrument)))
   }
 
-  # Run IV regression
+  # Run IV regression. The vcov function form (not a matrix) is what makes the
+  # weak-instruments diagnostic cluster-robust, and t-based p-values use G - 1
+  # degrees of freedom, the conventional reference for cluster-robust inference.
   df$instr_temp <- best_instrument_values
   iv_formula <- stats::as.formula("effect ~ se | instr_temp")
+  n_clusters <- length(unique(df$study_id))
   model <- AER::ivreg(formula = iv_formula, data = df)
-  model_summary <- summary(model, vcov = get_robust_vcov(model, df$study_id), diagnostics = TRUE)
+  model_summary <- summary(
+    model,
+    vcov = make_cluster_vcov_fun(df),
+    df = max(n_clusters - 1L, 1L),
+    diagnostics = TRUE
+  )
 
-  # Extract Anderson-Rubin F-statistic. `ivmodel` returns NULL for `AR` when the
-  # test is not computable, and a zero-length statistic silently shortens the
-  # summary column built from it, so normalize to a scalar here.
+  # Anderson-Rubin test of H0: no effect of se. With a single instrument this
+  # is the significance of the reduced form (effect ~ instrument), computed
+  # here with the study-clustered vcov; the classical AR F (previously taken
+  # from `ivmodel`) assumes iid errors and overstates the statistic when
+  # estimates share studies.
   fstat <- tryCatch(
     {
-      model_ar <- ivmodel::ivmodel(Y = df$effect, D = df$se, Z = df$instr_temp)
-      as_scalar_stat(model_ar$AR$Fstat)
+      reduced_form <- stats::lm(effect ~ instr_temp, data = df)
+      rf_vcov <- make_cluster_vcov_fun(df)(reduced_form)
+      rf_coef <- stats::coef(reduced_form)[["instr_temp"]]
+      as_scalar_stat(rf_coef^2 / rf_vcov["instr_temp", "instr_temp"])
     },
     error = function(e) NA_real_
   )
@@ -341,40 +374,45 @@ puniform_transform <- function(theta, yi, vi, alpha) {
   zi <- sign_i * yi / sei
   ncp <- sign_i * theta / sei
 
-  denom <- pmax(1 - stats::pnorm(z_crit - ncp), .Machine$double.eps)
-  qi <- (stats::pnorm(zi - ncp) - stats::pnorm(z_crit - ncp)) / denom
+  # qi = (S(c) - S(z)) / S(c) = 1 - S(z)/S(c) with S the normal survival
+  # function and z >= c. Computed on the log scale: the difference form
+  # pnorm(z - ncp) - pnorm(c - ncp) cancels catastrophically once theta sits
+  # far below the data (both terms saturate at 1), which turned the root
+  # search's bracket endpoints into garbage.
+  log_sz <- stats::pnorm(zi - ncp, lower.tail = FALSE, log.p = TRUE)
+  log_sc <- stats::pnorm(z_crit - ncp, lower.tail = FALSE, log.p = TRUE)
+  qi <- 1 - exp(log_sz - log_sc)
 
   pmin(pmax(qi, .Machine$double.eps), 1 - .Machine$double.eps)
 }
 
 #' @title Method-of-moments estimation for p-uniform
 #' @description
-#' Estimates the true effect magnitude theta as the value for which the mean
+#' Estimates the true effect theta as the value for which the mean
 #' conditional p-value (see puniform_transform) across significant studies
 #' equals its expected value of 0.5, following the original p-uniform method
 #' of van Assen, van Aert & Wicherts (2015). Standard errors use the delta
-#' method; the publication-bias test statistic is Fisher's combined
-#' probability test applied to the transform evaluated at theta = 0.
-#' Because puniform_transform folds each study onto the sign of its own
-#' effect, the objective is unimodal in theta with its peak near the data;
-#' theta is therefore searched over non-negative values only, from the peak
-#' (theta = 0) out to where the conditional p-value has decayed.
+#' method. The sign folding in puniform_transform preserves the sign of
+#' theta itself (the conditional p-values are uniform exactly at the signed
+#' true effect), so the root is searched over a symmetric interval; a
+#' non-negative search would leave meta-analyses of negative effects
+#' spuriously "not estimable".
 #' @param yi *[numeric]* Effect sizes, restricted to significant studies.
 #' @param vi *[numeric]* Variances.
 #' @param alpha *[numeric]* Significance level used for selection.
-#' @return *[list]* theta_est, theta_se, l_stat, l_pval.
+#' @return *[list]* theta_est, theta_se, converged, note.
 run_puniform_mm <- function(yi, vi, alpha) {
   objective <- function(theta) mean(puniform_transform(theta, yi, vi, alpha)) - 0.5
 
-  search_upper <- 2 * max(abs(yi)) + 10 * max(sqrt(vi))
+  search_bound <- 2 * max(abs(yi)) + 10 * max(sqrt(vi))
   bounds_ok <- tryCatch(
-    objective(0) * objective(search_upper) < 0,
+    objective(-search_bound) * objective(search_bound) < 0,
     error = function(e) FALSE
   )
 
   theta_est <- if (isTRUE(bounds_ok)) {
     tryCatch(
-      stats::uniroot(objective, lower = 0, upper = search_upper)$root,
+      stats::uniroot(objective, lower = -search_bound, upper = search_bound)$root,
       error = function(e) NA_real_
     )
   } else {
@@ -394,15 +432,9 @@ run_puniform_mm <- function(yi, vi, alpha) {
     NA_real_
   }
 
-  qi_null <- puniform_transform(0, yi, vi, alpha)
-  l_stat <- -2 * sum(log(qi_null))
-  l_pval <- stats::pchisq(l_stat, df = 2 * length(yi), lower.tail = FALSE)
-
   list(
     theta_est = theta_est,
     theta_se = theta_se,
-    l_stat = l_stat,
-    l_pval = l_pval,
     converged = is.finite(theta_est),
     note = if (!is.finite(theta_est)) "P estimator: root not found within the search bounds; effect not estimable." else NULL
   )
@@ -410,18 +442,16 @@ run_puniform_mm <- function(yi, vi, alpha) {
 
 #' @title Maximum-likelihood estimation for p-uniform*
 #' @description
-#' Fits the p-uniform* selection model by unconstrained maximum likelihood,
-#' then tests for publication bias with a likelihood-ratio test against the
-#' null of no effect (theta = 0). The null model must hold theta fixed at 0
-#' and optimize only the heterogeneity parameter tau; starting the
-#' unconstrained optimizer at theta = 0 is not a restriction; it converges
-#' back to the same optimum as the full model and collapses the statistic to
-#' zero.
+#' Fits the p-uniform* selection model by unconstrained maximum likelihood.
+#' The publication-bias test itself is method-independent and lives in
+#' [run_puniform_star()]: the likelihood-ratio test of theta = 0 that used to
+#' sit here was a test of no effect, not of publication bias, and was
+#' reported under the wrong label.
 #' @param yi *[numeric]* Effect sizes, restricted to significant studies.
 #' @param vi *[numeric]* Variances.
 #' @param ni *[numeric]* Sample sizes.
 #' @param alpha *[numeric]* Significance level used for selection.
-#' @return *[list]* theta_est, theta_se, l_stat, l_pval, converged, note.
+#' @return *[list]* theta_est, theta_se, converged, note.
 run_puniform_ml <- function(yi, vi, ni, alpha) {
   start_theta <- mean(yi)
   start_tau <- stats::sd(yi)
@@ -443,8 +473,6 @@ run_puniform_ml <- function(yi, vi, ni, alpha) {
     return(list(
       theta_est = NA_real_,
       theta_se = NA_real_,
-      l_stat = NA_real_,
-      l_pval = NA_real_,
       converged = FALSE,
       note = sprintf("ML optimization did not converge (optim code %d).", opt_result$convergence)
     ))
@@ -462,47 +490,39 @@ run_puniform_ml <- function(yi, vi, ni, alpha) {
     error = function(e) NA_real_
   )
 
-  # Likelihood-ratio test for publication bias (H0: theta = 0), holding theta
-  # fixed at the null and optimizing only tau via a 1-D bounded search.
-  ll_full <- -opt_result$value
-  tau_search_upper <- max(start_tau, 1) * 10 + 10 * max(sqrt(vi))
-  null_fit <- tryCatch(
-    stats::optim(
-      par = start_tau,
-      fn = function(tau) puniform_star_nll(c(0, tau), yi, vi, ni, alpha),
-      method = "Brent",
-      lower = 0,
-      upper = tau_search_upper
-    ),
-    error = function(e) NULL
-  )
-
-  if (is.null(null_fit) || !is.finite(null_fit$value)) {
-    return(list(
-      theta_est = theta_est,
-      theta_se = theta_se,
-      l_stat = NA_real_,
-      l_pval = NA_real_,
-      converged = TRUE,
-      note = "ML null-model optimization (theta fixed at 0) failed; publication-bias test not computable."
-    ))
-  }
-
-  ll_null <- -null_fit$value
-  # Numerical noise in the two independent optimizations can occasionally put
-  # the null log-likelihood a hair above the full model's; floor at 0 rather
-  # than report a spurious negative statistic.
-  l_stat <- max(2 * (ll_full - ll_null), 0)
-  l_pval <- stats::pchisq(l_stat, df = 1, lower.tail = FALSE)
-
   list(
     theta_est = theta_est,
     theta_se = theta_se,
-    l_stat = l_stat,
-    l_pval = l_pval,
     converged = TRUE,
     note = if (is.na(theta_se)) "ML Hessian was not invertible; standard error is not computable." else NULL
   )
+}
+
+#' @title Fisher-type publication-bias test at the fixed-effect estimate
+#' @description
+#' The p-uniform publication-bias test (van Assen, van Aert & Wicherts, 2015):
+#' evaluate the conditional p-value transform of the significant studies at
+#' the ordinary fixed-effect estimate computed from ALL studies, and combine
+#' with Fisher's method. Under no selection the transforms are Uniform(0, 1)
+#' at the true effect, so a small p-value indicates an excess of
+#' just-significant results, i.e. publication bias. Testing theta = 0 instead
+#' (as an earlier version did) answers "is there an effect?", which flags
+#' bias-free literatures with genuine effects as "biased".
+#' @param yi_all *[numeric]* Effect sizes of all studies (per-study medians).
+#' @param vi_all *[numeric]* Variances of all studies.
+#' @param yi_sig *[numeric]* Effect sizes of the significant studies.
+#' @param vi_sig *[numeric]* Variances of the significant studies.
+#' @param alpha *[numeric]* Significance level used for selection.
+#' @return *[list]* l_stat, l_pval, theta_fe.
+run_puniform_bias_test <- function(yi_all, vi_all, yi_sig, vi_sig, alpha) {
+  weights <- 1 / vi_all
+  theta_fe <- sum(yi_all * weights) / sum(weights)
+
+  qi <- puniform_transform(theta_fe, yi_sig, vi_sig, alpha)
+  l_stat <- -2 * sum(log(qi))
+  l_pval <- stats::pchisq(l_stat, df = 2 * length(yi_sig), lower.tail = FALSE)
+
+  list(l_stat = l_stat, l_pval = l_pval, theta_fe = theta_fe)
 }
 
 #' @title Run p-uniform* estimation
@@ -548,7 +568,7 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
   sig_mask <- z_scores >= z_crit
 
   if (sum(sig_mask) < 2) {
-    # Not enough significant studies to estimate theta or run the LR test.
+    # Not enough significant studies to estimate theta or run the bias test.
     # Fall through to the shared coefficient formatting below so the returned
     # data.frame always has the same columns as the fully-estimated case.
     theta_est <- NA_real_
@@ -581,9 +601,13 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
 
     theta_est <- fit_result$theta_est
     theta_se <- fit_result$theta_se
-    l_stat <- fit_result$l_stat
-    l_pval <- fit_result$l_pval
     note <- fit_result$note
+
+    # The publication-bias test is method-independent: Fisher's method on the
+    # conditional transforms at the all-studies fixed-effect estimate.
+    bias_test <- run_puniform_bias_test(med_yi, med_vi, yi_sig, vi_sig, alpha)
+    l_stat <- bias_test$l_stat
+    l_pval <- bias_test$l_pval
   }
 
   # Format coefficients
@@ -626,9 +650,6 @@ run_exogeneity_tests <- function(df, options) {
   # Check for required packages
   if (!requireNamespace("AER", quietly = TRUE)) {
     cli::cli_abort("Package {.pkg AER} is required for exogeneity tests. Install with: install.packages('AER')")
-  }
-  if (!requireNamespace("ivmodel", quietly = TRUE)) {
-    cli::cli_abort("Package {.pkg ivmodel} is required for exogeneity tests. Install with: install.packages('ivmodel')")
   }
 
   required_cols <- c("effect", "se", "study_id", "n_obs", "study_size")
@@ -782,6 +803,7 @@ box::export(
   run_exogeneity_tests,
   run_iv_regression,
   run_puniform_star,
+  run_puniform_bias_test,
   find_best_instrument,
   WEAK_INSTRUMENT_F_THRESHOLD
 )
