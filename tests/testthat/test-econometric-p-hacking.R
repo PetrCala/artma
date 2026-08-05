@@ -434,28 +434,33 @@ test_that("run_p_hacking_tests runs the Elliott suite when requested", {
 
 # Elliott supports ------------------------------------------------------------
 
-# Deterministic p-curve on [0, 0.15]: strictly declining bin counts over
-# [0, 0.10] (so the default Cox-Shi windows read as monotone) plus a bump in
-# (0.12, 0.13] that only a wider support can see. Points are spread evenly
-# inside each 0.01-wide bin so no window binning leaves a bin empty.
-bumped_pcurve_df <- function() {
-  counts <- c(40, 34, 28, 24, 20, 16, 12, 10, 8, 6, 5, 5, 30, 5, 5)
-  edges <- seq(0, 0.15, by = 0.01)
-  pvalues <- unlist(lapply(seq_along(counts), function(j) {
-    seq(edges[j], edges[j + 1], length.out = counts[j] + 2)[2:(counts[j] + 1)]
-  }))
-  t_stats <- stats::qnorm(1 - pvalues / 2)
+# A realistic clustered p-curve (the cox_shi_panel(202) construction, which
+# respects the Elliott theoretical bounds so the default windows stay quiet),
+# plus a heap of p-values at 0.125. The heap is invisible to the default
+# supports but breaks monotonicity on a [0, 0.15] window, so widening the
+# support flips the Cox-Shi conclusion.
+heap_bump_df <- function() {
+  set.seed(202, kind = "Mersenne-Twister", normal.kind = "Inversion")
+  panel_t <- abs(stats::rnorm(800, mean = 1.5, sd = 1))
+  heap_t <- rep(stats::qnorm(1 - 0.125 / 2), 150)
+  t_stats <- c(panel_t, heap_t)
+  study_id <- c(
+    1 + ((seq_along(panel_t) - 1) %/% 20),
+    41 + ((seq_along(heap_t) - 1) %/% 20)
+  )
   data.frame(
     effect = t_stats,
     se = rep(1, length(t_stats)),
-    t_stat = t_stats,
-    study_id = seq_along(t_stats)
+    study_id = study_id
   )
 }
 
+# Strip significance marks from a formatted p-value cell.
+formatted_p_to_num <- function(x) as.numeric(sub("\\*+$", "", x))
+
 test_that("run_p_hacking_tests honours custom Elliott supports", {
   local_options(artma.verbose = 1, artma.cache.use_cache = FALSE)
-  df <- bumped_pcurve_df()
+  df <- heap_bump_df()
 
   result <- run_p_hacking_tests(
     df,
@@ -472,14 +477,15 @@ test_that("run_p_hacking_tests honours custom Elliott supports", {
   # The default [0, 0.10] rows are replaced, not appended.
   expect_false(any(grepl("[0, 0.10]", result$elliott$Test, fixed = TRUE)))
   expect_false(any(grepl("Observations in [0, 0.1]", result$elliott$Test, fixed = TRUE)))
-  # The wider window sees 60 more p-values than [0, 0.10] would.
+  # The observation count matches the requested support window.
+  expected_n <- sum(2 * stats::pnorm(-abs(df$effect / df$se)) <= 0.15)
   obs_row <- result$elliott[result$elliott$Test == "Observations in [0, 0.15]", ]
-  expect_equal(obs_row$`P-value`, as.character(nrow(df)))
+  expect_equal(obs_row$`P-value`, as.character(expected_n))
 })
 
 test_that("a custom support changes the Cox-Shi result relative to the default supports", {
   local_options(artma.verbose = 1, artma.cache.use_cache = FALSE)
-  df <- bumped_pcurve_df()
+  df <- heap_bump_df()
 
   run_with_supports <- function(supports) {
     run_p_hacking_tests(
@@ -501,9 +507,13 @@ test_that("a custom support changes the Cox-Shi result relative to the default s
   custom_row <- custom_run$elliott[custom_run$elliott$Test == "Cox-Shi [0, 0.15]", ]
   expect_equal(nrow(default_row), 1L)
   expect_equal(nrow(custom_row), 1L)
-  # Both windows produce a numeric p-value, and widening the support changes it.
+  # Both windows produce a numeric p-value.
   expect_false(grepl("NA", default_row$`P-value`))
   expect_false(grepl("NA", custom_row$`P-value`))
+  # The heap at p = 0.125 is invisible on [0, 0.10] but rejects on [0, 0.15],
+  # so the support choice flips the substantive conclusion.
+  expect_true(formatted_p_to_num(default_row$`P-value`) > 0.05)
+  expect_true(formatted_p_to_num(custom_row$`P-value`) < 0.05)
   expect_false(identical(default_row$`P-value`, custom_row$`P-value`))
 })
 

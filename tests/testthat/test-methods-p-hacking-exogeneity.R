@@ -76,28 +76,34 @@ elliott_base_options <- function() {
   )
 }
 
-# Deterministic p-curve: strictly declining over [0, 0.10], plus a bump in
-# (0.12, 0.13] that only a wider support window can see. Points are spread
-# evenly inside each 0.01-wide bin so no Cox-Shi binning leaves a bin empty.
-make_bumped_pcurve_df <- function() {
-  counts <- c(40, 34, 28, 24, 20, 16, 12, 10, 8, 6, 5, 5, 30, 5, 5)
-  edges <- seq(0, 0.15, by = 0.01)
-  pvalues <- unlist(lapply(seq_along(counts), function(j) {
-    seq(edges[j], edges[j + 1], length.out = counts[j] + 2)[2:(counts[j] + 1)]
-  }))
-  t_stats <- stats::qnorm(1 - pvalues / 2)
+# A realistic clustered p-curve (it respects the Elliott theoretical bounds,
+# so the default Cox-Shi windows stay quiet), plus a heap of p-values at
+# 0.125. The heap is invisible to the default supports but breaks monotonicity
+# on a [0, 0.15] window, so widening the support flips the conclusion.
+make_heap_bump_df <- function() {
+  set.seed(202, kind = "Mersenne-Twister", normal.kind = "Inversion")
+  panel_t <- abs(stats::rnorm(800, mean = 1.5, sd = 1))
+  heap_t <- rep(stats::qnorm(1 - 0.125 / 2), 150)
+  t_stats <- c(panel_t, heap_t)
+  study_id <- c(
+    1 + ((seq_along(panel_t) - 1) %/% 20),
+    41 + ((seq_along(heap_t) - 1) %/% 20)
+  )
   data.frame(
     effect = t_stats,
     se = rep(1, length(t_stats)),
     t_stat = t_stats,
-    study_id = seq_along(t_stats)
+    study_id = study_id
   )
 }
+
+# Strip significance marks from a formatted p-value cell.
+formatted_p_to_num <- function(x) as.numeric(sub("\\*+$", "", x))
 
 test_that("a custom elliott_supports option flows through to the Cox-Shi call", {
   skip_if_not_installed("NlcOptim")
   skip_if_not_installed("quadprog")
-  df <- make_bumped_pcurve_df()
+  df <- make_heap_bump_df()
 
   run_with_supports <- function(supports) {
     opts <- elliott_base_options()
@@ -117,9 +123,12 @@ test_that("a custom elliott_supports option flows through to the Cox-Shi call", 
   custom_p <- custom_result$tables$elliott[
     custom_result$tables$elliott$Test == "Cox-Shi [0, 0.15]", "P-value"
   ]
-  # Both windows yield a numeric p-value and the support choice changes it.
+  # Both windows yield a numeric p-value and the support choice changes it:
+  # the heap at p = 0.125 rejects only on the wider window.
   expect_false(grepl("NA", default_p))
   expect_false(grepl("NA", custom_p))
+  expect_true(formatted_p_to_num(default_p) > 0.05)
+  expect_true(formatted_p_to_num(custom_p) < 0.05)
   expect_false(identical(default_p, custom_p))
 })
 
