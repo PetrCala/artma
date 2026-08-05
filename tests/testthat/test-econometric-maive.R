@@ -438,7 +438,7 @@ test_that("run_maive reports the installed version when it is too old", {
   result <- run_maive(make_maive_df(), base_maive_options())
 
   expect_true(is.null(result$summary))
-  expect_match(result$skipped, "0\\.2\\.4 or higher")
+  expect_match(result$skipped, "0\\.2\\.5 or higher")
   expect_match(result$skipped, "0\\.0\\.2\\.11")
 })
 
