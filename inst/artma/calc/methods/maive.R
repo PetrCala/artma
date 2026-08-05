@@ -1,4 +1,7 @@
-MAIVE_MIN_VERSION <- "0.2.4"
+# 0.2.5 is the first release that returns unrounded estimates; older versions
+# round beta, SE, and Egger terms to 3 decimals, distorting the p-values and
+# CIs derived from them and zeroing out standard errors below 0.0005.
+MAIVE_MIN_VERSION <- "0.2.5"
 
 #' @title Check whether the installed MAIVE version meets the minimum requirement
 #' @param installed_version *[character]* Version string to check, e.g. from `packageVersion("MAIVE")`.
