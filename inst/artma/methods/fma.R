@@ -89,7 +89,9 @@ fma <- function(df, bma_result = NULL) {
       config = config,
       use_vif_optimization = use_vif_optimization,
       max_groups_to_remove = max_groups_to_remove,
-      scale_data = FALSE,
+      # Match the orchestrated path, which reuses the scaled frame from bma():
+      # both paths must report coefficients on the same scale.
+      scale_data = TRUE,
       verbosity = get_verbosity()
     )
 
