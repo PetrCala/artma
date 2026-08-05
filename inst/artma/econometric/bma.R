@@ -33,20 +33,16 @@ handle_bma_params <- function(bma_params) {
   validate(is.list(bma_params))
 
   adj_bma_params <- list()
-  param_counts <- unique(vapply(bma_params, length, integer(1)))
+  param_lengths <- vapply(bma_params, length, integer(1))
+  multi_lengths <- unique(param_lengths[param_lengths != 1])
 
-  if (length(param_counts) == 1) {
+  if (length(multi_lengths) == 0) {
     adj_bma_params[[1]] <- bma_params
-  } else if (length(param_counts) == 2) {
-    model_count <- param_counts[!param_counts == 1]
+  } else if (length(multi_lengths) == 1) {
+    model_count <- multi_lengths
     for (i in seq_len(model_count)) {
-      single_model_params <- lapply(bma_params, function(x) x[1])
-      adj_bma_params[[i]] <- single_model_params
-      bma_params <- lapply(bma_params, function(x) {
-        if (length(x) > 1) {
-          return(x[-1])
-        }
-        x
+      adj_bma_params[[i]] <- lapply(bma_params, function(x) {
+        if (length(x) > 1) x[i] else x
       })
     }
   } else {
@@ -161,7 +157,11 @@ find_optimal_bma_formula <- function(input_data, input_var_list, max_groups_to_r
   }, logical(1))
   input_data <- input_data[, non_const_cols, drop = FALSE]
 
-  bma_potential_vars_bool <- input_var_list$bma & non_const_cols
+  # Mask in var-list row order: a row is usable only if its column survived the
+  # constancy filter above. Indexing by data-frame column order would pair the
+  # mask with the wrong rows whenever the orders (or lengths) differ.
+  var_is_usable <- input_var_list$var_name %in% colnames(input_data)
+  bma_potential_vars_bool <- input_var_list$bma & var_is_usable
   potential_vars <- input_var_list$var_name[bma_potential_vars_bool]
   var_grouping <- input_var_list$group_category[bma_potential_vars_bool]
 
@@ -184,9 +184,19 @@ find_optimal_bma_formula <- function(input_data, input_var_list, max_groups_to_r
     highest_vif_coef_idx <- which(potential_vars == highest_vif_coef_name)
     highest_vif_group <- var_grouping[highest_vif_coef_idx]
 
-    vars_to_remove <- potential_vars[var_grouping == highest_vif_group]
-    potential_vars <- potential_vars[!potential_vars %in% vars_to_remove]
-    var_grouping <- var_grouping[!var_grouping %in% highest_vif_group]
+    # "other" is the catch-all for unconfigured variables, not a real dummy
+    # group; removing it wholesale would wipe out every ungrouped moderator.
+    remove_whole_group <- length(highest_vif_group) == 1 &&
+      !is.na(highest_vif_group) &&
+      highest_vif_group != "other"
+    vars_to_remove <- if (remove_whole_group) {
+      potential_vars[var_grouping == highest_vif_group]
+    } else {
+      highest_vif_coef_name
+    }
+    keep_mask <- !potential_vars %in% vars_to_remove
+    potential_vars <- potential_vars[keep_mask]
+    var_grouping <- var_grouping[keep_mask]
 
     bma_formula <- get_bma_formula(potential_vars, input_data)
     bma_lm <- stats::lm(bma_formula, data = input_data)
@@ -201,7 +211,7 @@ find_optimal_bma_formula <- function(input_data, input_var_list, max_groups_to_r
     removed_groups_verbose <- c(removed_groups_verbose, vars_to_remove)
   }
 
-  if (max_groups_to_remove == 0) {
+  if (any(vif_coefs > 10)) {
     cli::cli_abort("Maximum number of groups to remove reached. Optimal BMA formula not found.")
   }
 
@@ -398,8 +408,9 @@ rename_bma_model <- function(bma_model, input_var_list) {
 
   bma_names <- bma_model$reg.names
   idx <- match(bma_names, input_var_list$var_name)
-  bma_names[!is.na(idx)] <- input_var_list$var_name_verbose[stats::na.omit(idx)]
-  bma_names[is.na(idx)] <- "Intercept"
+  # Names absent from the var list stay as they are; renaming them would
+  # corrupt the labels and the downstream ma_table join.
+  bma_names[!is.na(idx)] <- input_var_list$var_name_verbose[idx[!is.na(idx)]]
   bma_model$reg.names <- bma_names
 
   bma_model

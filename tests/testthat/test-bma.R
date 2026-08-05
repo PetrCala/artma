@@ -1,6 +1,7 @@
 box::use(
   testthat[
     expect_equal,
+    expect_error,
     expect_false,
     expect_length,
     expect_match,
@@ -19,7 +20,9 @@ box::use(
   artma / econometric / bma[
     get_bma_formula,
     handle_bma_params,
-    get_bma_data
+    get_bma_data,
+    find_optimal_bma_formula,
+    rename_bma_model
   ],
   artma / methods / bma[bma, prepare_bma_inputs]
 )
@@ -89,6 +92,33 @@ test_that("handle_bma_params returns list of parameter lists", {
   expect_length(result, 1)
   expect_equal(result[[1]]$burn, 1000L)
   expect_equal(result[[1]]$iter, 5000L)
+})
+
+test_that("handle_bma_params treats uniformly multi-valued parameters as multiple models", {
+  params <- list(
+    burn = c(100L, 200L),
+    iter = c(500L, 1000L),
+    g = c("UIP", "BRIC")
+  )
+
+  result <- handle_bma_params(params)
+
+  expect_length(result, 2)
+  expect_equal(result[[1]]$burn, 100L)
+  expect_equal(result[[1]]$g, "UIP")
+  expect_equal(result[[2]]$burn, 200L)
+  expect_equal(result[[2]]$iter, 1000L)
+  expect_equal(result[[2]]$g, "BRIC")
+})
+
+test_that("handle_bma_params aborts on mixed multi-value lengths", {
+  params <- list(
+    burn = c(100L, 200L),
+    mprior = c("uniform", "random", "fixed"),
+    g = "UIP"
+  )
+
+  expect_error(handle_bma_params(params), "1 or n values")
 })
 
 test_that("handle_bma_params splits multiple model configurations", {
@@ -364,6 +394,177 @@ test_that("prepare_bma_inputs excludes constant moderators before scaling", {
   expect_false("const_mod" %in% colnames(prepared$bma_data))
   expect_true(all(c("effect", "se", "moderator1") %in% colnames(prepared$bma_data)))
   expect_true(nrow(prepared$bma_data) > 0)
+})
+
+make_collinear_pair_data <- function() {
+  set.seed(7)
+  n <- 100L
+  x1 <- rnorm(n)
+  data.frame(
+    effect = rnorm(n),
+    x1 = x1,
+    x2 = x1 + rnorm(n, sd = 0.01),
+    y1 = rnorm(n),
+    y2 = rnorm(n),
+    stringsAsFactors = FALSE
+  )
+}
+
+make_ungrouped_var_list <- function(var_names) {
+  data.frame(
+    var_name = var_names,
+    bma = TRUE,
+    group_category = "other",
+    stringsAsFactors = FALSE
+  )
+}
+
+test_that("find_optimal_bma_formula aligns the constancy mask with var-list rows", {
+  skip_if_not_installed("car")
+
+  set.seed(11)
+  n <- 60L
+  # Data columns are deliberately ordered differently from the var-list rows,
+  # with the constant column first, so a mask computed in data order would
+  # pair with the wrong rows.
+  df <- data.frame(
+    const_var = 1,
+    effect = rnorm(n),
+    mod2 = rnorm(n),
+    mod1 = rnorm(n),
+    stringsAsFactors = FALSE
+  )
+  var_list <- make_ungrouped_var_list(c("effect", "mod1", "mod2", "const_var"))
+
+  result <- find_optimal_bma_formula(
+    df,
+    var_list,
+    return_variable_vector_instead = TRUE,
+    verbose = FALSE
+  )
+
+  expect_equal(result$result, c("mod1", "mod2"))
+  expect_equal(result$removed_groups, 0)
+})
+
+test_that("find_optimal_bma_formula removes 'other' variables one at a time", {
+  skip_if_not_installed("car")
+
+  df <- make_collinear_pair_data()
+  var_list <- make_ungrouped_var_list(c("effect", "x1", "x2", "y1", "y2"))
+
+  result <- find_optimal_bma_formula(
+    df,
+    var_list,
+    return_variable_vector_instead = TRUE,
+    verbose = FALSE
+  )
+
+  # Only one member of the collinear pair is dropped; the unrelated
+  # moderators sharing the "other" category survive.
+  expect_length(result$result, 3)
+  expect_true(all(c("y1", "y2") %in% result$result))
+  expect_length(result$removed_groups_verbose, 1)
+})
+
+test_that("find_optimal_bma_formula still removes genuine dummy groups wholesale", {
+  skip_if_not_installed("car")
+
+  set.seed(13)
+  n <- 120L
+  # Near dummy trap: the three region dummies cover all but one observation,
+  # so their VIFs blow up without the model becoming aliased.
+  category <- rep(c("a", "b", "c", "base"), times = c(55L, 56L, 8L, 1L))
+  df <- data.frame(
+    effect = rnorm(n),
+    reg_a = as.integer(category == "a"),
+    reg_b = as.integer(category == "b"),
+    reg_c = as.integer(category == "c"),
+    y1 = rnorm(n),
+    y2 = rnorm(n),
+    stringsAsFactors = FALSE
+  )
+  var_list <- data.frame(
+    var_name = c("effect", "reg_a", "reg_b", "reg_c", "y1", "y2"),
+    bma = TRUE,
+    group_category = c("other", "region", "region", "region", "other", "other"),
+    stringsAsFactors = FALSE
+  )
+
+  result <- find_optimal_bma_formula(
+    df,
+    var_list,
+    return_variable_vector_instead = TRUE,
+    verbose = FALSE
+  )
+
+  expect_equal(result$result, c("y1", "y2"))
+  expect_equal(result$removed_groups, 1)
+  expect_equal(sort(result$removed_groups_verbose), c("reg_a", "reg_b", "reg_c"))
+})
+
+test_that("find_optimal_bma_formula succeeds when the last allowed removal fixes VIF", {
+  skip_if_not_installed("car")
+
+  df <- make_collinear_pair_data()
+  var_list <- make_ungrouped_var_list(c("effect", "x1", "x2", "y1", "y2"))
+
+  result <- find_optimal_bma_formula(
+    df,
+    var_list,
+    max_groups_to_remove = 1,
+    return_variable_vector_instead = TRUE,
+    verbose = FALSE
+  )
+
+  expect_equal(result$removed_groups, 1)
+  expect_true(all(c("y1", "y2") %in% result$result))
+})
+
+test_that("find_optimal_bma_formula aborts only when removals are exhausted and VIFs remain high", {
+  skip_if_not_installed("car")
+
+  set.seed(17)
+  n <- 100L
+  x1 <- rnorm(n)
+  z1 <- rnorm(n)
+  df <- data.frame(
+    effect = rnorm(n),
+    x1 = x1,
+    x2 = x1 + rnorm(n, sd = 0.01),
+    z1 = z1,
+    z2 = z1 + rnorm(n, sd = 0.01),
+    y1 = rnorm(n),
+    stringsAsFactors = FALSE
+  )
+  var_list <- make_ungrouped_var_list(c("effect", "x1", "x2", "z1", "z2", "y1"))
+
+  expect_error(
+    find_optimal_bma_formula(
+      df,
+      var_list,
+      max_groups_to_remove = 1,
+      return_variable_vector_instead = TRUE,
+      verbose = FALSE
+    ),
+    "Optimal BMA formula not found"
+  )
+})
+
+test_that("rename_bma_model leaves unmatched regressor names untouched", {
+  model <- structure(
+    list(reg.names = c("mod1", "not_in_list")),
+    class = "bma"
+  )
+  var_list <- data.frame(
+    var_name = c("effect", "mod1"),
+    var_name_verbose = c("Effect", "Moderator 1"),
+    stringsAsFactors = FALSE
+  )
+
+  renamed <- rename_bma_model(model, var_list)
+
+  expect_equal(renamed$reg.names, c("Moderator 1", "not_in_list"))
 })
 
 test_that("prepare_bma_inputs warns about the excluded constant moderator", {
