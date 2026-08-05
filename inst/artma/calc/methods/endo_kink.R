@@ -59,7 +59,9 @@ select_combined_regression <- function(pet_estimate, pet_std_error, peese_estima
 compute_variance_component <- function(combined_residual_sum, data, peese_model) {
   m <- nrow(data)
   wis_sum <- base::sum(data$wis)
-  df_model <- stats::df.residual(peese_model)
+  # Bom & Rachinger divide Q1 by M - e(df_m) - 1, where e(df_m) is the model
+  # degrees of freedom (number of regressors), not the residual df.
+  df_model <- length(stats::coef(peese_model))
   sigma_sq <- base::pmax(0, m * ((combined_residual_sum / (m - df_model - 1)) - 1) / wis_sum)
   list(
     variance_component = sigma_sq,
@@ -91,7 +93,7 @@ final_endokink_fit <- function(prepared_data, cutoff, verbose) {
   sebs_min <- min(prepared_data$sebs)
   sebs_max <- max(prepared_data$sebs)
   if (cutoff > sebs_min && cutoff < sebs_max) {
-    prepared_data$sebs_a1 <- if (prepared_data$sebs > cutoff) prepared_data$sebs - cutoff else 0
+    prepared_data$sebs_a1 <- base::pmax(prepared_data$sebs - cutoff, 0)
     prepared_data$pubbias <- prepared_data$sebs_a1 / prepared_data$sebs
     model <- stats::lm(bs ~ 0 + constant + pubbias, data = prepared_data)
     result <- summary(model)$coefficients
