@@ -45,8 +45,8 @@ maive_estimator <- function(df) {
     ),
     se = opt_spec(
       default = 1L, type = "numeric", cast = as.integer,
-      constraint = function(x) x %in% c(1, 2, 3, 4, 5),
-      constraint_msg = "maive se must be 1, 2, 3, 4, or 5"
+      constraint = function(x) x %in% c(0, 1, 2, 3),
+      constraint_msg = "maive se must be 0, 1, 2, or 3"
     ),
     ar = opt_spec(
       default = 0L, type = "numeric", cast = as.integer,

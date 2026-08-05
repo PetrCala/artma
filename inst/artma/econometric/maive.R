@@ -82,15 +82,16 @@ maive_studylevel_label <- function(x) {
 }
 
 #' @title Human-readable label for the MAIVE standard-error mode
-#' @param x *[integer]* The `se` option (1..5).
+#' @description Mirrors MAIVE 0.2.4, whose `SE` parameter accepts 0..3
+#'   (CR0/CR1/CR2 clustered variance estimators, or wild cluster bootstrap).
+#' @param x *[integer]* The `se` option (0..3).
 #' @return *[character]* Label for display.
 maive_se_label <- function(x) {
   switch(as.character(x),
-    "1" = "asymptotic",
-    "2" = "pairs cluster bootstrap",
-    "3" = "wild bootstrap",
-    "4" = "wild cluster bootstrap",
-    "5" = "pairs bootstrap",
+    "0" = "CR0 cluster-robust",
+    "1" = "CR1 cluster-robust",
+    "2" = "CR2 cluster-robust (Bell-McCaffrey)",
+    "3" = "wild cluster bootstrap",
     as.character(x)
   )
 }
@@ -212,10 +213,20 @@ ci_excludes_zero <- function(ci) {
 #' @title Verdict text for an Anderson-Rubin interval
 #' @param ci *[numeric]* The interval, or anything non-finite when unavailable.
 #' @param computed *[logical]* Whether AR computation was requested.
+#' @param available *[logical]* Whether MAIVE's guardrails permit the AR
+#'   interval for this specification (it is forced off for the EK model,
+#'   standard weights, and study fixed effects).
 #' @return *[list]* With `value`, `note`, and `tone`.
-ar_ci_verdict <- function(ci, computed) {
+ar_ci_verdict <- function(ci, computed, available = TRUE) {
   if (!isTRUE(computed)) {
     return(list(value = "not computed", note = "enable the ar option to compute it", tone = ""))
+  }
+  if (!isTRUE(available)) {
+    return(list(
+      value = "not available",
+      note = "MAIVE does not compute the AR interval for this specification",
+      tone = ""
+    ))
   }
   if (!is.numeric(ci) || length(ci) != 2L || !all(is.finite(ci))) {
     return(list(value = "NA", note = "no valid acceptance region found", tone = "bad"))
@@ -317,11 +328,31 @@ build_maive_summary <- function(maive_output, options, data_info = list(),
   mark <- function(p_value) if (marks) significance_mark(p_value) else ""
 
   # --- Specification ---
+  # MAIVE silently drops clustering when the data has no study column and the
+  # instrument when N has no variation; the table must echo what actually ran,
+  # not just the configured options.
+  no_study_column <- isFALSE(data_info$has_study_id)
+  ns_constant <- isTRUE(data_info$ns_constant)
   spec <- "Specification"
   add(spec, "Model", maive_method_label(options$method %||% 3L))
-  add(spec, "Instrument", maive_instrument_label(options$instrument %||% 1L))
+  add(
+    spec, "Instrument", maive_instrument_label(options$instrument %||% 1L),
+    note = if (instrumented && ns_constant) {
+      "no variation in N; MAIVE disables the instrument"
+    } else {
+      ""
+    }
+  )
   add(spec, "Weights", maive_weight_label(options$weight %||% 0L))
-  add(spec, "Study-level structure", maive_studylevel_label(options$studylevel %||% 2L))
+  add(
+    spec, "Study-level structure",
+    if (no_study_column) "none" else maive_studylevel_label(options$studylevel %||% 2L),
+    note = if (no_study_column && !identical(as.integer(options$studylevel %||% 2L), 0L)) {
+      "no study_id column; each estimate forms its own cluster"
+    } else {
+      ""
+    }
+  )
   add(spec, "Standard errors", maive_se_label(options$se %||% 1L))
   if (instrumented) {
     add(
@@ -368,7 +399,14 @@ build_maive_summary <- function(maive_output, options, data_info = list(),
   beta_ci <- maive_ci(beta, beta_se)
   add(est, "95% CI", format_ci(beta_ci[[1L]], beta_ci[[2L]], rd))
 
-  ar <- ar_ci_verdict(maive_output$AR_CI, identical(as.integer(options$ar %||% 0L), 1L))
+  ar_guardrailed <- identical(as.integer(options$method %||% 3L), 4L) ||
+    identical(as.integer(options$weight %||% 0L), 1L) ||
+    (fixed_intercept && !no_study_column)
+  ar <- ar_ci_verdict(
+    maive_output$AR_CI,
+    identical(as.integer(options$ar %||% 0L), 1L),
+    !ar_guardrailed
+  )
   ar_value <- ar$value
   if (is.na(ar_value)) {
     ar_value <- format_ci(maive_output$AR_CI[[1L]], maive_output$AR_CI[[2L]], rd)
@@ -670,7 +708,9 @@ run_maive <- function(df, options) {
 
   data_info <- list(
     n_obs = nrow(df),
-    n_studies = if ("study_id" %in% colnames(df)) length(unique(df$study_id)) else NULL
+    n_studies = if ("study_id" %in% colnames(df)) length(unique(df$study_id)) else NULL,
+    has_study_id = "study_id" %in% colnames(df),
+    ns_constant = length(unique(maive_data$Ns[is.finite(maive_data$Ns)])) <= 1L
   )
 
   tryCatch(

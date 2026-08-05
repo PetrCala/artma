@@ -831,12 +831,11 @@ methods:
       type: "integer"
       default: 1
       help: |
-        Standard error estimation method:
-          1 = Asymptotic (default)
-          2 = Pairs cluster bootstrap
-          3 = Wild bootstrap
-          4 = Wild cluster bootstrap
-          5 = Pairs bootstrap
+        Standard error estimation method (MAIVE >= 0.2.4):
+          0 = CR0 cluster-robust
+          1 = CR1 cluster-robust (default)
+          2 = CR2 cluster-robust (Bell-McCaffrey)
+          3 = Wild cluster bootstrap
 
     ar:
       type: "integer"
@@ -875,8 +874,8 @@ methods:
       type: "integer"
       default: 123
       help: |
-        RNG seed passed to the bootstrap standard error modes (se = 2..5), so
-        repeated runs on the same data reproduce identical results.
+        RNG seed passed to the wild cluster bootstrap (se = 3), so repeated
+        runs on the same data reproduce identical results.
 
     show_interpretation:
       type: "logical"

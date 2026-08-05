@@ -264,13 +264,83 @@ test_that("build_maive_summary returns a tidy sectioned frame with no blank rows
 test_that("build_maive_summary echoes the specification the run used", {
   summary <- build_maive_summary(
     make_maive_output(),
-    base_maive_options(method = 4L, first_stage = 1L, se = 4L)
+    base_maive_options(method = 4L, first_stage = 1L, se = 3L)
   )
   spec <- summary[summary$Section == "Specification", ]
 
   expect_equal(spec$Value[spec$Statistic == "Model"], "Endogenous kink (EK)")
   expect_equal(spec$Value[spec$Statistic == "Standard errors"], "wild cluster bootstrap")
   expect_match(spec$Value[spec$Statistic == "First-stage specification"], "log N")
+})
+
+test_that("maive se labels follow the MAIVE 0.2.4 contract", {
+  labels <- vapply(
+    0:3,
+    function(x) {
+      summary <- build_maive_summary(make_maive_output(), base_maive_options(se = x))
+      summary$Value[summary$Statistic == "Standard errors"]
+    },
+    character(1)
+  )
+  expect_equal(labels, c(
+    "CR0 cluster-robust",
+    "CR1 cluster-robust",
+    "CR2 cluster-robust (Bell-McCaffrey)",
+    "wild cluster bootstrap"
+  ))
+})
+
+test_that("AR interval reports unavailability under MAIVE guardrails", {
+  # MAIVE forces AR off for the EK model, standard weights, and study fixed
+  # effects; requesting it must not be reported as an estimation failure.
+  for (opts in list(
+    base_maive_options(ar = 1L, method = 4L),
+    base_maive_options(ar = 1L, weight = 1L)
+  )) {
+    summary <- build_maive_summary(make_maive_output(AR_CI = "NA"), opts)
+    row <- summary[summary$Statistic == "Anderson-Rubin 95% CI", ]
+    expect_equal(row$Value, "not available")
+    expect_match(row$Note, "does not compute")
+  }
+
+  # Study fixed effects only gate AR when a study column actually exists.
+  summary_fe <- build_maive_summary(
+    make_maive_output(AR_CI = "NA"),
+    base_maive_options(ar = 1L, studylevel = 1L),
+    list(has_study_id = TRUE)
+  )
+  row_fe <- summary_fe[summary_fe$Statistic == "Anderson-Rubin 95% CI", ]
+  expect_equal(row_fe$Value, "not available")
+
+  # An allowed specification with no acceptance region still reports "NA".
+  summary_na <- build_maive_summary(
+    make_maive_output(AR_CI = "NA"),
+    base_maive_options(ar = 1L)
+  )
+  row_na <- summary_na[summary_na$Statistic == "Anderson-Rubin 95% CI", ]
+  expect_equal(row_na$Value, "NA")
+  expect_match(row_na$Note, "no valid acceptance region")
+})
+
+test_that("summary reports the effective study structure and instrument", {
+  # No study_id column: MAIVE runs unclustered regardless of the option.
+  summary <- build_maive_summary(
+    make_maive_output(),
+    base_maive_options(studylevel = 2L),
+    list(has_study_id = FALSE)
+  )
+  row <- summary[summary$Statistic == "Study-level structure", ]
+  expect_equal(row$Value, "none")
+  expect_match(row$Note, "no study_id column")
+
+  # Constant N: MAIVE auto-disables the instrument.
+  summary_ns <- build_maive_summary(
+    make_maive_output(),
+    base_maive_options(),
+    list(has_study_id = TRUE, ns_constant = TRUE)
+  )
+  row_ns <- summary_ns[summary_ns$Statistic == "Instrument", ]
+  expect_match(row_ns$Note, "no variation in N")
 })
 
 test_that("build_maive_summary records an automatically chosen first stage", {
@@ -473,7 +543,7 @@ test_that("run_maive resolves the first stage from the data and reports it", {
 test_that("run_maive is reproducible across two bootstrap runs", {
   skip_if_not_installed("MAIVE")
   local_options(artma.verbose = 1)
-  opts <- base_maive_options(se = 3L) # Wild bootstrap: needs the threaded seed.
+  opts <- base_maive_options(se = 3L) # Wild cluster bootstrap: needs the threaded seed.
 
   # MAIVE hardcodes 999 wild-bootstrap replications with no public knob, which
   # makes the two runs below take close to half a minute. The replication count
