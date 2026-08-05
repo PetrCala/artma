@@ -19,6 +19,7 @@ box::use(
   artma / calc / methods / stem[stem, stem_funnel, stem_MSE, STEM_MIN_STUDIES],
   artma / calc / methods / selection_model[metastudies_estimation],
   artma / calc / methods / endo_kink[run_endogenous_kink],
+  artma / econometric / vcov[robust_vcov],
   artma / visualization / options[get_visualization_options],
   artma / visualization / export[export_named_plots]
 )
@@ -156,24 +157,75 @@ nonlinear_method_specs <- function(options) {
   )
 }
 
-prepare_basic_data <- function(df, required_cols) {
-  validate_columns(df, required_cols)
-  cleaned <- df[, required_cols, drop = FALSE]
-  for (col in required_cols) {
-    cleaned <- cleaned[is.finite(cleaned[[col]]), , drop = FALSE]
-  }
-  cleaned
-}
-
+#' Adequately-powered cutoff for the WAAP estimator
+#'
+#' @description
+#' Following Ioannidis et al. (2017), the pilot (unrestricted) mean is the
+#' inverse-variance weighted average of the effects; a study is adequately
+#' powered when its standard error is below `|mean| / 2.8`.
+#'
+#' @param df *\[data.frame\]* With finite `effect` and positive `se` columns.
+#' @return *\[numeric\]* The standard-error cutoff.
+#' @keywords internal
 waap_bound <- function(df) {
-  weights <- 1 / df$se
+  weights <- 1 / df$se^2
   avg <- sum(df$effect * weights) / sum(weights)
   abs(avg) / 2.8
 }
 
+#' Keep the columns and rows WAAP/Top10 can use
+#'
+#' @description
+#' Filters to finite `effect` and positive finite `se`, carrying `study_id`
+#' along when the input has it so the fit can cluster by study.
+#'
+#' @param df *\[data.frame\]* Input data.
+#' @return *\[data.frame\]* The cleaned subset.
+#' @keywords internal
+prepare_precision_weighted_data <- function(df) {
+  validate_columns(df, c("effect", "se"))
+  cols <- intersect(c("effect", "se", "study_id"), colnames(df))
+  data <- df[, cols, drop = FALSE]
+  data[is.finite(data$effect) & is.finite(data$se) & data$se > 0, , drop = FALSE]
+}
+
+#' Precision-weighted WLS fit shared by WAAP and Top10
+#'
+#' @description
+#' Runs the WLS regression `t_stat ~ 0 + precision` on the selected
+#' subsample. The coefficient equals the inverse-variance weighted mean of
+#' the effects; the standard error is the regression standard error, which
+#' scales with residual heterogeneity. It is clustered by `study_id` (HC1,
+#' matching the linear tests) when clustering is possible, with a
+#' non-clustered HC1 fallback.
+#'
+#' @param data *\[data.frame\]* With `effect`, `se`, and optionally `study_id`.
+#' @return *\[list\]* With elements `estimate` and `std_error`.
+#' @keywords internal
+precision_weighted_wls <- function(data) {
+  t_stat <- data$effect / data$se
+  precision <- 1 / data$se
+  model <- stats::lm(t_stat ~ 0 + precision)
+  cluster <- data$study_id
+  if (!is.null(cluster) && anyNA(cluster)) {
+    cluster <- NULL
+  }
+  vcov <- robust_vcov(
+    model = model,
+    cluster = cluster,
+    engine = "sandwich",
+    clustered_type = "HC1",
+    fallback_types = "HC1",
+    final_vcov_fallback = FALSE
+  )
+  list(
+    estimate = stats::coef(model)[["precision"]],
+    std_error = sqrt(vcov["precision", "precision"])
+  )
+}
+
 run_waap <- function(df, total_n) {
-  data <- prepare_basic_data(df, c("effect", "se"))
-  data <- data[data$se > 0, , drop = FALSE]
+  data <- prepare_precision_weighted_data(df)
   if (nrow(data) < 2) {
     cli::cli_abort("Not enough observations to compute the WAAP estimator.")
   }
@@ -186,13 +238,12 @@ run_waap <- function(df, total_n) {
     cli::cli_abort("Not enough adequately powered observations for the WAAP estimator.")
   }
   weights <- 1 / filtered$se^2
-  estimate <- sum(filtered$effect * weights) / sum(weights)
-  std_error <- sqrt(1 / sum(weights))
+  fit <- precision_weighted_wls(filtered)
   list(
     effect = list(
-      estimate = estimate,
-      std_error = std_error,
-      p_value = normal_p_value(estimate, std_error)
+      estimate = fit$estimate,
+      std_error = fit$std_error,
+      p_value = normal_p_value(fit$estimate, fit$std_error)
     ),
     n_model = nrow(filtered),
     effective_n = effective_sample_size(weights)
@@ -200,8 +251,7 @@ run_waap <- function(df, total_n) {
 }
 
 run_top10 <- function(df, total_n) {
-  data <- prepare_basic_data(df, c("effect", "se"))
-  data <- data[data$se > 0, , drop = FALSE]
+  data <- prepare_precision_weighted_data(df)
   if (nrow(data) < 2) {
     cli::cli_abort("Not enough observations to compute the Top10 estimator.")
   }
@@ -212,13 +262,12 @@ run_top10 <- function(df, total_n) {
     cli::cli_abort("Not enough high-precision observations for the Top10 estimator.")
   }
   weights <- 1 / filtered$se^2
-  estimate <- sum(filtered$effect * weights) / sum(weights)
-  std_error <- sqrt(1 / sum(weights))
+  fit <- precision_weighted_wls(filtered)
   list(
     effect = list(
-      estimate = estimate,
-      std_error = std_error,
-      p_value = normal_p_value(estimate, std_error)
+      estimate = fit$estimate,
+      std_error = fit$std_error,
+      p_value = normal_p_value(fit$estimate, fit$std_error)
     ),
     n_model = nrow(filtered),
     effective_n = effective_sample_size(weights)
@@ -662,7 +711,10 @@ run_nonlinear_methods <- function(df, options) {
 }
 
 box::export(
-  run_nonlinear_methods
+  run_nonlinear_methods,
+  run_waap,
+  run_top10,
+  waap_bound
 )
 
 # nocov end -------------------------------------------------------------------
