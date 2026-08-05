@@ -74,18 +74,60 @@ test_that("run_endogenous_kink recovers a homogeneous true effect", {
   expect_true(is.finite(out[2]))
 })
 
-test_that("run_endogenous_kink's no-kink fallback matches a precision-weighted OLS fit", {
-  # Below the +/-1.96*sd band, compute_cutoff() returns 0 and
-  # final_endokink_fit() falls back to an unrestricted regression of bs_sebs
-  # on ones_sebs + pub_bias, which is algebraically the same as a weighted
-  # least-squares fit of effect on se with weights 1/se^2 (i.e. "precision
-  # weighted" when a dataset's precision column is defined as 1/se). A
-  # coincidental match between Endogenous Kink and a precision-weighted OLS
-  # spec in this regime is therefore expected, not a wiring bug.
-  set.seed(5)
-  n <- 40
+test_that("run_endogenous_kink matches the Bom & Rachinger reference on low-heterogeneity data", {
+  # Regression test for issue #366: the heterogeneity variance divisor must be
+  # M - model_df - 1 (model df = 2 regressors), not M - df.residual - 1 = 1.
+  # The inflated variance made the interior-kink condition never fire, so the
+  # estimator silently degenerated to PET. Low-heterogeneity data exposes the
+  # bug; the reference formula below is implemented independently.
+  set.seed(42)
+  n <- 200
   se <- runif(n, 0.05, 0.5)
-  effect <- 0.3 + rnorm(n, 0, se)
+  effect <- 0.5 + rnorm(n, 0, 0.05)
+
+  ref <- data.frame(t = effect / se, prec = 1 / se, ones = 1, se = se)
+  pet <- stats::lm(t ~ 0 + prec + ones, data = ref)
+  peese <- stats::lm(t ~ 0 + prec + se, data = ref)
+  pet_tab <- summary(pet)$coefficients
+  t_stat <- pet_tab["prec", "Estimate"] / pet_tab["prec", "Std. Error"]
+  if (abs(t_stat) > stats::qt(0.975, n - 2)) {
+    combined <- unname(stats::coef(peese)["prec"])
+    q1 <- sum(stats::residuals(peese)^2)
+  } else {
+    combined <- unname(stats::coef(pet)["prec"])
+    q1 <- sum(stats::residuals(pet)^2)
+  }
+  sigma_hat <- sqrt(max(0, n * (q1 / (n - 2 - 1) - 1) / sum(1 / se^2)))
+  a1 <- (combined - 1.96 * sigma_hat) * (combined + 1.96 * sigma_hat) / (2 * 1.96 * combined)
+  # The kink must be interior on this data, otherwise the test loses its power.
+  expect_true(combined > 1.96 * sigma_hat)
+  expect_true(a1 > min(se) && a1 < max(se))
+  ref$pubbias <- pmax(se - a1, 0) / se
+  kinked <- summary(stats::lm(t ~ 0 + prec + pubbias, data = ref))$coefficients
+
+  out <- run_endogenous_kink(data.frame(effect, se), verbose = FALSE)
+
+  expect_equal(unname(out[1]), unname(kinked["prec", "Estimate"]))
+  expect_equal(unname(out[2]), unname(kinked["prec", "Std. Error"]))
+  expect_equal(unname(out[3]), unname(kinked["pubbias", "Estimate"]))
+  expect_equal(unname(out[4]), unname(kinked["pubbias", "Std. Error"]))
+  # An interior kink means the estimate is not the plain PET estimate.
+  expect_false(isTRUE(all.equal(unname(out[1]), unname(stats::coef(pet)["prec"]))))
+})
+
+test_that("run_endogenous_kink's no-kink fallback matches a precision-weighted OLS fit", {
+  # On heavily heterogeneous data the heterogeneity SD swamps the combined
+  # estimate, compute_cutoff() returns 0, and final_endokink_fit() falls back
+  # to an unrestricted regression of bs_sebs on ones_sebs + pub_bias, which is
+  # algebraically the same as a weighted least-squares fit of effect on se
+  # with weights 1/se^2 (i.e. "precision weighted" when a dataset's precision
+  # column is defined as 1/se). A coincidental match between Endogenous Kink
+  # and a precision-weighted OLS spec in this regime is therefore expected,
+  # not a wiring bug.
+  set.seed(7)
+  n <- 150
+  se <- runif(n, 0.05, 0.5)
+  effect <- 0.3 + rnorm(n, 0, 0.6) + rnorm(n, 0, se)
   df <- data.frame(effect, se)
 
   out <- run_endogenous_kink(df, verbose = FALSE)
