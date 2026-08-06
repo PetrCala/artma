@@ -215,7 +215,8 @@ ci_excludes_zero <- function(ci) {
 #' @param computed *[logical]* Whether AR computation was requested.
 #' @param available *[logical]* Whether MAIVE's guardrails permit the AR
 #'   interval for this specification (it is forced off for the EK model,
-#'   standard weights, and study fixed effects).
+#'   standard weights, study fixed effects, and when N has no variation and
+#'   the instrument gets auto-disabled).
 #' @return *[list]* With `value`, `note`, and `tone`.
 ar_ci_verdict <- function(ci, computed, available = TRUE) {
   if (!isTRUE(computed)) {
@@ -399,9 +400,13 @@ build_maive_summary <- function(maive_output, options, data_info = list(),
   beta_ci <- maive_ci(beta, beta_se)
   add(est, "95% CI", format_ci(beta_ci[[1L]], beta_ci[[2L]], rd))
 
+  # Mirrors MAIVE's own apply_guardrails(): AR is forced off for the EK model,
+  # standard weights, study fixed effects, and when N has no variation and the
+  # instrument gets auto-disabled.
   ar_guardrailed <- identical(as.integer(options$method %||% 3L), 4L) ||
     identical(as.integer(options$weight %||% 0L), 1L) ||
-    (fixed_intercept && !no_study_column)
+    (fixed_intercept && !no_study_column) ||
+    (instrumented && ns_constant)
   ar <- ar_ci_verdict(
     maive_output$AR_CI,
     identical(as.integer(options$ar %||% 0L), 1L),

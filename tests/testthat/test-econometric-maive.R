@@ -321,6 +321,21 @@ test_that("AR interval reports unavailability under MAIVE guardrails", {
   row_na <- summary_na[summary_na$Statistic == "Anderson-Rubin 95% CI", ]
   expect_equal(row_na$Value, "NA")
   expect_match(row_na$Note, "no valid acceptance region")
+
+  # Constant N: MAIVE auto-disables the instrument, which also forces AR off.
+  # Without this guardrail, the missing AR_CI reads as a failed search rather
+  # than an expected consequence of the disabled instrument.
+  summary_ns_constant <- build_maive_summary(
+    make_maive_output(AR_CI = "NA"),
+    base_maive_options(ar = 1L, instrument = 1L),
+    list(has_study_id = TRUE, ns_constant = TRUE)
+  )
+  row_ns_constant <- summary_ns_constant[
+    summary_ns_constant$Statistic == "Anderson-Rubin 95% CI",
+  ]
+  expect_equal(row_ns_constant$Value, "not available")
+  expect_match(row_ns_constant$Note, "does not compute")
+  expect_no_match(row_ns_constant$Note, "no valid acceptance region")
 })
 
 test_that("summary reports the effective study structure and instrument", {
@@ -539,6 +554,26 @@ test_that("run_maive resolves the first stage from the data and reports it", {
 
   expect_equal(result$first_stage$value, 1L)
   expect_true(result$first_stage$automatic)
+})
+
+test_that("run_maive reports the AR guardrail, not a failed search, on constant N", {
+  skip_if_not_installed("MAIVE", minimum_version = MAIVE_MIN_VERSION)
+  local_options(artma.verbose = 1)
+
+  # Constant N makes MAIVE auto-disable the instrument internally, which in
+  # turn forces its Anderson-Rubin interval off; the summary must say so
+  # instead of reporting "no valid acceptance region found".
+  df <- make_maive_df()
+  df$n_obs <- rep(200L, nrow(df))
+
+  # MAIVE itself warns about the auto-disable; that warning is expected here,
+  # not a symptom of a broken test.
+  result <- suppressWarnings(run_maive(df, base_maive_options(ar = 1L, instrument = 1L)))
+
+  expect_true(is.null(result$skipped))
+  row <- result$summary[result$summary$Statistic == "Anderson-Rubin 95% CI", ]
+  expect_equal(row$Value, "not available")
+  expect_match(row$Note, "does not compute")
 })
 
 test_that("run_maive is reproducible across two bootstrap runs", {
