@@ -317,12 +317,24 @@ run_stem <- function(df, total_n, options) {
   estimate <- estimates[1, "estimate"]
   std_error <- estimates[1, "se"]
   n_included <- as.integer(round(estimates[1, "n_stem"]))
+  # STEM has no standard error for its heterogeneity estimate; NA (not NaN)
+  # is the documented "absent by design" signal degenerate_effect_reason()
+  # and the formatters already understand.
+  heterogeneity_estimate <- estimates[1, "sd of total heterogeneity"]
+  extra_terms <- list(list(
+    term = "effect_heterogeneity",
+    term_label = "Effect Heterogeneity (tau)",
+    estimate = heterogeneity_estimate,
+    std_error = NA_real_,
+    p_value = NA_real_
+  ))
   list(
     effect = list(
       estimate = estimate,
       std_error = std_error,
       p_value = normal_p_value(estimate, std_error)
     ),
+    extra_terms = extra_terms,
     n_model = n_included,
     plots = build_stem_plots(effects, ses, estimates, stem_fit$MSE)
   )
@@ -416,7 +428,8 @@ run_hierarchical <- function(df, total_n, options) {
     result
   })
   draws <- fit$Deltadraw
-  if (is.null(draws) || ncol(draws) < 2) {
+  vbeta_draws <- fit$Vbetadraw
+  if (is.null(draws) || ncol(draws) < 2 || is.null(vbeta_draws) || ncol(vbeta_draws) < 1) {
     cli::cli_abort("Unexpected posterior output from the hierarchical model.")
   }
   effect_draws <- draws[, 1]
@@ -425,6 +438,23 @@ run_hierarchical <- function(df, total_n, options) {
   effect_se <- stats::sd(effect_draws)
   pub_bias_est <- mean(pub_bias_draws)
   pub_bias_se <- stats::sd(pub_bias_draws)
+  # Vbetadraw holds posterior draws of vec(Vbeta), the nvar x nvar covariance
+  # matrix of the cross-study coefficients (column-major, mirroring
+  # Deltadraw's column order); column 1 is therefore Var(intercept), i.e. the
+  # cross-study heterogeneity of the effect. sqrt() of each draw gives
+  # posterior draws of the heterogeneity SD, whose mean/sd form an
+  # estimate/SE pair the same way effect_est/effect_se come from
+  # mean()/sd() of Deltadraw's column.
+  heterogeneity_sd_draws <- sqrt(pmax(vbeta_draws[, 1], 0))
+  heterogeneity_est <- mean(heterogeneity_sd_draws)
+  heterogeneity_se <- stats::sd(heterogeneity_sd_draws)
+  extra_terms <- list(list(
+    term = "effect_heterogeneity",
+    term_label = "Effect Heterogeneity (tau)",
+    estimate = heterogeneity_est,
+    std_error = heterogeneity_se,
+    p_value = normal_p_value(heterogeneity_est, heterogeneity_se)
+  ))
   list(
     effect = list(
       estimate = effect_est,
@@ -436,6 +466,7 @@ run_hierarchical <- function(df, total_n, options) {
       std_error = pub_bias_se,
       p_value = normal_p_value(pub_bias_est, pub_bias_se)
     ),
+    extra_terms = extra_terms,
     n_model = nrow(data)
   )
 }
@@ -532,13 +563,24 @@ run_endogenous <- function(df, total_n) {
     cli::cli_abort("Not enough observations to run the endogenous kink model.")
   }
   estimates <- run_endogenous_kink(data, verbose = FALSE)
-  if (length(estimates) < 4) {
+  if (length(estimates) < 5) {
     cli::cli_abort("Endogenous kink model did not return the expected coefficients.")
   }
   effect_est <- estimates[1]
   effect_se <- estimates[2]
   pub_bias_est <- estimates[3]
   pub_bias_se <- estimates[4]
+  heterogeneity_estimate <- estimates[5]
+  # No standard error is computed for the heterogeneity SD; NA (not NaN) is
+  # the documented "absent by design" signal degenerate_effect_reason() and
+  # the formatters already understand.
+  extra_terms <- list(list(
+    term = "effect_heterogeneity",
+    term_label = "Effect Heterogeneity (tau)",
+    estimate = heterogeneity_estimate,
+    std_error = NA_real_,
+    p_value = NA_real_
+  ))
   list(
     effect = list(
       estimate = effect_est,
@@ -550,6 +592,7 @@ run_endogenous <- function(df, total_n) {
       std_error = pub_bias_se,
       p_value = normal_p_value(pub_bias_est, pub_bias_se)
     ),
+    extra_terms = extra_terms,
     n_model = nrow(data)
   )
 }

@@ -68,10 +68,12 @@ test_that("run_endogenous_kink recovers a homogeneous true effect", {
 
   out <- run_endogenous_kink(data.frame(effect, se), verbose = FALSE)
 
-  expect_length(out, 4L)
+  expect_length(out, 5L)
   # First element is the mean-effect estimate.
   expect_equal(unname(out[1]), 0.3, tolerance = 0.1)
   expect_true(is.finite(out[2]))
+  # 5th element is the heterogeneity standard deviation: finite and >= 0.
+  expect_true(is.finite(out[5]) && out[5] >= 0)
 })
 
 test_that("run_endogenous_kink matches the Bom & Rachinger reference on low-heterogeneity data", {

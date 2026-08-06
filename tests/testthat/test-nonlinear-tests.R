@@ -80,7 +80,11 @@ test_that("nonlinear tests return tidy coefficients and summary", {
       "std_error_formatted"
     )
   )
-  expect_setequal(unique(res$meta$coefficients$term), c("publication_bias", "effect"))
+  # STEM (and, depending on the fixture, Hierarchical and Endogenous Kink)
+  # all report their heterogeneity estimate under the same shared term/label
+  # as the Selection model's tau, so it folds into a single extra row pair
+  # regardless of how many of them succeed on this fixture.
+  expect_setequal(unique(res$meta$coefficients$term), c("publication_bias", "effect", "effect_heterogeneity"))
   expect_true(all(res$meta$coefficients$n_obs_total == nrow(df)))
 
   expect_gt(nrow(res$tables$summary), 0L)
@@ -88,7 +92,8 @@ test_that("nonlinear tests return tidy coefficients and summary", {
     rownames(res$tables$summary),
     c(
       "Publication Bias", "(Std. Error)", "Effect Beyond Bias",
-      "(Std. Error)", "Total observations", "Model observations"
+      "(Std. Error)", "Effect Heterogeneity (tau)", "(Std. Error)",
+      "Total observations", "Model observations"
     )
   )
   expect_equal(res$tables$summary$Metric, rownames(res$tables$summary))
@@ -178,6 +183,50 @@ test_that("selection model runs with negative and zero cutoffs and restructured 
   expect_true("Effect Heterogeneity (tau)" %in% summary$Metric)
   expect_true(any(grepl("Rel. Pub. Probability", summary$Metric, fixed = TRUE)))
   expect_identical(summary$Selection[summary$Metric == "Publication Bias"], "NA")
+})
+
+test_that("STEM, Hierarchical, and Endogenous Kink report effect heterogeneity (tau)", {
+  df <- make_mixed_significance_data()
+
+  local_options(
+    "artma.methods.nonlinear_tests.add_significance_marks" = TRUE,
+    "artma.methods.nonlinear_tests.selection_cutoffs" = c(-1.96, 0, 1.96),
+    "artma.methods.nonlinear_tests.selection_symmetric" = FALSE,
+    "artma.methods.nonlinear_tests.selection_model" = "normal",
+    "artma.methods.nonlinear_tests.hierarchical_iterations" = 20L,
+    "artma.visualization.export_graphics" = FALSE,
+    "artma.verbose" = 0L
+  )
+
+  res <- suppressWarnings(suppressMessages(nonlinear_tests(df)))
+  coefficients <- res$meta$coefficients
+
+  # STEM and Endogenous Kink compute a heterogeneity SD internally but have
+  # no standard error for it: a finite estimate paired with a genuinely-NA
+  # (not NaN) std_error is the documented "absent by design" signal that
+  # degenerate_effect_reason() and the formatters already understand, so the
+  # table cell renders with no parenthetical and no significance stars.
+  for (model in c("stem", "endogenous_kink")) {
+    tau_row <- coefficients[coefficients$model == model & coefficients$term == "effect_heterogeneity", , drop = FALSE]
+    expect_identical(nrow(tau_row), 1L)
+    expect_identical(tau_row$term_label, "Effect Heterogeneity (tau)")
+    expect_true(is.finite(tau_row$estimate))
+    expect_true(is.na(tau_row$std_error) && !is.nan(tau_row$std_error))
+    expect_true(is.na(tau_row$p_value))
+    expect_identical(tau_row$std_error_formatted, "")
+    expect_false(grepl("*", tau_row$estimate_formatted, fixed = TRUE))
+  }
+
+  # Hierarchical derives both an estimate and a standard error from posterior
+  # draws of Vbeta (the cross-study coefficient covariance), so it gets a
+  # full estimate/SE pair, just like Selection's own tau.
+  hier_row <- coefficients[coefficients$model == "hierarchical" & coefficients$term == "effect_heterogeneity", , drop = FALSE]
+  expect_identical(nrow(hier_row), 1L)
+  expect_identical(hier_row$term_label, "Effect Heterogeneity (tau)")
+  expect_true(is.finite(hier_row$estimate) && is.finite(hier_row$std_error))
+
+  summary <- res$tables$summary
+  expect_true("Effect Heterogeneity (tau)" %in% summary$Metric)
 })
 
 test_that("selection model runs with a single zero cutoff (sign selection)", {

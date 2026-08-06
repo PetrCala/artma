@@ -139,18 +139,24 @@ test_that("nonlinear_tests summary table is pinned on fixture data", {
     list(
       Metric = c(
         "Publication Bias", "(Std. Error)", "Effect Beyond Bias",
-        "(Std. Error)", "Total observations", "Model observations"
+        "(Std. Error)", "Effect Heterogeneity (tau)", "(Std. Error)",
+        "Total observations", "Model observations"
       ),
       # The WAAP standard error is the study-clustered WLS regression SE; the
       # fixture effects are nearly homogeneous, so it rounds below 0.01 here.
-      WAAP = c("NA", "", "0.13***", "(0.00)", "90", "15"),
-      Stem = c("NA", "", "0.15***", "(0.02)", "90", "14"),
-      Hierarch = c("0.56***", "(0.16)", "0.08", "(0.15)", "90", "90"),
-      `Endogenous Kink` = c("0.57***", "(0.03)", "0.10***", "(0.00)", "90", "90")
+      # STEM and Endogenous Kink have no standard error for their
+      # heterogeneity estimate, which on this near-homogeneous fixture also
+      # rounds to exactly zero; Hierarchical derives both an estimate and an
+      # SE from posterior draws of Vbeta.
+      WAAP = c("NA", "", "0.13***", "(0.00)", "", "", "90", "15"),
+      Stem = c("NA", "", "0.15***", "(0.02)", "0.00", "", "90", "14"),
+      Hierarch = c("0.56***", "(0.16)", "0.08", "(0.15)", "0.55***", "(0.10)", "90", "90"),
+      `Endogenous Kink` = c("0.57***", "(0.03)", "0.10***", "(0.00)", "0.00", "", "90", "90")
     ),
     row.names = c(
       "Publication Bias", "(Std. Error)", "Effect Beyond Bias",
-      "(Std. Error)", "Total observations", "Model observations"
+      "(Std. Error)", "Effect Heterogeneity (tau)", "(Std. Error)",
+      "Total observations", "Model observations"
     ),
     class = "data.frame"
   )
