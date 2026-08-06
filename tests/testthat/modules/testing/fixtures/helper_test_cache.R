@@ -1,7 +1,13 @@
-# Silence cli output so it doesn't clutter testthat reports
+# Silence cli output so it doesn't clutter testthat reports. `cli.autoprint`
+# alone only affects auto-printing of returned cli objects at the console top
+# level - it does nothing for cli_alert()/cli_inform() calls made inside
+# function bodies, which is what actually clutters test output. Drop
+# artma.verbose to "errors only" too; this does not hide genuine warning()/
+# stop() conditions, which aren't gated by artma.verbose.
 local_cli_silence <- function(env = parent.frame()) {
   old <- options(cli.autoprint = FALSE)
   withr::defer(options(old), envir = env)
+  withr::local_options(list("artma.verbose" = 1), .local_envir = env)
 }
 
 # Synthetic "expensive" function used in cache tests --------------------------

@@ -156,9 +156,12 @@ test_that("present_detected_mapping handles required columns only", {
 
   withr::local_options(list("artma.verbose" = 1))
 
-  # Test that function doesn't error with required columns only
+  # climenu::select() legitimately warns "Not running in interactive mode" as
+  # its documented non-interactive fallback behavior (see the climenu package's
+  # own test suite) - suppress it here since this test asserts on the absence
+  # of an error, not on that expected warning.
   expect_no_error(
-    tryCatch(
+    suppressWarnings(tryCatch(
       {
         present_detected_mapping(
           auto_mapping = auto_mapping,
@@ -171,7 +174,7 @@ test_that("present_detected_mapping handles required columns only", {
         # That's expected behavior
         "modify"
       }
-    )
+    ))
   )
 })
 
@@ -199,8 +202,10 @@ test_that("present_detected_mapping handles mixed required and optional", {
 
   withr::local_options(list("artma.verbose" = 1))
 
+  # See the comment on the previous test: suppress climenu's expected
+  # non-interactive-mode fallback warning.
   expect_no_error(
-    tryCatch(
+    suppressWarnings(tryCatch(
       {
         present_detected_mapping(
           auto_mapping = auto_mapping,
@@ -209,7 +214,7 @@ test_that("present_detected_mapping handles mixed required and optional", {
         )
       },
       error = function(e) "modify"
-    )
+    ))
   )
 })
 
