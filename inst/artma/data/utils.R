@@ -79,8 +79,14 @@ get_number_of_studies <- function(df) {
 #' @param quiet *\[logical, optional\]* Suppress informational messages. Used by
 #'   callers that standardize an intermediate frame (e.g. the configure phase)
 #'   so a single run does not announce the same action twice. Defaults to `FALSE`.
+#' @param required_colnames *\[character, optional\]* The raw columns that must
+#'   be mapped or present for this call to succeed. Defaults to `NULL`, which
+#'   uses the full `get_required_colnames()` set (the historical behavior).
+#'   Callers that know which methods are actually being run pass a narrower,
+#'   run-specific set here; see `artma / data / method_requirements
+#'   [resolve_hard_required_colnames]`.
 #' @return *\[data.frame\]* The standardized data frame
-standardize_column_names <- function(df, quiet = FALSE) {
+standardize_column_names <- function(df, quiet = FALSE, required_colnames = NULL) {
   box::use(
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[validate, assert]
@@ -92,7 +98,9 @@ standardize_column_names <- function(df, quiet = FALSE) {
 
   # Read the column mapping from the unified per-column store
   map <- lapply(get_colnames_map(), make.names) # Handle non-standard column names
-  required_colnames <- get_required_colnames()
+  if (is.null(required_colnames)) {
+    required_colnames <- get_required_colnames()
+  }
 
   # Check that every required column is either mapped or already present
   missing_required <- base::setdiff(required_colnames, c(names(map), names(df)))

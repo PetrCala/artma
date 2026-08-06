@@ -40,16 +40,25 @@ emit_reconcile_complete <- function() {
 #' @param raw_df *\[data.frame\]* Raw dataframe with original column names.
 #' @param mode *\[character\]* One of `"ask"`, `"auto"`, or `"strict"`. If `NULL`,
 #'   reads from `artma.data.reconcile_mode` option (default: `"ask"`).
+#' @param required_colnames *\[character, optional\]* The raw columns treated as
+#'   required for this run. Defaults to `NULL`, which uses the full
+#'   `get_required_colnames()` set (the historical behavior). Passed through
+#'   to `detect_schema_drift()`; see `artma / data / method_requirements
+#'   [resolve_hard_required_colnames]` for the run-specific, method-aware set.
 #' @return `NULL` invisibly. Side effects: updates options file and in-memory
 #'   state if drift is detected and resolved.
 #' @keywords internal
-reconcile_schema <- function(raw_df, mode = NULL) {
+reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL) {
   box::use(
     artma / libs / core / autonomy[should_prompt_user],
-    artma / libs / core / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity],
+    artma / data / utils[get_required_colnames]
   )
 
   mode <- mode %||% getOption("artma.data.reconcile_mode", "ask")
+  if (is.null(required_colnames)) {
+    required_colnames <- get_required_colnames()
+  }
   current_schema_cols <- unique(make.names(colnames(raw_df)))
   expected_schema_cols <- normalize_expected_schema_cols(
     getOption("artma.data.expected_schema_columns", NA_character_)
@@ -60,7 +69,7 @@ reconcile_schema <- function(raw_df, mode = NULL) {
   columns_store <- get_columns_store()
 
   # Detect drift
-  drift <- detect_schema_drift(raw_df, columns_store)
+  drift <- detect_schema_drift(raw_df, columns_store, required = required_colnames)
 
   if (first_run) {
     # No baseline schema yet: missing/added comparisons are meaningless, so
@@ -124,13 +133,13 @@ reconcile_schema <- function(raw_df, mode = NULL) {
   # Stored role sources (for display) and "unmatched" columns available for
   # fuzzy matching: everything the store does not already account for.
   box::use(
-    artma / data / utils[get_colnames_map, get_required_colnames, get_standardized_colnames]
+    artma / data / utils[get_colnames_map, get_standardized_colnames]
   )
   role_sources <- as.list(drift$missing_roles)
   matched_role_sources <- character(0)
   full_map <- get_colnames_map()
   # Required roles with no explicit record are tracked as identity mappings
-  for (std in setdiff(get_required_colnames(), names(full_map))) {
+  for (std in setdiff(required_colnames, names(full_map))) {
     full_map[[std]] <- std
   }
   for (std in names(full_map)) {

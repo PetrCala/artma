@@ -158,7 +158,7 @@ artma <- function(
 
     # Prepare data: use provided data or load from options
     if (is.null(data)) {
-      df <- prepare_data()
+      df <- prepare_data(methods = methods)
     } else {
       # User provided data directly - still need to preprocess and compute.
       # Mirror prepare_data's phases: decide the NA strategy (configure), run
