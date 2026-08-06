@@ -328,6 +328,48 @@ test_that("an invalid threshold option aborts with a clear message", {
   )
 })
 
+# -- "na" as a real category value (issue #402) --------------------------------
+
+test_that("detect_missing_values does not flag a character column whose values are the literal 'na' category", {
+  box::use(artma / data / na_handling[detect_missing_values])
+
+  df <- make_df()
+  df$discounting <- c("na", "exponential", "na")
+
+  summary <- detect_missing_values(df)
+
+  expect_false("discounting" %in% names(summary$optional_cols_with_na))
+  expect_false(summary$has_optional_na)
+})
+
+test_that("detect_missing_values still flags real missing values in an optional numeric column", {
+  box::use(artma / data / na_handling[detect_missing_values])
+
+  df <- make_df()
+  df$mod <- c(1, NA, 3)
+
+  summary <- detect_missing_values(df)
+
+  expect_true("mod" %in% names(summary$optional_cols_with_na))
+  expect_equal(unname(summary$optional_cols_with_na["mod"]), 1)
+})
+
+test_that("'stop' does not abort when the only 'missing' values are the 'na' category", {
+  box::use(artma / data / na_handling[handle_missing_values])
+
+  local_options(list(
+    "artma.data.na_handling" = "stop",
+    "artma.verbose" = 1
+  ))
+
+  df <- make_df()
+  df$discounting <- c("na", "exponential", "na")
+
+  result <- handle_missing_values(df)
+
+  expect_equal(result$discounting, c("na", "exponential", "na"))
+})
+
 test_that("'mice' leaves guarded columns unimputed", {
   box::use(artma / data / na_handling[handle_missing_values])
   testthat::skip_if_not_installed("mice")

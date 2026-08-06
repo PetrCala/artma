@@ -2,6 +2,7 @@ box::use(
   testthat[
     expect_equal,
     expect_error,
+    expect_false,
     expect_true,
     skip_if_not_installed,
     test_that
@@ -82,4 +83,54 @@ test_that("read_data and the shared read_file read a file identically", {
   utils::write.csv(raw_text_df(), tmp, row.names = FALSE)
 
   expect_equal(read_data(tmp), read_file(tmp))
+})
+
+
+# -- "na" as a real category value (issue #402) --------------------------------
+# Lowercase "na" is a legitimate category value in some real datasets (e.g. "no
+# functional form assumed"). Only the exact-case conventional spellings ("NA",
+# "N/A", "NULL", "null") are treated as missing-value sentinels; "na" and
+# "n/a" must survive untouched.
+
+test_that("normalize_read_df keeps lowercase 'na' as a literal category value", {
+  df <- data.frame(
+    study_id = c("S1", "S2", "S3"),
+    discounting = c("na", "exponential", "na"),
+    stringsAsFactors = FALSE
+  )
+
+  out <- normalize_read_df(df)
+
+  expect_equal(out$discounting, c("na", "exponential", "na"))
+  expect_false(anyNA(out$discounting))
+})
+
+test_that("normalize_read_df still treats exact-case 'NA' as missing", {
+  df <- data.frame(x = c("NA", "value"), stringsAsFactors = FALSE)
+
+  out <- normalize_read_df(df)
+
+  expect_equal(out$x, c(NA_character_, "value"))
+})
+
+test_that("read_file keeps lowercase 'na' as a category value read from a CSV", {
+  withr::local_options(list(artma.verbose = 0))
+  tmp <- withr::local_tempfile(fileext = ".csv")
+  utils::write.csv(
+    data.frame(
+      study_id = c("S1", "S2", "S3"),
+      effect = c(0.1, 0.2, 0.3),
+      se = c(0.01, 0.02, 0.03),
+      n_obs = c(10L, 20L, 30L),
+      discounting = c("na", "exponential", "na"),
+      stringsAsFactors = FALSE
+    ),
+    tmp,
+    row.names = FALSE
+  )
+
+  out <- read_file(tmp)
+
+  expect_equal(out$discounting, c("na", "exponential", "na"))
+  expect_false(anyNA(out$discounting))
 })
