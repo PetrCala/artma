@@ -4,9 +4,13 @@
 #'   a no-op. Otherwise, if the (already cleaned) data frame has missing values
 #'   in optional columns, it prompts the user interactively (and offers to save
 #'   the choice) or falls back to the deterministic `"stop"` strategy in a
-#'   non-interactive session. This is intentionally separate from
-#'   `handle_missing_values()` (the pure compute-phase step) so that no prompt
-#'   or option write ever happens inside the cached pipeline.
+#'   non-interactive session. That default is safe to fall back to
+#'   unattended: `"stop"` only requires required columns to be complete (see
+#'   `handle_missing_values()`), so a non-interactive run never aborts merely
+#'   because an optional/unmapped column has gaps (issue #401). This is
+#'   intentionally separate from `handle_missing_values()` (the pure
+#'   compute-phase step) so that no prompt or option write ever happens
+#'   inside the cached pipeline.
 #' @param df *\[data.frame\]* The cleaned data frame used to detect optional
 #'   missing values (as produced by `clean_data()`).
 #' @return `NULL`, invisibly.
@@ -52,9 +56,12 @@ resolve_na_handling <- function(df) {
       respect_autonomy = FALSE
     )
   } else {
-    # Non-interactive mode: default to "stop"
+    # Non-interactive mode: default to "stop". Optional columns with missing
+    # values are left as-is and reported by handle_missing_values(); required
+    # columns still abort, so this does not run the risk of silently altering
+    # data (issue #401).
     if (get_verbosity() >= 2) {
-      cli::cli_warn("Running in non-interactive mode with missing values. Defaulting to 'stop' strategy.")
+      cli::cli_warn("Running in non-interactive mode with missing values in optional columns. Defaulting to the 'stop' strategy (required columns must still be complete).")
     }
     options(artma.data.na_handling = NA_HANDLING_DEFAULT)
   }

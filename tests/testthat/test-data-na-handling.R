@@ -4,6 +4,7 @@ box::use(
     expect_error,
     expect_false,
     expect_message,
+    expect_no_error,
     expect_true,
     test_that
   ],
@@ -14,6 +15,7 @@ test_that <- getFromNamespace("test_that", "testthat")
 expect_equal <- getFromNamespace("expect_equal", "testthat")
 expect_error <- getFromNamespace("expect_error", "testthat")
 expect_true <- getFromNamespace("expect_true", "testthat")
+expect_no_error <- getFromNamespace("expect_no_error", "testthat")
 
 # Required columns are study_id, effect, se, n_obs (CONST$DATA$REQUIRED_COLNAMES).
 make_df <- function(study_id = c("a", "b", "c")) {
@@ -141,6 +143,53 @@ test_that("'stop' aborts on NAs in numeric required columns", {
   df <- make_df()
   df$effect[2] <- NA_real_
   expect_error(handle_missing_values(df), "required columns")
+})
+
+test_that("'stop' leaves NAs in optional columns as-is instead of aborting", {
+  # issue #401: a missing value in a column no method needs must not halt a
+  # non-interactive run.
+  box::use(artma / data / na_handling[handle_missing_values])
+
+  local_options(list(
+    "artma.data.na_handling" = "stop",
+    "artma.verbose" = 1
+  ))
+
+  df <- make_df()
+  df$moderator <- c(1, NA, 3)
+
+  expect_no_error(result <- handle_missing_values(df))
+  expect_equal(nrow(result), 3)
+  expect_true(is.na(result$moderator[2]))
+})
+
+test_that("'stop' still aborts on NAs in required columns alongside optional NAs", {
+  box::use(artma / data / na_handling[handle_missing_values])
+
+  local_options(list(
+    "artma.data.na_handling" = "stop",
+    "artma.verbose" = 1
+  ))
+
+  df <- make_df()
+  df$effect[2] <- NA_real_
+  df$moderator <- c(1, NA, 3)
+
+  expect_error(handle_missing_values(df), "required columns")
+})
+
+test_that("'stop' names the affected optional columns in its message", {
+  box::use(artma / data / na_handling[handle_missing_values])
+
+  local_options(list(
+    "artma.data.na_handling" = "stop",
+    "artma.verbose" = 2
+  ))
+
+  df <- make_df()
+  df$moderator <- c(1, NA, 3)
+
+  expect_message(handle_missing_values(df), "moderator")
 })
 
 test_that("'median' imputes NAs in numeric required columns", {

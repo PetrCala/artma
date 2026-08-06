@@ -395,7 +395,12 @@ identify_unimputable_columns <- function(df, threshold) {
 #' This function handles missing values differently for required vs optional columns:
 #' - Non-numeric required columns (e.g., study_id) must be complete and will cause an error if missing
 #' - Numeric required columns (e.g., effect, se, n_obs) can be imputed if a non-"stop" strategy is selected
-#' - Optional columns are handled according to the selected strategy
+#' - Optional columns are handled according to the selected strategy, except that
+#'   the "stop" strategy never aborts over them: since required columns are
+#'   already guaranteed complete by the time "stop" is reached, missing values
+#'   in optional columns are left as-is and reported, not treated as fatal
+#'   (issue #401). A column no method actually needs should not be able to
+#'   halt the whole run.
 #'
 #' Imputation strategies skip optional numeric columns whose missingness ratio
 #' exceeds `artma.data.max_imputation_missingness`; those columns keep their
@@ -521,13 +526,21 @@ handle_missing_values <- function(df) {
 
   # Apply the selected strategy
   df_processed <- switch(na_handling,
+    # By this point required columns are guaranteed complete: a numeric or
+    # non-numeric required NA would already have aborted above. So "stop"
+    # only has optional-column NAs left to deal with, and those are not
+    # worth failing the whole run over (issue #401) - they are left as-is.
     "stop" = {
-      optional_cols_msg <- format_cols_with_counts(na_summary$optional_cols_with_na)
-      cli::cli_abort(c(
-        "x" = "Missing values found in optional columns: {optional_cols_msg}",
-        "i" = "Current strategy is {.val stop}. Change {.field artma.data.na_handling} to handle missing values automatically.",
-        "i" = "Available strategies: {.val stop}, {.val remove}, {.val median}, {.val mean}, {.val interpolate}, {.val mice}"
-      ))
+      optional_cols_msg <- format_cols_with_counts(label_with_source_names(na_summary$optional_cols_with_na))
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning(
+          "Leaving missing values in optional columns as-is (not used by every method): {optional_cols_msg}"
+        )
+        cli::cli_alert_info(
+          "The {.val stop} strategy only requires required columns to be complete. Set {.field artma.data.na_handling} to {.val remove}, {.val median}, {.val mean}, {.val interpolate}, or {.val mice} to handle these values automatically."
+        )
+      }
+      df
     },
     "remove" = handle_na_remove(df),
     "median" = handle_na_median(df, exclude_cols = skip_cols),
