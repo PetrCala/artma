@@ -15,8 +15,16 @@ CONST <- list(
     # to a tabular record set or a clear error is raised. dta and rds keep the
     # types their native readers return and pass through NA normalization only.
     TYPES = c("csv", "tsv", "xlsx", "xls", "xlsm", "json", "dta", "rds"),
-    # Strings that should be interpreted as NA when reading data files
-    NA_STRINGS = c("", "NA", "N/A", "na", "n/a", "NULL", "null"),
+    # Strings that should be interpreted as NA when reading data files.
+    # Matching is exact (case-sensitive): only the canonical, R-convention
+    # spellings ("NA", the base R and write.csv default; "N/A", "NULL",
+    # "null") are treated as missing-value sentinels. All-lowercase "na" and
+    # "n/a" were deliberately dropped: "na" in particular is a common
+    # real-world category value (e.g. "no functional form assumed"), and
+    # matching it case-insensitively silently mislabeled genuine data as
+    # missing (see #402). Empty strings and whitespace-only cells are always
+    # treated as missing regardless of this list (normalize_whitespace_to_na).
+    NA_STRINGS = c("", "NA", "N/A", "NULL", "null"),
     # Standard column names the pipeline recognizes. These keys identify the
     # role records in the unified per-column store (`data.columns`); every
     # other record key is a moderator variable. Accessors live in
