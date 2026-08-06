@@ -52,7 +52,11 @@ sectioned_fixture <- function() {
 capture_sectioned <- function(x, ...) {
   withr::with_options(
     list(cli.num_colors = 1),
-    utils::capture.output(lines <- print_sectioned_table(x, ...))
+    # print_sectioned_table() prints via cli, which writes through message()
+    # (stderr), not the "output" stream capture.output() captures by
+    # default - without type = "message" this silently captures nothing and
+    # the cli output leaks straight to the console.
+    utils::capture.output(lines <- print_sectioned_table(x, ...), type = "message")
   )
   lines
 }
@@ -95,7 +99,8 @@ test_that("print_sectioned_table ignores an empty table", {
 
 test_that("print_paragraph wraps sentences and drops empty ones", {
   utils::capture.output(
-    lines <- print_paragraph(c("One sentence.", "", "Another sentence."), width = 20)
+    lines <- print_paragraph(c("One sentence.", "", "Another sentence."), width = 20),
+    type = "message"
   )
 
   expect_true(length(lines) > 1)
