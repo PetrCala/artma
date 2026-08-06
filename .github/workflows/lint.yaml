@@ -7,6 +7,15 @@ on:
   workflow_dispatch:
   pull_request:
     types: [opened, synchronize]
+  # Also run on master pushes so this job's dependency cache (keyed by its
+  # own extra-packages: lintr, roxygen2@8.0.0, local::.) gets seeded
+  # somewhere durable, mirroring R-CMD-check-extended.yaml. Without this,
+  # the job never ran outside of PRs, cache-cleanup.yaml deletes each PR's
+  # own cache the moment it closes, and every subsequent PR paid a full
+  # from-scratch R + dependency install (13m setup-r + 29m
+  # setup-r-dependencies) instead of restoring a warm cache.
+  push:
+    branches: master
 
 permissions: read-all
 
