@@ -542,8 +542,22 @@ methods:
       default: true
       help: |
         If `TRUE`, include a best-practice estimate summary table grouped by
-        the factor levels of variables flagged with `bpe_sum_stats`,
-        `bpe_equal`, or `bpe_gltl` in the data configuration.
+        factor levels: variables flagged with `bpe_sum_stats`, `bpe_equal`,
+        or `bpe_gltl` in the data configuration, plus, when
+        `factor_summary_auto_detect` is `TRUE`, any other BMA predictor that
+        resolves to 2-12 distinct values. If nothing resolves to a grouping,
+        the table is skipped rather than exported empty.
+
+    factor_summary_auto_detect:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, the best-practice estimate factor summary (see
+        `include_factor_summary`) also groups by BMA predictors that are not
+        explicitly flagged in the data configuration, as long as they resolve
+        to 2-12 distinct values (typical of dummy/category moderators). Set
+        to `FALSE` to only group by variables explicitly flagged with
+        `bpe_sum_stats`, `bpe_equal`, or `bpe_gltl`.
 
   robma:
     chains:

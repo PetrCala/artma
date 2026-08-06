@@ -314,9 +314,13 @@ test_that("best_practice_estimate groups the factor summary table by bpe_equal/b
   expect_true(any(grepl("^Citations <", factor_summary$study_label)))
 })
 
-test_that("best_practice_estimate returns an empty factor summary table with no flagged variables", {
+test_that("best_practice_estimate auto-detects dummy predictors for the factor summary by default", {
   skip_if_not_installed("BMS")
 
+  # Regression test for #403: on a fully auto-detected data config (no
+  # bpe_sum_stats/bpe_equal/bpe_gltl set anywhere), the factor summary must
+  # still populate for the model's own dummy predictors instead of shipping
+  # header-only.
   df <- make_bpe_demo_data()
 
   local_options(list(
@@ -335,7 +339,36 @@ test_that("best_practice_estimate returns an empty factor summary table with no 
   bma_result <- bma(df)
   result <- best_practice_estimate(df, bma_result = bma_result)
 
-  expect_equal(nrow(result$tables$summary_by_factor), 0L)
+  factor_summary <- result$tables$summary_by_factor
+  expect_true(is.data.frame(factor_summary))
+  expect_gt(nrow(factor_summary), 0L)
+  expect_true(any(grepl("^Top Journal = ", factor_summary$study_label)))
+  expect_true(any(grepl("^First Lag Instrument = ", factor_summary$study_label)))
+})
+
+test_that("best_practice_estimate skips the factor summary table when nothing resolves to a grouping", {
+  skip_if_not_installed("BMS")
+
+  df <- make_bpe_demo_data()
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = make_bpe_demo_config(),
+    artma.visualization.export_graphics = FALSE,
+    artma.methods.bma.burn = 50L,
+    artma.methods.bma.iter = 300L,
+    artma.methods.bma.nmodel = 20L,
+    artma.methods.bma.g = "UIP",
+    artma.methods.bma.mprior = "uniform",
+    artma.methods.bma.mcmc = "bd",
+    artma.methods.best_practice_estimate.factor_summary_auto_detect = FALSE
+  ))
+
+  bma_result <- bma(df)
+  result <- best_practice_estimate(df, bma_result = bma_result)
+
+  expect_false("summary_by_factor" %in% names(result$tables))
 })
 
 test_that("get_bma_data records scaling metadata and keeps NA dummies binary", {

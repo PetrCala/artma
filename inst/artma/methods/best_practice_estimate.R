@@ -72,6 +72,7 @@ best_practice_estimate <- function(df, bma_result = NULL) {
       constraint_msg = "economic_significance_pip_threshold must be between 0 and 1."
     ),
     include_factor_summary = opt_spec(default = TRUE, type = "logical", scalar = TRUE),
+    factor_summary_auto_detect = opt_spec(default = TRUE, type = "logical", scalar = TRUE),
     round_to = opt_spec(
       default = 3L, type = "numeric", key = "artma.output.number_of_decimals",
       cast = as.integer, scalar = TRUE
@@ -86,6 +87,7 @@ best_practice_estimate <- function(df, bma_result = NULL) {
   include_economic_significance <- resolved$include_economic_significance
   economic_significance_pip_threshold <- resolved$economic_significance_pip_threshold
   include_factor_summary <- resolved$include_factor_summary
+  factor_summary_auto_detect <- resolved$factor_summary_auto_detect
   round_to <- resolved$round_to
 
   # Cross-option constraint: at least one row scope must remain enabled. Kept
@@ -293,7 +295,7 @@ best_practice_estimate <- function(df, bma_result = NULL) {
   }
 
   if (include_factor_summary) {
-    tables$summary_by_factor <- compute_bpe_factor_summary(
+    factor_summary <- compute_bpe_factor_summary(
       predictors = predictors,
       config = config,
       bma_data = bma_data,
@@ -304,8 +306,25 @@ best_practice_estimate <- function(df, bma_result = NULL) {
       overrides = resolved_overrides,
       round_to = round_to,
       centers = scale_centers,
-      scales = scale_scales
+      scales = scale_scales,
+      auto_detect_factor_vars = factor_summary_auto_detect
     )
+
+    if (nrow(factor_summary) > 0) {
+      tables$summary_by_factor <- factor_summary
+    } else if (get_verbosity() >= 3) {
+      # Skip exporting an empty CSV; point at what would populate it instead
+      # of leaving the user to guess why the file came back header-only.
+      cli::cli_alert_info(paste0(
+        "Skipping best-practice estimate factor summary: no BMA predictor ",
+        "resolved to a factor grouping. ",
+        if (factor_summary_auto_detect) {
+          "None of the predictors have 2-12 distinct values for auto-detection to group by."
+        } else {
+          "Set factor_summary_auto_detect to TRUE, or flag variables with bpe_sum_stats/bpe_equal/bpe_gltl in the data config."
+        }
+      ))
+    }
   }
 
   vis <- get_visualization_options()
