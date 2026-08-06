@@ -6,26 +6,35 @@ box::use(
   withr[local_options]
 )
 
-# RoBMA fits through JAGS, a system library. rjags only loads when JAGS is
-# present, which makes it a reliable probe for a machine that can actually
-# fit -- but load the namespace in a subprocess, not here: on some platforms
-# (observed on macOS oldrel CI) rjags segfaults on dyn.load when its bundled
-# JAGS version doesn't match the system library, which would otherwise crash
-# the whole test process instead of just failing this one probe.
+# RoBMA fits through JAGS, a system library. Loading the rjags namespace is
+# not a sufficient probe: on some platforms (observed on macOS oldrel CI)
+# rjags loads fine but segfaults later, when it asks the *system* JAGS to
+# load its dynamic modules while compiling an actual model. Reproduce that
+# step in a subprocess, not here, so a crash kills only the disposable probe
+# instead of the whole test process.
 skip_if_no_jags <- function() {
   skip_if_not_installed("RoBMA")
   rscript <- file.path(R.home("bin"), "Rscript")
+  probe_expr <- paste(
+    "ok <- tryCatch({",
+    "  m <- rjags::jags.model(",
+    "    textConnection('model { x ~ dnorm(0, 1) }'), n.chains = 1, quiet = TRUE",
+    "  );",
+    "  TRUE",
+    "}, error = function(e) FALSE);",
+    "quit(status = !isTRUE(ok))"
+  )
   probe <- tryCatch(
     system2(
       rscript,
-      c("-e", shQuote("quit(status = !requireNamespace('rjags', quietly = TRUE))")),
+      c("-e", shQuote(probe_expr)),
       stdout = FALSE, stderr = FALSE
     ),
     error = function(e) 1L,
     warning = function(w) 1L
   )
   if (!identical(probe, 0L)) {
-    skip("JAGS is not available")
+    skip("JAGS is not available or crashes on this platform")
   }
 }
 
