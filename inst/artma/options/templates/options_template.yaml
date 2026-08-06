@@ -920,7 +920,7 @@ data:
     suppress_help_in_prompt: true
     help: |
       How to handle missing values:
-        {cli::symbol$bullet} {.strong stop}: Abort if any missing values are found (safest, default)
+        {cli::symbol$bullet} {.strong stop}: Abort if required columns have missing values (safest, default). Optional columns with missing values are left as-is and reported instead of aborting the run.
         {cli::symbol$bullet} {.strong remove}: Remove entire rows with any missing values (listwise deletion)
         {cli::symbol$bullet} {.strong median}: Replace missing values with the variable's median (robust to outliers)
         {cli::symbol$bullet} {.strong mean}: Replace missing values with the variable's mean (assumes normality)

@@ -37,7 +37,7 @@ prompt_na_handling <- function(opt, ...) {
   box::use(artma / const[CONST])
 
   choices <- c(
-    "Stop (abort if missing values found)" = "stop",
+    "Stop (leave optional columns as-is; required columns must be complete)" = "stop",
     "Remove rows (listwise deletion)" = "remove",
     "Median imputation (replace with column median)" = "median",
     "Mean imputation (replace with column mean)" = "mean",
@@ -52,7 +52,7 @@ prompt_na_handling <- function(opt, ...) {
 
   cli::cli_h3("Available strategies:")
   cli::cli_ul(c(
-    "{.strong stop}: Abort analysis if any missing values are found (safest, ensures data quality)",
+    "{.strong stop}: Leave missing values in these columns as-is and report them (safest, does not touch your data). Required columns must always be complete regardless of this setting.",
     "{.strong remove}: Remove entire rows with any missing values (listwise deletion)",
     "{.strong median}: Replace missing values with the variable's median (robust to outliers)",
     "{.strong mean}: Replace missing values with the variable's mean (assumes normality)",
