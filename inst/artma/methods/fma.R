@@ -33,12 +33,14 @@ fma <- function(df, bma_result = NULL) {
       constraint = function(x) x %in% c("none", "fast", "verbose", "all"),
       constraint_msg = "print_results must be one of: none, fast, verbose, all"
     ),
-    round_to = opt_spec(default = NA_integer_, type = "numeric", allow_na = TRUE)
+    round_to = opt_spec(default = NA_integer_, type = "numeric", allow_na = TRUE),
+    cluster = opt_spec(default = TRUE, type = "logical")
   ))
 
   verbose_output <- fma_resolved$verbose_output
   print_results <- fma_resolved$print_results
   round_to <- fma_resolved$round_to
+  cluster <- fma_resolved$cluster
 
   # Suppress individual FMA text output unless verbose_output is enabled
   effective_print <- if (verbose_output) print_results else "none"
@@ -123,10 +125,13 @@ fma <- function(df, bma_result = NULL) {
     bma_model <- run_bma(bma_data, bma_params, quiet = !verbose_output)
   }
 
+  cluster_ids <- if (cluster) resolve_fma_cluster_ids(df, bma_data) else NULL
+
   fma_results <- run_fma(
     bma_data = bma_data,
     bma_model = bma_model,
     input_var_list = bma_var_list,
+    cluster_ids = cluster_ids,
     round_to = round_to,
     print_results = effective_print
   )
@@ -138,9 +143,53 @@ fma <- function(df, bma_result = NULL) {
       model = bma_model,
       data = bma_data,
       params = bma_params,
-      var_list = bma_var_list
+      var_list = bma_var_list,
+      clustered = !is.null(cluster_ids)
     )
   )
+}
+
+#' Align `study_id` cluster IDs with the prepared BMA frame
+#'
+#' `prepare_bma_inputs()` drops rows via `stats::na.omit()`, so the prepared
+#' frame is matched back to `df` through its surviving row names. Returns
+#' `NULL` (iid standard errors) with a warning whenever a usable cluster
+#' vector cannot be built.
+#'
+#' @param df *\[data.frame\]* The preprocessed data frame passed to the method.
+#' @param bma_data *\[data.frame\]* The prepared BMA/FMA estimation frame.
+#' @return *\[vector, optional\]* Cluster IDs aligned with `bma_data` rows, or `NULL`.
+resolve_fma_cluster_ids <- function(df, bma_data) {
+  box::use(
+    artma / libs / core / utils[get_verbosity]
+  )
+
+  # Downgrading to iid inference changes reported SEs materially; never do it
+  # silently (mirrors robust_vcov's warn_downgrade contract).
+  warn_downgrade <- function(reason) {
+    if (get_verbosity() >= 2) {
+      cli::cli_alert_warning(
+        "Clustered FMA unavailable ({reason}); standard errors are NOT clustered."
+      )
+    }
+  }
+
+  if (!"study_id" %in% colnames(df)) {
+    warn_downgrade("the data have no study_id column")
+    return(NULL)
+  }
+
+  ids <- df[rownames(bma_data), "study_id"]
+  if (any(is.na(ids))) {
+    warn_downgrade("cluster IDs could not be aligned with the estimation frame")
+    return(NULL)
+  }
+  if (length(unique(ids)) < 2L) {
+    warn_downgrade("fewer than two distinct clusters")
+    return(NULL)
+  }
+
+  ids
 }
 
 box::use(
@@ -155,4 +204,4 @@ run <- register_runtime_method(
   suggests = c("BMS", "quadprog")
 )
 
-box::export(fma, run)
+box::export(fma, resolve_fma_cluster_ids, run)
