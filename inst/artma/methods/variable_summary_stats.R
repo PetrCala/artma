@@ -13,7 +13,8 @@ variable_summary_stats <- function(df) {
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / options / resolver[opt_spec, resolve_options],
-    artma / libs / core / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / formatting / results[print_summary_table]
   )
 
   config <- get_data_config()
@@ -89,7 +90,7 @@ variable_summary_stats <- function(df) {
 
   if (get_verbosity() >= 3) {
     cli::cli_h3("Variable summary statistics:")
-    cli::cat_print(df_out)
+    print_summary_table(df_out)
   }
 
   if (length(missing_data_vars) > 0 && get_verbosity() >= 2) {
