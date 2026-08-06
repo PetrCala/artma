@@ -241,6 +241,36 @@ test_that("build_rng_streams leaves the caller's RNG state untouched", {
   expect_equal(.Random.seed, before_seed)
 })
 
+test_that("build_rng_streams gives a method the same stream regardless of the requested set", {
+  box::use(artma / modules / method_execution[build_rng_streams])
+
+  alone <- build_rng_streams("a", seed = 42L)
+  paired <- build_rng_streams(c("a", "b"), seed = 42L)
+  reversed <- build_rng_streams(c("b", "a"), seed = 42L)
+
+  # A cached stochastic result must not go stale just because a later run
+  # requests a different combination of methods, so the stream is a function
+  # of the seed and the method's name only.
+  expect_equal(paired$a, alone$a)
+  expect_equal(reversed$a, paired$a)
+  expect_equal(reversed$b, paired$b)
+})
+
+test_that("method_stream_seed folds the seed and name deterministically", {
+  box::use(artma / modules / method_execution[method_stream_seed])
+
+  expect_equal(method_stream_seed(42L, "bma"), method_stream_seed(42L, "bma"))
+  expect_false(method_stream_seed(42L, "bma") == method_stream_seed(42L, "fma"))
+  expect_false(method_stream_seed(42L, "bma") == method_stream_seed(7L, "bma"))
+  expect_true(is.integer(method_stream_seed(20240101, "bma")))
+})
+
+test_that("build_rng_streams rejects a missing seed", {
+  box::use(artma / modules / method_execution[build_rng_streams])
+
+  expect_error(build_rng_streams("a", seed = NA), "single non-missing number")
+})
+
 test_that("execute_method_layer returns results in input order", {
   box::use(artma / modules / method_execution[execute_method_layer])
 

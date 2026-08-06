@@ -73,7 +73,6 @@ utils::globalVariables(c(
   "missing_suggested_packages",
   "mock",
   "modules",
-  "opt_or",
   "options",
   "options_file_path",
   "output",

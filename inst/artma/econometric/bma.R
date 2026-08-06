@@ -335,6 +335,84 @@ get_bma_data <- function(input_data, input_var_list, variable_info, scale_data =
 }
 
 
+#' The wall-clock reseed call embedded in `BMS::bms` (as of BMS 0.3.5)
+#'
+#' `BMS::bms` reseeds the session RNG from the wall clock right before its
+#' sampling loop, wiping whatever seed the caller (or the orchestrator's
+#' per-method RNG stream) had set. `set.seed` truncates the timestamp to whole
+#' seconds, so two calls landing in the same second coincide and any slower
+#' cadence produces a different chain every run; no amount of external seeding
+#' can make results reproducible while this call is in place.
+#'
+#' @keywords internal
+BMS_TIME_RESEED_CALL <- quote(set.seed(as.numeric(Sys.time())))
+
+#' Strip the wall-clock reseed from a copy of `BMS::bms`
+#'
+#' @description
+#' Return a copy of `fn` whose body has every occurrence of
+#' `set.seed(as.numeric(Sys.time()))` replaced with `invisible(NULL)`. The
+#' copy keeps its original environment, so a namespaced function still
+#' resolves all of its internal helpers; the installed package itself is never
+#' modified. When the pattern does not occur (for example after an upstream
+#' BMS release drops the reseed), `fn` is returned unchanged.
+#'
+#' @param fn *\[function\]* The function to copy and patch.
+#' @return *\[function\]* The patched copy, or `fn` itself when nothing matched.
+#'
+#' @export
+strip_bms_time_reseed <- function(fn) {
+  box::use(
+    artma / libs / core / validation[validate]
+  )
+
+  validate(is.function(fn))
+
+  replaced <- FALSE
+  walk <- function(expr) {
+    if (identical(expr, BMS_TIME_RESEED_CALL)) {
+      replaced <<- TRUE
+      return(quote(invisible(NULL)))
+    }
+    if (is.call(expr)) {
+      for (i in seq_along(expr)) {
+        if (!is.null(expr[[i]])) {
+          expr[[i]] <- walk(expr[[i]])
+        }
+      }
+    }
+    expr
+  }
+
+  patched_body <- walk(body(fn))
+  if (!replaced) {
+    return(fn)
+  }
+
+  body(fn) <- patched_body
+  fn
+}
+
+# Session cache for the patched `BMS::bms` copy, so the body surgery runs once
+# rather than on every model fit.
+bms_patch_cache <- new.env(parent = emptyenv())
+
+#' A deterministic copy of `BMS::bms`
+#'
+#' @description
+#' `BMS::bms` with its internal wall-clock reseed neutralized (see
+#' `strip_bms_time_reseed`), so the sampler draws from the session RNG state
+#' the caller controls. Callers must ensure the BMS namespace is available.
+#'
+#' @return *\[function\]* The patched `bms` function.
+#' @keywords internal
+deterministic_bms <- function() {
+  if (is.null(bms_patch_cache$fn)) {
+    bms_patch_cache$fn <- strip_bms_time_reseed(BMS::bms)
+  }
+  bms_patch_cache$fn
+}
+
 #' Run a Bayesian model averaging estimation
 #'
 #' @description
@@ -342,6 +420,11 @@ get_bma_data <- function(input_data, input_var_list, variable_info, scale_data =
 #' and inherited parameters, which are all the parameters you want to use for the actual
 #' estimation inside the 'bms' function. Validate correct input, run the estimation, and
 #' return the BMA model without printing any results.
+#'
+#' The estimation runs on a copy of `BMS::bms` whose internal wall-clock
+#' reseed has been removed, so the MCMC draws are governed entirely by the
+#' session RNG state on entry: seed beforehand (or run under the
+#' orchestrator's per-method RNG streams) and the fit is reproducible.
 #'
 #' @param bma_data *\[data.frame\]* The data for BMA. "effect" must be in the first column.
 #' @param bma_params *\[list\]* Parameters to be used inside the "bms" function. These are:
@@ -380,13 +463,13 @@ run_bma <- function(bma_data, bma_params, quiet = TRUE) {
     }
   )
 
-  set.seed(123)
+  bms_fun <- deterministic_bms()
   if (quiet) {
     invisible(utils::capture.output(
-      bma_model <- do.call(BMS::bms, all_bma_params)
+      bma_model <- do.call(bms_fun, all_bma_params)
     ))
   } else {
-    bma_model <- do.call(BMS::bms, all_bma_params)
+    bma_model <- do.call(bms_fun, all_bma_params)
   }
 
   bma_model
@@ -731,5 +814,6 @@ box::export(
   rename_bma_model,
   extract_bma_results,
   build_bma_model_labels,
-  render_bma_comparison_plot
+  render_bma_comparison_plot,
+  strip_bms_time_reseed
 )

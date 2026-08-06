@@ -91,8 +91,12 @@ single-core machines, and in interactive sessions whose autonomy level still
 allows methods to prompt.
 
 Every method receives its own L'Ecuyer-CMRG stream derived from the
-\code{general.seed} option, so stochastic methods (bootstrap, MCMC) draw the same
-numbers whether the run was parallel or sequential.
+\code{general.seed} option and the method's name, so stochastic methods
+(bootstrap, MCMC) draw the same numbers whether the run was parallel or
+sequential, and regardless of which other methods ran alongside. Setting
+\code{general.seed} to \code{NA} derives the run seed from the session RNG instead,
+so calling \code{set.seed()} before \code{artma()} governs reproducibility the way
+it does for any stochastic R function.
 }
 
 \subsection{Method Failures}{

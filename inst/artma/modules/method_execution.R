@@ -166,16 +166,45 @@ resolve_worker_count <- function(n_tasks,
   as.integer(min(n_tasks, max(1L, as.integer(n_cores) - 1L), max_workers))
 }
 
+#' @title Seed for a single method's RNG stream
+#' @description
+#' Fold a method's name into the run seed with a polynomial string hash, so
+#' the stream a method receives depends only on the run seed and its own name.
+#' Deriving streams positionally instead would tie a method's draws (and any
+#' disk-cached result built from them) to which other methods happened to be
+#' requested alongside it.
+#' @param seed *\[integer\]* The run seed.
+#' @param method_name *\[character\]* The method the stream is for.
+#' @return *\[integer\]* A deterministic seed for the method's stream.
+#' @keywords internal
+method_stream_seed <- function(seed, method_name) {
+  modulus <- 2147483647 # 2^31 - 1, keeps every intermediate exact in doubles
+  hash <- as.numeric(seed) %% modulus
+  for (char in utf8ToInt(method_name)) {
+    hash <- (hash * 31 + char) %% modulus
+  }
+  as.integer(hash)
+}
+
 #' @title Pre-assign an RNG stream to every method
 #' @description
-#' Derive one independent L'Ecuyer-CMRG stream per method from `seed`, so a
-#' stochastic method draws the same numbers whether it ran in a fork or in the
-#' parent process. The caller's RNG kind and seed are restored before
-#' returning.
+#' Derive one L'Ecuyer-CMRG stream per method from `seed` and the method's
+#' name, so a stochastic method draws the same numbers whether it ran in a
+#' fork or in the parent process, and regardless of which other methods were
+#' part of the run. Per-name seeding of L'Ecuyer-CMRG (period 2^191) stands in
+#' for `parallel::nextRNGStream()` chaining, which would make a method's
+#' stream depend on its position in the requested set. The caller's RNG kind
+#' and seed are restored before returning.
 #' @param method_names *\[character\]* Methods to assign streams to.
-#' @param seed *\[integer\]* The run seed.
+#' @param seed *\[integer\]* The run seed. Must be a single non-missing number;
+#'   resolving an unset seed is the caller's responsibility.
 #' @return *\[list\]* A named list of `.Random.seed` vectors.
 build_rng_streams <- function(method_names, seed) {
+  assert(
+    is.numeric(seed) && length(seed) == 1L && !is.na(seed),
+    "`seed` must be a single non-missing number."
+  )
+
   method_names <- as.character(method_names)
   if (length(method_names) == 0L) {
     return(list())
@@ -198,14 +227,11 @@ build_rng_streams <- function(method_names, seed) {
   )
 
   RNGkind("L'Ecuyer-CMRG")
-  set.seed(as.integer(seed))
 
-  stream <- get(".Random.seed", envir = globalenv())
-  streams <- vector("list", length(method_names))
-  for (i in seq_along(method_names)) {
-    streams[[i]] <- stream
-    stream <- parallel::nextRNGStream(stream)
-  }
+  streams <- lapply(method_names, function(method_name) {
+    set.seed(method_stream_seed(seed, method_name))
+    get(".Random.seed", envir = globalenv())
+  })
 
   stats::setNames(streams, method_names)
 }
@@ -352,6 +378,12 @@ execute_method_layer <- function(method_names, run_one, streams = list(), worker
   }
 
   if (workers > 1L) {
+    # mc.set.seed = TRUE makes each child scrub the RNG state it inherited
+    # from the fork (for a non-L'Ecuyer parent kind it simply removes
+    # `.Random.seed`, leaving the next draw time-and-pid seeded). That scrub
+    # is irrelevant here: `run_task` installs the method's pre-assigned
+    # stream as its first action in the child, before any draw can happen,
+    # so the draws are deterministic either way.
     outcomes <- with_single_threaded_blas(parallel::mclapply(
       method_names,
       function(method_name) with_forked_worker_flag(run_task(method_name)),
@@ -389,6 +421,7 @@ box::export(
   execute_method_layer,
   group_methods_into_layers,
   max_parallel_workers,
+  method_stream_seed,
   replay_captured_output,
   resolve_worker_count,
   with_captured_output
