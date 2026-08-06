@@ -20,7 +20,8 @@ robma <- function(df) {
     artma / libs / core / validation[validate, validate_columns],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
-    artma / options / resolver[opt_spec, resolve_options]
+    artma / options / resolver[opt_spec, resolve_options],
+    artma / libs / formatting / results[print_summary_table]
   )
 
   validate(is.data.frame(df))
@@ -160,7 +161,7 @@ robma <- function(df) {
 
   if (get_verbosity() >= 3) {
     cli::cli_h3("RoBMA: model-averaged estimates")
-    print(estimates) # nolint: undesirable_function_linter.
+    print_summary_table(estimates)
   }
 
   new_method_result(
