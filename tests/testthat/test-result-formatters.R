@@ -48,17 +48,13 @@ sectioned_fixture <- function() {
 }
 
 # The printer returns the exact lines it emitted, so assertions can read them
-# without fighting cli's output connection.
+# directly; the test session's global sink (see setup.R) keeps the cli
+# output itself off the log.
 capture_sectioned <- function(x, ...) {
   withr::with_options(
     list(cli.num_colors = 1),
-    # print_sectioned_table() prints via cli, which writes through message()
-    # (stderr), not the "output" stream capture.output() captures by
-    # default - without type = "message" this silently captures nothing and
-    # the cli output leaks straight to the console.
-    utils::capture.output(lines <- print_sectioned_table(x, ...), type = "message")
+    print_sectioned_table(x, ...)
   )
-  lines
 }
 
 test_that("print_sectioned_table underlines every section heading", {
@@ -98,10 +94,7 @@ test_that("print_sectioned_table ignores an empty table", {
 })
 
 test_that("print_paragraph wraps sentences and drops empty ones", {
-  utils::capture.output(
-    lines <- print_paragraph(c("One sentence.", "", "Another sentence."), width = 20),
-    type = "message"
-  )
+  lines <- print_paragraph(c("One sentence.", "", "Another sentence."), width = 20)
 
   expect_true(length(lines) > 1)
   expect_match(paste(lines, collapse = " "), "One sentence\\. Another sentence\\.")

@@ -64,14 +64,11 @@ test_that("run_fma returns coefficients and weights", {
 
   bma_model <- run_bma(bma_data, params)
 
-  utils::capture.output(
-    result <- run_fma(
-      bma_data = bma_data,
-      bma_model = bma_model,
-      input_var_list = var_list,
-      print_results = "none"
-    ),
-    type = "message"
+  result <- run_fma(
+    bma_data = bma_data,
+    bma_model = bma_model,
+    input_var_list = var_list,
+    print_results = "none"
   )
 
   expect_named(result, c("coefficients", "weights"))
@@ -124,14 +121,11 @@ test_that("Mallows penalty favors small models on pure-noise predictors", {
   )
   bma_model <- run_bma(bma_data, params)
 
-  utils::capture.output(
-    result <- run_fma(
-      bma_data = bma_data,
-      bma_model = bma_model,
-      input_var_list = var_list,
-      print_results = "none"
-    ),
-    type = "message"
+  result <- run_fma(
+    bma_data = bma_data,
+    bma_model = bma_model,
+    input_var_list = var_list,
+    print_results = "none"
   )
 
   # None of the predictors carry signal, so the complexity penalty must pull
@@ -204,24 +198,18 @@ test_that("cluster_ids changes standard errors but not coefficients or weights",
 
   inputs <- make_clustered_fma_inputs()
 
-  utils::capture.output(
-    iid <- run_fma(
-      bma_data = inputs$bma_data,
-      bma_model = inputs$bma_model,
-      input_var_list = inputs$var_list,
-      print_results = "none"
-    ),
-    type = "message"
+  iid <- run_fma(
+    bma_data = inputs$bma_data,
+    bma_model = inputs$bma_model,
+    input_var_list = inputs$var_list,
+    print_results = "none"
   )
-  utils::capture.output(
-    clustered <- run_fma(
-      bma_data = inputs$bma_data,
-      bma_model = inputs$bma_model,
-      input_var_list = inputs$var_list,
-      cluster_ids = inputs$study,
-      print_results = "none"
-    ),
-    type = "message"
+  clustered <- run_fma(
+    bma_data = inputs$bma_data,
+    bma_model = inputs$bma_model,
+    input_var_list = inputs$var_list,
+    cluster_ids = inputs$study,
+    print_results = "none"
   )
 
   # Clustering only reweights the score contributions inside the vcov; the
@@ -240,15 +228,12 @@ test_that("clustered FMA standard errors match a sandwich::vcovCL reference", {
 
   inputs <- make_clustered_fma_inputs()
 
-  utils::capture.output(
-    result <- run_fma(
-      bma_data = inputs$bma_data,
-      bma_model = inputs$bma_model,
-      input_var_list = inputs$var_list,
-      cluster_ids = inputs$study,
-      print_results = "none"
-    ),
-    type = "message"
+  result <- run_fma(
+    bma_data = inputs$bma_data,
+    bma_model = inputs$bma_model,
+    input_var_list = inputs$var_list,
+    cluster_ids = inputs$study,
+    print_results = "none"
   )
 
   # var_name_verbose equals var_name here, so the output rows reveal the
@@ -289,18 +274,13 @@ test_that("run_fma validates cluster_ids", {
   n <- nrow(inputs$bma_data)
 
   run_with_cluster <- function(cluster_ids) {
-    out <- NULL
-    utils::capture.output(
-      out <- run_fma(
-        bma_data = inputs$bma_data,
-        bma_model = inputs$bma_model,
-        input_var_list = inputs$var_list,
-        cluster_ids = cluster_ids,
-        print_results = "none"
-      ),
-      type = "message"
+    run_fma(
+      bma_data = inputs$bma_data,
+      bma_model = inputs$bma_model,
+      input_var_list = inputs$var_list,
+      cluster_ids = cluster_ids,
+      print_results = "none"
     )
-    out
   }
 
   expect_error(run_with_cluster(rep("a", n)), "at least two distinct clusters")
@@ -335,15 +315,9 @@ test_that("resolve_fma_cluster_ids downgrades to NULL on unusable clusters", {
   foreign_rows <- data.frame(effect = 0.1, se = 0.05, study_id = "s1", row.names = "99")
 
   # Each downgrade warns via cli_alert_warning(), which is the point of this
-  # test, but the printed text still leaks past expect_null(); keep it off
-  # the log while still evaluating the calls for real.
-  utils::capture.output(
-    {
-      expect_null(resolve_fma_cluster_ids(no_study, bma_data))
-      expect_null(resolve_fma_cluster_ids(single_cluster, bma_data))
-      expect_null(resolve_fma_cluster_ids(na_ids, bma_data))
-      expect_null(resolve_fma_cluster_ids(foreign_rows, bma_data))
-    },
-    type = "message"
-  )
+  # test; the test session's global sink (see setup.R) keeps it off the log.
+  expect_null(resolve_fma_cluster_ids(no_study, bma_data))
+  expect_null(resolve_fma_cluster_ids(single_cluster, bma_data))
+  expect_null(resolve_fma_cluster_ids(na_ids, bma_data))
+  expect_null(resolve_fma_cluster_ids(foreign_rows, bma_data))
 })

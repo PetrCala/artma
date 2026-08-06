@@ -63,18 +63,16 @@ test_that("get_robust_vcov ladder falls back to non-clustered HC1 on cluster err
 
   # A wrong-length cluster makes vcovCL error; the ladder should fall through
   # to the non-clustered HC1 step, warning about the downgrade along the way -
-  # not itself under test here, so keep it off the log.
-  utils::capture.output(
-    result <- robust_vcov(
-      model = model,
-      cluster = c(1, 2, 3),
-      engine = "sandwich",
-      clustered_type = "HC1",
-      fallback_types = c("HC1", "HC0"),
-      require_cluster = TRUE,
-      suppress_warnings = TRUE
-    ),
-    type = "message"
+  # not itself under test here; the test session's global sink (see
+  # setup.R) keeps it off the log.
+  result <- robust_vcov(
+    model = model,
+    cluster = c(1, 2, 3),
+    engine = "sandwich",
+    clustered_type = "HC1",
+    fallback_types = c("HC1", "HC0"),
+    require_cluster = TRUE,
+    suppress_warnings = TRUE
   )
 
   oracle <- suppressWarnings(sandwich::vcovHC(model, type = "HC1"))
@@ -88,36 +86,29 @@ test_that("robust_vcov warns when clustering is silently lost", {
 
   # Clustered step fails on a wrong-length cluster: the fallback must announce
   # that the returned SEs are not clustered. The alert is real signal here
-  # (it's exactly what's under test), but its cli_alert_warning() text still
-  # leaks to the console independently of testthat's condition handling, so
-  # capture.output() keeps the log clean while expect_message() still sees
-  # the signaled condition.
+  # (it's exactly what's under test); the test session's global sink (see
+  # setup.R) keeps it off the log while expect_message()'s own inner handler
+  # still sees the signaled condition.
   expect_message(
-    utils::capture.output(
-      invisible(robust_vcov(
-        model = model,
-        cluster = c(1, 2, 3),
-        engine = "sandwich",
-        clustered_type = "HC1",
-        fallback_types = c("HC1", "HC0"),
-        suppress_warnings = TRUE
-      )),
-      type = "message"
+    robust_vcov(
+      model = model,
+      cluster = c(1, 2, 3),
+      engine = "sandwich",
+      clustered_type = "HC1",
+      fallback_types = c("HC1", "HC0"),
+      suppress_warnings = TRUE
     ),
     regexp = "NOT clustered"
   )
 
   # The match_cluster_length guard is the same downgrade and must also warn.
   expect_message(
-    utils::capture.output(
-      invisible(robust_vcov(
-        model = model,
-        cluster = c(1, 2, 3),
-        engine = "sandwich",
-        clustered_type = "HC0",
-        match_cluster_length = TRUE
-      )),
-      type = "message"
+    robust_vcov(
+      model = model,
+      cluster = c(1, 2, 3),
+      engine = "sandwich",
+      clustered_type = "HC0",
+      match_cluster_length = TRUE
     ),
     regexp = "NOT clustered"
   )
@@ -155,15 +146,12 @@ test_that("robust_vcov warns on the no-cluster single-step downgrade to stats::v
   # stats::vcov(). This downgrade must still be warned about even though
   # clustering was never requested and there is only one robust step.
   expect_message(
-    utils::capture.output(
-      invisible(robust_vcov(
-        model = model,
-        cluster = NULL,
-        engine = "sandwich",
-        clustered_type = "BOGUS",
-        fallback_types = character(0)
-      )),
-      type = "message"
+    robust_vcov(
+      model = model,
+      cluster = NULL,
+      engine = "sandwich",
+      clustered_type = "BOGUS",
+      fallback_types = character(0)
     ),
     regexp = "NOT clustered"
   )
@@ -204,16 +192,14 @@ test_that("resolve_bpe_vcov ladder uses non-clustered HC0 when cluster length mi
 
   # Wrong-length cluster: the length guard rejects it and the primary step is
   # the non-clustered HC0 vcov, warning about the downgrade along the way -
-  # not itself under test here, so keep it off the log.
-  utils::capture.output(
-    result <- robust_vcov(
-      model = model,
-      cluster = c(1, 2, 3),
-      engine = "sandwich",
-      clustered_type = "HC0",
-      match_cluster_length = TRUE
-    ),
-    type = "message"
+  # not itself under test here; the test session's global sink (see
+  # setup.R) keeps it off the log.
+  result <- robust_vcov(
+    model = model,
+    cluster = c(1, 2, 3),
+    engine = "sandwich",
+    clustered_type = "HC0",
+    match_cluster_length = TRUE
   )
 
   oracle <- sandwich::vcovHC(model, type = "HC0")
@@ -221,15 +207,12 @@ test_that("resolve_bpe_vcov ladder uses non-clustered HC0 when cluster length mi
   expect_equal(unname(result["se", "se"]), 0.1105633, tolerance = 1e-6)
 
   # NULL cluster follows the same non-clustered branch.
-  utils::capture.output(
-    result_null <- robust_vcov(
-      model = model,
-      cluster = NULL,
-      engine = "sandwich",
-      clustered_type = "HC0",
-      match_cluster_length = TRUE
-    ),
-    type = "message"
+  result_null <- robust_vcov(
+    model = model,
+    cluster = NULL,
+    engine = "sandwich",
+    clustered_type = "HC0",
+    match_cluster_length = TRUE
   )
   expect_equal(result_null, oracle)
 })
