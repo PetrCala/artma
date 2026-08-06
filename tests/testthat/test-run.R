@@ -3,6 +3,7 @@ box::use(
     capture_warnings,
     expect_equal,
     expect_error,
+    expect_false,
     expect_match,
     expect_named,
     expect_setequal,
@@ -392,7 +393,9 @@ test_that("invoke_runtime_methods produces the same results in parallel and sequ
     method_b = list(run = function(df, ...) list(name = "b", draws = stats::runif(3))),
     method_c = list(run = function(df, ...) list(name = "c", rows = nrow(df)))
   )
-  withr::local_options(list(artma.verbose = 0))
+  # Pin the seed: without one configured, each invocation derives its own run
+  # seed from the session RNG, so two separate runs would differ by design.
+  withr::local_options(list(artma.verbose = 0, artma.general.seed = 20240101L))
   methods_dir <- local_mock_methods_dir(fake_methods)
   df <- data.frame(x = 1:5)
   method_names <- c("method_a", "method_b", "method_c")
@@ -505,4 +508,65 @@ test_that("invoke_runtime_methods passes dependency results across layers", {
   )
 
   expect_equal(results$method_b, "from_a")
+})
+
+test_that("two runs with the same pinned seed produce identical stochastic results", {
+  fake_methods <- list(
+    noisy = list(run = function(df, ...) stats::rnorm(5))
+  )
+  withr::local_options(list(artma.verbose = 0, artma.general.seed = 20240101L))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+  df <- data.frame(x = 1:3)
+
+  first <- artma:::invoke_runtime_methods(methods = "noisy", df = df, modules_dir = methods_dir)
+  second <- artma:::invoke_runtime_methods(methods = "noisy", df = df, modules_dir = methods_dir)
+  expect_equal(first, second)
+
+  withr::local_options(list(artma.general.seed = 7L))
+  reseeded <- artma:::invoke_runtime_methods(methods = "noisy", df = df, modules_dir = methods_dir)
+  expect_false(identical(first$noisy, reseeded$noisy))
+})
+
+test_that("an NA seed hands control of the run to the session RNG", {
+  fake_methods <- list(
+    noisy = list(run = function(df, ...) stats::rnorm(5))
+  )
+  withr::local_options(list(artma.verbose = 0, artma.general.seed = NA))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+  df <- data.frame(x = 1:3)
+
+  run_once <- function() {
+    artma:::invoke_runtime_methods(methods = "noisy", df = df, modules_dir = methods_dir)
+  }
+
+  set.seed(42)
+  first <- run_once()
+  set.seed(42)
+  second <- run_once()
+  expect_equal(first, second)
+
+  # Without reseeding, the next run derives a fresh seed from the session RNG.
+  third <- run_once()
+  expect_false(identical(first$noisy, third$noisy))
+
+  # The pin of the derived seed is scoped to the run.
+  expect_true(is.na(getOption("artma.general.seed")))
+})
+
+test_that("invoke_runtime_methods restores the session RNG state it found", {
+  fake_methods <- list(
+    noisy = list(run = function(df, ...) stats::rnorm(5))
+  )
+  withr::local_options(list(artma.verbose = 0, artma.general.seed = 20240101L))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+  df <- data.frame(x = 1:3)
+
+  set.seed(1)
+  expected_next <- stats::rnorm(1)
+  set.seed(1)
+  artma:::invoke_runtime_methods(methods = "noisy", df = df, modules_dir = methods_dir)
+
+  # A sequential layer runs methods in this process; their stream state must
+  # not leak into what the caller draws next.
+  expect_equal(stats::rnorm(1), expected_next)
 })

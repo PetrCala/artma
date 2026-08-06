@@ -31,12 +31,18 @@ general:
 
   seed:
     type: "integer"
+    allow_na: true
     default: 20240101
     help: |
       Seed for the random number streams handed to runtime methods. Each method
-      receives its own independent L'Ecuyer-CMRG stream derived from this seed,
-      so stochastic methods (bootstrap, MCMC) draw the same numbers whether the
-      run executed in parallel or sequentially.
+      receives its own L'Ecuyer-CMRG stream derived from this seed and the
+      method's name, so stochastic methods (bootstrap, MCMC) draw the same
+      numbers whether the run executed in parallel or sequentially, and
+      regardless of which other methods ran alongside.
+
+      Set to NA to derive the run seed from the session RNG instead: calling
+      set.seed() before artma() then governs reproducibility the way it does
+      for any stochastic R function, and runs without set.seed() vary.
 
 calc:
   precision_type:

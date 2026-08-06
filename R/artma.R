@@ -67,8 +67,12 @@
 #' allows methods to prompt.
 #'
 #' Every method receives its own L'Ecuyer-CMRG stream derived from the
-#' `general.seed` option, so stochastic methods (bootstrap, MCMC) draw the same
-#' numbers whether the run was parallel or sequential.
+#' `general.seed` option and the method's name, so stochastic methods
+#' (bootstrap, MCMC) draw the same numbers whether the run was parallel or
+#' sequential, and regardless of which other methods ran alongside. Setting
+#' `general.seed` to `NA` derives the run seed from the session RNG instead,
+#' so calling `set.seed()` before `artma()` governs reproducibility the way
+#' it does for any stochastic R function.
 #'
 #' ## Method Failures
 #'
@@ -278,7 +282,7 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
   box::use(
     artma / const[CONST],
     artma / libs / core / string[pluralize],
-    artma / libs / core / utils[get_verbosity, opt_or],
+    artma / libs / core / utils[get_verbosity],
     artma / modules / method_execution[
       build_rng_streams,
       execute_method_layer,
@@ -392,10 +396,50 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
   extra_args <- list(...)
 
   # Methods that do not depend on one another form a layer and can run
-  # concurrently. Every method gets its own RNG stream up front, so a run is
-  # reproducible given the seed whether it executed in forks or sequentially.
+  # concurrently. Every method gets its own RNG stream up front, derived from
+  # the run seed and the method's own name, so a run is reproducible given the
+  # seed whether it executed in forks or sequentially, and a method's draws do
+  # not change with the set of methods requested alongside it.
   layers <- group_methods_into_layers(methods, deps_map)
-  rng_streams <- build_rng_streams(methods, seed = opt_or("artma.general.seed", 20240101L))
+
+  # A seed set to NA in the options file inherits the session RNG instead:
+  # one draw is consumed to derive the run seed, following the convention of
+  # stochastic R functions, so `set.seed(42); artma(...)` reproduces a run
+  # while unseeded runs vary. Loaded options always carry a concrete value or
+  # an explicit NA (options.load() merges the template defaults), so an absent
+  # option only occurs in programmatic runs without options, where inheriting
+  # the session RNG is the conventional behavior too. The derived seed is
+  # pinned into the option for the run's duration so disk-cache signatures,
+  # which hash the artma option group, key on the effective seed rather than
+  # on NA.
+  run_seed <- getOption("artma.general.seed", default = NA)
+  if (length(run_seed) != 1L || is.na(run_seed)) {
+    run_seed <- sample.int(.Machine$integer.max, 1L)
+    old_seed_option <- options(artma.general.seed = run_seed)
+    on.exit(options(old_seed_option), add = TRUE)
+  }
+  rng_streams <- build_rng_streams(methods, seed = run_seed)
+
+  # Sequential layers run methods in this process and would otherwise leave
+  # the last method's stream state behind in `.Random.seed`; parallel layers
+  # leave the parent untouched. Restore the session state once the run ends so
+  # the caller observes the same RNG state regardless of how (or whether, on a
+  # cache hit) the methods executed.
+  session_rng_state <- if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  } else {
+    NULL
+  }
+  on.exit(
+    {
+      if (!is.null(session_rng_state)) {
+        assign(".Random.seed", session_rng_state, envir = globalenv()) # nolint: object_name_linter.
+      } else if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+        rm(".Random.seed", envir = globalenv())
+      }
+    },
+    add = TRUE
+  )
 
   for (layer in layers) {
     runnable <- character()
