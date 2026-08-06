@@ -210,7 +210,12 @@ handle_na_interpolate <- function(df, exclude_cols = character(0)) {
 handle_na_mice <- function(df, exclude_cols = character(0)) {
   box::use(artma / data / profile[detect_dummy_groups])
 
-  if (!requireNamespace("mice", quietly = TRUE)) {
+  # suppressMessages: this is the first `mice::` reference in the session on
+  # a fresh load, so requireNamespace() here (not just the later mice::mice()
+  # call) is what triggers mice's own Imports (car, lme4) to load, printing a
+  # raw "Registered S3 method overwritten" line with no user-actionable
+  # content.
+  if (!suppressMessages(requireNamespace("mice", quietly = TRUE))) {
     cli::cli_abort(c(
       "x" = "The {.pkg mice} package is required for multiple imputation",
       "i" = "Install it with: {.code install.packages('mice')}"
