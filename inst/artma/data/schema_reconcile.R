@@ -45,7 +45,8 @@ emit_reconcile_complete <- function() {
 #' @keywords internal
 reconcile_schema <- function(raw_df, mode = NULL) {
   box::use(
-    artma / libs / core / autonomy[should_prompt_user]
+    artma / libs / core / autonomy[should_prompt_user],
+    artma / libs / core / utils[get_verbosity]
   )
 
   mode <- mode %||% getOption("artma.data.reconcile_mode", "ask")
@@ -155,8 +156,13 @@ reconcile_schema <- function(raw_df, mode = NULL) {
     raw_df = raw_df
   )
 
-  # Show unified diff
-  show_drift_summary(drift, proposals_roles, proposals_moderators, role_sources)
+  # Show unified diff. Unlike emit_reconcile_complete()'s plain success note,
+  # this is drift detail worth a "Warnings + errors" gate rather than always
+  # printing - it was previously ungated, unlike every sibling cli call in
+  # this module.
+  if (get_verbosity() >= 2) {
+    show_drift_summary(drift, proposals_roles, proposals_moderators, role_sources)
+  }
 
   # Collect decisions
   do_prompt <- (mode == "ask") && should_prompt_user(required_level = "autonomous")
