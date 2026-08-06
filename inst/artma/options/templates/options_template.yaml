@@ -619,6 +619,17 @@ methods:
         Scale parameter of the inverse-gamma prior on the heterogeneity.
 
   fma:
+    cluster:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE` (default), report cluster-robust (CR1) standard errors for
+        the FMA coefficients, clustered by `study_id`. Falls back to classical
+        iid standard errors, with a warning, when the data lack a usable
+        `study_id` column or contain fewer than two clusters. Model weights
+        and coefficients are unaffected; only standard errors and p-values
+        change.
+
     round_to:
       type: "integer"
       allow_na: true

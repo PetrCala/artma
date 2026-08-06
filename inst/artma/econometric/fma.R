@@ -68,11 +68,14 @@ resolve_fma_predictors <- function(bma_data, bma_model) {
 #' @param bma_data *\[data.frame\]* Data used for BMA estimation (effect in first column).
 #' @param bma_model *\[bma\]* BMA model used to order predictors.
 #' @param input_var_list *\[data.frame\]* Variable metadata with verbose names.
+#' @param cluster_ids *\[vector, optional\]* Cluster membership (e.g. study IDs)
+#'   for each row of `bma_data`. When supplied, coefficient standard errors are
+#'   cluster-robust (CR1); when `NULL`, classical iid standard errors are used.
 #' @param round_to *\[integer, optional\]* Digits for printed output; NULL uses global default.
-#' @param print_results *\[character\]* One of "none", "fast", "verbose", "all", or "table".
+#' @param print_results *\[character\]* One of "none", "fast", "verbose", or "all".
 #' @return *\[list\]* List with `coefficients` and `weights`.
 #' @export
-run_fma <- function(bma_data, bma_model, input_var_list, round_to = NULL, print_results = "none") {
+run_fma <- function(bma_data, bma_model, input_var_list, cluster_ids = NULL, round_to = NULL, print_results = "none") {
   box::use(
     artma / libs / core / validation[assert, validate]
   )
@@ -85,6 +88,20 @@ run_fma <- function(bma_data, bma_model, input_var_list, round_to = NULL, print_
     colnames(bma_data)[1] == "effect",
     print_results %in% c("none", "fast", "verbose", "all")
   )
+
+  cluster_factor <- NULL
+  if (!is.null(cluster_ids)) {
+    validate(
+      is.atomic(cluster_ids),
+      length(cluster_ids) == nrow(bma_data),
+      !any(is.na(cluster_ids))
+    )
+    assert(
+      length(unique(cluster_ids)) > 1L,
+      "Clustered FMA requires at least two distinct clusters."
+    )
+    cluster_factor <- factor(cluster_ids)
+  }
 
   assert(ncol(bma_data) >= 2, "FMA requires at least one predictor variable.")
 
@@ -138,10 +155,21 @@ run_fma <- function(bma_data, bma_model, input_var_list, round_to = NULL, print_
     e_i <- Y - x_tilda %*% beta.star
     e[, i] <- e_i
 
-    sigma_i <- as.numeric(crossprod(e_i) / (n - i))
-    var.matrix.star <- diag(sigma_i, i, i)
-    var.matrix.hat <- var.matrix.star %*% (Q %*% diag(lambda_adj^-1, i, i) %*% t(Q))
-    var.matrix[1:i, i] <- diag(var.matrix.hat)
+    # Eigen-floored (X'X)^-1: both variance paths share it so collinear
+    # designs degrade identically instead of erroring in solve().
+    xtx_inv <- Q %*% diag(lambda_adj^-1, i, i) %*% t(Q)
+    if (is.null(cluster_factor)) {
+      sigma_i <- as.numeric(crossprod(e_i) / (n - i))
+      var.matrix[1:i, i] <- sigma_i * diag(xtx_inv)
+    } else {
+      # CR1 cluster-robust vcov with the Stata small-sample correction,
+      # numerically identical to sandwich::vcovCL(type = "HC1").
+      scores <- rowsum(X * as.numeric(e_i), cluster_factor)
+      n_clusters <- nlevels(cluster_factor)
+      dfc <- (n_clusters / (n_clusters - 1)) * ((n - 1) / (n - i))
+      cl_vcov <- dfc * xtx_inv %*% crossprod(scores) %*% xtx_inv
+      var.matrix[1:i, i] <- diag(cl_vcov)
+    }
   }
 
   e_k <- e[, M, drop = FALSE]
