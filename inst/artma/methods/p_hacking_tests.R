@@ -15,7 +15,8 @@ p_hacking_tests <- function(df) {
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / options / resolver[opt_spec, resolve_options],
-    artma / options / significance_marks[resolve_add_significance_marks]
+    artma / options / significance_marks[resolve_add_significance_marks],
+    artma / libs / formatting / results[capture_print_wide]
   )
 
   validate(is.data.frame(df))
@@ -152,9 +153,7 @@ p_hacking_tests <- function(df) {
         cli::cli_text("P-values are clustered at the study level.")
       }
 
-      caliper_lines <- utils::capture.output(
-        print(results$caliper, row.names = FALSE) # nolint: undesirable_function_linter.
-      )
+      caliper_lines <- capture_print_wide(results$caliper, row.names = FALSE)
       cli::cli_verbatim(caliper_lines)
       cli::cli_text("")
     }
@@ -167,9 +166,7 @@ p_hacking_tests <- function(df) {
         "disagree with the local caliper results above."
       )
 
-      elliott_lines <- utils::capture.output(
-        print(results$elliott, row.names = FALSE) # nolint: undesirable_function_linter.
-      )
+      elliott_lines <- capture_print_wide(results$elliott, row.names = FALSE)
       cli::cli_verbatim(elliott_lines)
 
       # Footnote the NA cells: each skipped test carries a reason (e.g. a

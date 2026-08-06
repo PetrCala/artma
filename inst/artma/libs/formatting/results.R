@@ -145,6 +145,27 @@ format_ci <- function(lower, upper, digits) {
   formatted
 }
 
+#' Capture a data frame's print output at an unbounded width
+#'
+#' @description
+#' `print.data.frame` tears a table into stacked, row-numbered column blocks
+#' once the formatted row width exceeds `getOption("width")` (80 by default).
+#' This widens it for the duration of the call so wide tables print as one
+#' block; the terminal still soft-wraps long lines visually, this only stops
+#' the artificial hard split into duplicate sections.
+#'
+#' @param x *\[data.frame\]* The object to print.
+#' @param ... Passed through to `print()`.
+#' @return *\[character\]* Captured output lines.
+#' @keywords internal
+capture_print_wide <- function(x, ...) {
+  old_width <- getOption("width")
+  on.exit(options(width = old_width), add = TRUE)
+  options(width = 10000L)
+
+  utils::capture.output(print(x, ...)) # nolint: undesirable_function_linter.
+}
+
 #' Print a method summary table through cli
 #'
 #' @description
@@ -160,18 +181,7 @@ print_summary_table <- function(summary) {
     rownames(summary) <- NULL
   }
 
-  # print.data.frame tears a table into stacked, row-numbered column blocks
-  # once the formatted row width exceeds getOption("width") (80 by default).
-  # Widen it for the duration of this call so wide summary tables render as
-  # one block; the terminal still soft-wraps long lines visually, this only
-  # stops the artificial hard split into duplicate sections.
-  old_width <- getOption("width")
-  on.exit(options(width = old_width), add = TRUE)
-  options(width = 10000L)
-
-  lines <- utils::capture.output(
-    print(summary, row.names = !duplicated_metric) # nolint: undesirable_function_linter.
-  )
+  lines <- capture_print_wide(summary, row.names = !duplicated_metric)
   cli::cli_verbatim(lines)
   invisible(lines)
 }
@@ -302,6 +312,7 @@ box::export(
   format_se,
   format_standard_error,
   format_ci,
+  capture_print_wide,
   print_summary_table,
   print_sectioned_table,
   print_paragraph,

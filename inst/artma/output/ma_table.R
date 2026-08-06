@@ -21,7 +21,9 @@ build_ma_table <- function(bma_coefficients = NULL, fma_coefficients = NULL, rou
   has_bma <- !is.null(bma_coefficients) && is.data.frame(bma_coefficients) && nrow(bma_coefficients) > 0
   has_fma <- !is.null(fma_coefficients) && is.data.frame(fma_coefficients) && nrow(fma_coefficients) > 0
 
-  if (!has_bma && !has_fma) return(NULL)
+  if (!has_bma && !has_fma) {
+    return(NULL)
+  }
 
   validate(is.numeric(round_to))
 
@@ -76,16 +78,18 @@ build_ma_table <- function(bma_coefficients = NULL, fma_coefficients = NULL, rou
 #' @param verbosity *\[integer\]* Current verbosity level.
 #' @export
 display_ma_table <- function(ma_table, verbosity = 3L) {
-  if (is.null(ma_table) || nrow(ma_table) == 0) return(invisible(NULL))
+  box::use(artma / libs / formatting / results[capture_print_wide])
+
+  if (is.null(ma_table) || nrow(ma_table) == 0) {
+    return(invisible(NULL))
+  }
 
   if (verbosity >= 3) {
     cli::cli_h2("Model Averaging Results")
   }
 
   if (verbosity >= 1) {
-    lines <- utils::capture.output(
-      print(ma_table, row.names = FALSE) # nolint: undesirable_function_linter.
-    )
+    lines <- capture_print_wide(ma_table, row.names = FALSE)
     cli::cli_verbatim(lines)
   }
 

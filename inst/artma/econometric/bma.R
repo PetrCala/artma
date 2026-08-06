@@ -535,7 +535,8 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
   box::use(
     artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity],
-    artma / visualization / colors[get_colors]
+    artma / visualization / colors[get_colors],
+    artma / libs / formatting / results[capture_print_wide]
   )
 
   validate(
@@ -566,7 +567,7 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
     cli::cat_print(bma_model$topmod[1])
   } else if (print_results == "fast") {
     if (get_verbosity() >= 3) {
-      cli::cat_print(bma_coefs)
+      cli::cli_verbatim(capture_print_wide(bma_coefs))
     }
   }
 

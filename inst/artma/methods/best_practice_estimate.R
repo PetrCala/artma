@@ -41,7 +41,8 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     artma / options / index[get_option_group],
     artma / options / resolver[opt_spec, resolve_options],
     artma / visualization / options[get_visualization_options],
-    artma / visualization / export[export_named_plots]
+    artma / visualization / export[export_named_plots],
+    artma / libs / formatting / results[print_summary_table]
   )
 
   validate(is.data.frame(df))
@@ -333,7 +334,7 @@ best_practice_estimate <- function(df, bma_result = NULL) {
   if (get_verbosity() >= 3) {
     cli::cli_h3("Best-Practice Estimate")
     cli::cli_alert_info("BMA source: {.val {resolved_bma$source}}")
-    cli::cat_print(summary)
+    print_summary_table(summary)
     if (get_verbosity() >= 4) {
       cli::cli_alert_info("Author formula: {formula}")
     }
