@@ -121,7 +121,10 @@ final_endokink_fit <- function(prepared_data, cutoff, verbose) {
 #'
 #' @param data [data.frame] Two column data.frame with effect estimates and standard errors.
 #' @param verbose [logical] Should intermediate summaries be printed? Default `TRUE`.
-#' @return A numeric vector with the point estimates and standard errors in the same order as the legacy implementation.
+#' @return A numeric vector with the point estimates and standard errors in the same order as the
+#'   legacy implementation (`constant`, its SE, `pub_bias`, its SE), plus a 5th element
+#'   `heterogeneity_sd`: the model's residual heterogeneity standard deviation (the same quantity
+#'   used internally to locate the kink cut-off), with no associated standard error of its own.
 run_endogenous_kink <- function(data, verbose = TRUE) {
   stopifnot(
     is.data.frame(data),
@@ -141,7 +144,8 @@ run_endogenous_kink <- function(data, verbose = TRUE) {
     constant <- ones_sebs
     pub_bias <- ones
   })
-  final_endokink_fit(renamed, cutoff, verbose)
+  fit <- final_endokink_fit(renamed, cutoff, verbose)
+  c(fit, heterogeneity_sd = variance$standard_deviation)
 }
 
 box::export(
