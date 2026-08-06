@@ -14,6 +14,17 @@ box::use(
 run_cli <- function(args) {
   outcon <- textConnection("outbuf", "w", local = TRUE)
   errcon <- textConnection("errbuf", "w", local = TRUE)
+
+  # R supports only one active "message" diversion at a time (see ?sink) -
+  # unlike "output", it does not stack. setup.R keeps one sunk for the whole
+  # test run to silence incidental cli/warning noise; pushing a second one
+  # here would silently replace it, and popping ours back off would then
+  # remove the global one too instead of restoring it. Suspend it explicitly
+  # for the duration of this capture and restore it afterward, since this
+  # test genuinely needs cli.run()'s raw stderr content, not just silence.
+  null_message_con <- getOption("artma.test.null_message_con")
+  if (sink.number(type = "message") > 0) sink(type = "message")
+
   sink(outcon, type = "output")
   sink(errcon, type = "message")
   code <- tryCatch(
@@ -21,6 +32,7 @@ run_cli <- function(args) {
     finally = {
       sink(type = "message")
       sink(type = "output")
+      if (!is.null(null_message_con)) sink(null_message_con, type = "message")
     }
   )
   close(outcon)

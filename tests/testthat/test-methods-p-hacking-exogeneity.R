@@ -42,7 +42,7 @@ make_p_hacking_df <- function(seed = 1, n = 60) {
 test_that("p_hacking_tests returns the standard contract with a caliper table", {
   local_caliper_only_options()
 
-  utils::capture.output(result <- p_hacking_tests(make_p_hacking_df()), type = "message")
+  result <- p_hacking_tests(make_p_hacking_df())
 
   expect_true(is.list(result))
   expect_true(is.data.frame(result$tables$caliper))
@@ -58,7 +58,7 @@ test_that("p_hacking_tests aborts when a required column is missing", {
 test_that("p_hacking_tests prints a significance legend matching significance_mark thresholds", {
   local_caliper_only_options()
 
-  output <- utils::capture.output(p_hacking_tests(make_p_hacking_df()), type = "message")
+  output <- testthat::capture_messages(p_hacking_tests(make_p_hacking_df()))
 
   expect_true(any(grepl("Significance marks: \\* p <= 0.1, \\*\\* p <= 0.05, \\*\\*\\* p <= 0.01", output)))
 })
@@ -108,12 +108,7 @@ test_that("a custom elliott_supports option flows through to the Cox-Shi call", 
   run_with_supports <- function(supports) {
     opts <- elliott_base_options()
     opts$artma.methods.p_hacking_tests.elliott_supports <- supports
-    result <- NULL
-    utils::capture.output(
-      result <- with_options(opts, p_hacking_tests(df)),
-      type = "message"
-    )
-    result
+    with_options(opts, p_hacking_tests(df))
   }
 
   default_result <- run_with_supports(c(0.05, 0.1))
@@ -149,9 +144,12 @@ test_that("p_hacking_tests surfaces the Cox-Shi skip reason in output and meta",
     study_id = rep(seq_len(20), each = 10)
   )
 
-  messages <- with_options(
-    elliott_base_options(),
-    utils::capture.output(result <- p_hacking_tests(df), type = "message")
+  # capture_messages() forces its `code` argument lazily in this frame (like
+  # the capture.output() it replaces), so a plain assignment here lands in
+  # this test_that block's own scope; <<- would skip past it instead.
+  result <- NULL
+  messages <- testthat::capture_messages(
+    with_options(elliott_base_options(), result <- p_hacking_tests(df))
   )
 
   # The summary table keeps NA in the p-value column.
@@ -188,7 +186,7 @@ test_that("exogeneity_tests returns the standard contract with IV results", {
   skip_if_not_installed("AER")
   local_options(artma.verbose = 1)
 
-  utils::capture.output(result <- exogeneity_tests(make_exogeneity_df()), type = "message")
+  result <- exogeneity_tests(make_exogeneity_df())
 
   expect_true(is.list(result))
   expect_true(is.data.frame(result$tables$summary))
@@ -217,10 +215,7 @@ test_that("exogeneity_tests handles mock data with too few significant p-uniform
   df <- create_mock_df(nrow = 600, n_studies = 30)
   df$study_size <- unname(as.integer(table(df$study_id)[as.character(df$study_id)]))
 
-  utils::capture.output(
-    result <- expect_no_error(exogeneity_tests(df)),
-    type = "message"
-  )
+  result <- expect_no_error(exogeneity_tests(df))
 
   expect_true(is.data.frame(result$tables$summary))
   expect_equal(nrow(result$tables$summary), 7L)

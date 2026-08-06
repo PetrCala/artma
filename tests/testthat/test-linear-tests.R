@@ -115,7 +115,7 @@ test_that("run_linear_models flags and marks conflicting rows on high-leverage d
   )
 
   set.seed(100)
-  utils::capture.output(res <- run_linear_models(df, opts), type = "message")
+  res <- run_linear_models(df, opts)
 
   conflicts <- res$coefficients[res$coefficients$ci_conflict %in% TRUE, , drop = FALSE]
   expect_gt(nrow(conflicts), 0)
@@ -138,11 +138,11 @@ test_that("linear_tests warns when few bootstrap replications are requested", {
     "artma.verbose" = 1
   )
 
-  # linear_tests() prints its result table regardless of verbosity (the table
-  # is the method's deliverable, not progress narration); capture.output
-  # keeps that off the test log while expect_message still sees the signaled
-  # condition, since sink redirection and condition signaling are orthogonal.
-  expect_message(utils::capture.output(linear_tests(df), type = "message"), "Only 10 bootstrap replications")
+  # linear_tests() prints its result table regardless of verbosity (the
+  # table is the method's deliverable, not progress narration); the test
+  # session's global sink (see setup.R) keeps that off the log, while
+  # expect_message's own inner handler still sees the signaled condition.
+  expect_message(linear_tests(df), "Only 10 bootstrap replications")
 })
 
 test_that("linear_tests does not warn about replications when the count is high enough", {
@@ -156,7 +156,7 @@ test_that("linear_tests does not warn about replications when the count is high 
     "artma.verbose" = 1
   )
 
-  expect_no_message(utils::capture.output(linear_tests(df), type = "message"), message = "bootstrap replications")
+  expect_no_message(linear_tests(df), message = "bootstrap replications")
 })
 
 test_that("linear_tests reports the count of estimates with disagreeing stars and CIs", {
@@ -172,7 +172,7 @@ test_that("linear_tests reports the count of estimates with disagreeing stars an
   )
 
   set.seed(100)
-  expect_message(utils::capture.output(linear_tests(df), type = "message"), "estimates are.*marked with")
+  expect_message(linear_tests(df), "estimates are.*marked with")
 })
 
 test_that("linear tests return tidy coefficients and summary", {
@@ -188,7 +188,7 @@ test_that("linear tests return tidy coefficients and summary", {
     "artma.verbose" = 1
   )
 
-  utils::capture.output(res <- linear_tests(df), type = "message")
+  res <- linear_tests(df)
 
   expect_named(res, c("tables", "plots", "meta"))
   expect_named(res$tables, "summary")
@@ -242,7 +242,7 @@ test_that("linear tests gracefully skip models with missing columns", {
     "artma.verbose" = 1
   )
 
-  utils::capture.output(res <- linear_tests(df), type = "message")
+  res <- linear_tests(df)
 
   expect_false("ols_precision_weighted" %in% res$meta$coefficients$model)
   expect_true("ols_precision_weighted" %in% names(res$meta$skipped))
@@ -261,10 +261,10 @@ test_that("bootstrap CIs are deterministic and seed-identical to the tidy-path i
   )
 
   set.seed(123)
-  utils::capture.output(res <- run_linear_models(df, options = opts), type = "message")
+  res <- run_linear_models(df, options = opts)
 
   set.seed(123)
-  utils::capture.output(res_repeat <- run_linear_models(df, options = opts), type = "message")
+  res_repeat <- run_linear_models(df, options = opts)
 
   ci_cols <- c("model", "term", "bootstrap_lower", "bootstrap_upper")
   ci <- res$coefficients[, ci_cols]
@@ -314,17 +314,14 @@ test_that("FE effect-beyond-bias SE comes from the auxiliary intercept model, no
   skip_if_not_installed("plm")
 
   df <- make_unbalanced_data()
-  utils::capture.output(
-    res <- run_linear_models(
-      df,
-      options = list(
-        add_significance_marks = FALSE,
-        bootstrap_replications = 0L,
-        conf_level = 0.95,
-        round_to = 3L
-      )
-    ),
-    type = "message"
+  res <- run_linear_models(
+    df,
+    options = list(
+      add_significance_marks = FALSE,
+      bootstrap_replications = 0L,
+      conf_level = 0.95,
+      round_to = 3L
+    )
   )
 
   fe <- res$coefficients[res$coefficients$model == "fe", , drop = FALSE]
@@ -345,17 +342,14 @@ test_that("FE effect-beyond-bias SE comes from the auxiliary intercept model, no
 
 test_that("study-weighted OLS gives each study equal total weight", {
   df <- make_unbalanced_data()
-  utils::capture.output(
-    res <- run_linear_models(
-      df,
-      options = list(
-        add_significance_marks = FALSE,
-        bootstrap_replications = 0L,
-        conf_level = 0.95,
-        round_to = 3L
-      )
-    ),
-    type = "message"
+  res <- run_linear_models(
+    df,
+    options = list(
+      add_significance_marks = FALSE,
+      bootstrap_replications = 0L,
+      conf_level = 0.95,
+      round_to = 3L
+    )
   )
 
   sw <- res$coefficients[res$coefficients$model == "ols_study_weighted", , drop = FALSE]
@@ -739,17 +733,14 @@ test_that("two-cluster data skips RE and BE with a plain-language reason", {
   df <- make_demo_data()
   df <- df[df$study_id %in% c("S1", "S2"), , drop = FALSE]
 
-  utils::capture.output(
-    res <- run_linear_models(
-      df,
-      options = list(
-        add_significance_marks = FALSE,
-        bootstrap_replications = 0L,
-        conf_level = 0.95,
-        round_to = 3L
-      )
-    ),
-    type = "message"
+  res <- run_linear_models(
+    df,
+    options = list(
+      add_significance_marks = FALSE,
+      bootstrap_replications = 0L,
+      conf_level = 0.95,
+      round_to = 3L
+    )
   )
 
   expect_true(all(c("re", "be") %in% names(res$skipped)))
@@ -778,17 +769,14 @@ test_that("singleton-cluster data skips FE and RE with a plain-language reason",
     check.names = FALSE
   )
 
-  utils::capture.output(
-    res <- run_linear_models(
-      df,
-      options = list(
-        add_significance_marks = FALSE,
-        bootstrap_replications = 0L,
-        conf_level = 0.95,
-        round_to = 3L
-      )
-    ),
-    type = "message"
+  res <- run_linear_models(
+    df,
+    options = list(
+      add_significance_marks = FALSE,
+      bootstrap_replications = 0L,
+      conf_level = 0.95,
+      round_to = 3L
+    )
   )
 
   expect_true(all(c("fe", "re") %in% names(res$skipped)))
@@ -807,17 +795,14 @@ test_that("constant within-cluster se skips FE and RE even with many clusters", 
   df <- make_demo_data()
   df$se <- stats::ave(df$se, df$study_id)
 
-  utils::capture.output(
-    res <- run_linear_models(
-      df,
-      options = list(
-        add_significance_marks = FALSE,
-        bootstrap_replications = 0L,
-        conf_level = 0.95,
-        round_to = 3L
-      )
-    ),
-    type = "message"
+  res <- run_linear_models(
+    df,
+    options = list(
+      add_significance_marks = FALSE,
+      bootstrap_replications = 0L,
+      conf_level = 0.95,
+      round_to = 3L
+    )
   )
 
   expect_true(all(c("fe", "re") %in% names(res$skipped)))
@@ -830,18 +815,15 @@ test_that("constant within-cluster se skips FE and RE even with many clusters", 
 test_that("panel models are skipped with a clear message when plm is unavailable", {
   df <- make_demo_data()
 
-  utils::capture.output(
-    res <- run_linear_models(
-      df,
-      options = list(
-        add_significance_marks = FALSE,
-        bootstrap_replications = 0L,
-        conf_level = 0.95,
-        round_to = 3L
-      ),
-      is_pkg_available = function(pkg) pkg != "plm"
+  res <- run_linear_models(
+    df,
+    options = list(
+      add_significance_marks = FALSE,
+      bootstrap_replications = 0L,
+      conf_level = 0.95,
+      round_to = 3L
     ),
-    type = "message"
+    is_pkg_available = function(pkg) pkg != "plm"
   )
 
   panel_models <- c("fe", "be", "re")
