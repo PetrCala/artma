@@ -73,6 +73,17 @@ variables; the standard-error term acts as a publication-bias control inside
 BMA by convention. They show up in the Model Averaging results alongside your
 own moderators, and a note is printed during variable selection.
 
+Automatic selection also excludes columns detected as derived encodings of
+the effect or its standard error, such as winsorized copies of the effect,
+t-statistics, or inverse standard errors, which many published datasets ship
+alongside the raw variables. Keeping one would make BMA regress the effect on
+a transform of itself, hiding every genuine moderator. Detection is based on
+rank and outlier-clipped correlations with the effect, the SE, 1/se, and
+effect/se (threshold 0.9); excluded columns are listed in a warning. If such
+a column is configured explicitly (`bma: true`), it is kept but warned about.
+To keep one on purpose without warnings, set `bma_allow_derived: true` on its
+entry in the data config.
+
 `robma` needs the `RoBMA` package, which in turn requires a working JAGS
 installation (via `rjags`). On Windows, CRAN's RoBMA source can fail to
 compile against JAGS 4.3.1; if RoBMA is not installed, the method is skipped

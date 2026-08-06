@@ -84,7 +84,8 @@ test_that("build_default_config_entry: entry has all expected fields", {
     "var_name", "var_name_verbose", "var_name_description",
     "data_type", "group_category", "variable_summary",
     "effect_sum_stats", "equal", "gltl", "bma", "bma_reference_var",
-    "bma_to_log", "bpe", "bpe_sum_stats", "bpe_equal", "bpe_gltl"
+    "bma_to_log", "bma_allow_derived", "bpe", "bpe_sum_stats",
+    "bpe_equal", "bpe_gltl"
   )
   expect_equal(sort(names(entry)), sort(expected_fields))
 })
