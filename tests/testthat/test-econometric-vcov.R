@@ -131,6 +131,27 @@ test_that("robust_vcov warns when clustering is silently lost", {
   )
 })
 
+test_that("robust_vcov warns on the no-cluster single-step downgrade to stats::vcov()", {
+  skip_if_not_installed("sandwich")
+  df <- make_vcov_fixture()
+  model <- stats::lm(effect ~ se, data = df)
+
+  # No cluster and no fallback_types: the sole (non-clustered) HC step is
+  # forced to fail with a bogus type, so the ladder falls through to
+  # stats::vcov(). This downgrade must still be warned about even though
+  # clustering was never requested and there is only one robust step.
+  expect_message(
+    robust_vcov(
+      model = model,
+      cluster = NULL,
+      engine = "sandwich",
+      clustered_type = "BOGUS",
+      fallback_types = character(0)
+    ),
+    regexp = "NOT clustered"
+  )
+})
+
 test_that("robust_vcov errors when a required cluster is NULL", {
   df <- make_vcov_fixture()
   model <- stats::lm(effect ~ se, data = df)
