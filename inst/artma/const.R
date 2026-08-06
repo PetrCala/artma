@@ -56,6 +56,7 @@ CONST <- list(
       BMA = "bma",
       BMA_REFERENCE_VAR = "bma_reference_var",
       BMA_TO_LOG = "bma_to_log",
+      BMA_ALLOW_DERIVED = "bma_allow_derived",
       BPE = "bpe",
       BPE_SUM_STATS = "bpe_sum_stats",
       BPE_EQUAL = "bpe_equal",

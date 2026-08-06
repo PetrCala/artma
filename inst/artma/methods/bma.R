@@ -214,7 +214,7 @@ prepare_bma_inputs <- function(df, config, use_vif_optimization, max_groups_to_r
     artma / econometric / bma[get_bma_data, find_optimal_bma_formula],
     artma / libs / core / validation[assert, validate, validate_columns],
     artma / libs / core / utils[get_verbosity],
-    artma / variable / bma[get_bma_priority_variables]
+    artma / variable / bma[flag_derived_bma_candidates, get_bma_priority_variables]
   )
 
   if (is.null(verbosity)) {
@@ -279,6 +279,31 @@ prepare_bma_inputs <- function(df, config, use_vif_optimization, max_groups_to_r
 
   if (!length(bma_vars)) {
     return(list(skipped = "No valid BMA variables available"))
+  }
+
+  # Configured moderators are used as-is, but warn when one looks like a
+  # derived encoding of the effect or its standard error (winsorized copy,
+  # t-statistic, inverse SE, ...): configs saved by older versions can carry
+  # such columns, and they silently corrupt the BMA results. Set bma: false on
+  # the column to drop it, or bma_allow_derived: true to keep it and silence
+  # this warning.
+  derived <- flag_derived_bma_candidates(
+    df,
+    setdiff(bma_vars, get_bma_priority_variables()),
+    config = config
+  )
+  if (nrow(derived) && verbosity >= 2) {
+    cli::cli_alert_warning(
+      "{nrow(derived)} configured BMA moderator{?s} look{?s/} like derived encoding{?s} of the effect or its standard error: {.val {derived$var_name}}"
+    )
+    details <- sprintf(
+      "%s: |cor| = %.3f with %s",
+      derived$var_name, derived$correlation, derived$target
+    )
+    cli::cli_bullets(stats::setNames(details, rep("*", length(details))))
+    cli::cli_inform(
+      "Regressing the effect on an encoding of itself hides every genuine moderator and drags the best-practice estimate toward the sample mean. Set {.code bma: false} on {cli::qty(nrow(derived))}{?this/these} column{?s} in the data config, or {.code bma_allow_derived: true} to keep {?it/them} and silence this warning."
+    )
   }
 
   # Only include 'effect' as required (dependent variable)
