@@ -152,9 +152,10 @@ robust_vcov <- function(model,
     }
   }
 
-  if (use_cluster || length(steps) > 1L) {
-    warn_downgrade("all robust estimators failed; using stats::vcov()")
-  }
+  # Reaching this point means every robust step errored, so the caller is
+  # about to receive classical (non-robust, non-clustered) SEs regardless of
+  # whether clustering was ever requested; always warn about that downgrade.
+  warn_downgrade("all robust estimators failed; using stats::vcov()")
   final_step()
 }
 
