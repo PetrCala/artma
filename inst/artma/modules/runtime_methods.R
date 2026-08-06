@@ -235,7 +235,11 @@ missing_suggested_packages <- function(suggests, is_installed = NULL) {
     return(character())
   }
   if (is.null(is_installed)) {
-    is_installed <- function(pkg) requireNamespace(pkg, quietly = TRUE)
+    # suppressMessages: requireNamespace(quietly = TRUE) still lets through
+    # namespace-loading messages from a suggested package's own dependencies
+    # (e.g. RoBMA lazily loading runjags), which have no user-actionable
+    # content and only fire once per session anyway.
+    is_installed <- function(pkg) suppressMessages(requireNamespace(pkg, quietly = TRUE))
   }
   suggests <- as.character(suggests)
   suggests[!vapply(suggests, function(pkg) isTRUE(is_installed(pkg)), logical(1))]

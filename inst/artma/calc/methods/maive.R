@@ -69,9 +69,13 @@ maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2
     cli::cli_abort("Missing required columns for MAIVE: {.field {missing_cols}}")
   }
 
-  # Call the MAIVE package function
+  # Call the MAIVE package function. MAIVE's own warnings are suppressed:
+  # the weak-instrument warning duplicates the diagnostic maive.R (the
+  # econometric wrapper) already re-derives and reports via cli_alert_warning,
+  # and clubSandwich's first-load "Registered S3 method overwritten" message
+  # is session noise with no user-actionable content.
   result <- tryCatch(
-    MAIVE::maive(
+    suppressWarnings(suppressMessages(MAIVE::maive(
       dat = dat,
       method = as.integer(method),
       weight = as.integer(weight),
@@ -81,7 +85,7 @@ maive <- function(dat, method = 3L, weight = 0L, instrument = 1L, studylevel = 2
       AR = as.integer(AR),
       first_stage = as.integer(first_stage),
       seed = as.integer(seed)
-    ),
+    ))),
     error = function(e) {
       cli::cli_abort(c(
         "MAIVE estimation failed: {e$message}",
