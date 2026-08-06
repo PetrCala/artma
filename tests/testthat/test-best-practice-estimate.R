@@ -4,6 +4,8 @@ box::use(
     expect_error,
     expect_named,
     expect_false,
+    expect_gt,
+    expect_lt,
     expect_setequal,
     expect_true,
     skip_if_not_installed,
