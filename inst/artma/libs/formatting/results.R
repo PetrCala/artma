@@ -159,6 +159,16 @@ print_summary_table <- function(summary) {
   if (duplicated_metric) {
     rownames(summary) <- NULL
   }
+
+  # print.data.frame tears a table into stacked, row-numbered column blocks
+  # once the formatted row width exceeds getOption("width") (80 by default).
+  # Widen it for the duration of this call so wide summary tables render as
+  # one block; the terminal still soft-wraps long lines visually, this only
+  # stops the artificial hard split into duplicate sections.
+  old_width <- getOption("width")
+  on.exit(options(width = old_width), add = TRUE)
+  options(width = 10000L)
+
   lines <- utils::capture.output(
     print(summary, row.names = !duplicated_metric) # nolint: undesirable_function_linter.
   )

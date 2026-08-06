@@ -17,6 +17,7 @@ effect_summary_stats <- function(df) {
     ],
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[validate, validate_columns],
+    artma / libs / formatting / results[print_summary_table],
     artma / modules / runtime_methods[new_method_result],
     artma / options / index[get_option_group],
     artma / options / resolver[opt_spec, resolve_options]
@@ -282,7 +283,7 @@ effect_summary_stats <- function(df) {
 
   if (get_verbosity() >= 3) {
     cli::cli_h3("Summary statistics:")
-    cli::cat_print(out)
+    print_summary_table(out)
   }
 
   invisible(new_method_result(tables = list(summary = out)))
