@@ -34,19 +34,34 @@ artma::options.create(
 stdout_file <- tempfile("artma-cli-stdout-", fileext = ".txt")
 stderr_file <- tempfile("artma-cli-stderr-", fileext = ".txt")
 
+# `system2()` shell-quotes the command but pastes `args` in verbatim, so every
+# argument carrying shell metacharacters has to be quoted here. Without this the
+# parentheses in the `-e` expression abort the run under `sh` before Rscript is
+# ever reached ("Syntax error: \"(\" unexpected").
 cli_args <- c(
-  "-e", "quit(save = 'no', status = artma::cli.run())",
+  "-e", shQuote("quit(save = 'no', status = artma::cli.run())"),
   "run",
   "--options", "cli.yaml",
-  "--options-dir", options_dir,
+  "--options-dir", shQuote(options_dir),
   "--methods", "funnel_plot,effect_summary_stats",
   "--json"
 )
 
-status <- system2("Rscript", cli_args, stdout = stdout_file, stderr = stderr_file)
+rscript <- file.path(R.home("bin"), "Rscript")
+status <- system2(rscript, cli_args, stdout = stdout_file, stderr = stderr_file)
 
-stdout_txt <- paste(readLines(stdout_file, warn = FALSE), collapse = "\n")
-stderr_txt <- paste(readLines(stderr_file, warn = FALSE), collapse = "\n")
+# A subprocess that never starts leaves the redirect files uncreated; read
+# defensively so the abort below reports the real failure rather than an
+# unrelated "cannot open the connection" from readLines().
+read_capture <- function(path) {
+  if (!file.exists(path)) {
+    return("")
+  }
+  paste(readLines(path, warn = FALSE), collapse = "\n")
+}
+
+stdout_txt <- read_capture(stdout_file)
+stderr_txt <- read_capture(stderr_file)
 
 if (!identical(as.integer(status), 0L)) {
   cli::cli_abort(c(
