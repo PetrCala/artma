@@ -121,17 +121,20 @@ robma <- function(df) {
     )
   }
 
-  effect_prior <- RoBMA::prior(
+  # suppressMessages: RoBMA lazily loads its runjags backend on first use,
+  # which prints a raw "Loading required namespace: runjags" line with no
+  # user-actionable content.
+  effect_prior <- suppressMessages(RoBMA::prior(
     distribution = "cauchy",
     parameters = list(location = 0, scale = effect_prior_scale),
     truncation = list(lower = 0, upper = Inf)
-  )
-  heterogeneity_prior <- RoBMA::prior(
+  ))
+  heterogeneity_prior <- suppressMessages(RoBMA::prior(
     distribution = "invgamma",
     parameters = list(shape = heterogeneity_shape, scale = heterogeneity_scale)
-  )
+  ))
 
-  fit <- RoBMA::RoBMA(
+  fit <- suppressMessages(RoBMA::RoBMA(
     yi = fit_data$effect,
     sei = fit_data$se,
     cluster = cluster_ids,
@@ -146,7 +149,7 @@ robma <- function(df) {
     autofit = isTRUE(autofit),
     seed = if (is.na(seed)) NULL else as.integer(seed),
     silent = get_verbosity() < 4
-  )
+  ))
 
   ensemble <- summary(fit)
   models <- RoBMA::summary_models(fit, type = "individual")

@@ -88,9 +88,21 @@ enforce_data_types <- function(df) {
       next
     }
     if (dtype %in% c("int", "dummy")) {
-      df[[col_name]] <- as.integer(df[[col_name]])
+      old_col <- df[[col_name]]
+      new_col <- suppressWarnings(as.integer(old_col))
+      n_coerced <- sum(is.na(new_col) & !is.na(old_col))
+      if (n_coerced > 0 && get_verbosity() >= 2) {
+        cli::cli_alert_warning("Coerced {.val {n_coerced}} non-integer value{?s} to {.val NA} in column {.field {col_name}}.")
+      }
+      df[[col_name]] <- new_col
     } else if (dtype %in% c("float", "perc")) {
-      df[[col_name]] <- as.numeric(df[[col_name]])
+      old_col <- df[[col_name]]
+      new_col <- suppressWarnings(as.numeric(old_col))
+      n_coerced <- sum(is.na(new_col) & !is.na(old_col))
+      if (n_coerced > 0 && get_verbosity() >= 2) {
+        cli::cli_alert_warning("Coerced {.val {n_coerced}} non-numeric value{?s} to {.val NA} in column {.field {col_name}}.")
+      }
+      df[[col_name]] <- new_col
     } else if (dtype == "category") {
       df[[col_name]] <- as.character(df[[col_name]])
     }
@@ -229,7 +241,7 @@ winsorize_data <- function(df) {
   }
 
   if (get_verbosity() >= 3) {
-    cli::cli_inform("Winsorizing data at {.val {winsorization_level}} level...")
+    cli::cli_alert_info("Winsorizing data at {.val {winsorization_level}} level...")
   }
 
   # Winsorize effect column

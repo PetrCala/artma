@@ -112,12 +112,12 @@ options.validate <- function(
   if (length(errors) > 0) {
     cli::cli_alert_danger("Validation failed.")
 
-    cli::cli_h1("Validation errors found:")
-    for (err in errors) {
-      cli::cli_alert_danger(err$message)
-    }
-
     if (get_verbosity() >= 2) {
+      cli::cli_h1("Validation errors found:")
+      for (err in errors) {
+        cli::cli_alert_danger(err$message)
+      }
+
       cli::cli_h3("Possible Resolutions:")
       cli::cli_ul()
       cli::cli_li("Run {.code artma::options.help(c('opt.name1', 'opt.name2', ...))} to view detailed descriptions of the specified options.")

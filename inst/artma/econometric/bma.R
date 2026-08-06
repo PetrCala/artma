@@ -478,7 +478,7 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
     cli::cli_h3("Bayesian Model Averaging Results")
   }
 
-  if (print_results %in% c("verbose", "all")) {
+  if (print_results %in% c("verbose", "all") && get_verbosity() >= 2) {
     cli::cat_print(bma_model)
     cli::cat_print(bma_model$topmod[1])
   } else if (print_results == "fast") {
@@ -503,8 +503,8 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
     )
 
     has_corrplot <- requireNamespace("corrplot", quietly = TRUE)
-    if (!has_corrplot) {
-      cli::cli_warn("Package {.pkg corrplot} is not installed; skipping the BMA correlation plot. Install with: install.packages('corrplot')")
+    if (!has_corrplot && get_verbosity() >= 2) {
+      cli::cli_alert_info("Package {.pkg corrplot} is not installed; skipping the BMA correlation plot. Install with: install.packages('corrplot')")
     }
 
     bma_matrix <- stats::cor(bma_data)
@@ -580,7 +580,7 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
       )
       safe_render_plot(main_plot_call, "image plot")
       grDevices::dev.off()
-    } else {
+    } else if (get_verbosity() >= 3) {
       cli::cli_alert_info(
         "Skipping the BMA image plot export: it needs at least 4 regressors (model has {n_regressors})."
       )

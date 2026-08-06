@@ -240,8 +240,14 @@ cache_cli <- function(fun,
 
   resolve_memoised <- function() {
     if (is.null(memo_state$memoised)) {
-      resolved_cache <- if (is.null(supplied_cache)) default_cache() else supplied_cache
-      memo_state$memoised <- memoise::memoise(worker, cache = resolved_cache)
+      # suppressMessages: constructing the cache (memoise::cache_filesystem())
+      # and memoise::memoise() itself both load the digest namespace on first
+      # use in a session, printing a raw "Loading required namespace: digest"
+      # line with no user-actionable content.
+      resolved_cache <- suppressMessages(
+        if (is.null(supplied_cache)) default_cache() else supplied_cache
+      )
+      memo_state$memoised <- suppressMessages(memoise::memoise(worker, cache = resolved_cache))
       memo_state$drop <- memoise::drop_cache(memo_state$memoised)
     }
     memo_state
