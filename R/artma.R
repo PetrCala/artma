@@ -162,12 +162,21 @@ artma <- function(
       box::use(
         artma / data / preprocess[clean_data, preprocess_data],
         artma / data / configure[resolve_na_handling],
-        artma / data / compute[compute_optional_columns, update_config_with_computed_columns]
+        artma / data / compute[compute_optional_columns, update_config_with_computed_columns],
+        artma / data_config / resolve[prime_df_for_config_cache]
       )
 
       if (get_verbosity() >= 3) {
         cli::cli_inform("Using provided data frame (skipping file read step).")
       }
+
+      # Prime the data-config module cache with the frame we already have, so
+      # the repeated `get_data_config()` / `read_df_for_config()` calls inside
+      # `update_config_with_computed_columns()` below reuse it instead of
+      # re-reading and re-standardizing `artma.data.source_path` from disk
+      # (mirroring the priming step `prepare_data()` performs for the
+      # file-backed path).
+      prime_df_for_config_cache(data)
 
       resolve_na_handling(clean_data(data))
       df <- preprocess_data(data)
