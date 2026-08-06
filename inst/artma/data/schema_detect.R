@@ -18,6 +18,14 @@ is_valid_colname <- function(x) {
 #' @param columns_store *\[list\]* The unified per-column store
 #'   (from `artma.data.columns`): one record per column, keyed by the standard
 #'   name for role columns and by the column's own name for moderators.
+#' @param required *\[character, optional\]* The raw columns treated as required
+#'   for identity-mapping and drift purposes. Defaults to `NULL`, which uses
+#'   the full `get_required_colnames()` set (the historical behavior). Callers
+#'   that know which methods are actually being run pass a narrower,
+#'   run-specific set here; see `artma / data / method_requirements
+#'   [resolve_hard_required_colnames]`. A column outside this set that goes
+#'   missing is reported as a missing moderator instead of a missing role, so
+#'   it never forces schema reconciliation to abort or prompt.
 #' @return *\[list\]* Drift report with fields: `missing_roles` (named character
 #'   vector, names = standard names, values = the stored source columns that
 #'   vanished), `missing_moderators`, `added`, `conflicts` (named character
@@ -25,7 +33,7 @@ is_valid_colname <- function(x) {
 #'   different raw column of the same name, values = the mapped source
 #'   columns), and `has_drift`.
 #' @keywords internal
-detect_schema_drift <- function(raw_df, columns_store) {
+detect_schema_drift <- function(raw_df, columns_store, required = NULL) {
   box::use(
     artma / data / utils[get_required_colnames, get_standardized_colnames],
     artma / const[CONST]
@@ -33,7 +41,9 @@ detect_schema_drift <- function(raw_df, columns_store) {
 
   df_cols <- make.names(colnames(raw_df))
   std_names <- get_standardized_colnames()
-  required <- get_required_colnames()
+  if (is.null(required)) {
+    required <- get_required_colnames()
+  }
 
   if (!is.list(columns_store)) columns_store <- list()
   store_keys <- names(columns_store)
