@@ -217,15 +217,22 @@ compute_bpe_economic_significance <- function(predictors, bma_data, coef_post_me
 
 #' @title Best-Practice Estimate Grouped by Factor Levels
 #' @description
-#' For every predictor flagged via `bpe_sum_stats`/`bpe_equal`/`bpe_gltl` in
-#' the data config, splits the BMA observations into factor-level groups
-#' (mirroring `effect_summary_stats`) and computes the best-practice estimate
-#' for each group, holding every other predictor at its configured/resolved
-#' override.
+#' Splits the BMA observations into factor-level groups (mirroring
+#' `effect_summary_stats`) and computes the best-practice estimate for each
+#' group, holding every other predictor at its configured/resolved override.
+#' A predictor is grouped when it is explicitly flagged via
+#' `bpe_sum_stats`/`bpe_equal`/`bpe_gltl` in the data config, or, when
+#' `auto_detect_factor_vars` is `TRUE`, when it is not explicitly flagged but
+#' still resolves to 2-12 distinct levels (the same bound
+#' `resolve_variable_groups()` applies to its own per-level fallback). Most
+#' moderators in meta-analysis datasets are dummy/category variables, so this
+#' default keeps the table populated without requiring config beforehand;
+#' set `auto_detect_factor_vars = FALSE` to only group explicitly flagged
+#' variables.
 #' @keywords internal
 compute_bpe_factor_summary <- function(predictors, config, bma_data, coef_post_mean, include_intercept,
                                        vcov_matrix, z_value, overrides, round_to,
-                                       centers = NULL, scales = NULL) {
+                                       centers = NULL, scales = NULL, auto_detect_factor_vars = TRUE) {
   empty <- data.frame(
     scope = character(0),
     study_id = character(0),
@@ -242,12 +249,12 @@ compute_bpe_factor_summary <- function(predictors, config, bma_data, coef_post_m
 
   for (var_name in predictors) {
     config_key <- find_config_key_for_var(var_name, config)
-    if (is.null(config_key)) {
-      next
-    }
+    var_cfg <- if (is.null(config_key)) NULL else config[[config_key]]
 
-    var_cfg <- config[[config_key]]
-    if (!is_bpe_factor_var(var_cfg)) {
+    # Explicit flags always take part; without one, auto-detection still
+    # attempts the variable and relies on resolve_variable_groups()'s own
+    # 2-12 level bound to skip genuinely continuous predictors below.
+    if (!is_bpe_factor_var(var_cfg) && !isTRUE(auto_detect_factor_vars)) {
       next
     }
 
