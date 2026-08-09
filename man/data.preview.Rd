@@ -32,7 +32,9 @@ options-dependent standardization or preprocessing.}
 }
 \value{
 Invisible \code{NULL}. Opens the data in the standard R viewer
-(\code{utils::View()}).
+(\code{utils::View()}). When no viewer is available (a non-interactive
+session, or a Unix session with no reachable display), the first rows are
+printed instead.
 }
 \description{
 Open a data frame in R's viewer. Data can be supplied as a file path, a data

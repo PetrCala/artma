@@ -20,7 +20,9 @@
 #'   options-dependent standardization or preprocessing.
 #'
 #' @return Invisible \code{NULL}. Opens the data in the standard R viewer
-#'   (\code{utils::View()}).
+#'   (\code{utils::View()}). When no viewer is available (a non-interactive
+#'   session, or a Unix session with no reachable display), the first rows are
+#'   printed instead.
 #'
 #' @details
 #' Three data sources are supported:
@@ -75,6 +77,7 @@ data.preview <- function(
     artma / data / index[prepare_data],
     artma / data / preprocess[preprocess_data],
     artma / data / compute[compute_optional_columns],
+    artma / libs / core / utils[data_viewer_available, get_verbosity],
     artma / libs / core / validation[assert]
   )
 
@@ -99,6 +102,18 @@ data.preview <- function(
   )
 
   view_if_available <- function(x, title) {
+    if (!data_viewer_available()) {
+      if (get_verbosity() >= 3) {
+        cli::cli_inform(c(
+          "!" = "No data viewer is available in this session, printing the first rows instead.",
+          "i" = "{title}: {nrow(x)} row{?s}, {ncol(x)} column{?s}."
+        ))
+        cli::cli_verbatim(
+          utils::capture.output(print(utils::head(x, 10L))) # nolint: undesirable_function_linter.
+        )
+      }
+      return(invisible(NULL))
+    }
     tryCatch(
       utils::View(x, title = title),
       error = function(e) invisible(NULL)
@@ -121,8 +136,6 @@ data.preview <- function(
 
   # All other cases: need runtime_setup (options), then resolve df and optionally preprocess
   main <- function() {
-    box::use(artma / libs / core / utils[get_verbosity])
-
     if (is.null(data)) {
       if (isFALSE(preprocess)) {
         df <- read_data()

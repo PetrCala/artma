@@ -2,9 +2,12 @@ box::use(
   testthat[
     expect_equal,
     expect_error,
+    expect_false,
     expect_invisible,
+    expect_match,
     expect_null,
     expect_true,
+    skip_if,
     test_that
   ],
   withr[local_options]
@@ -64,6 +67,34 @@ test_that("data.preview rejects invalid data", {
     artma::data.preview(1L, preprocess = FALSE),
     "NULL, a file path"
   )
+})
+
+test_that("the data viewer is never opened in a non-interactive session", {
+  box::use(artma / libs / core / utils[data_viewer_available])
+
+  skip_if(interactive(), "Only meaningful in a non-interactive session")
+
+  # utils::View() aborts the R session on Unix builds whose only viewer is the
+  # X11 data entry window, so data.preview() must not reach it here.
+  expect_false(data_viewer_available())
+})
+
+test_that("data.preview prints a preview when no viewer is available", {
+  box::use(artma / libs / core / utils[data_viewer_available])
+
+  skip_if(data_viewer_available(), "A data viewer is available in this session")
+
+  withr::local_options(list(artma.verbose = 3))
+
+  df <- data.frame(study_id = c("A", "B"), effect = c(0.5, 0.3))
+
+  emitted <- paste(
+    testthat::capture_messages(artma::data.preview(df, preprocess = FALSE)),
+    collapse = ""
+  )
+
+  expect_match(emitted, "No data viewer")
+  expect_match(emitted, "study_id")
 })
 
 test_that("read_data returns data frame without standardizing column names", {

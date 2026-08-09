@@ -33,6 +33,7 @@ utils::globalVariables(c(
   "core",
   "data",
   "data_config",
+  "data_viewer_available",
   "display_ma_table",
   "editor",
   "editor_mod",
