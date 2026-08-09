@@ -1,20 +1,9 @@
 
-<a name="unreleased"></a>
+<a name="v0.3.5"></a>
 
-## Unreleased
+## [v0.3.5](https://github.com/PetrCala/artma/compare/v0.3.3...v0.3.5)
 
-### Breaking Changes
-
-* Removed the legacy per-method `<method>.add_significance_marks` option fallback. Significance marks are now driven solely by the canonical `methods.add_significance_marks` template key and its default.
-* The autonomy system now uses the three named levels `ask_more`, `balanced`, and `autonomous` instead of the old 1-5 numeric scale. Numeric values are still accepted by `autonomy.set()` but are deprecated and translated to the nearest named level with a warning.
-
-### Bug Fixes
-
-* Option reads without a default now fail loud via `require_option`, and option coercion aborts on bad values (non-numeric numerics, fractional integers, out-of-range enums) instead of silently keeping the raw value.
-
-### Code Refactoring
-
-* Reduced the runtime dependency footprint: `metafor` was dropped and several packages (including `plm` and `NlcOptim`) moved to `Suggests`, so they install only when a method that needs them runs.
+> 2026-08-09
 
 
 <a name="v0.3.3"></a>
@@ -22,6 +11,128 @@
 ## [v0.3.3](https://github.com/PetrCala/artma/compare/v0.3.2...v0.3.3)
 
 > 2026-02-11
+
+### Bug Fixes
+
+* parallel cdfs workers function in the elliott model calculations
+* add missing global variables
+* description versino control
+* failing funnel plot tests
+* duplicate data reading during the main pipeline
+* attempt to remove extra printed rows
+* recover stale options files with template defaults
+* box imports around the elliott cpp functions
+* maive output formatting issue
+* set the artma open results default to false
+* remaining lints in the package
+* lints around the project
+* lint setup
+* elliott tests
+* elliott options
+* results.open folder path
+* fma option template duplicates
+* r cmd check notes/warnings
+* box_plot detection
+* failing tests
+* add proper visualization text to gg plots
+* return the main results of the artma method silently
+* mice algorithm na handling
+* pressing enter upon options value ask leads to file/folder choice
+* box plot rendering, autonomy level detection
+* update the methods return objects to print the output into console cleanly
+* test example lib imports
+* lints
+* remove failing tests
+* missing success print; create an options file if none exist when necessary
+* the interactive columns mapping now works
+* interactive mapping column selection
+* data reading during data preprocessing
+* more lint issues
+* indentation issues
+* ensure the system editors are available for editor opening
+* options edge cases
+* add computed columns to data config and suppress misleading warnings
+* use full path when saving preferences to options file
+* automatically remove aliased variables during BMA analysis
+* display variable reason correctly in suggestion output
+* correct data config import and add integration tests
+* remove automatic addition of 'se' to BMA variables
+* only exclude effect variable from BMA selection
+* update bma coefficient extraction
+* update the way bma objects are validated upon input
+* update the maive package reference
+* move AER and ivmodel from Imports to Suggests
+* handle vector values in option NA validation
+
+### Code Refactoring
+
+* make study ID column detection smarter
+* add a parallel cdfs computation
+* make the data config option sparse
+* unify and clean up visualization logic
+* unify study_id vs. study usage
+* clean up the autonomy system
+* make the follow-up user choice prompts respect autonomy
+* clean up the package structure
+* redirect user to r universe links in more help
+* unify the invocation public api methods to 'artma'
+* the data source is now read in two-steps to enable column mapping
+* add better whitespace na handling when reading data
+* the na handling method now distinguishes between numeric and non-numeric columns
+* updated column position verification
+* the data preprocessing now removes empty columns based on quality, not position
+* simplify editor detection
+* change the maive installation to use the CRAN version
+* the bma variables selection is now saved to the data config node
+* modify bma variable selection; add prompts
+* add explanatory messages and fully silence clubSandwich warning
+* improve progress messages and silence clubSandwich warning
+* add Caliper tests to p-hacking method (partial integration)
+* remove 5 unnecessary dependencies with custom polyfills
+
+### Features
+
+* automatically open latest results through results.open by default
+* add prima-facie graphs
+* add rcpp, elliott cdfs faster calculation
+* persist the temporary results directories in the user option files
+* add a unified results handling
+* add FMA
+* add a t-stat histogram runtime method
+* add viz public methods
+* add a data.preview function
+* add funnel plot
+* add visualization module; box-plot
+* add help suppression for some option prompts
+* add the autonomy system
+* add a welcome message
+* implement the select all option of the climenu
+* add a public method options.delete
+* add options vignette, improve the ask/utils functions
+* allow the user to use a mock source DF
+* add auto columns detection
+* add better column type detection
+* add functionality for choosing a suitable editor
+* enhance optional column computation with comprehensive auto-calculation
+* add reusable save preference prompt for configuration choices
+* add comprehensive missing value handling system with smart prompts
+* add collinearity detection and priority mechanism for BMA variable suggestions
+* implement automatic variable suggestion for BMA
+* add interactive variable selection for effect summary stats
+* add make stats command for repository statistics
+* implement automatic variable suggestion for effect summary stats
+* implement interactive BMA variable selection
+* implement Bayesian Model Averaging (BMA) method
+* add winsorization to data preprocessing
+* add caliper_display_ratios option for Caliper tests
+* enhance p-hacking tests output formatting
+* integrate MAIVE package from GitHub
+* integrate Caliper, Elliott, and MAIVE as unified p-hacking tests
+* add p-hacking tests as a new runtime method
+
+### Performance Improvements
+
+* add progress bars and fix hash overflow warnings
 
 
 <a name="v0.3.2"></a>
