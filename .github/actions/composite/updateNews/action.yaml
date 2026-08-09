@@ -21,14 +21,22 @@ runs:
         ref: master
         token: ${{ inputs.ARTMA_BOT_COMMIT_TOKEN }}
 
-    - name: Set up homebrew
-      uses: 'Homebrew/actions/setup-homebrew@master'
-
-    - name: Install dependencies
+    # Installed from the upstream release tarball rather than Homebrew.
+    # git-chglog only ships via its own tap, and Homebrew now refuses formulae
+    # from untrusted third-party taps, which broke every release build. A
+    # pinned binary also drops the ~40s Homebrew bootstrap.
+    - name: Install git-chglog
       shell: bash
+      env:
+        CHGLOG_VERSION: 0.15.4
       run: |
-        brew tap git-chglog/git-chglog
-        brew install git-chglog
+        set -euo pipefail
+        curl -fsSL -o chglog.tar.gz \
+          "https://github.com/git-chglog/git-chglog/releases/download/v${CHGLOG_VERSION}/git-chglog_${CHGLOG_VERSION}_linux_amd64.tar.gz"
+        tar -xzf chglog.tar.gz git-chglog
+        sudo install -m 755 git-chglog /usr/local/bin/git-chglog
+        rm -f chglog.tar.gz git-chglog
+        git-chglog --version
 
     - name: Setup git for ArtmaBot
       uses: ./.github/actions/composite/setupGitForArtmaBot
