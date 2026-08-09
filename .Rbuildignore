@@ -21,6 +21,7 @@
 ^doc$
 ^Meta$
 ^cran-comments\.md$
+^manual_cran_comments\.md$
 ^CRAN-SUBMISSION$
 ^assets\.txt$
 ^metadata\.json$
