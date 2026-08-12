@@ -924,6 +924,10 @@ data:
       Full path to your dataset source. The special value {.val mock} generates
       a mock dataset and points this option at it; it works both at the
       interactive prompt and when passed programmatically via `user_input`.
+      The mock dataset is written to `mock/mock-data.csv` under
+      `tools::R_user_dir("artma", "data")`, so it survives the R session and the
+      saved path keeps resolving in later runs. An existing mock file is reused
+      rather than regenerated.
 
   na_handling:
     type: "enum: stop|remove|median|mean|interpolate|mice"
