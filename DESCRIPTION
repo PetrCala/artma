@@ -44,6 +44,7 @@ Suggests:
     htmlwidgets (>= 1.6.0),
     jsonlite (>= 1.8.0),
     knitr (>= 1.50),
+    lintr (>= 3.2.0),
     MAIVE (>= 0.2.4),
     mice (>= 3.16.0),
     NlcOptim (>= 0.6),
