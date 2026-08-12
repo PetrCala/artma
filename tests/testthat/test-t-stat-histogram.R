@@ -62,7 +62,7 @@ test_that("t_stat_histogram creates both plots with defaults", {
   result <- t_stat_histogram(df)
 
   expect_s3_class(result, "artma_t_stat_histogram")
-  expect_named(result, c("tables", "plots", "meta"))
+  expect_named(result, c("tables", "estimates", "plots", "meta"))
   expect_named(result$plots, c("plot_main", "plot_close_up"))
   expect_named(result$meta, c(
     "n_observations", "n_outliers_main", "n_outliers_close_up",

@@ -68,11 +68,51 @@ linear_tests <- function(df) {
 
   invisible(new_method_result(
     tables = list(summary = results$summary),
+    estimates = linear_tests_estimates(results$coefficients),
     meta = list(
       coefficients = results$coefficients,
       skipped_models = results$skipped,
       options = results$options
     )
+  ))
+}
+
+#' @title Tidy estimates for the linear tests
+#' @description
+#' Map the per-model coefficient frame onto the shared `estimates` schema. The
+#' numbers are carried over verbatim: the rounded and formatted columns that sit
+#' alongside them in `coefficients` belong to the display table only.
+#' @param coefficients *\[data.frame\]* The coefficient frame from
+#'   `run_linear_models()`.
+#' @return *\[data.frame\]* A frame in the shared estimates schema.
+linear_tests_estimates <- function(coefficients) {
+  box::use(
+    artma / modules / runtime_methods[new_estimates]
+  )
+
+  if (!is.data.frame(coefficients) || nrow(coefficients) == 0L) {
+    return(new_estimates())
+  }
+
+  # The display table marks these rows with a dagger; the note carries the same
+  # warning for a consumer that never sees the formatted table.
+  conflict <- coefficients$ci_conflict %||% rep(NA, nrow(coefficients))
+  note <- rep(NA_character_, nrow(coefficients))
+  note[!is.na(conflict) & conflict] <- "Bootstrap confidence interval and analytic significance disagree"
+
+  new_estimates(data.frame(
+    method = "linear_tests",
+    model = coefficients$model,
+    term = coefficients$term,
+    estimate = coefficients$estimate,
+    std_error = coefficients$std_error,
+    statistic = coefficients$statistic,
+    p_value = coefficients$p_value,
+    conf_low = coefficients$bootstrap_lower,
+    conf_high = coefficients$bootstrap_upper,
+    n_obs = coefficients$n_obs,
+    note = note,
+    stringsAsFactors = FALSE
   ))
 }
 
@@ -123,4 +163,4 @@ run <- register_runtime_method(
   required_columns = c("effect", "se", "study_id")
 )
 
-box::export(linear_tests, resolve_linear_tests_options, run)
+box::export(linear_tests, linear_tests_estimates, resolve_linear_tests_options, run)

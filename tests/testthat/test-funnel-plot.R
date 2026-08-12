@@ -57,7 +57,7 @@ test_that("funnel_plot creates a plot with required columns", {
   result <- funnel_plot(df)
 
   expect_s3_class(result, "artma_funnel_plot")
-  expect_named(result, c("tables", "plots", "meta"))
+  expect_named(result, c("tables", "estimates", "plots", "meta"))
   expect_named(result$plots, "funnel_plot")
   expect_named(
     result$meta,

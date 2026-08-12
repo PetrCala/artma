@@ -183,9 +183,9 @@ save_table <- function(df, name, output_dir, formats = resolve_table_formats()) 
 #'
 #' @description
 #' Iterates over a named list of method results and exports each method's
-#' tabular data (the `tables` slot of the standard return contract) as CSV
-#' files. Graphics are written by each method during execution, so plot-only
-#' methods simply contribute no tables here.
+#' tabular data (the `estimates` and `tables` slots of the standard return
+#' contract). Graphics are written by each method during execution, so
+#' plot-only methods simply contribute no tables here.
 #'
 #' @param results *\[list\]* Named list of method results from `invoke_runtime_methods()`.
 #' @param output_dir *\[character\]* The base output directory.
@@ -232,12 +232,19 @@ resolve_table_basename <- function(method_name, key) {
 #' Export a single method's result
 #'
 #' @description
-#' A generic walk over the standard return contract. Every `data.frame` in the
-#' result's `tables` slot is written in each configured table format (see
-#' `resolve_table_formats()`); everything else (`plots`, `meta`) is ignored
-#' here. There are no per-method branches.
+#' A generic walk over the standard return contract. When the result carries an
+#' `estimates` frame, that frame is the machine-readable artifact and takes the
+#' `<method_name>.csv` name: it is written unrounded, exactly as the method
+#' produced it, and the display table that would otherwise own that name moves
+#' to `<method_name>_display.csv`. LaTeX output is inherently presentational, so
+#' it stays driven by the display tables under their original names and the
+#' `estimates` frame is never written as `.tex`.
 #'
-#' @param result The method's return value (a `list` with a `tables` slot).
+#' Everything else (`plots`, `meta`) is ignored here. There are no per-method
+#' branches.
+#'
+#' @param result The method's return value (a `list` with `tables` and
+#'   `estimates` slots).
 #' @param method_name *\[character\]* The method name.
 #' @param output_dir *\[character\]* The base output directory.
 #' @keywords internal
@@ -246,18 +253,40 @@ export_method_result <- function(result, method_name, output_dir) {
     return(invisible())
   }
 
+  formats <- resolve_table_formats()
+  write_csv <- "csv" %in% formats
+  write_tex <- "tex" %in% formats
+
+  estimates <- result$estimates
+  has_estimates <- is.data.frame(estimates)
+  if (has_estimates && write_csv) {
+    save_table(estimates, method_name, output_dir, formats = "csv")
+  }
+
   tables <- result$tables
   if (!is.list(tables) || length(tables) == 0L) {
     return(invisible())
   }
 
-  formats <- resolve_table_formats()
   table_names <- names(tables)
   for (i in seq_along(tables)) {
     tbl <- tables[[i]]
     if (!is.data.frame(tbl)) next
     key <- if (is.null(table_names)) NULL else table_names[[i]]
-    save_table(tbl, resolve_table_basename(method_name, key), output_dir, formats = formats)
+    table_basename <- resolve_table_basename(method_name, key)
+
+    if (write_csv) {
+      csv_basename <- if (has_estimates && identical(table_basename, method_name)) {
+        paste0(method_name, "_display")
+      } else {
+        table_basename
+      }
+      save_table(tbl, csv_basename, output_dir, formats = "csv")
+    }
+
+    if (write_tex) {
+      save_table(tbl, table_basename, output_dir, formats = "tex")
+    }
   }
 
   invisible()

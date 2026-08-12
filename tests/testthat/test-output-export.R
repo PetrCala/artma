@@ -314,3 +314,92 @@ test_that("export_results skips non-data-frame entries in the tables slot", {
   expect_true(file.exists(file.path(dir, "tables", "m.csv")))
   expect_false(file.exists(file.path(dir, "tables", "m_junk.csv")))
 })
+
+# estimates slot ------------------------------------------------------------
+
+make_estimates <- function() {
+  box::use(artma / modules / runtime_methods[new_estimates])
+  new_estimates(data.frame(
+    method = "linear_tests",
+    model = c("ols", "fixed_effects"),
+    term = "publication_bias",
+    estimate = c(-0.1294827361, -0.1281193744),
+    std_error = c(0.0451927364, 0.0483112947),
+    p_value = c(0.0042719384, 0.0081264739),
+    stringsAsFactors = FALSE
+  ))
+}
+
+test_that("export_results writes estimates as <method>.csv and moves the display table", {
+  dir <- setup_output_dir()
+  display <- data.frame(Metric = "Publication Bias", OLS = "-0.129***")
+
+  export_results(
+    list(linear_tests = list(tables = list(summary = display), estimates = make_estimates())),
+    dir
+  )
+
+  expect_true(file.exists(file.path(dir, "tables", "linear_tests.csv")))
+  expect_true(file.exists(file.path(dir, "tables", "linear_tests_display.csv")))
+
+  written_display <- utils::read.csv(file.path(dir, "tables", "linear_tests_display.csv"), stringsAsFactors = FALSE)
+  expect_equal(written_display$OLS, "-0.129***")
+})
+
+test_that("exported estimates round-trip as unrounded numerics", {
+  dir <- setup_output_dir()
+  local_options(artma.output.number_of_decimals = 3)
+  estimates <- make_estimates()
+
+  export_results(list(linear_tests = list(tables = list(summary = data.frame(a = 1)), estimates = estimates)), dir)
+
+  written <- utils::read.csv(file.path(dir, "tables", "linear_tests.csv"), stringsAsFactors = FALSE)
+  expect_true(is.numeric(written$estimate))
+  expect_true(is.numeric(written$std_error))
+  expect_true(is.numeric(written$p_value))
+  expect_equal(written$estimate, estimates$estimate)
+  # Display precision must not leak into the machine-readable artifact.
+  expect_false(any(written$estimate == round(written$estimate, 3)))
+})
+
+test_that("export_results keeps sub-table names when estimates are present", {
+  dir <- setup_output_dir()
+
+  export_results(
+    list(p_hacking_tests = list(
+      tables = list(summary = data.frame(a = 1), caliper = data.frame(x = 1)),
+      estimates = make_estimates()
+    )),
+    dir
+  )
+
+  files <- list.files(file.path(dir, "tables"))
+  expect_true(all(c(
+    "p_hacking_tests.csv", "p_hacking_tests_display.csv", "p_hacking_tests_caliper.csv"
+  ) %in% files))
+})
+
+test_that("export_results leaves display names alone without an estimates slot", {
+  dir <- setup_output_dir()
+
+  export_results(list(bma = list(tables = list(summary = data.frame(a = 1)))), dir)
+
+  expect_equal(list.files(file.path(dir, "tables")), "bma.csv")
+})
+
+test_that("estimates are never written as LaTeX and the display table keeps <method>.tex", {
+  dir <- setup_output_dir()
+  local_options(artma.output.table_formats = c("csv", "tex"))
+
+  export_results(
+    list(linear_tests = list(
+      tables = list(summary = data.frame(Metric = "Publication Bias", OLS = "-0.129***")),
+      estimates = make_estimates()
+    )),
+    dir
+  )
+
+  contents <- readLines(file.path(dir, "tables", "linear_tests.tex"))
+  expect_true(any(grepl("-0.129", contents, fixed = TRUE)))
+  expect_false(file.exists(file.path(dir, "tables", "linear_tests_display.tex")))
+})

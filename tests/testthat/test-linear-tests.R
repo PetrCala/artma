@@ -3,6 +3,7 @@ box::use(
     expect_equal,
     expect_false,
     expect_gt,
+    expect_match,
     expect_message,
     expect_named,
     expect_no_message,
@@ -190,7 +191,7 @@ test_that("linear tests return tidy coefficients and summary", {
 
   res <- linear_tests(df)
 
-  expect_named(res, c("tables", "plots", "meta"))
+  expect_named(res, c("tables", "estimates", "plots", "meta"))
   expect_named(res$tables, "summary")
   expect_named(
     res$meta,
@@ -836,4 +837,70 @@ test_that("panel models are skipped with a clear message when plm is unavailable
   expect_true(all(grepl("install.packages", reasons, fixed = TRUE)))
 
   expect_true("ols" %in% res$coefficients$model)
+})
+
+test_that("linear tests return unrounded estimates in the shared schema", {
+  skip_if_not_installed("plm")
+
+  box::use(
+    artma / modules / runtime_methods[ESTIMATES_COLUMNS]
+  )
+
+  df <- make_demo_data()
+
+  local_options(
+    "artma.methods.add_significance_marks" = TRUE,
+    "artma.methods.linear_tests.bootstrap_replications" = 10L,
+    "artma.methods.linear_tests.conf_level" = 0.9,
+    "artma.output.number_of_decimals" = 2,
+    "artma.verbose" = 1
+  )
+
+  res <- linear_tests(df)
+  estimates <- res$estimates
+
+  expect_named(estimates, ESTIMATES_COLUMNS)
+  expect_equal(nrow(estimates), nrow(res$meta$coefficients))
+  expect_equal(unique(estimates$method), "linear_tests")
+  expect_equal(sort(unique(estimates$term)), c("effect", "publication_bias"))
+
+  expect_true(is.numeric(estimates$estimate))
+  expect_true(is.numeric(estimates$std_error))
+  expect_true(is.numeric(estimates$p_value))
+  expect_true(is.integer(estimates$n_obs))
+
+  # The numbers come straight from the model, untouched by the display
+  # rounding that `artma.output.number_of_decimals` drives.
+  expect_equal(estimates$estimate, res$meta$coefficients$estimate)
+  expect_equal(estimates$std_error, res$meta$coefficients$std_error)
+  expect_false(all(estimates$estimate == round(estimates$estimate, 2)))
+})
+
+test_that("linear_tests_estimates flags CI conflicts and handles an empty frame", {
+  box::use(
+    artma / methods / linear_tests[linear_tests_estimates]
+  )
+
+  coefficients <- data.frame(
+    model = c("ols", "fe"),
+    term = c("effect", "effect"),
+    estimate = c(0.1, 0.2),
+    std_error = c(0.01, 0.02),
+    statistic = c(10, 10),
+    p_value = c(0.001, 0.2),
+    bootstrap_lower = c(0.05, -0.1),
+    bootstrap_upper = c(0.15, 0.3),
+    n_obs = c(30L, 30L),
+    ci_conflict = c(FALSE, TRUE),
+    stringsAsFactors = FALSE
+  )
+
+  estimates <- linear_tests_estimates(coefficients)
+  expect_true(is.na(estimates$note[1]))
+  expect_match(estimates$note[2], "disagree")
+  expect_equal(estimates$conf_low, coefficients$bootstrap_lower)
+
+  empty <- linear_tests_estimates(data.frame())
+  expect_equal(nrow(empty), 0L)
+  expect_true(is.numeric(empty$estimate))
 })

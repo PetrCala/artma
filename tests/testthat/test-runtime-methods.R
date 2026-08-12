@@ -240,3 +240,76 @@ test_that("new_method_result enforces the two skip shapes", {
     "must be a named list"
   )
 })
+
+test_that("new_estimates fills the whole schema with typed NAs", {
+  box::use(
+    artma / modules / runtime_methods[ESTIMATES_COLUMNS, new_estimates]
+  )
+
+  estimates <- new_estimates(data.frame(
+    method = "linear_tests",
+    term = c("effect", "publication_bias"),
+    estimate = c(0.0571234, -0.1289876),
+    stringsAsFactors = FALSE
+  ))
+
+  expect_named(estimates, ESTIMATES_COLUMNS)
+  expect_equal(nrow(estimates), 2L)
+  expect_equal(estimates$method, rep("linear_tests", 2L))
+  # Unfilled columns are typed NAs, not dropped and not characters.
+  expect_true(is.numeric(estimates$std_error))
+  expect_true(all(is.na(estimates$std_error)))
+  expect_true(is.integer(estimates$n_clusters))
+  expect_true(is.character(estimates$note))
+  # Values pass through untouched: no rounding anywhere on this path.
+  expect_equal(estimates$estimate, c(0.0571234, -0.1289876))
+})
+
+test_that("new_estimates returns an empty typed frame with no input", {
+  box::use(
+    artma / modules / runtime_methods[ESTIMATES_COLUMNS, new_estimates]
+  )
+
+  estimates <- new_estimates()
+
+  expect_named(estimates, ESTIMATES_COLUMNS)
+  expect_equal(nrow(estimates), 0L)
+  expect_true(is.numeric(estimates$p_value))
+  expect_true(is.character(estimates$model))
+})
+
+test_that("new_estimates coerces column types and rejects unknown columns", {
+  box::use(
+    artma / modules / runtime_methods[new_estimates]
+  )
+
+  estimates <- new_estimates(data.frame(
+    model = factor("ols"),
+    n_obs = 1000,
+    stringsAsFactors = FALSE
+  ))
+  expect_equal(estimates$model, "ols")
+  expect_true(is.integer(estimates$n_obs))
+
+  expect_error(
+    new_estimates(data.frame(term = "effect", bootstrap_lower = 0.1)),
+    "Unknown column"
+  )
+})
+
+test_that("new_method_result normalises the estimates slot", {
+  box::use(
+    artma / modules / runtime_methods[ESTIMATES_COLUMNS, new_method_result]
+  )
+
+  result <- new_method_result(
+    tables = list(summary = data.frame(a = 1)),
+    estimates = data.frame(term = "effect", estimate = 0.25)
+  )
+
+  expect_named(result$estimates, ESTIMATES_COLUMNS)
+  expect_equal(result$estimates$estimate, 0.25)
+
+  expect_equal(new_method_result()$estimates, NULL)
+  expect_error(new_method_result(estimates = "not a frame"), "must be a")
+})
