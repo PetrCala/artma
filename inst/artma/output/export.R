@@ -71,14 +71,25 @@ is_absolute_path <- function(path) {
 #'
 #' @description
 #' Reads the `artma.visualization.export_path` option (default: `"graphics"`)
-#' and resolves it relative to the given output directory. An absolute
+#' and resolves it relative to the given output directory. A `~` is expanded
+#' first, so `~/figures` is treated as the absolute path it denotes. An absolute
 #' `export_path` is returned as-is; joining it to `output_dir` would otherwise
 #' produce a nested copy of the whole absolute path under the results directory.
 #'
+#' This is the single place graphics paths are resolved. Every caller that needs
+#' the directory plots are written to must route through it, otherwise the
+#' directory that gets created and the directory that gets written to drift
+#' apart for absolute paths.
+#'
 #' @param output_dir *\[character\]* The base output directory.
+#' @param export_path *\[character, optional\]* The configured export path.
+#'   Defaults to the `artma.visualization.export_path` option.
 #' @return *\[character\]* The resolved graphics directory path.
-resolve_graphics_dir <- function(output_dir) {
-  export_path <- getOption("artma.visualization.export_path", "graphics")
+resolve_graphics_dir <- function(output_dir, export_path = NULL) {
+  export_path <- export_path %||% getOption("artma.visualization.export_path", "graphics")
+  if (length(export_path) == 1L && !is.na(export_path) && nzchar(export_path)) {
+    export_path <- path.expand(export_path)
+  }
   if (is_absolute_path(export_path)) {
     return(export_path)
   }

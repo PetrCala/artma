@@ -1081,7 +1081,7 @@ output:
     help: |
       File formats used when exporting result tables. Accepts {.val csv} and
       {.val tex}. Add {.val tex} to also write booktabs LaTeX tables ready to be
-      included in a paper (requires `\usepackage{booktabs}` in your preamble).
+      included in a paper (requires `\usepackage{{booktabs}}` in your preamble).
       Defaults to {.val csv} only.
 
   number_of_decimals:
