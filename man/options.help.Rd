@@ -7,9 +7,9 @@
 options.help(options = NULL, template_path = NULL)
 }
 \arguments{
-\item{options}{\emph{[character, optional]} A single option name (dot-separated) or a
-character vector thereof. If \code{NULL}, prints \strong{all} options from"
-the template.}
+\item{options}{\emph{[character, optional]} A single option name (dot-separated), a
+group name, or a character vector thereof. If \code{NULL}, prints \strong{all} options
+from the template as a tree.}
 
 \item{template_path}{\emph{[character, optional]} Path to the template YAML file.
 Defaults to \code{PATHS$FILE_OPTIONS_TEMPLATE}.}
@@ -20,4 +20,11 @@ to the console.
 }
 \description{
 Prints information for each requested option (or all options if \code{options} is \code{NULL}).
+}
+\details{
+Called without arguments, the whole option tree is printed, grouped by
+top-level section, one line per option carrying its name, type and default.
+Named options are printed in full, with their help text. A name that matches
+a group rather than a single option (e.g. \code{"methods.bma"}, or \code{"methods"})
+expands to every option underneath it.
 }

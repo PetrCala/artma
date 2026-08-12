@@ -243,18 +243,94 @@ options.delete <- function(
 #' @description Retrieves the list of the existing options files and returns their names as a character vector. By default, this retrieves the names of the files including the yaml suffix, but can be modified to retrieve options verbose names instead.
 #' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
 #' @param should_return_verbose_names *\[logical, optional\]* If set to TRUE, the custom names of each of the options files are read and returned instead of file names. Defaults to FALSE.
-#' @return *\[vector, character\]* A character vector with the names of the options available.
+#' @param details *\[logical, optional\]* If set to TRUE, a `data.frame` describing each options file is returned instead of a character vector: the file name, its resolved `data.source_path`, when the file was last modified, when it was last run, and how many of its options deviate from the template defaults. The last run time is read from the file's output directory, and is `NA` when the file has never produced any results. Defaults to FALSE.
+#' @param template_path *\[character, optional\]* Full path to the options template file, used to resolve the defaults when `details = TRUE`. Defaults to `NULL`.
+#' @return *\[vector, character | data.frame\]* A character vector with the names of the options available, or a `data.frame` when `details = TRUE`.
 #' @export
-options.list <- function(options_dir = NULL, should_return_verbose_names = FALSE) {
+options.list <- function(
+  options_dir = NULL,
+  should_return_verbose_names = FALSE,
+  details = FALSE,
+  template_path = NULL
+) {
   box::use(
     artma / options / files[
       list_options_files,
-      resolve_options_dir
-    ]
+      resolve_options_dir,
+      resolve_template_path
+    ],
+    artma / options / inspect[describe_options_files],
+    artma / libs / core / validation[validate]
   )
+
+  validate(
+    is.logical(should_return_verbose_names),
+    is.logical(details)
+  )
+
   options_dir <- resolve_options_dir(options_dir, must_exist = FALSE)
 
+  if (isTRUE(details)) {
+    return(describe_options_files(
+      options_dir = options_dir,
+      template_path = resolve_template_path(template_path)
+    ))
+  }
+
   list_options_files(options_dir, should_return_verbose_names)
+}
+
+#' @title Diff two user options files
+#' @description Compares two user options files, printing the options whose
+#'   values differ between them, followed by each file's deviations from the
+#'   template defaults.
+#' @details List-typed options (such as `data.columns`) are compared entry by
+#'   entry, so the diff names the individual column mappings that differ rather
+#'   than reporting the whole store as changed.
+#' @param options_file_name_a *\[character, optional\]* Name of the first options file to compare. If not provided, the user will be prompted. Defaults to `NULL`.
+#' @param options_file_name_b *\[character, optional\]* Name of the second options file to compare. If not provided, the user will be prompted. Defaults to `NULL`.
+#' @param options_dir *\[character, optional\]* Full path to the folder that contains user options files. If not provided, the default folder is chosen. Defaults to `NULL`.
+#' @param template_path *\[character, optional\]* Full path to the options template file. Defaults to `NULL`.
+#' @return *\[list\]* Invisibly, a list with the compared `files`, a `differences` data frame, and a `deviations` list holding one data frame of template-default deviations per file.
+#' @export
+options.diff <- function(
+  options_file_name_a = NULL,
+  options_file_name_b = NULL,
+  options_dir = NULL,
+  template_path = NULL
+) {
+  box::use(
+    artma / options / ask[ask_for_existing_options_file_name],
+    artma / options / files[resolve_options_dir, resolve_template_path],
+    artma / options / inspect[diff_options_files, print_options_diff],
+    artma / options / utils[parse_options_file_name],
+    artma / libs / core / utils[get_verbosity]
+  )
+
+  options_dir <- resolve_options_dir(options_dir)
+  template_path <- resolve_template_path(template_path)
+
+  options_file_name_a <- options_file_name_a %||% ask_for_existing_options_file_name(
+    options_dir = options_dir,
+    prompt = "Please select the first user options file to compare: "
+  )
+  options_file_name_b <- options_file_name_b %||% ask_for_existing_options_file_name(
+    options_dir = options_dir,
+    prompt = "Please select the second user options file to compare: "
+  )
+
+  diff <- diff_options_files(
+    options_dir = options_dir,
+    file_a = parse_options_file_name(options_file_name_a),
+    file_b = parse_options_file_name(options_file_name_b),
+    template_path = template_path
+  )
+
+  if (get_verbosity() >= 2) {
+    print_options_diff(diff)
+  }
+
+  invisible(diff)
 }
 
 #' @title Load user options
@@ -571,9 +647,15 @@ options.open <- function(
 #' @description
 #' Prints information for each requested option (or all options if `options` is `NULL`).
 #'
-#' @param options *\[character, optional\]* A single option name (dot-separated) or a
-#'   character vector thereof. If `NULL`, prints **all** options from"
-#'   the template.
+#' @details Called without arguments, the whole option tree is printed, grouped by
+#'   top-level section, one line per option carrying its name, type and default.
+#'   Named options are printed in full, with their help text. A name that matches
+#'   a group rather than a single option (e.g. `"methods.bma"`, or `"methods"`)
+#'   expands to every option underneath it.
+#'
+#' @param options *\[character, optional\]* A single option name (dot-separated), a
+#'   group name, or a character vector thereof. If `NULL`, prints **all** options
+#'   from the template as a tree.
 #' @param template_path *\[character, optional\]* Path to the template YAML file.
 #'   Defaults to \code{PATHS$FILE_OPTIONS_TEMPLATE}.
 #' @return Invisibly returns `NULL`, printing the requested information
@@ -584,21 +666,20 @@ options.help <- function(
   template_path = NULL
 ) {
   box::use(
-    artma / const[CONST],
     artma / options / files[resolve_template_path],
-    artma / options / utils[print_options_help_text],
+    artma / options / inspect[expand_option_tokens, print_option_detail, print_option_tree],
     artma / options / template[flatten_template_options, read_template],
-    artma / libs / core / validation[assert, validate],
+    artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity]
   )
 
-  if (is.null(options)) {
-    if (get_verbosity() >= 2) {
-      cli::cli_alert_warning("Enter option names either as a character vector or as a single name to print their help.\n")
-    }
+  if (!is.null(options)) {
+    validate(is.character(options))
+  }
+
+  if (get_verbosity() < 2) {
     return(invisible(NULL))
   }
-  validate(is.character(options))
 
   template_path <- resolve_template_path(template_path)
 
@@ -609,47 +690,33 @@ options.help <- function(
   #    Each item typically has `name`, `type`, `default`, `help`, possibly others.
   template_map <- stats::setNames(template_defs, vapply(template_defs, `[[`, character(1), "name"))
 
-  not_found <- setdiff(options, names(template_map))
-  if (length(not_found) > 0) {
-    if (get_verbosity() >= 2) {
-      cli::cli_alert_warning("The following requested option(s) are not recognized: {.emph {not_found}}")
-    }
+  if (is.null(options)) {
+    print_option_tree(template_defs)
     return(invisible(NULL))
   }
 
   if (length(options) == 0) {
-    if (get_verbosity() >= 2) {
-      cli::cli_alert_warning("No options to explain.")
-    }
+    cli::cli_alert_warning("No options to explain.")
+    return(invisible(NULL))
+  }
+
+  # A requested name is either an option or a group; a group expands to every
+  # option underneath it, so the caller does not have to know the full path.
+  expansion <- expand_option_tokens(options, names(template_map))
+
+  if (length(expansion$not_found) > 0) {
+    cli::cli_alert_warning("The following requested option(s) are not recognized: {.emph {expansion$not_found}}")
+  }
+
+  if (length(expansion$matched) == 0) {
     return(invisible(NULL))
   }
 
   cli::cli_h1("Options Help")
   cli::cat_line()
 
-  for (opt_name in options) {
-    opt_def <- template_map[[opt_name]]
-
-    nm <- opt_def$name
-    tp <- opt_def$type
-    hlp <- opt_def$help %||% "(No help text provided.)"
-
-    if ("default" %in% names(opt_def)) {
-      # Accessing a null default value would assign null, so we coerce it to a 'null' string.
-      def <- opt_def$default %||% "null"
-    } else {
-      def <- "This option is required"
-    }
-
-    opt_styles <- CONST$STYLES$OPTIONS
-    if (get_verbosity() >= 2) {
-      cli::cli_text("{.strong Option name:} {opt_styles$NAME(nm)}")
-      cli::cli_text("{.strong Type:} {opt_styles$TYPE(tp)}")
-      cli::cli_text("{.strong Default:} {opt_styles$DEFAULT(def)}")
-      print_options_help_text(hlp)
-      cli::cli_rule()
-      cli::cat_line()
-    }
+  for (opt_name in expansion$matched) {
+    print_option_detail(template_map[[opt_name]])
   }
 
   invisible(NULL)

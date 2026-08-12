@@ -403,6 +403,63 @@ cache:
   max_age: 86400
 ```
 
+## Inspecting Options
+
+### Browsing the Option Tree
+
+Called without arguments, `artma::options.help()` prints every option the template defines, grouped by top-level section, one line per option with its type and default:
+
+```r
+artma::options.help()
+```
+
+```
+── artma options ───────────────────────────────────────────────────────
+127 options in 10 sections. Call `artma::options.help('<name>')` with an
+option or a group name for details.
+
+── calc ──
+
+  calc.precision_type    enum: '1/SE'|'DoF'            1/SE
+  calc.se_zero_handling  enum: stop|warn|remove|igno…  NA
+```
+
+Pass a name to read the full help text of an option:
+
+```r
+artma::options.help("methods.bma.iter")
+```
+
+A name that points at a group rather than a single option expands to everything underneath it, so you do not have to know the full path in advance:
+
+```r
+artma::options.help("methods.bma")     # every option of the BMA method
+artma::options.help("methods")         # every method option
+```
+
+Names that match nothing are reported, and the recognized ones are still printed.
+
+### Comparing Options Files
+
+`artma::options.diff()` answers "what is actually different about this configuration": it lists the options whose values differ between two files, then each file's deviations from the template defaults.
+
+```r
+artma::options.diff("baseline.yaml", "sensitivity.yaml")
+```
+
+```
+── Options diff ────────────────────────────────────────────────────────
+A: 'baseline.yaml'
+B: 'sensitivity.yaml'
+
+── Differing options (2) ──
+
+  data.columns.se.source_name  standard_error -> se_robust
+  methods.bma.iter             100000 -> 500000
+```
+
+List-typed options such as `data.columns` are compared entry by entry, so the diff names the individual column mappings that changed. The full comparison is also returned invisibly as a list of data frames, ready for programmatic use.
+
 ## Managing Options Files
 
 ### Listing Options Files
@@ -412,6 +469,20 @@ See all available options files:
 ```r
 artma::options.list()
 ```
+
+Pass `details = TRUE` for a data frame describing each file: the dataset it points at, when it was last modified, when it last produced results, and how many of its options deviate from the template defaults.
+
+```r
+artma::options.list(details = TRUE)
+```
+
+```
+                file                data_source_path            modified            last_run n_non_default
+1      bachelor.yaml  /data/bachelor_thesis.xlsx  2026-08-06 12:25:38 2026-07-28 03:44:38            11
+2 master-thesis.yaml     /data/master_thesis.xlsm  2026-07-24 12:21:30 2026-07-17 16:45:18            14
+```
+
+The last run time is read from the file's output directory, and is `NA` for a file that has never produced results.
 
 ### Copying Options Files
 
@@ -500,4 +571,4 @@ Remember:
 - Validate files before use
 - Keep options files in version control for reproducibility
 
-For more information on specific options, see the help documentation for individual functions or explore the options template using `artma::options.help()`.
+For more information on specific options, see the help documentation for individual functions or explore the options template using `artma::options.help()`, which prints the whole option tree when called without arguments.
