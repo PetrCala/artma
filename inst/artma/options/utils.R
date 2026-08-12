@@ -194,13 +194,23 @@ validate_user_input <- function(user_input) {
 }
 
 #' @title Print options help text
-#' @description Print options help text
+#' @description Print options help text.
+#'
+#' Help strings are run through `cli::format_inline()` so they can use cli
+#' inline markup. That also makes them glue templates, so a literal brace in the
+#' text (`\usepackage{booktabs}`) is interpolated as an R expression and errors.
+#' Braces meant literally must be doubled in the template, but one malformed
+#' entry must not take down `options.help()` for a whole group, so fall back to
+#' the raw text instead of propagating the error.
 #' @param help *\[character\]* The help text to print
 #' @return `NULL`
 #' @export
 print_options_help_text <- function(help) {
   help_key <- cli::format_inline("{.strong Help}: ")
-  help_body <- cli::format_inline(help)
+  help_body <- tryCatch(
+    cli::format_inline(help),
+    error = function(e) paste(help, collapse = "\n")
+  )
   writeLines(paste0(help_key, help_body))
 }
 

@@ -42,12 +42,15 @@ get_visualization_options <- function() {
   assert(is.character(export_path), "export_path must be a character string")
   assert(is.numeric(graph_scale) && graph_scale > 0, "graph_scale must be a positive number")
 
-  # Resolve export_path relative to the unified output directory
+  # Resolve export_path against the unified output directory. This must go
+  # through resolve_graphics_dir(), the same helper ensure_output_dirs() and the
+  # report renderer use: joining an absolute export_path to the output directory
+  # here would write plots into a nested <output_dir>/<absolute path> copy while
+  # the rest of the package looked for them at the absolute path itself.
   save_results <- getOption("artma.output.save_results", TRUE)
   if (isTRUE(save_results)) {
-    box::use(artma / output / export[resolve_output_dir])
-    output_dir <- resolve_output_dir()
-    export_path <- file.path(output_dir, export_path)
+    box::use(artma / output / export[resolve_graphics_dir, resolve_output_dir])
+    export_path <- resolve_graphics_dir(resolve_output_dir(), export_path)
   }
 
   list(

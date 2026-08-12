@@ -82,6 +82,48 @@ test_that("resolve_graphics_dir returns an absolute export path as-is", {
   expect_equal(resolve_graphics_dir("/base"), "/tmp/artma-graphics")
 })
 
+test_that("resolve_graphics_dir expands a tilde before testing for absoluteness", {
+  local_options(artma.visualization.export_path = "~/artma-graphics")
+  expect_equal(resolve_graphics_dir("/base"), path.expand("~/artma-graphics"))
+})
+
+test_that("resolve_graphics_dir accepts an explicit export path over the option", {
+  local_options(artma.visualization.export_path = "graphics")
+  expect_equal(resolve_graphics_dir("/base", "figs"), file.path("/base", "figs"))
+  expect_equal(resolve_graphics_dir("/base", "/tmp/figs"), "/tmp/figs")
+})
+
+# The writers read their target directory from get_visualization_options(),
+# not from resolve_graphics_dir() directly. When those two disagreed, an
+# absolute export path was created in one place and written to in another.
+test_that("get_visualization_options resolves the same directory as ensure_output_dirs", {
+  base <- local_tempdir()
+  graphics <- file.path(local_tempdir(), "elsewhere")
+  local_options(
+    artma.output.dir = base,
+    artma.output.save_results = TRUE,
+    artma.visualization.export_path = graphics
+  )
+
+  box::use(artma / visualization / options[get_visualization_options])
+
+  expect_equal(get_visualization_options()$export_path, resolve_graphics_dir(base))
+  expect_equal(get_visualization_options()$export_path, graphics)
+})
+
+test_that("get_visualization_options joins a relative export path to the output dir", {
+  base <- local_tempdir()
+  local_options(
+    artma.output.dir = base,
+    artma.output.save_results = TRUE,
+    artma.visualization.export_path = "graphics"
+  )
+
+  box::use(artma / visualization / options[get_visualization_options])
+
+  expect_equal(get_visualization_options()$export_path, file.path(base, "graphics"))
+})
+
 test_that("ensure_output_dirs honours an absolute export path", {
   base <- local_tempdir()
   graphics <- file.path(local_tempdir(), "elsewhere")

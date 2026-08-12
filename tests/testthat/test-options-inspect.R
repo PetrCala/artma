@@ -1,4 +1,4 @@
-box::use(testthat[test_that, expect_equal, expect_true, expect_false, expect_null, expect_setequal, expect_length, expect_identical, expect_named, expect_s3_class])
+box::use(testthat[test_that, expect_equal, expect_true, expect_false, expect_null, expect_setequal, expect_length, expect_identical, expect_named, expect_output, expect_s3_class])
 
 # A small template that mirrors the shape of the real one: several top-level
 # sections, a required option with no default, and a list-typed leaf.
@@ -290,4 +290,35 @@ test_that("value comparison tolerates YAML type noise but not missing keys", {
   expect_true(values_equal(NULL, NULL))
   expect_false(values_equal(NULL, NA))
   expect_false(values_equal("10", 10))
+})
+
+# Help strings are rendered through cli::format_inline(), which also makes them
+# glue templates: a literal brace (e.g. `\usepackage{booktabs}`) is evaluated as
+# an R expression and aborts. That took out `options.help("output")` entirely, so
+# guard both the template content and the renderer.
+test_that("every template help string renders without a glue error", {
+  box::use(artma / options / template[get_option_defs])
+
+  broken <- Filter(
+    function(def) {
+      txt <- def$help
+      if (is.null(txt) || !is.character(txt)) {
+        return(FALSE)
+      }
+      inherits(tryCatch(cli::format_inline(txt), error = function(e) e), "error")
+    },
+    get_option_defs()
+  )
+
+  expect_equal(vapply(broken, function(def) def$name, character(1)), character(0))
+})
+
+test_that("print_options_help_text falls back to raw text on a malformed help string", {
+  box::use(artma / options / utils[print_options_help_text])
+
+  expect_output(
+    print_options_help_text("requires \\usepackage{booktabs} in your preamble"),
+    "booktabs",
+    fixed = TRUE
+  )
 })
