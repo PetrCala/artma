@@ -412,7 +412,7 @@ test_that("run_exogeneity_tests skips gracefully when columns are missing", {
   res <- run_exogeneity_tests(data.frame(effect = 1:3, se = rep(1, 3)), default_exogeneity_options())
 
   expect_true(!is.null(res$skipped))
-  expect_true(grepl("study_id", res$skipped$reason))
+  expect_true(grepl("study_id", res$skipped))
 })
 
 test_that("run_exogeneity_tests aborts when a required package is absent", {

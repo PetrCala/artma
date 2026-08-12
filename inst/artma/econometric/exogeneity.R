@@ -643,7 +643,8 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
 #' and effect size under relaxed exogeneity assumptions.
 #' @param df *[data.frame]* Input data.
 #' @param options *[list]* Options containing iv_instrument, puniform settings, formatting.
-#' @return *[list]* Contains coefficients and formatted summary.
+#' @return *[list]* Contains coefficients and formatted summary. `skipped`
+#'   carries a single string when the whole test suite could not run.
 run_exogeneity_tests <- function(df, options) {
   validate(is.data.frame(df), is.list(options))
 
@@ -660,7 +661,7 @@ run_exogeneity_tests <- function(df, options) {
     return(list(
       coefficients = data.frame(),
       summary = data.frame(),
-      skipped = list(reason = paste("Missing columns:", paste(missing_cols, collapse = ", ")))
+      skipped = paste("Missing columns:", paste(missing_cols, collapse = ", "))
     ))
   }
 

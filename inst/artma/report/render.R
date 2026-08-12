@@ -248,6 +248,25 @@ count_plots <- function(result) {
   sum(!vapply(plots, is.null, logical(1)))
 }
 
+#' Coerce a `meta$skip_reason` value to the single string the report renders.
+#' @description The report must survive a method that writes something other
+#'   than a scalar string (an empty list, a named list of skipped sub-models,
+#'   `NA`), so anything that is not a usable single string counts as
+#'   "not skipped" instead of aborting the render.
+#' @param value *\[any\]* The raw `meta$skip_reason` value.
+#' @return *\[character or NULL\]* The reason, or `NULL` when not skipped.
+#' @keywords internal
+scalar_skip_reason <- function(value) {
+  if (is.null(value) || !is.atomic(value) || length(value) != 1L || is.na(value)) {
+    return(NULL)
+  }
+  reason <- as.character(value)
+  if (!nzchar(reason)) {
+    return(NULL)
+  }
+  reason
+}
+
 #' Build the inner HTML of a method section.
 #' @param result *\[list\]* A `new_method_result`-shaped list.
 #' @param method_name *\[character\]* The method name.
@@ -256,12 +275,14 @@ count_plots <- function(result) {
 #' @return *\[character\]* The section body HTML.
 #' @keywords internal
 build_section_body <- function(result, method_name, graphics_dir, round_to) {
-  # A method that ran but skipped itself records the reason under meta$skipped.
-  skip_reason <- result$meta$skipped
-  if (!is.null(skip_reason) && nzchar(as.character(skip_reason)[[1]])) {
+  # A method that ran but skipped itself records the reason under
+  # meta$skip_reason. meta$skipped_models (partial skips) does not suppress the
+  # section, so it is deliberately not read here.
+  skip_reason <- scalar_skip_reason(result$meta$skip_reason)
+  if (!is.null(skip_reason)) {
     return(paste0(
       "<div class=\"report-skip\">This method was skipped: ",
-      html_escape(as.character(skip_reason)[[1]]), "</div>"
+      html_escape(skip_reason), "</div>"
     ))
   }
 

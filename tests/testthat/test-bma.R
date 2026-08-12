@@ -367,7 +367,7 @@ test_that("bma skips with an explanatory reason instead of crashing on a single 
 
   expect_equal(nrow(result$tables$coefficients), 0)
   expect_true(is.null(result$meta$model))
-  expect_match(result$meta$skipped, "at least 2 candidate moderator variables")
+  expect_match(result$meta$skip_reason, "at least 2 candidate moderator variables")
 })
 
 test_that("prepare_bma_inputs excludes constant moderators before scaling", {

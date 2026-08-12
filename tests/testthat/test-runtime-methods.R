@@ -205,3 +205,38 @@ test_that("get_runtime_method_modules ignores helper modules", {
   modules <- get_runtime_method_modules(modules_dir = methods_dir)
   expect_named(modules, "valid_method")
 })
+
+test_that("new_method_result enforces the two skip shapes", {
+  box::use(
+    artma / modules / runtime_methods[new_method_result]
+  )
+
+  expect_equal(
+    new_method_result(meta = list(skip_reason = "package BMS is not installed"))$meta$skip_reason,
+    "package BMS is not installed"
+  )
+  expect_equal(
+    new_method_result(meta = list(skipped_models = list(fe = list(label = "FE", reason = "no clusters"))))$meta$skipped_models$fe$reason,
+    "no clusters"
+  )
+  expect_equal(new_method_result(meta = list(skipped_models = list()))$meta$skipped_models, list())
+
+  # A named list of skipped sub-models belongs under `skipped_models`; passing
+  # it as the scalar reason is what broke the HTML report (issue #414).
+  expect_error(
+    new_method_result(meta = list(skip_reason = list())),
+    "must be a single string"
+  )
+  expect_error(
+    new_method_result(meta = list(skip_reason = list(fe = list(reason = "no clusters")))),
+    "must be a single string"
+  )
+  expect_error(
+    new_method_result(meta = list(skip_reason = c("a", "b"))),
+    "must be a single string"
+  )
+  expect_error(
+    new_method_result(meta = list(skipped_models = "no clusters")),
+    "must be a named list"
+  )
+})

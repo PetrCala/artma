@@ -110,7 +110,7 @@ fma <- function(df, bma_result = NULL) {
       )
       return(new_method_result(
         tables = list(coefficients = empty_coefs),
-        meta = list(weights = numeric(0), model = NULL, skipped = prepared$skipped)
+        meta = list(weights = numeric(0), model = NULL, skip_reason = prepared$skipped)
       ))
     }
 

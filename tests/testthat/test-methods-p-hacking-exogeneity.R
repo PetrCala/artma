@@ -158,8 +158,8 @@ test_that("p_hacking_tests surfaces the Cox-Shi skip reason in output and meta",
   expect_true(all(grepl("NA", cox_rows$`P-value`)))
 
   # The reason lands in meta for programmatic consumers.
-  expect_match(result$meta$skipped$cox_shi_005$reason, "singular")
-  expect_equal(result$meta$skipped$cox_shi_005$label, "Cox-Shi [0, 0.05]")
+  expect_match(result$meta$skipped_models$cox_shi_005$reason, "singular")
+  expect_equal(result$meta$skipped_models$cox_shi_005$label, "Cox-Shi [0, 0.05]")
 
   # And it is printed after the summary table instead of a bare NA.
   expect_true(any(grepl("singular", messages)))

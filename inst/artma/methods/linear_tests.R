@@ -70,7 +70,7 @@ linear_tests <- function(df) {
     tables = list(summary = results$summary),
     meta = list(
       coefficients = results$coefficients,
-      skipped = results$skipped,
+      skipped_models = results$skipped,
       options = results$options
     )
   ))

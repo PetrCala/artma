@@ -562,9 +562,9 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
 
   # Build unified MA table when BMA and/or FMA have produced results. Both
   # methods return the standard contract, so the coefficient frame lives in
-  # `tables$coefficients` and skip reasons under `meta$skipped`.
+  # `tables$coefficients` and skip reasons under `meta$skip_reason`.
   extract_ma_coefficients <- function(result) {
-    if (is.null(result) || !is.list(result) || !is.null(result$meta$skipped)) {
+    if (is.null(result) || !is.list(result) || !is.null(result$meta$skip_reason)) {
       return(NULL)
     }
     coefs <- result$tables$coefficients

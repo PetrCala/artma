@@ -112,7 +112,7 @@ robma <- function(df) {
     }
     return(new_method_result(
       tables = list(summary = empty_robma_table()),
-      meta = list(model = NULL, n_obs = nrow(fit_data), skipped = reason)
+      meta = list(model = NULL, n_obs = nrow(fit_data), skip_reason = reason)
     ))
   }
 

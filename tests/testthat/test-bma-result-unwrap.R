@@ -223,7 +223,7 @@ test_that("fma skips gracefully instead of crashing when only one moderator is a
 
   expect_equal(nrow(result$tables$coefficients), 0)
   expect_null(result$meta$model)
-  expect_match(result$meta$skipped, "at least 2 candidate moderator variables")
+  expect_match(result$meta$skip_reason, "at least 2 candidate moderator variables")
 })
 
 test_that("resolve_bma_input_for_bpe surfaces the BMA skip reason when BMA cannot run", {

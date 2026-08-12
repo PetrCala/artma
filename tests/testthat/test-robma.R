@@ -64,7 +64,7 @@ test_that("robma skips when too few usable observations remain", {
 
   expect_equal(result$meta$n_obs, 1L)
   expect_null(result$meta$model)
-  expect_true(nzchar(result$meta$skipped))
+  expect_true(nzchar(result$meta$skip_reason))
   expect_s3_class(result$tables$summary, "data.frame")
   expect_equal(nrow(result$tables$summary), 0L)
 })
@@ -90,7 +90,7 @@ test_that("robma fits the ensemble and returns estimates and components", {
   # convergence checks, which is expected here.
   result <- suppressWarnings(robma(df))
 
-  expect_false(isTRUE(nzchar(result$meta$skipped)))
+  expect_false(isTRUE(nzchar(result$meta$skip_reason)))
   expect_equal(result$meta$n_obs, nrow(df))
   expect_true(!is.null(result$meta$model))
 
