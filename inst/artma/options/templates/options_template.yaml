@@ -105,6 +105,7 @@ visualization:
     default: "graphics"
     help: |
       Subdirectory (relative to output.dir) for exporting graphics.
+      An absolute path is also accepted and is used as-is.
       Only used if export_graphics is `TRUE`.
 
   graph_scale:

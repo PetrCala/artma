@@ -1,4 +1,12 @@
 
+<a name="unreleased"></a>
+
+## Unreleased
+
+### Bug Fixes
+
+* An absolute `visualization.export_path` is now used as-is instead of being joined onto the output directory. Runs made before this fix may have left a stray nested `var/folders/...` (or similar) directory tree inside an existing results directory; those can be deleted by hand, the package does not clean them up.
+
 <a name="v0.3.5"></a>
 
 ## [v0.3.5](https://github.com/PetrCala/artma/compare/v0.3.3...v0.3.5)
