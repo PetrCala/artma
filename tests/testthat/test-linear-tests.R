@@ -194,7 +194,7 @@ test_that("linear tests return tidy coefficients and summary", {
   expect_named(res$tables, "summary")
   expect_named(
     res$meta,
-    c("coefficients", "skipped", "options"),
+    c("coefficients", "skipped_models", "options"),
     ignore.order = TRUE
   )
 
@@ -245,8 +245,8 @@ test_that("linear tests gracefully skip models with missing columns", {
   res <- linear_tests(df)
 
   expect_false("ols_precision_weighted" %in% res$meta$coefficients$model)
-  expect_true("ols_precision_weighted" %in% names(res$meta$skipped))
-  expect_true(grepl("Missing required columns", res$meta$skipped$ols_precision_weighted$reason))
+  expect_true("ols_precision_weighted" %in% names(res$meta$skipped_models))
+  expect_true(grepl("Missing required columns", res$meta$skipped_models$ols_precision_weighted$reason))
 })
 
 test_that("bootstrap CIs are deterministic and seed-identical to the tidy-path implementation", {

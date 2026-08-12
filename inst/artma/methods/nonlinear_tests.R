@@ -88,7 +88,7 @@ nonlinear_tests <- function(df) {
     ),
     meta = list(
       coefficients = results$coefficients,
-      skipped = results$skipped,
+      skipped_models = results$skipped,
       options = results$options
     )
   ))

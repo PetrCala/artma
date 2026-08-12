@@ -101,7 +101,7 @@ bma <- function(df) {
     )
     return(new_method_result(
       tables = list(coefficients = empty_coefs),
-      meta = list(model = NULL, skipped = prepared$skipped)
+      meta = list(model = NULL, skip_reason = prepared$skipped)
     ))
   }
 
@@ -516,8 +516,8 @@ prepare_bma_inputs <- function(df, config, use_vif_optimization, max_groups_to_r
 #' callers that pass a previously computed `bma()` result or a hand-built
 #' list are both supported. Returns a list with `model`, `data`, `var_list`,
 #' `params` and `skipped` fields (all `NULL` except `skipped` when
-#' `bma_result` does not carry a usable bundle; `skipped` carries the reason
-#' string when the source `bma()` run was itself skipped).
+#' `bma_result` does not carry a usable bundle; `skipped` carries the
+#' `meta$skip_reason` string when the source `bma()` run was itself skipped).
 #' @param bma_result *\[list, optional\]* Either a `bma()` method result or a
 #'   bare `list(model=, data=, var_list=, params=)`.
 #' @return *\[list\]* `list(model=, data=, var_list=, params=, skipped=)`.
@@ -538,11 +538,11 @@ unwrap_bma_result <- function(bma_result) {
       data = meta$data,
       var_list = meta$var_list,
       params = meta$params,
-      skipped = meta$skipped
+      skipped = meta$skip_reason
     ))
   }
 
-  empty$skipped <- meta$skipped
+  empty$skipped <- meta$skip_reason
   empty
 }
 

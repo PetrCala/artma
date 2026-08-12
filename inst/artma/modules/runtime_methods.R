@@ -20,15 +20,45 @@ RUNTIME_METHOD_MARKER <- ".__runtime_method__"
 #' * `meta`: a named list of anything else a downstream consumer needs (the BMA
 #'   model, fit parameters, skip reasons, auxiliary frames, and so on).
 #'
+#' Two `meta` keys are reserved, and they mean different things:
+#'
+#' * `skip_reason`: a single, non-empty string saying why the method as a whole
+#'   did not run (a missing optional package, too few observations). Absent or
+#'   `NULL` means the method ran. Consumers such as the HTML report render the
+#'   whole section as skipped when it is present, so never use it for a partial
+#'   skip.
+#' * `skipped_models`: a named list of sub-models the method could not fit,
+#'   each a `list(label =, reason =)`. The method itself still ran, so this
+#'   never suppresses the section. Use `NULL` or `list()` when nothing was
+#'   skipped.
+#'
 #' @param tables *\[list\]* Named list of `data.frame`s to export.
 #' @param plots *\[list\]* Named list of plot objects.
-#' @param meta *\[list\]* Named list of method-specific extras.
+#' @param meta *\[list\]* Named list of method-specific extras. `skip_reason`
+#'   and `skipped_models`, when present, must follow the shapes above.
 #' @param class *\[character, optional\]* Extra S3 class(es) to prepend, used by
 #'   methods that ship a bespoke print method.
 #' @return *\[list\]* A list with `tables`, `plots`, and `meta` elements.
 new_method_result <- function(tables = list(), plots = list(), meta = list(), class = NULL) {
   if (!is.list(tables) || !is.list(plots) || !is.list(meta)) {
     cli::cli_abort("`tables`, `plots`, and `meta` must all be lists.")
+  }
+
+  skip_reason <- meta$skip_reason
+  if (!is.null(skip_reason) &&
+    (!is.character(skip_reason) || length(skip_reason) != 1L || is.na(skip_reason))) {
+    cli::cli_abort(c(
+      "`meta$skip_reason` must be a single string, or `NULL` when the method ran.",
+      "i" = "Use `meta$skipped_models` for a named list of skipped sub-models."
+    ))
+  }
+
+  skipped_models <- meta$skipped_models
+  if (!is.null(skipped_models) && !is.list(skipped_models)) {
+    cli::cli_abort(c(
+      "`meta$skipped_models` must be a named list of `list(label =, reason =)`, or `NULL`.",
+      "i" = "Use `meta$skip_reason` for a scalar reason the whole method was skipped."
+    ))
   }
 
   result <- list(tables = tables, plots = plots, meta = meta)

@@ -67,7 +67,7 @@ test_that("nonlinear tests return tidy coefficients and summary", {
   expect_s3_class(res$plots$stem_mse, "recordedplot")
   expect_named(
     res$meta,
-    c("coefficients", "skipped", "options"),
+    c("coefficients", "skipped_models", "options"),
     ignore.order = TRUE
   )
 
@@ -154,7 +154,7 @@ test_that("selection model runs with negative and zero cutoffs and restructured 
 
   res <- suppressWarnings(suppressMessages(nonlinear_tests(df)))
 
-  expect_false("selection" %in% names(res$meta$skipped))
+  expect_false("selection" %in% names(res$meta$skipped_models))
   selection <- res$meta$coefficients[res$meta$coefficients$model == "selection", , drop = FALSE]
   expect_setequal(
     selection$term,
@@ -243,7 +243,7 @@ test_that("selection model runs with a single zero cutoff (sign selection)", {
 
   res <- suppressWarnings(suppressMessages(nonlinear_tests(df)))
 
-  expect_false("selection" %in% names(res$meta$skipped))
+  expect_false("selection" %in% names(res$meta$skipped_models))
   selection <- res$meta$coefficients[res$meta$coefficients$model == "selection", , drop = FALSE]
   expect_true("pub_prob_1" %in% selection$term)
   expect_true("Rel. Pub. Probability (-Inf, 0]" %in% selection$term_label)

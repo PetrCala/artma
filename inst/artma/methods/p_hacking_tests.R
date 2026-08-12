@@ -191,7 +191,7 @@ p_hacking_tests <- function(df) {
       caliper = results$caliper,
       elliott = results$elliott
     ),
-    meta = list(skipped = results$skipped)
+    meta = list(skipped_models = results$skipped)
   ))
 }
 

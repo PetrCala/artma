@@ -37,7 +37,7 @@ make_results <- function() {
     bma = list(
       tables = list(),
       plots = list(),
-      meta = list(skipped = "package BMS is not installed")
+      meta = list(skip_reason = "package BMS is not installed")
     )
   )
   attr(results, "skipped_methods") <- c(fma = "missing required column: se")
@@ -101,12 +101,43 @@ test_that("build_report_html passes significance marks through untouched", {
 
 test_that("build_report_html renders skip-reason sections, not silent drops", {
   html <- build_report_html(make_results(), round_to = 3)
-  # Self-skipped method (meta$skipped)
+  # Self-skipped method (meta$skip_reason)
   expect_match(html, "package BMS is not installed", fixed = TRUE)
   # Gate-skipped method (skipped_methods attribute)
   expect_match(html, "missing required column: se", fixed = TRUE)
   # Failed method (failed_methods attribute)
   expect_match(html, "instrument was too weak", fixed = TRUE)
+})
+
+test_that("build_report_html survives malformed skip reasons", {
+  # A method writing something other than a scalar string must not take the
+  # whole report down (issue #414: `as.character(list())[[1]]` errored).
+  for (bad in list(list(), list(fe = list(label = "FE", reason = "no clusters")), character(0), NA_character_, "")) {
+    results <- list(
+      linear_tests = list(
+        tables = list(summary = data.frame(model = "ols", estimate = 0.5)),
+        plots = list(),
+        meta = list(skip_reason = bad)
+      )
+    )
+    html <- build_report_html(results, round_to = 3)
+    expect_no_match(html, "This method was skipped", fixed = TRUE)
+    expect_match(html, "ols", fixed = TRUE)
+  }
+})
+
+test_that("build_report_html ignores skipped_models, which are partial skips", {
+  results <- list(
+    linear_tests = list(
+      tables = list(summary = data.frame(model = "ols", estimate = 0.5)),
+      plots = list(),
+      meta = list(skipped_models = list(fe = list(label = "FE", reason = "no clusters")))
+    )
+  )
+  html <- build_report_html(results, round_to = 3)
+
+  expect_no_match(html, "This method was skipped", fixed = TRUE)
+  expect_match(html, "ols", fixed = TRUE)
 })
 
 test_that("resolve_method_pngs matches by method name and alias", {

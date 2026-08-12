@@ -126,7 +126,7 @@ maive_estimator <- function(df) {
       interpretation = result$interpretation,
       first_stage = result$first_stage,
       options = resolved_options,
-      skipped = result$skipped
+      skip_reason = result$skipped
     )
   ))
 }

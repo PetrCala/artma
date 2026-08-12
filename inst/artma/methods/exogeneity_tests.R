@@ -57,7 +57,7 @@ exogeneity_tests <- function(df) {
     }
 
     if (!is.null(results$skipped) && verbosity >= 2) {
-      cli::cli_alert_warning("Skipped: {results$skipped$reason}")
+      cli::cli_alert_warning("Skipped: {results$skipped}")
     }
 
     if (!is.null(results$iv$error) && verbosity >= 2) {
@@ -78,7 +78,7 @@ exogeneity_tests <- function(df) {
     meta = list(
       iv = results$iv,
       puniform = results$puniform,
-      skipped = results$skipped
+      skip_reason = results$skipped
     )
   ))
 }
