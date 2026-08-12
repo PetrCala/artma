@@ -15,10 +15,12 @@ is_auto_output_dir <- function(output_dir) {
 #' The stem is sanitized to a portable character set; when no options file is
 #' loaded (or the stem sanitizes to nothing), `"default"` is used.
 #'
+#' @param file_name *\[character, optional\]* Options file name to derive the
+#'   subdirectory from. Defaults to the loaded options file, so callers that
+#'   inspect a file without loading it can pass the name explicitly.
 #' @return *\[character\]* A safe directory name.
 #' @keywords internal
-auto_output_subdir <- function() {
-  file_name <- getOption("artma.temp.file_name", NULL)
+auto_output_subdir <- function(file_name = getOption("artma.temp.file_name", NULL)) {
   if (is.null(file_name) || length(file_name) != 1L || is.na(file_name) || !nzchar(file_name)) {
     return("default")
   }
@@ -266,6 +268,8 @@ write_last_export_marker <- function(output_dir) {
 }
 
 box::export(
+  auto_output_subdir,
+  is_auto_output_dir,
   resolve_output_dir,
   resolve_graphics_dir,
   ensure_output_dirs,
