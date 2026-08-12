@@ -7,13 +7,103 @@ box::use(
 # Modules can opt out of runtime registration by setting this flag to FALSE.
 RUNTIME_METHOD_MARKER <- ".__runtime_method__"
 
+#' @title Estimates schema
+#' @description
+#' The fixed column set of the `estimates` slot, in export order. Every runtime
+#' method that reports numbers uses this one schema, so a downstream consumer
+#' can bind results across methods without knowing which method produced them.
+ESTIMATES_COLUMNS <- c(
+  "method", "model", "term", "estimate", "std_error", "statistic",
+  "p_value", "conf_low", "conf_high", "n_obs", "n_clusters", "note"
+)
+
+# The cast applied to each schema column, which doubles as the source of its
+# typed `NA` when a method does not fill the column.
+ESTIMATES_CASTS <- list(
+  method = as.character,
+  model = as.character,
+  term = as.character,
+  estimate = as.numeric,
+  std_error = as.numeric,
+  statistic = as.numeric,
+  p_value = as.numeric,
+  conf_low = as.numeric,
+  conf_high = as.numeric,
+  n_obs = as.integer,
+  n_clusters = as.integer,
+  note = as.character
+)
+
+#' @title Build a tidy estimates frame
+#' @description
+#' Normalise a method's numeric results into the shared long-format schema of
+#' the `estimates` slot. Columns a method does not fill are added as typed
+#' `NA`s, and the columns come back in the canonical order.
+#'
+#' The schema is:
+#'
+#' * `method`: the runtime method name (`"linear_tests"`).
+#' * `model`: the sub-model within the method (`"ols"`, `"fixed_effects"`), or
+#'   `NA` for a method with a single model.
+#' * `term`: what is being estimated (`"effect"`, `"publication_bias"`).
+#' * `estimate`, `std_error`, `statistic`, `p_value`: the point estimate and
+#'   its inference, all unrounded.
+#' * `conf_low`, `conf_high`: the confidence interval bounds, unrounded.
+#' * `n_obs`, `n_clusters`: the observation and cluster counts behind the row.
+#' * `note`: a short free-text caveat (`NA` when there is nothing to flag).
+#'
+#' Values are never rounded or formatted here: rounding is a display concern
+#' and belongs to the `tables` slot alone.
+#'
+#' @param ... Either a single `data.frame` holding a subset of the schema
+#'   columns, or named vectors passed as `data.frame()` arguments (scalars are
+#'   recycled). Columns outside the schema are an error; put method-specific
+#'   extras in `meta`.
+#' @return *\[data.frame\]* A frame with exactly the schema columns, in order.
+new_estimates <- function(...) {
+  args <- list(...)
+
+  if (length(args) == 0L) {
+    df <- data.frame()
+  } else if (length(args) == 1L && is.data.frame(args[[1L]])) {
+    df <- args[[1L]]
+  } else {
+    df <- data.frame(..., stringsAsFactors = FALSE)
+  }
+
+  unknown <- setdiff(names(df), ESTIMATES_COLUMNS)
+  if (length(unknown) > 0L) {
+    cli::cli_abort(c(
+      "Unknown column{?s} in an {.field estimates} frame: {.val {unknown}}.",
+      "i" = "The schema is fixed: {.val {ESTIMATES_COLUMNS}}.",
+      "i" = "Anything outside it belongs in {.field meta}."
+    ))
+  }
+
+  n_rows <- nrow(df)
+  columns <- lapply(ESTIMATES_COLUMNS, function(column) {
+    cast <- ESTIMATES_CASTS[[column]]
+    values <- df[[column]]
+    if (is.null(values)) rep(cast(NA), n_rows) else cast(values)
+  })
+  names(columns) <- ESTIMATES_COLUMNS
+
+  as.data.frame(columns, stringsAsFactors = FALSE, row.names = NULL)
+}
+
 #' @title Standard runtime method return contract
 #' @description
-#' Build the value every runtime method returns. The contract has three slots:
+#' Build the value every runtime method returns. The contract has four slots:
 #'
-#' * `tables`: a named list of `data.frame`s destined for CSV export. The
+#' * `tables`: a named list of `data.frame`s destined for export. These are the
+#'   display artifacts: rounded, formatted, laid out for a human reader. The
 #'   exporter walks this list; keys become filename suffixes (see
 #'   `export_method_result`).
+#' * `estimates`: a single long-format `data.frame` of the method's unrounded
+#'   numbers, in the shared schema built by `new_estimates()`. This is the
+#'   machine-readable artifact, exported as `<method>.csv`; whatever is passed
+#'   here is normalised through `new_estimates()`. `NULL` for a method that
+#'   reports no estimates (a plot-only method).
 #' * `plots`: a named list of plot objects (for example `ggplot`s) for
 #'   programmatic access and printing. Graphics files are written by the method
 #'   during execution, not by this contract.
@@ -36,12 +126,26 @@ RUNTIME_METHOD_MARKER <- ".__runtime_method__"
 #' @param plots *\[list\]* Named list of plot objects.
 #' @param meta *\[list\]* Named list of method-specific extras. `skip_reason`
 #'   and `skipped_models`, when present, must follow the shapes above.
+#' @param estimates *\[data.frame, optional\]* The method's unrounded numbers in
+#'   the shared schema (see `new_estimates()`), or `NULL`.
 #' @param class *\[character, optional\]* Extra S3 class(es) to prepend, used by
 #'   methods that ship a bespoke print method.
-#' @return *\[list\]* A list with `tables`, `plots`, and `meta` elements.
-new_method_result <- function(tables = list(), plots = list(), meta = list(), class = NULL) {
+#' @return *\[list\]* A list with `tables`, `estimates`, `plots`, and `meta`
+#'   elements.
+new_method_result <- function(tables = list(), plots = list(), meta = list(),
+                              estimates = NULL, class = NULL) {
   if (!is.list(tables) || !is.list(plots) || !is.list(meta)) {
     cli::cli_abort("`tables`, `plots`, and `meta` must all be lists.")
+  }
+
+  if (!is.null(estimates)) {
+    if (!is.data.frame(estimates)) {
+      cli::cli_abort(c(
+        "`estimates` must be a {.cls data.frame} in the shared schema, or `NULL`.",
+        "i" = "Build it with {.fn new_estimates}."
+      ))
+    }
+    estimates <- new_estimates(estimates)
   }
 
   skip_reason <- meta$skip_reason
@@ -61,7 +165,7 @@ new_method_result <- function(tables = list(), plots = list(), meta = list(), cl
     ))
   }
 
-  result <- list(tables = tables, plots = plots, meta = meta)
+  result <- list(tables = tables, estimates = estimates, plots = plots, meta = meta)
 
   if (!is.null(class)) {
     class(result) <- c(class, class(result))
@@ -363,12 +467,14 @@ get_runtime_method_modules <- function(
 }
 
 box::export(
+  ESTIMATES_COLUMNS,
   get_method_metadata,
   get_runtime_method_modules,
   METHOD_META_ATTR,
   missing_required_columns,
   missing_suggested_packages,
   module_should_be_runtime_method,
+  new_estimates,
   new_method_result,
   register_runtime_method,
   RUNTIME_METHOD_MARKER,

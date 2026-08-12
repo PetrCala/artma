@@ -93,7 +93,7 @@ test_that("best_practice_estimate uses provided BMA result and returns structure
   bma_result <- bma(df)
   result <- best_practice_estimate(df, bma_result = bma_result)
 
-  expect_named(result, c("tables", "plots", "meta"))
+  expect_named(result, c("tables", "estimates", "plots", "meta"))
   expect_named(
     result$tables,
     c("summary", "economic_significance", "summary_by_factor"),
@@ -517,7 +517,7 @@ test_that("best_practice_estimate pins its full table/meta/plot contract on fixt
   bma_result <- bma(df)
   result <- best_practice_estimate(df, bma_result = bma_result)
 
-  expect_named(result, c("tables", "plots", "meta"))
+  expect_named(result, c("tables", "estimates", "plots", "meta"))
   expect_setequal(names(result$tables), c("summary", "economic_significance", "summary_by_factor"))
   expect_setequal(
     names(result$meta),

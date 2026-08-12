@@ -95,13 +95,24 @@ Methods are auto-discovered by scanning `inst/artma/methods/`; `artma::methods.l
 
 #### Return contract
 
-Every method returns `new_method_result()`, a list with three slots:
+Every method returns `new_method_result()`, a list with four slots:
 
-- `tables`: named list of `data.frame`s exported as CSV by `export_method_result` (`inst/artma/output/export.R`). Keys `summary`/`coefficients`/`table` (or a key equal to the method name) export as `<method>.csv`; any other key as `<method>_<key>.csv`.
+- `tables`: named list of `data.frame`s exported by `export_method_result` (`inst/artma/output/export.R`). These are the display artifacts: rounded, formatted, laid out for a human. Keys `summary`/`coefficients`/`table` (or a key equal to the method name) export as `<method>.csv`; any other key as `<method>_<key>.csv`.
+- `estimates`: a single long-format `data.frame` of the method's unrounded numbers, built with `new_estimates()`. This is the machine-readable artifact.
 - `plots`: named list of plot objects for programmatic access and printing. Graphics files are written by each method during execution, not by the exporter.
 - `meta`: anything else downstream consumers need (models, fit params, skip reasons, auxiliary frames).
 
 Methods with a custom print method pass `class =` to `new_method_result()` and read their fields from `meta`/`plots` in `R/print.R`.
+
+#### Estimates schema
+
+`new_estimates()` (`inst/artma/modules/runtime_methods.R`) normalises a method's numbers into one schema shared by every method, so results bind across methods without knowing which produced them. The columns are fixed; unknown ones are an error, and anything outside the schema belongs in `meta`:
+
+`method`, `model`, `term`, `estimate`, `std_error`, `statistic`, `p_value`, `conf_low`, `conf_high`, `n_obs`, `n_clusters`, `note`
+
+Columns a method does not fill come back as typed `NA`s. `linear_tests` (`linear_tests_estimates()`) is the reference implementation.
+
+Rounding is a display concern: nothing on the `estimates` path may call `format_number()` or read `artma.output.number_of_decimals`. When a result carries an `estimates` frame, it takes the `<method>.csv` name and the display table moves to `<method>_display.csv`. LaTeX output stays driven by the display table under its original `<method>.tex` name, since it is inherently presentational.
 
 ### Options System
 

@@ -60,7 +60,7 @@ test_that("nonlinear tests return tidy coefficients and summary", {
 
   res <- suppressWarnings(nonlinear_tests(df))
 
-  expect_named(res, c("tables", "plots", "meta"))
+  expect_named(res, c("tables", "estimates", "plots", "meta"))
   expect_named(res$tables, "summary")
   expect_named(res$plots, c("stem_funnel", "stem_mse"))
   expect_s3_class(res$plots$stem_funnel, "recordedplot")

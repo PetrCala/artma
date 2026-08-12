@@ -246,12 +246,13 @@ Runtime methods live in `inst/artma/methods/`, one file per method, and are disc
 
 ```r
 box::use(
-  artma / modules / runtime_methods[new_method_result, register_runtime_method]
+  artma / modules / runtime_methods[new_estimates, new_method_result, register_runtime_method]
 )
 
 my_method <- function(df, ...) {
   new_method_result(
     tables = list(summary = my_summary_df),
+    estimates = new_estimates(my_tidy_df),
     plots = list(),
     meta = list()
   )
@@ -265,6 +266,8 @@ run <- register_runtime_method(
 
 box::export(my_method, run)
 ```
+
+The `tables` slot holds the display artifacts (rounded, formatted for a human reader); `estimates` holds the same numbers unrounded, in a long format shared by every method (`method`, `model`, `term`, `estimate`, `std_error`, `statistic`, `p_value`, `conf_low`, `conf_high`, `n_obs`, `n_clusters`, `note`), and is what a downstream pipeline reads from `<method>.csv`.
 
 Method parameters beyond the data frame come from the options system, so custom methods are configured the same way as built-in ones. See [README-dev.md](README-dev.md) for the full developer setup.
 
