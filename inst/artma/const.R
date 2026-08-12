@@ -107,6 +107,7 @@ CONST <- list(
     DESIRED_VARS = c("effect", "se", "n_obs", "reg_dof")
   ),
   MOCKS = list(
+    DATA_FILE_NAME = "mock-data.csv",
     TMP_DATA_FILE_NAME = "tmp_data.csv",
     TMP_OPTIONS_FILE_NAME = "tmp_options.yaml",
     MOCK_DF_NROWS = 1000,

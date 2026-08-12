@@ -142,7 +142,8 @@ create_mock_df <- function(
 
   if (with_file_creation) {
     if (is.null(file_path)) {
-      file_path <- CONST$MOCKS$TMP_DATA_FILE_PATH
+      file_path <- mock_data_file_path()
+      dir.create(dirname(file_path), recursive = TRUE, showWarnings = FALSE)
     }
 
     assert(
@@ -163,29 +164,64 @@ create_mock_df <- function(
   data_frame
 }
 
+#' Path of the durable mock dataset file
+#'
+#' @description
+#' The mock dataset lives under `tools::R_user_dir("artma", "data")/mock` with a
+#' stable file name, so a path written into an options file keeps resolving in
+#' later R sessions and repeated `"mock"` uses do not accumulate files. Resolved
+#' on every call rather than at load time, so an `R_USER_DATA_DIR` override
+#' (used by the test suite) is honoured.
+#' @return *\[character\]* Absolute path to the mock CSV file.
+#' @export
+mock_data_file_path <- function() {
+  box::use(artma / const[CONST])
+  file.path(
+    tools::R_user_dir(CONST$PACKAGE_NAME, which = "data"),
+    "mock",
+    CONST$MOCKS$DATA_FILE_NAME
+  )
+}
+
 #' Generate a mock dataset file and return its path
 #'
 #' @description
-#' Backs the `"mock"` data source shortcut: writes a temporary CSV with mock
-#' meta-analysis data and returns its path. Used both by the interactive
-#' source-path prompt and by programmatic `user_input` values.
-#' @return *\[character\]* Path to the generated CSV file.
+#' Backs the `"mock"` data source shortcut: writes a CSV with mock
+#' meta-analysis data to a durable location (see [mock_data_file_path()]) and
+#' returns its path. Used both by the interactive source-path prompt and by
+#' programmatic `user_input` values.
+#'
+#' An existing mock file is reused as is. The dataset is deterministic, so
+#' regenerating it would only churn the file's mtime and needlessly invalidate
+#' the data cache signature. Pass `regenerate = TRUE` to overwrite it.
+#' @param regenerate *\[logical, optional\]* Whether to overwrite an existing
+#'   mock file. Defaults to `FALSE`, reusing the file when it is already there.
+#' @return *\[character\]* Path to the mock CSV file.
 #' @export
-materialize_mock_data_path <- function() {
+materialize_mock_data_path <- function(regenerate = FALSE) {
   box::use(artma / libs / core / utils[get_verbosity])
+
+  file_path <- mock_data_file_path()
+
+  if (!regenerate && file.exists(file_path)) {
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_info("Reusing the mock data in {.path {file_path}}")
+    }
+    return(file_path)
+  }
 
   if (get_verbosity() >= 3) {
     cli::cli_alert_info("Generating mock data...")
   }
 
-  temp_file <- tempfile(pattern = "artma-mock-data-", fileext = ".csv")
-  create_mock_df(with_file_creation = TRUE, file_path = temp_file)
+  dir.create(dirname(file_path), recursive = TRUE, showWarnings = FALSE)
+  create_mock_df(with_file_creation = TRUE, file_path = file_path)
 
   if (get_verbosity() >= 3) {
-    cli::cli_alert_success("Mock data generated and saved to {.path {temp_file}}")
+    cli::cli_alert_success("Mock data generated and saved to {.path {file_path}}")
   }
 
-  temp_file
+  file_path
 }
 
-box::export(create_mock_df, materialize_mock_data_path)
+box::export(create_mock_df, mock_data_file_path, materialize_mock_data_path)
