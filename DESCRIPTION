@@ -44,9 +44,7 @@ Suggests:
     htmlwidgets (>= 1.6.0),
     jsonlite (>= 1.8.0),
     knitr (>= 1.50),
-    lintr (>= 3.2.0),
     MAIVE (>= 0.2.4),
-    mathjaxr (>= 1.8-0),
     mice (>= 3.16.0),
     NlcOptim (>= 0.6),
     plm (>= 2.6-3),
@@ -55,12 +53,10 @@ Suggests:
     ragg (>= 1.5.0),
     rddensity (>= 2.5),
     readxl (>= 1.4.0),
-    rex (>= 1.2.1),
     RhpcBLASctl (>= 0.23-42),
     rjags (>= 4.15),
     rmarkdown (>= 2.30),
     RoBMA (>= 4.0.0),
-    roxygen2 (>= 7.3.3),
     testthat (>= 3.2.3),
     writexl (>= 1.4.0)
 VignetteBuilder:
@@ -75,6 +71,5 @@ Config/testthat/edition: 3
 Config/testthat/parallel: TRUE
 Config/testthat/start-first: github-actions, release
 Encoding: UTF-8
-LazyData: true
 Roxygen: list(markdown = TRUE)
 Config/roxygen2/version: 8.0.0

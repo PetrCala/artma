@@ -72,9 +72,28 @@ test_that("resolve_output_dir returns an explicit path unchanged", {
 
 # resolve_graphics_dir ------------------------------------------------------
 
-test_that("resolve_graphics_dir joins the export subdirectory", {
+test_that("resolve_graphics_dir joins a relative export subdirectory", {
   local_options(artma.visualization.export_path = "graphics")
   expect_equal(resolve_graphics_dir("/base"), file.path("/base", "graphics"))
+})
+
+test_that("resolve_graphics_dir returns an absolute export path as-is", {
+  local_options(artma.visualization.export_path = "/tmp/artma-graphics")
+  expect_equal(resolve_graphics_dir("/base"), "/tmp/artma-graphics")
+})
+
+test_that("ensure_output_dirs honours an absolute export path", {
+  base <- local_tempdir()
+  graphics <- file.path(local_tempdir(), "elsewhere")
+  local_options(
+    artma.output.dir = base,
+    artma.visualization.export_path = graphics
+  )
+
+  ensure_output_dirs(base)
+
+  expect_true(dir.exists(graphics))
+  expect_false(dir.exists(file.path(base, graphics)))
 })
 
 # ensure_output_dirs --------------------------------------------------------

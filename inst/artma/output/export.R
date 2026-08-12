@@ -49,16 +49,37 @@ resolve_output_dir <- function() {
   output_dir
 }
 
+#' Check whether a path is absolute
+#'
+#' @description
+#' Recognises POSIX roots (`/foo`), Windows drive letters (`C:\\foo`, `C:/foo`)
+#' and UNC paths (`\\\\server\\share`).
+#'
+#' @param path *\[character\]* The path to test.
+#' @return *\[logical\]* `TRUE` when the path is absolute.
+#' @keywords internal
+is_absolute_path <- function(path) {
+  if (length(path) != 1L || is.na(path) || !nzchar(path)) {
+    return(FALSE)
+  }
+  grepl("^(?:[A-Za-z]:[/\\\\]|[/\\\\])", path)
+}
+
 #' Resolve the graphics subdirectory path
 #'
 #' @description
 #' Reads the `artma.visualization.export_path` option (default: `"graphics"`)
-#' and resolves it relative to the given output directory.
+#' and resolves it relative to the given output directory. An absolute
+#' `export_path` is returned as-is; joining it to `output_dir` would otherwise
+#' produce a nested copy of the whole absolute path under the results directory.
 #'
 #' @param output_dir *\[character\]* The base output directory.
 #' @return *\[character\]* The resolved graphics directory path.
 resolve_graphics_dir <- function(output_dir) {
   export_path <- getOption("artma.visualization.export_path", "graphics")
+  if (is_absolute_path(export_path)) {
+    return(export_path)
+  }
   file.path(output_dir, export_path)
 }
 
