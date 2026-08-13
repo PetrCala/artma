@@ -32,6 +32,7 @@
 ^AGENTS\.md$
 ^box-to-r-migration-plan\.md$
 ^CLAUDE\.md$
+^contributingGuides$
 ^Makefile$
 ^\.claude$
 ^\.Rprofile$
