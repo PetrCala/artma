@@ -190,7 +190,7 @@ artma::artma()
 You can also create one explicitly:
 
 ```r
-artma::options.create()
+artma::options_create()
 ```
 
 During creation, you'll be guided through:
@@ -218,7 +218,7 @@ Choose descriptive names that help you identify the analysis:
 You can also create options files programmatically by providing values:
 
 ```r
-artma::options.create(
+artma::options_create(
   options_file_name = "my_analysis",
   user_input = list(
     "data.source_path" = "/path/to/data.csv",
@@ -302,7 +302,7 @@ Options files are text files (YAML), making them perfect for version control. Co
 Always validate your options files before using them:
 
 ```r
-artma::options.validate("my_analysis.yaml")
+artma::options_validate("my_analysis.yaml")
 ```
 
 This checks that:
@@ -407,15 +407,15 @@ cache:
 
 ### Browsing the Option Tree
 
-Called without arguments, `artma::options.help()` prints every option the template defines, grouped by top-level section, one line per option with its type and default:
+Called without arguments, `artma::options_help()` prints every option the template defines, grouped by top-level section, one line per option with its type and default:
 
 ```r
-artma::options.help()
+artma::options_help()
 ```
 
 ```
 ── artma options ───────────────────────────────────────────────────────
-127 options in 10 sections. Call `artma::options.help('<name>')` with an
+127 options in 10 sections. Call `artma::options_help('<name>')` with an
 option or a group name for details.
 
 ── calc ──
@@ -427,24 +427,24 @@ option or a group name for details.
 Pass a name to read the full help text of an option:
 
 ```r
-artma::options.help("methods.bma.iter")
+artma::options_help("methods.bma.iter")
 ```
 
 A name that points at a group rather than a single option expands to everything underneath it, so you do not have to know the full path in advance:
 
 ```r
-artma::options.help("methods.bma")     # every option of the BMA method
-artma::options.help("methods")         # every method option
+artma::options_help("methods.bma")     # every option of the BMA method
+artma::options_help("methods")         # every method option
 ```
 
 Names that match nothing are reported, and the recognized ones are still printed.
 
 ### Comparing Options Files
 
-`artma::options.diff()` answers "what is actually different about this configuration": it lists the options whose values differ between two files, then each file's deviations from the template defaults.
+`artma::options_diff()` answers "what is actually different about this configuration": it lists the options whose values differ between two files, then each file's deviations from the template defaults.
 
 ```r
-artma::options.diff("baseline.yaml", "sensitivity.yaml")
+artma::options_diff("baseline.yaml", "sensitivity.yaml")
 ```
 
 ```
@@ -467,13 +467,13 @@ List-typed options such as `data.columns` are compared entry by entry, so the di
 See all available options files:
 
 ```r
-artma::options.list()
+artma::options_list()
 ```
 
 Pass `details = TRUE` for a data frame describing each file: the dataset it points at, when it was last modified, when it last produced results, and how many of its options deviate from the template defaults.
 
 ```r
-artma::options.list(details = TRUE)
+artma::options_list(details = TRUE)
 ```
 
 ```
@@ -489,7 +489,7 @@ The last run time is read from the file's output directory, and is `NA` for a fi
 Create a new options file based on an existing one:
 
 ```r
-artma::options.copy(
+artma::options_copy(
   options_file_name_from = "baseline.yaml",
   options_file_name_to = "sensitivity.yaml"
 )
@@ -500,7 +500,7 @@ artma::options.copy(
 Update an existing options file:
 
 ```r
-artma::options.modify(
+artma::options_modify(
   options_file_name = "my_analysis.yaml",
   options_to_modify = list(
     "methods.effect_summary_stats.conf_level" = 0.99,
@@ -514,7 +514,7 @@ artma::options.modify(
 Open an options file in your preferred editor:
 
 ```r
-artma::options.open("my_analysis.yaml")
+artma::options_open("my_analysis.yaml")
 ```
 
 ### Fixing Options Files
@@ -522,7 +522,7 @@ artma::options.open("my_analysis.yaml")
 If an options file has errors, fix it automatically:
 
 ```r
-artma::options.fix("my_analysis.yaml")
+artma::options_fix("my_analysis.yaml")
 ```
 
 This will:
@@ -543,10 +543,10 @@ This will:
 2. **"Invalid option value"**
    - Check that option values match expected types (character, numeric, logical)
    - For enum options, ensure the value is one of the allowed choices
-   - Validate the file: `artma::options.validate("file.yaml")`
+   - Validate the file: `artma::options_validate("file.yaml")`
 
 3. **"Missing required option"**
-   - Use `artma::options.fix()` to add missing options with defaults
+   - Use `artma::options_fix()` to add missing options with defaults
    - Or manually add the missing option to the YAML file
 
 4. **"Column not found in data"**
@@ -571,4 +571,4 @@ Remember:
 - Validate files before use
 - Keep options files in version control for reproducibility
 
-For more information on specific options, see the help documentation for individual functions or explore the options template using `artma::options.help()`, which prints the whole option tree when called without arguments.
+For more information on specific options, see the help documentation for individual functions or explore the options template using `artma::options_help()`, which prints the whole option tree when called without arguments.

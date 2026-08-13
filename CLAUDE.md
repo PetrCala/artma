@@ -114,7 +114,7 @@ The entry point is `prepare_data()` from `artma/data/index.R`.
 
 ### Autonomy System
 
-Controls how much user interaction happens during analysis. `interactive()` is the hard gate: non-interactive sessions never prompt. Within interactive sessions the level (stored in the options file under `autonomy.level`) is one of `ask_more`, `balanced`, or `autonomous` (the default), ordered from most to least talkative. Gate prompts with `should_prompt_user(required_level)` from `artma / libs / core / autonomy`: use `required_level = "balanced"` for non-critical options, preferences, and save/overwrite confirmations; `required_level = "autonomous"` (the default) for variable selection, method selection, and column mapping. Public API: `artma::autonomy.get()`, `artma::autonomy.set()`, `artma::autonomy.is_full()` (also TRUE in non-interactive sessions).
+Controls how much user interaction happens during analysis. `interactive()` is the hard gate: non-interactive sessions never prompt. Within interactive sessions the level (stored in the options file under `autonomy.level`) is one of `ask_more`, `balanced`, or `autonomous` (the default), ordered from most to least talkative. Gate prompts with `should_prompt_user(required_level)` from `artma / libs / core / autonomy`: use `required_level = "balanced"` for non-critical options, preferences, and save/overwrite confirmations; `required_level = "autonomous"` (the default) for variable selection, method selection, and column mapping. Public API: `artma::autonomy_get()`, `artma::autonomy_set()`, `artma::autonomy_is_full()` (also TRUE in non-interactive sessions).
 
 ## Conventions
 

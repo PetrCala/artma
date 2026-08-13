@@ -17,3 +17,35 @@ articles:
       - methods-overview
       - options-files
       - release-cycle
+
+reference:
+  - title: Run an analysis
+    contents:
+      - artma
+      - methods_list
+  - title: Options files
+    contents:
+      - starts_with("options_")
+  - title: Data configuration
+    contents:
+      - starts_with("config_")
+      - data_preview
+  - title: Autonomy
+    contents:
+      - starts_with("autonomy_")
+  - title: Results and reports
+    contents:
+      - results_dir
+      - results_open
+      - report_render
+  - title: Visualization
+    contents:
+      - starts_with("viz_")
+      - starts_with("print.artma_")
+  - title: Command-line interface
+    contents:
+      - cli_run
+      - cli_install
+  - title: Deprecated
+    contents:
+      - artma-deprecated

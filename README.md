@@ -95,7 +95,7 @@ Expensive computations are cached on disk between runs, so rerunning an analysis
 
 # Available methods
 
-List them at any time with `artma::methods.list()`. The current set:
+List them at any time with `artma::methods_list()`. The current set:
 
 | Method | What it does |
 | --- | --- |
@@ -134,7 +134,7 @@ getOption("artma.verbose") # e.g. 3
 If you call a runtime method without an options file, artma prompts you to create one. You can also do it explicitly:
 
 ```r
-artma::options.create()
+artma::options_create()
 ```
 
 Pass the file name to `artma()` to use it for a run:
@@ -151,20 +151,20 @@ Options are loaded only for the duration of the call, so different configuration
 Useful helpers:
 
 ```r
-artma::options.list()              # names of your existing options files
-artma::options.open()              # open a file for editing
-artma::options.help()              # documentation for every available option
-artma::options.validate()          # check a file against the template
-artma::options.fix()               # fill in missing options with defaults
-artma::options.copy()              # duplicate a configuration
-artma::options.delete()            # remove one
-artma::options.print_default_dir() # where the files live
+artma::options_list()              # names of your existing options files
+artma::options_open()              # open a file for editing
+artma::options_help()              # documentation for every available option
+artma::options_validate()          # check a file against the template
+artma::options_fix()               # fill in missing options with defaults
+artma::options_copy()              # duplicate a configuration
+artma::options_delete()            # remove one
+artma::options_print_default_dir() # where the files live
 ```
 
 ## Modifying options
 
 ```r
-artma::options.modify(
+artma::options_modify(
   options_file_name = "my_analysis.yaml",
   user_input = list("verbose" = 4)
 )
@@ -190,7 +190,7 @@ artma reads CSV, TSV, Excel (`.xlsx`/`.xls`), JSON, Stata (`.dta`), and RDS file
 Preview any dataset (from a path, a data frame, or your options file) with:
 
 ```r
-artma::data.preview()
+artma::data_preview()
 ```
 
 ## Per-variable configuration
@@ -198,12 +198,12 @@ artma::data.preview()
 Each column in your dataset has a configuration entry that controls how it participates in the analyses: its type, which methods use it, grouping flags, and so on. Sensible defaults are auto-detected from the data; only your deviations from the defaults are persisted in the options file.
 
 ```r
-artma::config.get()                          # the fully resolved config
-artma::config.get(var_name = "study_size")   # one variable's entry
-artma::config.set("study_size", bma = TRUE)  # override specific fields
-artma::config.overrides()                    # see only what you've overridden
-artma::config.reset("study_size")            # back to auto-detected defaults
-artma::config.fix()                          # regenerate the config from the data
+artma::config_get()                          # the fully resolved config
+artma::config_get(var_name = "study_size")   # one variable's entry
+artma::config_set("study_size", bma = TRUE)  # override specific fields
+artma::config_overrides()                    # see only what you've overridden
+artma::config_reset("study_size")            # back to auto-detected defaults
+artma::config_fix()                          # regenerate the config from the data
 ```
 
 # Autonomy: how much artma asks
@@ -217,8 +217,8 @@ The autonomy level controls how many interactive prompts you get during a run:
 | `autonomous` (default) | Minimal prompts; rely on defaults and auto-detection |
 
 ```r
-artma::autonomy.get()
-artma::autonomy.set("balanced")
+artma::autonomy_get()
+artma::autonomy_set("balanced")
 ```
 
 Non-interactive sessions (scripts, CI) never prompt, regardless of the level.
@@ -228,16 +228,16 @@ Non-interactive sessions (scripts, CI) never prompt, regardless of the level.
 Tables are exported as CSV and plots as graphics files into the results directory:
 
 ```r
-artma::results.dir()  # print and return the path
-artma::results.open() # open it in your file browser
+artma::results_dir()  # print and return the path
+artma::results_open() # open it in your file browser
 ```
 
 Plot appearance is configurable per session:
 
 ```r
-artma::viz.themes()             # available themes
-artma::viz.get()                # current settings
-artma::viz.set(theme = "purple")
+artma::viz_themes()             # available themes
+artma::viz_get()                # current settings
+artma::viz_set(theme = "purple")
 ```
 
 # Custom methods
