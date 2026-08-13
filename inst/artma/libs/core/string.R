@@ -30,6 +30,32 @@ pluralize <- function(word, count = NULL) {
 
   apply_plural(word)
 }
+#' @title Describe counts, leaving the zeros out
+#' @description Turn named counts into readable phrases: `c(table = 2, plot = 0)`
+#'   becomes `"2 tables"`. A count of zero is dropped rather than reported, so a
+#'   message never tells the reader about something that did not happen. The
+#'   result is a character vector, which `cli` collapses into "a, b and c" when
+#'   interpolated; an all-zero input yields an empty vector, which the caller
+#'   uses to pick a "nothing happened" wording instead.
+#' @param counts *\[numeric\]* Counts, named by the singular noun each belongs to.
+#' @return *\[character\]* One phrase per non-zero count, in the given order.
+count_phrases <- function(counts) {
+  counts <- unlist(counts)
+  if (length(counts) == 0) {
+    return(character())
+  }
+
+  validate(is.numeric(counts))
+  assert(!is.null(names(counts)), "`counts` must be named by the noun each count describes.")
+
+  counts <- counts[!is.na(counts) & counts > 0]
+  vapply(
+    seq_along(counts),
+    function(i) paste(counts[[i]], pluralize(names(counts)[[i]], counts[[i]])),
+    character(1)
+  )
+}
+
 #' @title Trim quotes
 #' @description Removes single or double quotes from the beggining and end of a string. Preserves these quotes elsewhere in the string.
 #' @param s *\[character\]* The string to trim quotes for.
@@ -51,6 +77,7 @@ make_verbose_name <- function(input_str) {
 }
 
 box::export(
+  count_phrases,
   make_verbose_name,
   pluralize,
   trim_quotes

@@ -12,7 +12,8 @@
 #' `render_run_summary()`.
 
 box::use(
-  artma / libs / core / log[is_info_enabled]
+  artma / libs / core / log[is_info_enabled],
+  artma / libs / core / string[count_phrases]
 )
 
 #' @title Summarise a finished run
@@ -102,9 +103,21 @@ render_run_summary <- function(results, output_dir = NULL, run_files = character
   if (is.null(run$output_dir)) {
     cli::cli_alert_info("Results were not saved to disk.")
   } else {
-    cli::cli_alert_info(
-      "Wrote {run$tables} table{?s} and {run$graphics} plot{?s} to {.path {run$output_dir}}"
-    )
+    # Only the categories the run actually wrote are named; a run that wrote no
+    # plots says nothing about plots. `other` is counted too (the HTML report,
+    # widgets written outside the graphics directory), so "nothing was written"
+    # is only ever said when the run really wrote nothing.
+    written <- count_phrases(c(
+      table = run$tables,
+      plot = run$graphics,
+      "other file" = run$other
+    ))
+
+    if (length(written) == 0L) {
+      cli::cli_alert_info("Nothing was written to {.path {run$output_dir}}")
+    } else {
+      cli::cli_alert_info("Wrote {written} to {.path {run$output_dir}}")
+    }
   }
 
   invisible(run)

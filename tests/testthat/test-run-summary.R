@@ -111,6 +111,28 @@ test_that("render_run_summary names the skipped and failed methods with their re
 test_that("render_run_summary reports the file counts and the output directory", {
   out <- local_tempdir()
   dir.create(file.path(out, "tables"))
+  dir.create(file.path(out, "graphics"))
+  local_options(artma.verbose = 3, cli.width = 400, artma.visualization.export_path = "graphics")
+
+  msgs <- paste(
+    testthat::capture_messages(render_run_summary(
+      make_results(output_files = list(funnel_plot = file.path(out, "graphics", "funnel_plot.png"))),
+      output_dir = out,
+      run_files = c(
+        file.path(out, "tables", "funnel_plot.csv"),
+        file.path(out, "tables", "linear_tests.csv")
+      )
+    )),
+    collapse = ""
+  )
+
+  expect_true(grepl("Wrote 2 tables and 1 plot to", msgs, fixed = TRUE))
+  expect_true(grepl(basename(out), msgs, fixed = TRUE))
+})
+
+test_that("render_run_summary leaves out the categories the run did not write", {
+  out <- local_tempdir()
+  dir.create(file.path(out, "tables"))
   local_options(artma.verbose = 3, cli.width = 400)
 
   msgs <- paste(
@@ -122,8 +144,39 @@ test_that("render_run_summary reports the file counts and the output directory",
     collapse = ""
   )
 
-  expect_true(grepl("Wrote 1 table and 0 plots", msgs, fixed = TRUE))
-  expect_true(grepl(basename(out), msgs, fixed = TRUE))
+  written_line <- grep("Wrote", strsplit(msgs, "\n", fixed = TRUE)[[1]], value = TRUE)
+
+  expect_true(grepl("Wrote 1 table to", written_line, fixed = TRUE))
+  expect_false(grepl("plot", written_line, fixed = TRUE))
+})
+
+test_that("render_run_summary counts files outside the tables and graphics directories", {
+  out <- local_tempdir()
+  local_options(artma.verbose = 3, cli.width = 400)
+
+  msgs <- paste(
+    testthat::capture_messages(render_run_summary(
+      make_results(),
+      output_dir = out,
+      run_files = file.path(out, "report.html")
+    )),
+    collapse = ""
+  )
+
+  expect_true(grepl("Wrote 1 other file to", msgs, fixed = TRUE))
+})
+
+test_that("render_run_summary says nothing was written when the run wrote no files", {
+  out <- local_tempdir()
+  local_options(artma.verbose = 3, cli.width = 400)
+
+  msgs <- paste(
+    testthat::capture_messages(render_run_summary(make_results(), output_dir = out)),
+    collapse = ""
+  )
+
+  expect_true(grepl("Nothing was written to", msgs, fixed = TRUE))
+  expect_false(grepl("Wrote", msgs, fixed = TRUE))
 })
 
 test_that("render_run_summary stays silent below info verbosity", {
