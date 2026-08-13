@@ -175,7 +175,7 @@ test_that("cli.run version prints the package version to stdout", {
   expect_match(res$stdout, as.character(utils::packageVersion("artma")), fixed = TRUE)
 })
 
-test_that("cli.run methods dispatches to methods.list without error", {
+test_that("cli.run methods dispatches to methods_list without error", {
   res <- run_cli("methods")
   expect_equal(res$code, 0L)
 })

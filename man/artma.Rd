@@ -20,7 +20,7 @@ data will be used directly, bypassing the data reading step.}
 
 \item{methods}{\emph{[character, optional]} A character vector of method names to run.
 Use \code{"all"} to run all available methods. If \code{NULL}, an interactive menu will
-prompt you to select methods. See \code{artma::methods.list()} for available methods.}
+prompt you to select methods. See \code{artma::methods_list()} for available methods.}
 
 \item{options}{\emph{[character, optional]} Name of the options file (with or without
 \code{.yaml} extension) to use. If \code{NULL} and running interactively, you will be
@@ -156,7 +156,7 @@ funnel_result <- results$funnel_plot
 }
 \seealso{
 \itemize{
-\item \code{artma::methods.list()} - List available methods
+\item \code{artma::methods_list()} - List available methods
 \item \code{artma::options_create()} - Create a new options file
 \item \code{artma::prepare_data()} - Prepare data manually
 }

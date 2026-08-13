@@ -9,7 +9,7 @@
 #'   data will be used directly, bypassing the data reading step.
 #' @param methods *\[character, optional\]* A character vector of method names to run.
 #'   Use `"all"` to run all available methods. If `NULL`, an interactive menu will
-#'   prompt you to select methods. See `artma::methods.list()` for available methods.
+#'   prompt you to select methods. See `artma::methods_list()` for available methods.
 #' @param options *\[character, optional\]* Name of the options file (with or without
 #'   `.yaml` extension) to use. If `NULL` and running interactively, you will be
 #'   prompted to create or select an options file.
@@ -127,7 +127,7 @@
 #' }
 #'
 #' @seealso
-#' - `artma::methods.list()` - List available methods
+#' - `artma::methods_list()` - List available methods
 #' - `artma::options_create()` - Create a new options file
 #' - `artma::prepare_data()` - Prepare data manually
 #'
@@ -255,7 +255,7 @@ artma <- function(
 
     if (isTRUE(save_results) && isTRUE(open_results) && interactive()) {
       tryCatch(
-        results.open(), # nolint: box_usage_linter. # Package function from R/results.R
+        results_open(), # nolint: box_usage_linter. # Package function from R/results.R
         error = function(e) {
           if (get_verbosity() >= 2) {
             cli::cli_alert_warning(
@@ -272,7 +272,7 @@ artma <- function(
         cli::cli_alert_info("Results saved to {.path {output_dir}}")
         if (!isTRUE(open_results)) {
           cli::cli_alert_info(
-            "Run {.code artma::results.open()} to open the results directory."
+            "Run {.code artma::results_open()} to open the results directory."
           )
         }
       }
@@ -386,7 +386,7 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
     if (!is.character(methods_input)) {
       cli::cli_abort(c(
         "x" = "Runtime methods must be supplied as a character vector.",
-        "i" = "To see a list of available methods, run {.code artma::methods.list()}"
+        "i" = "To see a list of available methods, run {.code artma::methods_list()}"
       ))
     }
 
@@ -407,7 +407,7 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
       selected_methods <- paste(as.character(invalid_methods), collapse = ", ")
       cli::cli_abort(c(
         "x" = "Invalid runtime methods selected: {.val {selected_methods}}",
-        "i" = "To see a list of available methods, run {.code artma::methods.list()}"
+        "i" = "To see a list of available methods, run {.code artma::methods_list()}"
       ))
     }
 
