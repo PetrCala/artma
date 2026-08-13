@@ -3,7 +3,7 @@
 #' @title Run the artma command-line interface
 #' @description
 #' Scriptable entry point behind the `artma` launcher and
-#' `Rscript -e 'artma::cli.run()'`. It parses an argument vector, dispatches to
+#' `Rscript -e 'artma::cli_run()'`. It parses an argument vector, dispatches to
 #' the matching public function (`artma()`, `methods_list()`,
 #' `options_validate()` / `options_create()` / `options_list()`, or the package
 #' version) and returns an exit code. No analysis logic lives here: each
@@ -42,15 +42,15 @@
 #' @examples
 #' \dontrun{
 #' # List available methods
-#' artma::cli.run("methods")
+#' artma::cli_run("methods")
 #'
 #' # Run two methods against an options file, emitting a JSON manifest
-#' artma::cli.run(c(
+#' artma::cli_run(c(
 #'   "run", "--options", "my_analysis.yaml",
 #'   "--methods", "funnel_plot,effect_summary_stats", "--json"
 #' ))
 #' }
-cli.run <- function(args = commandArgs(trailingOnly = TRUE)) {
+cli_run <- function(args = commandArgs(trailingOnly = TRUE)) {
   box::use(
     artma / cli / parser[cli_parse, cli_help_text]
   )
@@ -88,7 +88,7 @@ cli.run <- function(args = commandArgs(trailingOnly = TRUE)) {
 #' on the installed package; it resolves nothing from its own location.
 #'
 #' The no-install alternative is to call the CLI through `Rscript` directly:
-#' `Rscript -e 'artma::cli.run()' run --options my_analysis.yaml`.
+#' `Rscript -e 'artma::cli_run()' run --options my_analysis.yaml`.
 #'
 #' In interactive sessions the copy is confirmed via a menu. In non-interactive
 #' sessions it requires `force = TRUE` and otherwise aborts. It never writes
@@ -102,10 +102,10 @@ cli.run <- function(args = commandArgs(trailingOnly = TRUE)) {
 #' @export
 #' @examples
 #' \dontrun{
-#' artma::cli.install()
-#' artma::cli.install(dir = "~/bin", force = TRUE)
+#' artma::cli_install()
+#' artma::cli_install(dir = "~/bin", force = TRUE)
 #' }
-cli.install <- function(dir = "~/.local/bin", force = FALSE) {
+cli_install <- function(dir = "~/.local/bin", force = FALSE) {
   launcher <- system.file("cli", "artma", package = "artma")
   if (!nzchar(launcher) || !file.exists(launcher)) {
     cli::cli_abort(c(
@@ -169,7 +169,7 @@ cli_emit_to_stderr <- function(lines) {
 
 #' @title Dispatch a parsed CLI invocation
 #' @description Translate a `dispatch` parse result into a call on the public
-#'   API. Kept separate from [cli.run()] so the top-level error boundary and
+#'   API. Kept separate from [cli_run()] so the top-level error boundary and
 #'   exit-code contract stay small and testable.
 #' @param parsed *\[list\]* A parse result with `action == "dispatch"`.
 #' @return `NULL` (invisible)
@@ -325,3 +325,23 @@ cli_build_run_manifest <- function(results) {
 }
 
 # nolint end: box_usage_linter.
+
+# Deprecated dotted aliases (see contributingGuides/API.md).
+
+#' @rdname artma-deprecated
+#' @export
+cli.install <- function(...) {
+  lifecycle::deprecate_warn("0.4.0", "cli.install()", "cli_install()")
+  cli_install(...)
+}
+
+# PERMANENT alias, unlike the others: launchers installed by cli.install()
+# before 0.4.0 call artma::cli.run() from a script on the user's PATH, and a
+# removed or warning alias would break or pollute every such installation on
+# package upgrade. Forwards silently; never remove.
+
+#' @rdname artma-deprecated
+#' @export
+cli.run <- function(...) {
+  cli_run(...)
+}

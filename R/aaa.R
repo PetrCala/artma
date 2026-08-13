@@ -42,7 +42,7 @@ runtime_setup <- function(
 
   withr::local_options(runtime_options)
 
-  # The CLI (cli.run) carries its flag-derived options overlay in a dedicated
+  # The CLI (cli_run) carries its flag-derived options overlay in a dedicated
   # session option so it survives the file load above and still wins. Re-apply
   # it here, after the file values are in place. No-op for every other caller.
   cli_overrides <- getOption("artma.temp.cli_overrides", NULL)

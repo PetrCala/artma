@@ -314,7 +314,7 @@ cli_help_text <- function(subcommand = NULL) {
       lines,
       "",
       "Run 'artma <command> --help' for command-specific options.",
-      "Without the launcher, invoke as: Rscript -e 'artma::cli.run()' <command> [options]"
+      "Without the launcher, invoke as: Rscript -e 'artma::cli_run()' <command> [options]"
     )
     return(lines)
   }

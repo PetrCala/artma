@@ -10,7 +10,7 @@ box::use(
   ]
 )
 
-# Drive cli.run in-process, capturing both streams and the returned exit code.
+# Drive cli_run in-process, capturing both streams and the returned exit code.
 run_cli <- function(args) {
   outcon <- textConnection("outbuf", "w", local = TRUE)
   errcon <- textConnection("errbuf", "w", local = TRUE)
@@ -21,14 +21,14 @@ run_cli <- function(args) {
   # here would silently replace it, and popping ours back off would then
   # remove the global one too instead of restoring it. Suspend it explicitly
   # for the duration of this capture and restore it afterward, since this
-  # test genuinely needs cli.run()'s raw stderr content, not just silence.
+  # test genuinely needs cli_run()'s raw stderr content, not just silence.
   null_message_con <- getOption("artma.test.null_message_con")
   if (sink.number(type = "message") > 0) sink(type = "message")
 
   sink(outcon, type = "output")
   sink(errcon, type = "message")
   code <- tryCatch(
-    artma::cli.run(args),
+    artma::cli_run(args),
     finally = {
       sink(type = "message")
       sink(type = "output")
@@ -113,7 +113,7 @@ test_that("cli_help_text documents every subcommand and its flags", {
   }
 })
 
-test_that("cli.run prints help to stdout and returns 0 for each subcommand", {
+test_that("cli_run prints help to stdout and returns 0 for each subcommand", {
   for (sc in c("--help", "run", "methods", "options", "version")) {
     res <- run_cli(c(sc, "--help"))
     expect_equal(res$code, 0L)
@@ -123,7 +123,7 @@ test_that("cli.run prints help to stdout and returns 0 for each subcommand", {
 
 # --- Exit-code contract ----------------------------------------------------
 
-test_that("cli.run returns 2 and prints usage to stderr on a usage error", {
+test_that("cli_run returns 2 and prints usage to stderr on a usage error", {
   res <- run_cli(c("run", "--bogus"))
   expect_equal(res$code, 2L)
   expect_match(res$stderr, "Unknown flag", fixed = TRUE)
@@ -169,13 +169,13 @@ test_that("an empty flag set yields an empty overlay", {
 
 # --- Dispatch --------------------------------------------------------------
 
-test_that("cli.run version prints the package version to stdout", {
+test_that("cli_run version prints the package version to stdout", {
   res <- run_cli("version")
   expect_equal(res$code, 0L)
   expect_match(res$stdout, as.character(utils::packageVersion("artma")), fixed = TRUE)
 })
 
-test_that("cli.run methods dispatches to methods_list without error", {
+test_that("cli_run methods dispatches to methods_list without error", {
   res <- run_cli("methods")
   expect_equal(res$code, 0L)
 })

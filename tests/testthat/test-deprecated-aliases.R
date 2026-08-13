@@ -3,7 +3,7 @@
 # warns with the lifecycle class and forwards to the same result.
 
 box::use(testthat[
-  test_that, expect_identical, expect_warning, expect_null, expect_true, expect_error
+  test_that, expect_identical, expect_warning, expect_no_warning, expect_null, expect_true, expect_error
 ])
 
 test_that("options.list is a deprecated alias of options_list", {
@@ -107,4 +107,21 @@ test_that("results.dir is a deprecated alias of results_dir", {
     }
   )
   expect_true(any(vapply(caught, inherits, logical(1), "lifecycle_warning_deprecated")))
+})
+
+test_that("cli.install is a deprecated alias of cli_install", {
+  withr::local_options(lifecycle_verbosity = "warning")
+  # Non-interactive without force = TRUE aborts, after the warning fires.
+  expect_warning(
+    expect_error(cli.install(dir = withr::local_tempdir())),
+    class = "lifecycle_warning_deprecated"
+  )
+})
+
+test_that("cli.run is a permanent alias of cli_run and never warns", {
+  withr::local_options(lifecycle_verbosity = "warning")
+  out <- testthat::capture_output({
+    expect_no_warning(status <- cli.run("--help"))
+  })
+  expect_identical(status, 0L)
 })

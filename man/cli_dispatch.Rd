@@ -14,7 +14,7 @@ cli_dispatch(parsed)
 }
 \description{
 Translate a \code{dispatch} parse result into a call on the public
-API. Kept separate from \code{\link[=cli.run]{cli.run()}} so the top-level error boundary and
+API. Kept separate from \code{\link[=cli_run]{cli_run()}} so the top-level error boundary and
 exit-code contract stay small and testable.
 }
 \keyword{internal}
