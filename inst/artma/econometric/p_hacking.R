@@ -8,6 +8,7 @@ NULL
 box::use(
   stats[pchisq, ecdf, coef],
   artma / libs / core / validation[validate, assert],
+  artma / libs / core / log[is_info_enabled],
   artma / libs / formatting / results[
     format_number,
     format_se,
@@ -279,8 +280,7 @@ run_caliper_tests <- function(t_stats, thresholds = c(1.645, 1.96, 2.58),
   total_tests <- length(thresholds) * length(widths)
 
   # Show progress bar if requested and verbosity allows
-  verbosity <- getOption("artma.verbose", 3)
-  show_pb <- show_progress && verbosity >= 3 && total_tests >= 3
+  show_pb <- show_progress && is_info_enabled() && total_tests >= 3
 
   if (show_pb) {
     cli::cli_progress_bar(
