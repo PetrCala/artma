@@ -32,14 +32,123 @@ add_obs_id_column <- function(df) {
   df
 }
 
+#' @title Check whether label values are human-legible
+#' @description Study labels count as legible when they are mostly non-numeric
+#'   text ("Smith (2009)"), mirroring the value heuristics of
+#'   \code{is_likely_study_key}.
+#' @param labels *\[character\]* Candidate label values.
+#' @return *\[logical\]* TRUE if the values read as human-legible labels.
+#' @keywords internal
+is_legible_label_vector <- function(labels) {
+  labels <- trimws(as.character(labels))
+  labels <- labels[!is.na(labels) & nzchar(labels)]
+
+  if (length(labels) == 0) {
+    return(FALSE)
+  }
+
+  numeric_like_ratio <- mean(grepl("^[-+]?[0-9]+(\\.[0-9]+)?$", labels))
+  if (numeric_like_ratio > 0.8) {
+    return(FALSE)
+  }
+
+  mean(grepl("[A-Za-z]", labels)) >= 0.6
+}
+
+
+#' @title Check that labels group rows exactly like study IDs
+#' @description A label column can stand in for the study key only when the
+#'   mapping is one-to-one: every study ID carries a single label and no two
+#'   studies share one.
+#' @param labels *\[character\]* Candidate label values, one per row.
+#' @param study_ids *\[integer\]* Normalized study IDs, one per row.
+#' @return *\[logical\]* TRUE if labels and IDs induce the same grouping.
+#' @keywords internal
+labels_align_with_study_ids <- function(labels, study_ids) {
+  if (any(is.na(labels) | !nzchar(labels)) || any(is.na(study_ids))) {
+    return(FALSE)
+  }
+
+  n_ids <- length(unique(study_ids))
+  n_labels <- length(unique(labels))
+  n_pairs <- length(unique(paste(study_ids, labels, sep = "\r")))
+
+  n_pairs == n_ids && n_labels == n_ids
+}
+
+
+#' @title Find a human-legible source column for study labels
+#' @description When the study key column holds numeric IDs, the frame often
+#'   still carries the citation-style study names under another column
+#'   ("study", "author", ...). Returns the best such column: it must look like
+#'   study labels, group rows exactly like the study IDs, and carry a
+#'   study-name-like column name (an existing \code{study_label} column always
+#'   qualifies). NULL when the current labels are already legible or no
+#'   suitable column exists.
+#' @param df *\[data.frame\]* The data frame.
+#' @param study_ids *\[integer\]* Normalized study IDs, one per row.
+#' @param current_labels *\[character\]* Labels derived from the study key.
+#' @return *\[character\]* Column name, or NULL.
+#' @keywords internal
+find_study_label_source <- function(df, study_ids, current_labels) {
+  box::use(
+    artma / data / column_recognition[MATCH_THRESHOLDS, get_column_patterns, match_column_name],
+    artma / data / utils[get_reserved_colnames]
+  )
+
+  if (is_legible_label_vector(current_labels)) {
+    return(NULL)
+  }
+
+  candidates <- setdiff(names(df), setdiff(get_reserved_colnames(), "study_label"))
+  if (length(candidates) == 0) {
+    return(NULL)
+  }
+
+  study_patterns <- get_column_patterns()["study_id"]
+
+  scores <- vapply(candidates, function(col) {
+    values <- df[[col]]
+    if (!(is.character(values) || is.factor(values))) {
+      return(NA_real_)
+    }
+    labels <- trimws(as.character(values))
+    if (!is_legible_label_vector(labels)) {
+      return(NA_real_)
+    }
+    if (!labels_align_with_study_ids(labels, study_ids)) {
+      return(NA_real_)
+    }
+    if (identical(col, "study_label")) {
+      # A user-provided study_label column beats any name-matched candidate
+      return(2)
+    }
+    match <- match_column_name(col, study_patterns)
+    if (identical(match$match, "study_id") && match$score >= MATCH_THRESHOLDS$optional_confidence) {
+      match$score
+    } else {
+      NA_real_
+    }
+  }, numeric(1))
+
+  if (all(is.na(scores))) {
+    return(NULL)
+  }
+
+  candidates[which.max(scores)]
+}
+
+
 #' @title Add study ID column
 #' @description Add or normalize the study ID column. Uses the existing
 #'   \code{study_id} column (character or integer), preserves its original
 #'   labels in \code{study_label}, and overwrites \code{study_id} with
-#'   integer IDs derived from factorizing its values.
+#'   integer IDs derived from factorizing its values. When the study key is
+#'   numeric and another column carries human-legible study names that group
+#'   rows the same way, \code{study_label} is taken from that column instead.
 #' @param df *\[data.frame\]* The data frame with a \code{study_id} column.
 #' @return *\[data.frame\]* The data frame with \code{study_id} as integer IDs
-#'   and \code{study_label} as the original study key values.
+#'   and \code{study_label} as the study label values.
 #' @keywords internal
 add_study_id_column <- function(df) {
   box::use(artma / libs / core / utils[get_verbosity])
@@ -53,16 +162,29 @@ add_study_id_column <- function(df) {
   valid_ids <- as.integer(factor(study_src, levels = unique(study_src)))
 
   study_labels <- as.character(study_src)
+  label_source <- "the original study keys"
+
+  label_col <- find_study_label_source(df, valid_ids, study_labels)
+  if (!is.null(label_col)) {
+    study_labels <- as.character(df[[label_col]])
+    label_source <- sprintf("the column '%s'", label_col)
+    if (get_verbosity() >= 3 && !identical(label_col, "study_label")) {
+      cli::cli_alert_info(
+        "The study keys are numeric; using {.field {label_col}} for {.field study_label} instead."
+      )
+    }
+  }
+
   if (!"study_label" %in% colnames(df)) {
     df$study_label <- study_labels
     if (get_verbosity() >= 4) {
-      cli::cli_inform("Created {.field study_label} column from original study keys")
+      cli::cli_inform("Created {.field study_label} column from {label_source}")
     }
   } else if (!identical(as.character(df$study_label), study_labels)) {
     if (get_verbosity() >= 2) {
       cli::cli_alert_warning(c(
-        "!" = "Existing {.val study_label} values differ from the source {.val study_id} column.",
-        "i" = "Overwriting {.val study_label} with the original study keys."
+        "!" = "Existing {.val study_label} values differ from {label_source}.",
+        "i" = "Overwriting {.val study_label}."
       ))
     }
     df$study_label <- study_labels
