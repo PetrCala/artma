@@ -196,6 +196,7 @@ bma <- function(df) {
   primary <- results[[1]]
   invisible(new_method_result(
     tables = list(coefficients = primary$coefficients),
+    estimates = bma_estimates(primary$coefficients, nrow(primary$data)),
     meta = list(
       model = primary$model,
       data = primary$data,
@@ -204,6 +205,44 @@ bma <- function(df) {
       skipped = NULL,
       all = results
     )
+  ))
+}
+
+#' @title Tidy estimates for BMA
+#' @description
+#' Map the posterior coefficient frame onto the shared `estimates` schema, one
+#' row per moderator.
+#'
+#' BMA reports a posterior, not a sampling distribution, so the inferential
+#' columns are read Bayesian: `estimate` is the posterior mean, `std_error` the
+#' posterior standard deviation, and `statistic` the posterior inclusion
+#' probability (PIP). There is no frequentist test statistic or p-value to put
+#' there instead, and PIP is the number every downstream consumer of a BMA run
+#' wants next to the mean, so it takes the `statistic` slot and each row carries
+#' a `note` saying so. `cond_pos_sign` has no schema column and stays in the
+#' display table.
+#' @param coefficients *\[data.frame\]* The BMA coefficient frame
+#'   (`variable`, `pip`, `post_mean`, `post_sd`).
+#' @param n_obs *\[integer, optional\]* Observations the BMA was fitted on.
+#' @return *\[data.frame\]* A frame in the shared estimates schema.
+bma_estimates <- function(coefficients, n_obs = NA_integer_) {
+  box::use(
+    artma / modules / runtime_methods[new_estimates]
+  )
+
+  if (!is.data.frame(coefficients) || nrow(coefficients) == 0L) {
+    return(new_estimates())
+  }
+
+  new_estimates(data.frame(
+    method = "bma",
+    term = coefficients$variable,
+    estimate = coefficients$post_mean,
+    std_error = coefficients$post_sd,
+    statistic = coefficients$pip,
+    n_obs = n_obs,
+    note = "statistic is the posterior inclusion probability (PIP)",
+    stringsAsFactors = FALSE
   ))
 }
 
@@ -909,4 +948,4 @@ run <- register_runtime_method(
 
 # prepare_bma_inputs and unwrap_bma_result are exported because the fma and
 # best_practice_estimate methods reuse them directly.
-box::export(bma, run, prepare_bma_inputs, unwrap_bma_result)
+box::export(bma, bma_estimates, run, prepare_bma_inputs, unwrap_bma_result)

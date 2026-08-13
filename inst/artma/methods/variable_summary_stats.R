@@ -51,6 +51,7 @@ variable_summary_stats <- function(df) {
 
   # Iterate over all desired variables and append summary statistics to the main DF
   missing_data_vars <- c()
+  raw_stats <- list()
   for (row_idx in seq_along(desired_vars)) {
     var_name <- desired_vars[[row_idx]]
     var_data <- as.vector(unlist(subset(df, select = var_name))) # Roundabout way, because types
@@ -64,13 +65,26 @@ variable_summary_stats <- function(df) {
       next
     }
 
-    var_mean <- round(base::mean(var_data, na.rm = TRUE), round_to)
-    var_median <- round(stats::median(var_data, na.rm = TRUE), round_to)
-    var_sd <- round(stats::sd(var_data, na.rm = TRUE), round_to)
-    var_min <- round(base::min(var_data, na.rm = TRUE), round_to)
-    var_max <- round(base::max(var_data, na.rm = TRUE), round_to)
-    var_obs <- sum(!is.na(var_data))
-    var_missing <- round((sum(is.na(var_data)) / length(var_data)) * 100, 1)
+    # The unrounded statistics feed the estimates slot; the display row below
+    # keeps the rounded, percent-formatted variants.
+    stats_raw <- list(
+      mean = base::mean(var_data, na.rm = TRUE),
+      median = stats::median(var_data, na.rm = TRUE),
+      min = base::min(var_data, na.rm = TRUE),
+      max = base::max(var_data, na.rm = TRUE),
+      sd = stats::sd(var_data, na.rm = TRUE),
+      missing_share = sum(is.na(var_data)) / length(var_data),
+      obs = sum(!is.na(var_data))
+    )
+    raw_stats[[length(raw_stats) + 1]] <- c(list(label = var_name_display), stats_raw)
+
+    var_mean <- round(stats_raw$mean, round_to)
+    var_median <- round(stats_raw$median, round_to)
+    var_sd <- round(stats_raw$sd, round_to)
+    var_min <- round(stats_raw$min, round_to)
+    var_max <- round(stats_raw$max, round_to)
+    var_obs <- stats_raw$obs
+    var_missing <- round(stats_raw$missing_share * 100, 1)
     var_missing_verbose <- paste0(as.character(var_missing), "%")
 
     # Aggregate and append to the main DF
@@ -97,7 +111,54 @@ variable_summary_stats <- function(df) {
     cli::cli_alert_warning("Missing data for {.val {length(missing_data_vars)}} variables: {.val {missing_data_vars}}")
   }
 
-  invisible(new_method_result(tables = list(summary = df_out)))
+  invisible(new_method_result(
+    tables = list(summary = df_out),
+    estimates = variable_summary_stats_estimates(raw_stats)
+  ))
+}
+
+#' @title Tidy estimates for the variable summary statistics
+#' @description
+#' Flatten the summary table into the shared `estimates` schema. The method is
+#' descriptive rather than inferential, so the mapping is a judgement call:
+#' each row of the display table is one variable and each of its columns one
+#' statistic, so in the long schema `model` is the variable and `term` names
+#' the statistic (`"mean"`, `"median"`, `"min"`, `"max"`, `"sd"`,
+#' `"missing_share"`). `estimate` holds the statistic itself; there is nothing
+#' inferential to fill.
+#'
+#' `missing_share` is a proportion in `[0, 1]`, not the `"12.5%"` string the
+#' display table prints: the estimates frame is machine-readable and must parse
+#' as a number.
+#'
+#' Variables whose data are entirely missing or non-numeric produce no rows,
+#' matching the all-`NA` row they get in the display table.
+#' @param raw_stats *\[list\]* Per-variable unrounded statistics, each a list
+#'   with `label` and the statistic elements.
+#' @return *\[data.frame\]* A frame in the shared estimates schema.
+variable_summary_stats_estimates <- function(raw_stats) {
+  box::use(
+    artma / modules / runtime_methods[new_estimates]
+  )
+
+  if (!is.list(raw_stats) || length(raw_stats) == 0L) {
+    return(new_estimates())
+  }
+
+  terms <- c("mean", "median", "min", "max", "sd", "missing_share")
+
+  rows <- lapply(raw_stats, function(entry) {
+    data.frame(
+      method = "variable_summary_stats",
+      model = entry$label,
+      term = terms,
+      estimate = as.numeric(unlist(entry[terms])),
+      n_obs = as.integer(entry$obs),
+      stringsAsFactors = FALSE
+    )
+  })
+
+  new_estimates(do.call(rbind, rows))
 }
 
 box::use(
@@ -106,4 +167,4 @@ box::use(
 
 run <- register_runtime_method(variable_summary_stats, stage = "variable_summary_stats")
 
-box::export(variable_summary_stats, run)
+box::export(variable_summary_stats, variable_summary_stats_estimates, run)

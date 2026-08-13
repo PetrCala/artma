@@ -47,6 +47,14 @@ test_that("p_hacking_tests returns the standard contract with a caliper table", 
   expect_true(is.list(result))
   expect_true(is.data.frame(result$tables$caliper))
   expect_true(nrow(result$tables$caliper) > 0)
+
+  # The caliper grid also arrives as long-format estimates: one row per
+  # threshold-width pair, with the share above the threshold as the estimate.
+  estimates <- result$estimates
+  expect_true(nrow(estimates) > 0)
+  expect_true(all(grepl("^threshold_", estimates$model)))
+  expect_true(all(grepl("^width_", estimates$term)))
+  expect_true(is.numeric(estimates$estimate))
 })
 
 test_that("p_hacking_tests aborts when a required column is missing", {

@@ -170,8 +170,51 @@ robma <- function(df) {
       components = components,
       models = model_table
     ),
+    estimates = robma_estimates(ensemble$estimates, nrow(fit_data)),
     meta = list(model = fit, n_obs = nrow(fit_data))
   )
+}
+
+#' @title Tidy estimates for RoBMA
+#' @description
+#' Map the model-averaged parameter table onto the shared `estimates` schema,
+#' one row per parameter (`mu`, `tau`, the selection weights). The posterior
+#' mean becomes `estimate` and the credible interval bounds become `conf_low`
+#' and `conf_high`; RoBMA reports no standard error or p-value, so those stay
+#' `NA`. Values are taken from the unrounded ensemble summary, not from the
+#' rounded display table.
+#' @param tbl *\[data.frame\]* The `estimates` element of `summary.RoBMA`.
+#' @param n_obs *\[integer, optional\]* Observations the ensemble was fitted on.
+#' @return *\[data.frame\]* A frame in the shared estimates schema.
+robma_estimates <- function(tbl, n_obs = NA_integer_) {
+  box::use(
+    artma / modules / runtime_methods[new_estimates]
+  )
+
+  if (is.null(tbl) || nrow(tbl) == 0L) {
+    return(new_estimates())
+  }
+
+  out <- as.data.frame(unclass(tbl), stringsAsFactors = FALSE)
+  column <- function(...) {
+    for (name in c(...)) {
+      if (name %in% names(out)) {
+        return(as.numeric(out[[name]]))
+      }
+    }
+    rep(NA_real_, nrow(out))
+  }
+
+  new_estimates(data.frame(
+    method = "robma",
+    term = rownames(tbl) %||% as.character(seq_len(nrow(out))),
+    estimate = column("Mean", "mean"),
+    conf_low = column("0.025", "X0.025", "lCI"),
+    conf_high = column("0.975", "X0.975", "uCI"),
+    n_obs = n_obs,
+    note = "conf_low/conf_high are posterior credible interval bounds",
+    stringsAsFactors = FALSE
+  ))
 }
 
 #' @title Resolve the RoBMA parallel sampling flag
@@ -260,4 +303,4 @@ run <- register_runtime_method(
   cached = TRUE
 )
 
-box::export(robma, run)
+box::export(robma, robma_estimates, run)

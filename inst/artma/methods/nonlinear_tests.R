@@ -82,6 +82,7 @@ nonlinear_tests <- function(df) {
 
   invisible(new_method_result(
     tables = list(summary = results$summary),
+    estimates = nonlinear_tests_estimates(results$coefficients),
     plots = list(
       stem_funnel = stem_plots$stem_funnel,
       stem_mse = stem_plots$stem_mse
@@ -91,6 +92,41 @@ nonlinear_tests <- function(df) {
       skipped_models = results$skipped,
       options = results$options
     )
+  ))
+}
+
+#' @title Tidy estimates for the non-linear tests
+#' @description
+#' Map the per-model coefficient frame onto the shared `estimates` schema. Each
+#' non-linear estimator is a `model` and contributes an `effect` and a
+#' `publication_bias` row, plus whatever extra terms it reports (the selection
+#' model's publication probabilities, the endogenous kink's heterogeneity).
+#' `n_obs` is the count the model actually fitted on, which can be below the
+#' sample size for estimators that subset (WAAP, Top 10).
+#'
+#' The numbers are carried over verbatim; the formatted columns alongside them
+#' belong to the display table only.
+#' @param coefficients *\[data.frame\]* The coefficient frame from
+#'   `run_nonlinear_methods()`.
+#' @return *\[data.frame\]* A frame in the shared estimates schema.
+nonlinear_tests_estimates <- function(coefficients) {
+  box::use(
+    artma / modules / runtime_methods[new_estimates]
+  )
+
+  if (!is.data.frame(coefficients) || nrow(coefficients) == 0L) {
+    return(new_estimates())
+  }
+
+  new_estimates(data.frame(
+    method = "nonlinear_tests",
+    model = coefficients$model,
+    term = coefficients$term,
+    estimate = coefficients$estimate,
+    std_error = coefficients$std_error,
+    p_value = coefficients$p_value,
+    n_obs = coefficients$n_obs_model,
+    stringsAsFactors = FALSE
   ))
 }
 
@@ -104,4 +140,4 @@ run <- register_runtime_method(
   required_columns = c("effect", "se", "study_id")
 )
 
-box::export(nonlinear_tests, run)
+box::export(nonlinear_tests, nonlinear_tests_estimates, run)

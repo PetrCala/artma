@@ -223,7 +223,10 @@ test_that("run_caliper_tests only stars an excess above the threshold", {
   )
 
   expect_equal(results[[1]]$direction, "below")
-  expect_false(grepl("\\*", results[[1]]$p_value))
+  expect_false(grepl("\\*", results[[1]]$p_value_formatted))
+  # The raw p-value rides alongside the formatted one, unrounded.
+  expect_true(is.numeric(results[[1]]$p_value))
+  expect_true(is.numeric(results[[1]]$share_above))
 
   # Flip the imbalance and the same p-value does get starred.
   flipped <- run_caliper_tests(
@@ -233,7 +236,7 @@ test_that("run_caliper_tests only stars an excess above the threshold", {
     show_progress = FALSE
   )
   expect_equal(flipped[[1]]$direction, "above")
-  expect_match(flipped[[1]]$p_value, "\\*")
+  expect_match(flipped[[1]]$p_value_formatted, "\\*")
 })
 
 test_that("build_caliper_summary shows a direction row and study counts", {

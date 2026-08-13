@@ -37,7 +37,8 @@ test_that("Obs counts non-missing observations, not the count of ones for dummy 
     is_rct = c(1, 0, 0, NA)
   )
 
-  result <- variable_summary_stats(df)$tables$summary
+  method_result <- variable_summary_stats(df)
+  result <- method_result$tables$summary
 
   expect_named(result, c(
     "Var Name", "Var Class", "Mean", "Median",
@@ -46,4 +47,13 @@ test_that("Obs counts non-missing observations, not the count of ones for dummy 
   expect_identical(result$`Var Name`, c("Effect", "Is RCT"))
   # 3 non-missing rows for each variable, even though `is_rct` has only one 1.
   expect_equal(result$Obs, c("3", "3"))
+  expect_equal(result$`Missing obs`, c("25%", "25%"))
+
+  # The estimates slot reports the same run as numbers, with missingness as a
+  # proportion rather than the display table's percentage string.
+  estimates <- method_result$estimates
+  expect_identical(unique(estimates$model), c("Effect", "Is RCT"))
+  expect_equal(estimates$estimate[estimates$term == "missing_share"], c(0.25, 0.25))
+  expect_equal(estimates$estimate[estimates$term == "mean"], c(0.2, 1 / 3))
+  expect_equal(unique(estimates$n_obs), 3L)
 })

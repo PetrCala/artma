@@ -561,29 +561,29 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
   }
 
   # Build unified MA table when BMA and/or FMA have produced results. Both
-  # methods return the standard contract, so the coefficient frame lives in
-  # `tables$coefficients` and skip reasons under `meta$skip_reason`.
-  extract_ma_coefficients <- function(result) {
+  # methods return the standard contract, so the unrounded numbers live in the
+  # `estimates` slot and skip reasons under `meta$skip_reason`.
+  extract_ma_estimates <- function(result) {
     if (is.null(result) || !is.list(result) || !is.null(result$meta$skip_reason)) {
       return(NULL)
     }
-    coefs <- result$tables$coefficients
-    if (is.null(coefs) || !is.data.frame(coefs) || nrow(coefs) == 0) {
+    estimates <- result$estimates
+    if (is.null(estimates) || !is.data.frame(estimates) || nrow(estimates) == 0) {
       return(NULL)
     }
-    coefs
+    estimates
   }
 
-  bma_coefs <- extract_ma_coefficients(results[["bma"]])
-  fma_coefs <- extract_ma_coefficients(results[["fma"]])
+  bma_estimates <- extract_ma_estimates(results[["bma"]])
+  fma_estimates <- extract_ma_estimates(results[["fma"]])
 
-  if (!is.null(bma_coefs) || !is.null(fma_coefs)) {
+  if (!is.null(bma_estimates) || !is.null(fma_estimates)) {
     box::use(artma / output / ma_table[build_ma_table, display_ma_table])
 
     round_to <- as.integer(getOption("artma.output.number_of_decimals", 3))
     ma_table <- build_ma_table(
-      bma_coefficients = bma_coefs,
-      fma_coefficients = fma_coefs,
+      bma_estimates = bma_estimates,
+      fma_estimates = fma_estimates,
       round_to = round_to
     )
 

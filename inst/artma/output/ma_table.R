@@ -3,23 +3,30 @@
 #' Builds and displays a unified model averaging table combining BMA and FMA
 #' results. When both methods have run, the table shows BMA (P.Mean, SD, PIP)
 #' and FMA (Coef, SE, p-val) columns side by side. When only one method has
-#' run, only its columns are shown.
+#' run, only its columns are shown. Both are read from the methods' `estimates`
+#' frames, so the numbers are rounded here and nowhere upstream.
 NULL
 
 #' Build a unified model averaging table
 #'
-#' @param bma_coefficients *\[data.frame, optional\]* BMA coefficients with columns:
-#'   variable, pip, post_mean, post_sd.
-#' @param fma_coefficients *\[data.frame, optional\]* FMA coefficients with columns:
-#'   variable, coefficient, se, p_value.
+#' @description
+#' Both inputs are `estimates` frames in the shared schema (see
+#' `new_estimates()`), one row per moderator: `term` is the variable, and the
+#' displayed numbers come from `estimate`, `std_error`, and, per method,
+#' `statistic` (the BMA posterior inclusion probability) or `p_value` (the FMA
+#' Wald p-value). Reading the unrounded frames rather than the display tables
+#' keeps this table the only place the rounding happens.
+#'
+#' @param bma_estimates *\[data.frame, optional\]* The BMA estimates frame.
+#' @param fma_estimates *\[data.frame, optional\]* The FMA estimates frame.
 #' @param round_to *\[integer\]* Number of decimal places for rounding. Defaults to 3.
 #' @return *\[data.frame\]* Combined MA table, or NULL if no valid inputs.
 #' @export
-build_ma_table <- function(bma_coefficients = NULL, fma_coefficients = NULL, round_to = 3L) {
+build_ma_table <- function(bma_estimates = NULL, fma_estimates = NULL, round_to = 3L) {
   box::use(artma / libs / core / validation[validate])
 
-  has_bma <- !is.null(bma_coefficients) && is.data.frame(bma_coefficients) && nrow(bma_coefficients) > 0
-  has_fma <- !is.null(fma_coefficients) && is.data.frame(fma_coefficients) && nrow(fma_coefficients) > 0
+  has_bma <- !is.null(bma_estimates) && is.data.frame(bma_estimates) && nrow(bma_estimates) > 0
+  has_fma <- !is.null(fma_estimates) && is.data.frame(fma_estimates) && nrow(fma_estimates) > 0
 
   if (!has_bma && !has_fma) {
     return(NULL)
@@ -35,12 +42,12 @@ build_ma_table <- function(bma_coefficients = NULL, fma_coefficients = NULL, rou
   # Build the union of variable names, preserving order from whichever ran first
   all_vars <- character(0)
   if (has_bma) {
-    bma_coefficients$variable <- normalize_intercept(bma_coefficients$variable)
-    all_vars <- bma_coefficients$variable
+    bma_estimates$term <- normalize_intercept(bma_estimates$term)
+    all_vars <- bma_estimates$term
   }
   if (has_fma) {
-    fma_coefficients$variable <- normalize_intercept(fma_coefficients$variable)
-    new_vars <- setdiff(fma_coefficients$variable, all_vars)
+    fma_estimates$term <- normalize_intercept(fma_estimates$term)
+    new_vars <- setdiff(fma_estimates$term, all_vars)
     all_vars <- c(all_vars, new_vars)
   }
 
@@ -55,18 +62,18 @@ build_ma_table <- function(bma_coefficients = NULL, fma_coefficients = NULL, rou
 
   # Add BMA columns
   if (has_bma) {
-    bma_idx <- match(all_vars, bma_coefficients$variable)
-    result[["BMA P.Mean"]] <- round(bma_coefficients$post_mean[bma_idx], round_to)
-    result[["BMA SD"]] <- round(bma_coefficients$post_sd[bma_idx], round_to)
-    result[["BMA PIP"]] <- round(bma_coefficients$pip[bma_idx], round_to)
+    bma_idx <- match(all_vars, bma_estimates$term)
+    result[["BMA P.Mean"]] <- round(bma_estimates$estimate[bma_idx], round_to)
+    result[["BMA SD"]] <- round(bma_estimates$std_error[bma_idx], round_to)
+    result[["BMA PIP"]] <- round(bma_estimates$statistic[bma_idx], round_to)
   }
 
   # Add FMA columns
   if (has_fma) {
-    fma_idx <- match(all_vars, fma_coefficients$variable)
-    result[["FMA Coef"]] <- round(fma_coefficients$coefficient[fma_idx], round_to)
-    result[["FMA SE"]] <- round(fma_coefficients$se[fma_idx], round_to)
-    result[["FMA p-val"]] <- round(fma_coefficients$p_value[fma_idx], round_to)
+    fma_idx <- match(all_vars, fma_estimates$term)
+    result[["FMA Coef"]] <- round(fma_estimates$estimate[fma_idx], round_to)
+    result[["FMA SE"]] <- round(fma_estimates$std_error[fma_idx], round_to)
+    result[["FMA p-val"]] <- round(fma_estimates$p_value[fma_idx], round_to)
   }
 
   result
