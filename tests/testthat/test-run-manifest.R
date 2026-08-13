@@ -218,7 +218,7 @@ test_that("artma() writes a run.json describing exactly that run", {
   expect_true(all(file.exists(first_files)))
   expect_true(any(grepl("funnel", basename(first_files))))
   # Every listed file is one this run wrote into its own output directory.
-  expect_true(all(startsWith(first_files, normalizePath(output_dir))))
+  expect_true(all(startsWith(first_files, normalizePath(output_dir, winslash = "/"))))
 
   second <- run("effect_summary_stats")
 
