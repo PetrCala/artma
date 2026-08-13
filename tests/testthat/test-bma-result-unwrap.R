@@ -226,6 +226,48 @@ test_that("fma skips gracefully instead of crashing when only one moderator is a
   expect_match(result$meta$skip_reason, "at least 2 candidate moderator variables")
 })
 
+test_that("the 'run BMA first?' confirmation respects the autonomy level", {
+  # Gating this prompt on interactive() alone asked every autonomy level, and
+  # a method's output is captured while it runs, so the menu was invisible and
+  # the run hung on a keypress the user could not see.
+  asked <- character()
+  # Declining keeps the test off the BMS code path once the prompt has fired.
+  spy <- function() {
+    asked <<- c(asked, "asked")
+    FALSE
+  }
+
+  config <- list(
+    effect = list(var_name = "effect", var_name_verbose = "Effect", bma = FALSE),
+    se = list(var_name = "se", var_name_verbose = "SE", bma = TRUE)
+  )
+
+  ask_count <- function(level) {
+    local_options(list(
+      artma.verbose = 0,
+      artma.autonomy.level = level,
+      artma.data.columns = config
+    ))
+    asked <<- character()
+    # Errors either way: declined at `ask_more`, and at the quieter levels the
+    # single-moderator frame makes BMA itself skip. Only the prompt is under test.
+    expect_error(resolve_bma_input_for_bpe(
+      df = make_single_moderator_df(),
+      bma_result = NULL,
+      run_bma_if_missing = TRUE,
+      is_interactive = TRUE,
+      prompt_fn = spy
+    ))
+    length(asked)
+  }
+
+  # `run_bma_if_missing = TRUE` already authorises the run, so only the most
+  # talkative level is asked to confirm it.
+  expect_equal(ask_count("ask_more"), 1L)
+  expect_equal(ask_count("balanced"), 0L)
+  expect_equal(ask_count("autonomous"), 0L)
+})
+
 test_that("resolve_bma_input_for_bpe surfaces the BMA skip reason when BMA cannot run", {
   df <- make_single_moderator_df()
   config <- list(

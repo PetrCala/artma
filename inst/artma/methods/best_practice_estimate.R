@@ -416,8 +416,21 @@ bpe_estimates <- function(rows, n_clusters = NA_integer_) {
   ))
 }
 
-resolve_bma_input_for_bpe <- function(df, bma_result, run_bma_if_missing) {
+#' @title Resolve the BMA bundle the best-practice estimate needs
+#' @param df *\[data.frame\]* The prepared data frame.
+#' @param bma_result *\[list, optional\]* An upstream `bma()` result, or `NULL`
+#'   when the method was run without one.
+#' @param run_bma_if_missing *\[logical\]* Whether BMA may be computed on demand.
+#' @param is_interactive *\[logical, optional\]* Whether the session is
+#'   interactive. Injectable for testing; defaults to `interactive()`.
+#' @param prompt_fn *\[function, optional\]* The confirmation prompt. Injectable
+#'   for testing; defaults to `prompt_run_bma_for_bpe()`.
+#' @return *\[list\]* `list(model=, data=, var_list=, params=, formula=, source=)`.
+resolve_bma_input_for_bpe <- function(df, bma_result, run_bma_if_missing,
+                                      is_interactive = interactive(),
+                                      prompt_fn = prompt_run_bma_for_bpe) {
   box::use(
+    artma / libs / core / autonomy[should_prompt_user],
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[assert, validate],
     artma / methods / bma[bma, unwrap_bma_result]
@@ -426,7 +439,10 @@ resolve_bma_input_for_bpe <- function(df, bma_result, run_bma_if_missing) {
   validate(
     is.data.frame(df),
     is.logical(run_bma_if_missing),
-    length(run_bma_if_missing) == 1
+    length(run_bma_if_missing) == 1,
+    is.logical(is_interactive),
+    length(is_interactive) == 1,
+    is.function(prompt_fn)
   )
 
   normalized <- unwrap_bma_result(bma_result)
@@ -440,9 +456,15 @@ resolve_bma_input_for_bpe <- function(df, bma_result, run_bma_if_missing) {
     cli::cli_abort("Best-practice estimate requires a BMA result and run_bma_if_missing is FALSE.")
   }
 
+  # `run_bma_if_missing` already records that BMA may run on demand, so this is
+  # a confirmation rather than a genuine choice: only the most talkative
+  # autonomy level is asked. Gating on `interactive()` alone left every
+  # autonomy level facing a prompt, and a method's output is captured while it
+  # runs, so the menu rendered into the capture buffer and the run hung on a
+  # keypress the user could not see.
   should_run_bma <- TRUE
-  if (interactive()) {
-    should_run_bma <- prompt_run_bma_for_bpe()
+  if (should_prompt_user(required_level = "balanced", is_interactive = is_interactive)) {
+    should_run_bma <- prompt_fn()
   }
 
   if (!isTRUE(should_run_bma)) {
