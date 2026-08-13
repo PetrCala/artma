@@ -165,6 +165,10 @@ box::use(
   artma / modules / runtime_methods[register_runtime_method]
 )
 
-run <- register_runtime_method(variable_summary_stats, stage = "variable_summary_stats")
+run <- register_runtime_method(
+  variable_summary_stats,
+  stage = "variable_summary_stats",
+  description = "Descriptive statistics for each variable flagged for summary"
+)
 
 box::export(variable_summary_stats, variable_summary_stats_estimates, run)

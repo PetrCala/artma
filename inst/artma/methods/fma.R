@@ -237,6 +237,7 @@ box::use(
 run <- register_runtime_method(
   fma,
   stage = "fma",
+  description = "Frequentist Model Averaging over the same moderators as BMA",
   depends_on = "bma",
   required_columns = c("effect", "se"),
   suggests = c("BMS", "quadprog")

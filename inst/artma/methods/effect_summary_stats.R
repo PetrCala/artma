@@ -359,6 +359,7 @@ box::use(
 run <- register_runtime_method(
   effect_summary_stats,
   stage = "effect_summary_stats",
+  description = "Summary statistics of the main effect, grouped by the flagged variables",
   required_columns = c("effect", "study_size")
 )
 

@@ -250,6 +250,7 @@ box::use(
 run <- register_runtime_method(
   maive_estimator,
   stage = "maive",
+  description = "MAIVE estimator, correcting the mean effect for spurious precision",
   required_columns = c("effect", "se", "n_obs"),
   suggests = "MAIVE"
 )

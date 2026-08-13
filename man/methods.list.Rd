@@ -4,11 +4,35 @@
 \alias{methods.list}
 \title{List methods}
 \usage{
-methods.list()
+methods.list(available_for = NULL)
+}
+\arguments{
+\item{available_for}{\emph{[data.frame, optional]} Data to check each method's
+required columns against. When supplied, the returned frame gains a
+\code{missing_columns} column and an \code{available} flag. Defaults to \code{NULL}.}
 }
 \value{
-\code{NULL} Prints the available methods into the console.
+\emph{[data.frame]} Invisibly, one row per method, with the \code{method},
+\code{description}, \code{required_columns}, \code{depends_on}, \code{suggests},
+\code{missing_packages}, \code{installed}, and \code{opt_in} columns (plus
+\code{missing_columns} and \code{available} when \code{available_for} is supplied).
+Multi-value columns are comma-separated strings.
 }
 \description{
-Print all runtime methods supported by artma into the console.
+Print an overview of the runtime methods supported by artma, and return it
+as a data frame. The table is built from the metadata each method registers
+with \code{register_runtime_method()}: what it does, which data columns it needs,
+which methods run before it, which optional packages it uses (and whether
+they are installed), and whether it is opt-in (left out of
+\code{methods = "all"}).
+
+Pass a data frame to \code{available_for} to turn the table into a pre-flight
+check: each method's required columns are matched against that data, so a
+method that would be skipped is visible before the run rather than after.
+}
+\examples{
+\dontrun{
+artma::methods.list()
+artma::methods.list(available_for = my_data)
+}
 }

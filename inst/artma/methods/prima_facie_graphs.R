@@ -362,6 +362,7 @@ box::use(
 run <- register_runtime_method(
   prima_facie_graphs,
   stage = "prima_facie_graphs",
+  description = "Density and histogram overlays of the effect by detected category",
   required_columns = "effect"
 )
 

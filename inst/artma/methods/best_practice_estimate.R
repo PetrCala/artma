@@ -723,6 +723,7 @@ box::use(
 run <- register_runtime_method(
   best_practice_estimate,
   stage = "best_practice_estimate",
+  description = "Best-practice effect estimate and CI implied by the BMA coefficients",
   depends_on = "bma",
   required_columns = c("effect", "study_id"),
   suggests = "BMS"

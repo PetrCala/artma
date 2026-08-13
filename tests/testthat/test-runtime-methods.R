@@ -83,12 +83,14 @@ test_that("register_runtime_method attaches declarative metadata", {
   run <- register_runtime_method(
     impl,
     stage = "demo",
+    description = "A demo method",
     depends_on = "bma",
     required_columns = c("effect", "se"),
     suggests = "BMS"
   )
 
   meta <- get_method_metadata(run, name = "demo")
+  expect_equal(meta$description, "A demo method")
   expect_equal(meta$depends_on, "bma")
   expect_equal(meta$required_columns, c("effect", "se"))
   expect_equal(meta$suggests, "BMS")

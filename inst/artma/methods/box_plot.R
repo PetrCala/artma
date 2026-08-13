@@ -388,6 +388,7 @@ box::use(
 run <- register_runtime_method(
   box_plot,
   stage = "box_plot",
+  description = "Box plots of the effect grouped by a categorical variable",
   required_columns = "effect"
 )
 

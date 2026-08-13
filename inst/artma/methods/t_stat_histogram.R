@@ -450,6 +450,7 @@ box::use(
 run <- register_runtime_method(
   t_stat_histogram,
   stage = "t_stat_histogram",
+  description = "Histograms of the t-statistic distribution with significance lines",
   required_columns = "t_stat"
 )
 

@@ -74,6 +74,7 @@ my_method <- function(df, bma_result = NULL, ...) {
 run <- register_runtime_method(
   my_method,
   stage = "my_method",
+  description = "One line on what the method does",
   depends_on = "bma",        # yields a bma_result parameter
   required_columns = c("effect", "se"),
   suggests = "BMS"           # optional packages the method needs
