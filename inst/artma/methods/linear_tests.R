@@ -82,6 +82,11 @@ linear_tests <- function(df) {
 #' Map the per-model coefficient frame onto the shared `estimates` schema. The
 #' numbers are carried over verbatim: the rounded and formatted columns that sit
 #' alongside them in `coefficients` belong to the display table only.
+#'
+#' The `note` column carries the variance estimator behind each row's standard
+#' error, so the distinction between a cluster-robust and a merely
+#' heteroskedasticity-robust column survives export instead of living only in a
+#' console warning.
 #' @param coefficients *\[data.frame\]* The coefficient frame from
 #'   `run_linear_models()`.
 #' @return *\[data.frame\]* A frame in the shared estimates schema.
@@ -94,11 +99,28 @@ linear_tests_estimates <- function(coefficients) {
     return(new_estimates())
   }
 
+  n_rows <- nrow(coefficients)
+
+  # Which variance estimator produced the standard error. The models in a run
+  # do not all get the same one, and the display table is the only other place
+  # that says so.
+  vcov_type <- coefficients$vcov_type %||% rep(NA_character_, n_rows)
+  vcov_note <- rep(NA_character_, n_rows)
+  known_vcov <- !is.na(vcov_type)
+  vcov_note[known_vcov] <- paste0("Standard errors: ", vcov_type[known_vcov])
+
   # The display table marks these rows with a dagger; the note carries the same
   # warning for a consumer that never sees the formatted table.
-  conflict <- coefficients$ci_conflict %||% rep(NA, nrow(coefficients))
-  note <- rep(NA_character_, nrow(coefficients))
-  note[!is.na(conflict) & conflict] <- "Bootstrap confidence interval and analytic significance disagree"
+  conflict <- coefficients$ci_conflict %||% rep(NA, n_rows)
+  conflict_note <- rep(NA_character_, n_rows)
+  conflict_note[!is.na(conflict) & conflict] <-
+    "Bootstrap confidence interval and analytic significance disagree"
+
+  note <- vapply(seq_len(n_rows), function(i) {
+    parts <- c(vcov_note[[i]], conflict_note[[i]])
+    parts <- parts[!is.na(parts)]
+    if (length(parts) == 0L) NA_character_ else paste(parts, collapse = "; ")
+  }, character(1))
 
   new_estimates(data.frame(
     method = "linear_tests",

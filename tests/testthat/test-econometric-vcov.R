@@ -9,7 +9,7 @@ box::use(
     test_that
   ],
   withr[local_options],
-  artma / econometric / vcov[robust_vcov]
+  artma / econometric / vcov[robust_vcov, vcov_type]
 )
 
 # Deterministic fixture matching the shape used across the linear tests: an
@@ -49,7 +49,7 @@ test_that("robust_vcov reproduces the get_robust_vcov clustered HC1 ladder", {
   oracle <- suppressWarnings(
     sandwich::vcovCL(model, cluster = df$study_id, type = "HC1")
   )
-  expect_equal(result, oracle)
+  expect_equal(result, oracle, ignore_attr = "vcov_type")
 
   # Pinned golden values captured from the original ladder.
   expect_equal(unname(result["se", "se"]), 0.092270063, tolerance = 1e-7)
@@ -76,7 +76,7 @@ test_that("get_robust_vcov ladder falls back to non-clustered HC1 on cluster err
   )
 
   oracle <- suppressWarnings(sandwich::vcovHC(model, type = "HC1"))
-  expect_equal(result, oracle)
+  expect_equal(result, oracle, ignore_attr = "vcov_type")
 })
 
 test_that("robust_vcov warns when clustering is silently lost", {
@@ -157,6 +157,60 @@ test_that("robust_vcov warns on the no-cluster single-step downgrade to stats::v
   )
 })
 
+test_that("robust_vcov attributes the downgrade warning to the named model", {
+  skip_if_not_installed("sandwich")
+  df <- make_vcov_fixture()
+  model <- stats::lm(effect ~ se, data = df)
+
+  # A run estimates several models at once, so the warning has to name the one
+  # it applies to; an unattributed line reads as if every column were affected.
+  expect_message(
+    robust_vcov(
+      model = model,
+      cluster = c(1, 2, 3),
+      engine = "sandwich",
+      clustered_type = "HC1",
+      fallback_types = "HC1",
+      label = "Between Effects"
+    ),
+    regexp = "Between Effects: standard errors are NOT clustered"
+  )
+})
+
+test_that("robust_vcov tags the result with the estimator that produced it", {
+  skip_if_not_installed("sandwich")
+  df <- make_vcov_fixture()
+  model <- stats::lm(effect ~ se, data = df)
+
+  clustered <- robust_vcov(
+    model = model,
+    cluster = df$study_id,
+    engine = "sandwich",
+    clustered_type = "HC1"
+  )
+  expect_equal(vcov_type(clustered), "Cluster-robust (HC1)")
+
+  downgraded <- robust_vcov(
+    model = model,
+    cluster = c(1, 2, 3),
+    engine = "sandwich",
+    clustered_type = "HC1",
+    fallback_types = "HC0"
+  )
+  expect_equal(vcov_type(downgraded), "Heteroskedasticity-robust (HC0)")
+
+  classical <- robust_vcov(
+    model = model,
+    cluster = NULL,
+    engine = "sandwich",
+    clustered_type = "BOGUS"
+  )
+  expect_equal(vcov_type(classical), "Classical (non-robust)")
+
+  # An untagged matrix (e.g. one built outside the ladder) reports NA.
+  expect_true(is.na(vcov_type(stats::vcov(model))))
+})
+
 test_that("robust_vcov errors when a required cluster is NULL", {
   df <- make_vcov_fixture()
   model <- stats::lm(effect ~ se, data = df)
@@ -181,7 +235,7 @@ test_that("robust_vcov reproduces resolve_bpe_vcov clustered HC0 (matching lengt
   )
 
   oracle <- sandwich::vcovCL(model, cluster = df$study_id, type = "HC0")
-  expect_equal(result, oracle)
+  expect_equal(result, oracle, ignore_attr = "vcov_type")
   expect_equal(unname(result["se", "se"]), 0.089088337, tolerance = 1e-7)
 })
 
@@ -203,7 +257,7 @@ test_that("resolve_bpe_vcov ladder uses non-clustered HC0 when cluster length mi
   )
 
   oracle <- sandwich::vcovHC(model, type = "HC0")
-  expect_equal(result, oracle)
+  expect_equal(result, oracle, ignore_attr = "vcov_type")
   expect_equal(unname(result["se", "se"]), 0.1105633, tolerance = 1e-6)
 
   # NULL cluster follows the same non-clustered branch.
@@ -214,7 +268,7 @@ test_that("resolve_bpe_vcov ladder uses non-clustered HC0 when cluster length mi
     clustered_type = "HC0",
     match_cluster_length = TRUE
   )
-  expect_equal(result_null, oracle)
+  expect_equal(result_null, oracle, ignore_attr = "vcov_type")
 })
 
 # --- sandwich engine: tidy_lm_model ladder ---------------------------------
@@ -237,7 +291,7 @@ test_that("robust_vcov reproduces tidy_lm_model HC1 ladder without a vcov last r
     sandwich::vcovCL(model, cluster = df$study_id, type = "HC1"),
     error = function(e) sandwich::vcovHC(model, type = "HC1")
   )
-  expect_equal(result, oracle)
+  expect_equal(result, oracle, ignore_attr = "vcov_type")
 })
 
 # --- plm engine: tidy_plm_generic / tidy_plm_within ladders ----------------
@@ -264,7 +318,7 @@ test_that("robust_vcov reproduces the tidy_plm_generic HC1/HC0 ladder", {
       )
     }
   )
-  expect_equal(result, oracle)
+  expect_equal(result, oracle, ignore_attr = "vcov_type")
   expect_equal(unname(result["se", "se"]), 0.086204523, tolerance = 1e-7)
 })
 
@@ -286,6 +340,6 @@ test_that("robust_vcov reproduces the tidy_plm_within HC1/HC0 ladder", {
     plm::vcovHC(model, type = "HC1", cluster = "group"),
     error = function(e) plm::vcovHC(model, type = "HC0")
   )
-  expect_equal(result, oracle)
+  expect_equal(result, oracle, ignore_attr = "vcov_type")
   expect_equal(unname(result["se", "se"]), 0.1058499, tolerance = 1e-6)
 })

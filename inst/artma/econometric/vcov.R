@@ -11,6 +11,43 @@ box::use(
   artma / libs / core / validation[validate]
 )
 
+#' Display name of the classical (non-robust, non-clustered) estimator.
+VCOV_CLASSICAL <- "Classical (non-robust)"
+
+#' @title Name a vcov estimator
+#' @description Display name for the estimator a ladder step used. The strings
+#'   are user-facing: they reach the summary table, the LaTeX output, and the
+#'   `note` column of the estimates frame.
+#' @param type *[character]* The HC type, e.g. `"HC1"`.
+#' @param clustered *[logical]* Whether the step clustered.
+#' @return *[character]* A single display name.
+describe_vcov <- function(type, clustered) {
+  if (clustered) {
+    paste0("Cluster-robust (", type, ")")
+  } else {
+    paste0("Heteroskedasticity-robust (", type, ")")
+  }
+}
+
+#' @title Tag a variance-covariance matrix with its estimator name
+#' @param value *[matrix]* The variance-covariance matrix.
+#' @param type *[character]* The estimator display name.
+#' @return *[matrix]* `value` carrying a `vcov_type` attribute.
+tag_vcov <- function(value, type) {
+  attr(value, "vcov_type") <- type
+  value
+}
+
+#' @title Read the estimator behind a variance-covariance matrix
+#' @param value *[matrix]* A matrix returned by `robust_vcov()`.
+#' @param default *[character, optional]* Value returned when the matrix carries
+#'   no tag. Defaults to `NA_character_`.
+#' @return *[character]* The estimator display name.
+vcov_type <- function(value, default = NA_character_) {
+  type <- attr(value, "vcov_type")
+  if (is.null(type)) default else type
+}
+
 #' @title Compute a robust variance-covariance matrix with fallbacks
 #' @description
 #' Runs an ordered ladder of vcov estimators and returns the first that
@@ -65,7 +102,12 @@ box::use(
 #' @param suppress_warnings *[logical]* When `TRUE`, wrap the robust
 #'   (`sandwich`/`plm`) steps in `suppressWarnings()`. The `stats::vcov()` last
 #'   resort is never suppressed. Defaults to `FALSE`.
-#' @return *[matrix]* A variance-covariance matrix.
+#' @param label *[character, optional]* Display name of the model the vcov
+#'   belongs to. When supplied, downgrade warnings name it, so a table of
+#'   several models makes clear which column was affected.
+#' @return *[matrix]* A variance-covariance matrix, carrying a `vcov_type`
+#'   attribute naming the estimator that produced it (read it with
+#'   `vcov_type()`).
 robust_vcov <- function(model,
                         cluster = NULL,
                         engine = c("sandwich", "plm"),
@@ -74,7 +116,8 @@ robust_vcov <- function(model,
                         require_cluster = FALSE,
                         match_cluster_length = FALSE,
                         final_vcov_fallback = TRUE,
-                        suppress_warnings = FALSE) {
+                        suppress_warnings = FALSE,
+                        label = NULL) {
   engine <- match.arg(engine)
 
   if (require_cluster) {
@@ -90,12 +133,21 @@ robust_vcov <- function(model,
   }
 
   # Downgrading from clustered to non-clustered inference changes reported
-  # SEs materially (usually shrinking them); never do it silently.
+  # SEs materially (usually shrinking them); never do it silently. A run
+  # estimates several models side by side, so name the affected one when the
+  # caller knows it: an unattributed warning reads as if the whole table were
+  # downgraded.
   warn_downgrade <- function(reason) {
     if (get_verbosity() >= 2) {
-      cli::cli_alert_warning(
-        "Clustered vcov unavailable ({reason}); standard errors are NOT clustered."
-      )
+      if (is.null(label)) {
+        cli::cli_alert_warning(
+          "Clustered vcov unavailable ({reason}); standard errors are NOT clustered."
+        )
+      } else {
+        cli::cli_alert_warning(
+          "{label}: standard errors are NOT clustered ({reason})."
+        )
+      }
     }
   }
 
@@ -104,7 +156,8 @@ robust_vcov <- function(model,
   }
 
   # A robust (sandwich/plm) vcov step, optionally clustered, wrapped in
-  # suppressWarnings() when requested.
+  # suppressWarnings() when requested. Each step tags its result with the
+  # estimator that produced it so callers can report it downstream.
   robust_step <- function(type, clustered) {
     force(type)
     force(clustered)
@@ -122,7 +175,7 @@ robust_vcov <- function(model,
           plm::vcovHC(model, type = type)
         }
       }
-      value
+      tag_vcov(value, describe_vcov(type, clustered))
     }
   }
 
@@ -136,7 +189,9 @@ robust_vcov <- function(model,
   }
 
   # The final stats::vcov() step is never suppressed and runs uncaught.
-  final_step <- if (final_vcov_fallback) function() stats::vcov(model) else NULL
+  final_step <- if (final_vcov_fallback) {
+    function() tag_vcov(stats::vcov(model), VCOV_CLASSICAL)
+  }
 
   for (i in seq_along(steps)) {
     is_last <- is.null(final_step) && i == length(steps)
@@ -159,4 +214,4 @@ robust_vcov <- function(model,
   final_step()
 }
 
-box::export(robust_vcov)
+box::export(robust_vcov, vcov_type)

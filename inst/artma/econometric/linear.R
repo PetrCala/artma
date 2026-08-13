@@ -18,7 +18,7 @@ box::use(
   artma / libs / formatting / summary_table[
     shared_build_summary_table = build_summary_table
   ],
-  artma / econometric / vcov[robust_vcov]
+  artma / econometric / vcov[robust_vcov, vcov_type]
 )
 
 # nocov start: glue/cli heavy formatting helpers ---------------------------
@@ -338,14 +338,15 @@ tidy_from_coeftest <- function(coef_matrix) {
   )
 }
 
-tidy_lm_model <- function(model, data, cluster_column) {
+tidy_lm_model <- function(model, data, cluster_column, label = NULL) {
   vcov <- robust_vcov(
     model = model,
     cluster = data[[cluster_column]],
     engine = "sandwich",
     clustered_type = "HC1",
     fallback_types = "HC1",
-    final_vcov_fallback = FALSE
+    final_vcov_fallback = FALSE,
+    label = label
   )
 
   coef_matrix <- lmtest::coeftest(model, vcov. = vcov)
@@ -357,16 +358,18 @@ tidy_lm_model <- function(model, data, cluster_column) {
   )[tidy$term_raw]
   tidy <- tidy[!is.na(tidy$term), , drop = FALSE]
   tidy$term_raw <- NULL
+  tidy$vcov_type <- vcov_type(vcov)
   tidy
 }
 
-tidy_plm_generic <- function(model, data) {
+tidy_plm_generic <- function(model, data, label = NULL) {
   vcov <- robust_vcov(
     model = model,
     cluster = "group",
     engine = "plm",
     clustered_type = "HC1",
-    fallback_types = "HC0"
+    fallback_types = "HC0",
+    label = label
   )
   coef_matrix <- lmtest::coeftest(model, vcov = vcov)
 
@@ -378,17 +381,92 @@ tidy_plm_generic <- function(model, data) {
   )[tidy$term_raw]
   tidy <- tidy[!is.na(tidy$term), , drop = FALSE]
   tidy$term_raw <- NULL
+  tidy$vcov_type <- vcov_type(vcov)
   tidy
 }
 
-tidy_plm_within <- function(model, data) {
+#' @title Collapse a prepared frame to one row per cluster
+#' @description The between estimator is unweighted OLS on cluster means, so
+#'   this is the frame it is actually fitted on.
+#' @param data *[data.frame]* Prepared data with `effect`, `se`, and the
+#'   cluster column.
+#' @param cluster_column *[character]* Name of the cluster column.
+#' @return *[data.frame]* One row per cluster, with `effect` and `se` means.
+group_mean_frame <- function(data, cluster_column) {
+  group <- droplevels(factor(data[[cluster_column]]))
+  first_in_group <- !duplicated(as.integer(group))
+  data.frame(
+    effect = stats::ave(data$effect, group)[first_in_group],
+    se = stats::ave(data$se, group)[first_in_group]
+  )
+}
+
+#' @title Tidy a between (group means) panel model
+#' @description
+#' `plm::vcovHC()` supports only `random`, `within`, `pooling` and `fd` models,
+#' so the shared ladder exhausts every robust step on a `between` fit and lands
+#' on classical standard errors. The between estimator is unweighted OLS on
+#' cluster means, so the same coefficients (and residual degrees of freedom)
+#' come out of an `lm` on that collapsed frame, where `sandwich` does work.
+#'
+#' Heteroskedasticity-robust HC1 is the right target rather than a clustered
+#' vcov: after collapsing there is exactly one observation per cluster, so
+#' `sandwich::vcovCL()` clustered on the study id returns the HC1 matrix
+#' element for element. Clustering buys nothing here, and pretending otherwise
+#' would suggest the between column corrects for within-study dependence when
+#' averaging has already removed it.
+#' @param model *[plm]* The fitted `between` model, used only to check that the
+#'   collapsed `lm` reproduces it.
+#' @param data *[data.frame]* The prepared data the model was fitted on.
+#' @param cluster_column *[character, optional]* Name of the cluster column.
+#' @param label *[character, optional]* Model display name, for warnings.
+#' @return *[data.frame]* A tidy coefficient frame with a `vcov_type` column.
+tidy_plm_between <- function(model, data, cluster_column = "study_id", label = NULL) {
+  box::use(artma / libs / core / validation[assert])
+
+  means <- group_mean_frame(data, cluster_column)
+  means_model <- stats::lm(effect ~ se, data = means)
+
+  assert(
+    isTRUE(all.equal(
+      unname(stats::coef(means_model)),
+      unname(stats::coef(model)),
+      tolerance = 1e-8
+    )),
+    "The group-means regression does not reproduce the between estimator."
+  )
+
+  vcov <- robust_vcov(
+    model = means_model,
+    cluster = NULL,
+    engine = "sandwich",
+    clustered_type = "HC1",
+    fallback_types = "HC0",
+    label = label
+  )
+
+  coef_matrix <- lmtest::coeftest(means_model, vcov. = vcov)
+  tidy <- tidy_from_coeftest(coef_matrix)
+
+  tidy$term <- c(
+    `se` = "publication_bias",
+    `(Intercept)` = "effect"
+  )[tidy$term_raw]
+  tidy <- tidy[!is.na(tidy$term), , drop = FALSE]
+  tidy$term_raw <- NULL
+  tidy$vcov_type <- vcov_type(vcov)
+  tidy
+}
+
+tidy_plm_within <- function(model, data, label = NULL) {
   vcov <- robust_vcov(
     model = model,
     cluster = "group",
     engine = "plm",
     clustered_type = "HC1",
     fallback_types = "HC0",
-    final_vcov_fallback = FALSE
+    final_vcov_fallback = FALSE,
+    label = label
   )
 
   coef_matrix <- lmtest::coeftest(model, vcov = vcov)
@@ -423,7 +501,9 @@ tidy_plm_within <- function(model, data) {
     check.names = FALSE
   )
 
-  rbind(intercept_row, slope[c("term", "estimate", "std_error", "statistic", "p_value")])
+  tidy <- rbind(intercept_row, slope[c("term", "estimate", "std_error", "statistic", "p_value")])
+  tidy$vcov_type <- vcov_type(vcov)
+  tidy
 }
 
 #' Extract bootstrap point estimates from an intercept + `se` slope model.
@@ -519,7 +599,7 @@ linear_model_specs <- function() {
       cluster_column = "study_id",
       terms = c("effect", "publication_bias"),
       fit = function(df) stats::lm(effect ~ se, data = df),
-      tidy = function(model, data) tidy_lm_model(model, data, "study_id"),
+      tidy = function(model, data) tidy_lm_model(model, data, "study_id", "OLS"),
       boot_coefs = boot_coefs_intercept_slope,
       boot_estimate = boot_estimate_ols,
       supports_bootstrap = TRUE
@@ -534,7 +614,7 @@ linear_model_specs <- function() {
       required_packages = "plm",
       precheck = precheck_fe,
       fit = function(df) plm::plm(effect ~ se, data = df, model = "within", index = "study_id"),
-      tidy = tidy_plm_within,
+      tidy = function(model, data) tidy_plm_within(model, data, "Fixed Effects"),
       boot_coefs = boot_coefs_within,
       boot_estimate = boot_estimate_within,
       supports_bootstrap = TRUE
@@ -549,7 +629,7 @@ linear_model_specs <- function() {
       required_packages = "plm",
       precheck = precheck_be,
       fit = function(df) plm::plm(effect ~ se, data = df, model = "between", index = "study_id"),
-      tidy = tidy_plm_generic,
+      tidy = function(model, data) tidy_plm_between(model, data, "study_id", "Between Effects"),
       boot_coefs = boot_coefs_intercept_slope,
       boot_estimate = boot_estimate_be,
       supports_bootstrap = TRUE
@@ -564,7 +644,7 @@ linear_model_specs <- function() {
       required_packages = "plm",
       precheck = precheck_re,
       fit = function(df) plm::plm(effect ~ se, data = df, model = "random", index = "study_id"),
-      tidy = tidy_plm_generic,
+      tidy = function(model, data) tidy_plm_generic(model, data, "Random Effects"),
       boot_coefs = boot_coefs_intercept_slope,
       boot_estimate = boot_estimate_re,
       supports_bootstrap = TRUE
@@ -578,7 +658,7 @@ linear_model_specs <- function() {
       weight_column = "study_size",
       terms = c("effect", "publication_bias"),
       fit = function(df) stats::lm(effect ~ se, data = df, weights = (1 / df$study_size)),
-      tidy = function(model, data) tidy_lm_model(model, data, "study_id"),
+      tidy = function(model, data) tidy_lm_model(model, data, "study_id", "Study Weighted OLS"),
       boot_coefs = boot_coefs_intercept_slope,
       boot_estimate = boot_estimate_study_weighted_ols,
       supports_bootstrap = TRUE
@@ -592,7 +672,7 @@ linear_model_specs <- function() {
       weight_column = "precision",
       terms = c("effect", "publication_bias"),
       fit = function(df) stats::lm(effect ~ se, data = df, weights = (df$precision^2)),
-      tidy = function(model, data) tidy_lm_model(model, data, "study_id"),
+      tidy = function(model, data) tidy_lm_model(model, data, "study_id", "Precision Weighted OLS"),
       boot_coefs = boot_coefs_intercept_slope,
       boot_estimate = make_boot_estimate_weighted_ols("precision"),
       supports_bootstrap = TRUE
@@ -717,6 +797,7 @@ run_linear_models <- function(df, options, is_pkg_available = NULL) {
       n_obs = integer(),
       bootstrap_lower = numeric(),
       bootstrap_upper = numeric(),
+      vcov_type = character(),
       stringsAsFactors = FALSE
     )
     return(list(coefficients = empty, summary = empty, skipped = skipped, options = options))
@@ -763,6 +844,10 @@ build_summary_table <- function(coefficients, digits) {
     return(data.frame())
   }
 
+  # The models do not all get the same kind of standard error (the between
+  # estimator cannot be clustered, and any model can be downgraded by a failing
+  # robust estimator), so the table says which is which. Without it the columns
+  # read as directly comparable when they are not.
   row_labels <- c(
     "Publication Bias",
     "(Std. Error)",
@@ -770,7 +855,8 @@ build_summary_table <- function(coefficients, digits) {
     "Effect Beyond Bias",
     "(Std. Error)",
     "Bootstrap CI (Effect)",
-    "Total Observations"
+    "Total Observations",
+    "Standard Errors"
   )
 
   columns <- list()
@@ -787,6 +873,10 @@ build_summary_table <- function(coefficients, digits) {
       n_obs_value <- n_obs_value[1]
     }
 
+    vcov_values <- unique(model_rows$vcov_type %||% NA_character_)
+    vcov_values <- vcov_values[!is.na(vcov_values)]
+    vcov_label <- if (length(vcov_values)) paste(vcov_values, collapse = "; ") else NA_character_
+
     column_name <- model_rows$model_label[1]
     columns[[column_name]] <- c(
       if (nrow(pb)) pb$estimate_formatted else NA_character_,
@@ -795,7 +885,8 @@ build_summary_table <- function(coefficients, digits) {
       if (nrow(eff)) eff$estimate_formatted else NA_character_,
       if (nrow(eff)) eff$std_error_formatted else NA_character_,
       if (nrow(eff)) eff$bootstrap_formatted else NA_character_,
-      if (nrow(model_rows)) format_number(n_obs_value, 0) else NA_character_
+      if (nrow(model_rows)) format_number(n_obs_value, 0) else NA_character_,
+      vcov_label
     )
   }
 

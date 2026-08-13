@@ -79,37 +79,40 @@ test_that("linear_tests summary table is pinned on fixture data", {
       Metric = c(
         "Publication Bias", "(Std. Error)", "Bootstrap CI (PB)",
         "Effect Beyond Bias", "(Std. Error)", "Bootstrap CI (Effect)",
-        "Total Observations"
+        "Total Observations", "Standard Errors"
       ),
       OLS = c(
         "-0.25", "(0.30)", "[-0.61, 0.38]", "0.21***", "(0.03)",
-        "[0.13, 0.25]", "30"
+        "[0.13, 0.25]", "30", "Cluster-robust (HC1)"
       ),
       `Fixed Effects` = c(
         "-0.19", "(0.33)", "[-0.54, 0.02]", "0.20***", "(0.04)",
-        "[0.18, 0.25]", "30"
+        "[0.18, 0.25]", "30", "Cluster-robust (HC1)"
       ),
+      # The between estimator is OLS on group means, where plm::vcovHC does not
+      # apply and clustering is degenerate; its column is the only one on
+      # heteroskedasticity-robust rather than cluster-robust errors.
       `Between Effects` = c(
-        "-1.63", "(2.24)", "[-3.95, 0.21]", "0.36", "(0.25)",
-        "[0.17, 0.62] †", "30"
+        "-1.63", "(0.86)", "[-3.95, 0.21]", "0.36**", "(0.10)",
+        "[0.17, 0.62]", "30", "Heteroskedasticity-robust (HC1)"
       ),
       `Random Effects` = c(
         "-0.23", "(0.29)", "[-0.59, 0.16]", "0.21***", "(0.03)",
-        "[0.18, 0.24]", "30"
+        "[0.18, 0.24]", "30", "Cluster-robust (HC1)"
       ),
       `Study Weighted OLS` = c(
         "-0.17", "(0.30)", "[-0.60, 0.08]", "0.21***", "(0.03)",
-        "[0.18, 0.24]", "30"
+        "[0.18, 0.24]", "30", "Cluster-robust (HC1)"
       ),
       `Precision Weighted OLS` = c(
         "-0.24", "(0.24)", "[-0.53, 0.03]", "0.21***", "(0.03)",
-        "[0.18, 0.23]", "30"
+        "[0.18, 0.23]", "30", "Cluster-robust (HC1)"
       )
     ),
     row.names = c(
       "Publication Bias", "(Std. Error)", "Bootstrap CI (PB)",
       "Effect Beyond Bias", "(Std. Error)", "Bootstrap CI (Effect)",
-      "Total Observations"
+      "Total Observations", "Standard Errors"
     ),
     class = "data.frame"
   )
