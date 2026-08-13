@@ -48,16 +48,16 @@
 #' @examples
 #' \dontrun{
 #' # Preview data from options file (prompts for file if NULL)
-#' data.preview(options = "my_analysis.yaml")
+#' data_preview(options = "my_analysis.yaml")
 #'
 #' # Preview raw file without loading options
-#' data.preview("/path/to/data.csv", preprocess = FALSE)
+#' data_preview("/path/to/data.csv", preprocess = FALSE)
 #'
 #' # Preview preprocessed data from a path (uses options for standardization)
-#' data.preview("/path/to/data.csv", options = "my_analysis.yaml")
+#' data_preview("/path/to/data.csv", options = "my_analysis.yaml")
 #'
 #' # Preview a data frame as-is
-#' data.preview(mtcars, preprocess = FALSE)
+#' data_preview(mtcars, preprocess = FALSE)
 #' }
 #'
 #' @seealso
@@ -66,7 +66,7 @@
 #' - \code{\link{options_load}} - Load options
 #'
 #' @export
-data.preview <- function(
+data_preview <- function(
   data = NULL,
   options = NULL,
   options_dir = NULL,
@@ -178,4 +178,13 @@ data.preview <- function(
   )
 
   invisible(NULL)
+}
+
+# Deprecated dotted alias (see contributingGuides/API.md). Removed after 1.0.
+
+#' @rdname artma-deprecated
+#' @export
+data.preview <- function(...) {
+  lifecycle::deprecate_warn("0.4.0", "data.preview()", "data_preview()")
+  data_preview(...)
 }

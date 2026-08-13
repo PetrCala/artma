@@ -101,7 +101,7 @@ add_t_stat_column <- function(df) {
       cli::cli_abort(c(
         "!" = "Found {n_missing} missing t-statistics in the column {.val t_stat}.",
         "i" = "Please add these to your data frame, or remove the {.val t_stat} column mapping so they are computed automatically.",
-        "i" = "You can remove the mapping by running {.code artma::config.set('t_stat', source_name = NA)}."
+        "i" = "You can remove the mapping by running {.code artma::config_set('t_stat', source_name = NA)}."
       ))
     }
   }

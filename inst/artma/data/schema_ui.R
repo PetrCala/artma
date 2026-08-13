@@ -80,7 +80,7 @@ auto_decisions <- function(drift, proposals_roles, proposals_moderators) {
     conflicts[[std]] <- "keep_mapping"
     if (get_verbosity() >= 2) {
       cli::cli_alert_warning(
-        "Column {.val {std}} is mapped from {.val {src}}, but the data also contains a different {.val {std}} column. Keeping the mapping and dropping the raw {.val {std}} column. Run {.code artma::config.reset(\"{std}\")} to use the raw column instead."
+        "Column {.val {std}} is mapped from {.val {src}}, but the data also contains a different {.val {std}} column. Keeping the mapping and dropping the raw {.val {std}} column. Run {.code artma::config_reset(\"{std}\")} to use the raw column instead."
       )
     }
   }

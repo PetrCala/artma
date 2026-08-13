@@ -13,7 +13,7 @@ box::use(
   withr[local_options]
 )
 
-test_that("data.preview with data frame and preprocess FALSE returns invisibly", {
+test_that("data_preview with data frame and preprocess FALSE returns invisibly", {
   withr::local_options(list(artma.verbose = 0))
 
   df <- data.frame(
@@ -23,13 +23,13 @@ test_that("data.preview with data frame and preprocess FALSE returns invisibly",
     n_obs = c(100, 200)
   )
 
-  out <- artma::data.preview(df, preprocess = FALSE)
+  out <- artma::data_preview(df, preprocess = FALSE)
 
   expect_null(out)
-  expect_invisible(artma::data.preview(df, preprocess = FALSE))
+  expect_invisible(artma::data_preview(df, preprocess = FALSE))
 })
 
-test_that("data.preview with file path and preprocess FALSE reads raw and returns invisibly", {
+test_that("data_preview with file path and preprocess FALSE reads raw and returns invisibly", {
   withr::local_options(list(artma.verbose = 0))
 
   tmp_csv <- withr::local_tempfile(fileext = ".csv")
@@ -44,27 +44,27 @@ test_that("data.preview with file path and preprocess FALSE reads raw and return
     row.names = FALSE
   )
 
-  out <- artma::data.preview(tmp_csv, preprocess = FALSE)
+  out <- artma::data_preview(tmp_csv, preprocess = FALSE)
 
   expect_null(out)
-  expect_invisible(artma::data.preview(tmp_csv, preprocess = FALSE))
+  expect_invisible(artma::data_preview(tmp_csv, preprocess = FALSE))
 })
 
-test_that("data.preview rejects invalid data", {
+test_that("data_preview rejects invalid data", {
   withr::local_options(list(artma.verbose = 0))
 
   expect_error(
-    artma::data.preview(c("/path/a.csv", "/path/b.csv"), preprocess = FALSE),
+    artma::data_preview(c("/path/a.csv", "/path/b.csv"), preprocess = FALSE),
     "single file path"
   )
 
   expect_error(
-    artma::data.preview(list(a = 1), preprocess = FALSE),
+    artma::data_preview(list(a = 1), preprocess = FALSE),
     "NULL, a file path"
   )
 
   expect_error(
-    artma::data.preview(1L, preprocess = FALSE),
+    artma::data_preview(1L, preprocess = FALSE),
     "NULL, a file path"
   )
 })
@@ -75,11 +75,11 @@ test_that("the data viewer is never opened in a non-interactive session", {
   skip_if(interactive(), "Only meaningful in a non-interactive session")
 
   # utils::View() aborts the R session on Unix builds whose only viewer is the
-  # X11 data entry window, so data.preview() must not reach it here.
+  # X11 data entry window, so data_preview() must not reach it here.
   expect_false(data_viewer_available())
 })
 
-test_that("data.preview prints a preview when no viewer is available", {
+test_that("data_preview prints a preview when no viewer is available", {
   box::use(artma / libs / core / utils[data_viewer_available])
 
   skip_if(data_viewer_available(), "A data viewer is available in this session")
@@ -89,7 +89,7 @@ test_that("data.preview prints a preview when no viewer is available", {
   df <- data.frame(study_id = c("A", "B"), effect = c(0.5, 0.3))
 
   emitted <- paste(
-    testthat::capture_messages(artma::data.preview(df, preprocess = FALSE)),
+    testthat::capture_messages(artma::data_preview(df, preprocess = FALSE)),
     collapse = ""
   )
 

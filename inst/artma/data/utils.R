@@ -163,9 +163,9 @@ standardize_column_names <- function(df, quiet = FALSE, required_colnames = NULL
 
     cli::cli_abort(c(
       "x" = "Cannot map {.val {source_col}} to standard column {.val {target_col}}: the data frame already has a different column named {.val {target_col}}.",
-      "i" = "Keep the mapping and drop the raw column: {.code artma::config.set(\"{target_col}\", drop_conflicting_raw = TRUE)}",
-      "i" = "Use the raw {.val {target_col}} column instead: {.code artma::config.reset(\"{target_col}\")}",
-      "i" = "Or map {.val {target_col}} to another source column: {.code artma::config.set(\"{target_col}\", source_name = \"<column>\")}"
+      "i" = "Keep the mapping and drop the raw column: {.code artma::config_set(\"{target_col}\", drop_conflicting_raw = TRUE)}",
+      "i" = "Use the raw {.val {target_col}} column instead: {.code artma::config_reset(\"{target_col}\")}",
+      "i" = "Or map {.val {target_col}} to another source column: {.code artma::config_set(\"{target_col}\", source_name = \"<column>\")}"
     ))
   }
 

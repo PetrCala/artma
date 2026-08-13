@@ -75,7 +75,7 @@ enforce_data_types <- function(df) {
     cli::cli_abort(c(
       "x" = "No data config entry found for column{?s} {.val {missing_cols}}.",
       "i" = "The data config is out of sync with the data frame.",
-      "i" = "Run {.code artma::config.fix()} to regenerate the config from the data."
+      "i" = "Run {.code artma::config_fix()} to regenerate the config from the data."
     ))
   }
 
