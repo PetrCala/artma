@@ -137,12 +137,12 @@ effect_summary_stats <- function(df) {
 
   # If no variables configured, prompt for interactive selection
   if (!length(effect_vars)) {
-    if (get_verbosity() >= 3) {
-      cli::cli_alert_info("No variables configured for effect summary statistics.")
-    }
-
     # Check if interactive mode is available
     if (interactive()) {
+      if (get_verbosity() >= 3) {
+        cli::cli_alert_info("No variables configured for effect summary statistics.")
+      }
+
       box::use(
         artma / interactive / effect_summary_stats[
           prompt_effect_summary_var_selection
@@ -161,9 +161,14 @@ effect_summary_stats <- function(df) {
       effect_vars <- names(config)[vapply(config, is_effect_var, logical(1))]
     }
 
-    # If still no variables (user declined or non-interactive), fall through
-    # with the effect column defaulted in, so the table still gets at least
-    # the "All Data" row computed below.
+    # If still no variables (user declined or non-interactive), fall through:
+    # the table still gets the pooled "All Data" row computed below, so say
+    # that rather than reporting an absence the output then contradicts.
+    if (!length(effect_vars) && get_verbosity() >= 3) {
+      cli::cli_alert_info(
+        "No moderator variables configured; reporting pooled statistics only."
+      )
+    }
   }
 
   rows_env <- environment()
