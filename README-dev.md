@@ -24,10 +24,6 @@
 - [Understanding the folder structure](#understanding-the-folder-structure)
 - [Using the options template](#using-the-options-template)
 - [Caching heavy computations](#caching-heavy-computations)
-  - [Wrapping functions with cache\_cli](#wrapping-functions-with-cache_cli)
-    - [Using `cache_cli_runner` for reusable wrappers](#using-cache_cli_runner-for-reusable-wrappers)
-  - [Inspecting cached artifacts](#inspecting-cached-artifacts)
-  - [Invalidation and configuration](#invalidation-and-configuration)
 - [Using `lintr` for Code Quality](#using-lintr-for-code-quality)
   - [Installation](#installation)
   - [Usage](#usage)
@@ -203,156 +199,29 @@ This package is structured with most files located in the `inst/artma` folder, f
 
 The module structure is organized by domain:
 
-- **`inst/artma/libs/`** — Shared utilities organized by category:
-  - `libs/core/` — Fundamental utilities (validation, utils, string, number, file)
-  - `libs/infrastructure/` — System-level functionality (cache, debug, polyfills)
-  - `libs/formatting/` — Result formatting (results)
-- **`inst/artma/interactive/`** — Interactive UI components (ask, editor, save_preference, effect_summary_stats, welcome)
-- **`inst/artma/variable/`** — Variable analysis and suggestion (detection, suggestion, bma)
-- **`inst/artma/econometric/`** — Econometric calculation helpers (bma, linear, nonlinear, exogeneity, p_hacking)
-- **`inst/artma/methods/`** — Runtime methods (the core analytical functions)
-- **`inst/artma/data/`** — Data pipeline (read, preprocess, compute)
-- **`inst/artma/options/`** — Options system and templates
-- **`inst/artma/data_config/`** — Data configuration handling
-- **`inst/artma/calc/`** — Computation engines for specific methods
-- **`inst/artma/modules/`** — Higher-level orchestration modules
+- **`inst/artma/libs/`**: Shared utilities organized by category:
+  - `libs/core/`: Fundamental utilities (validation, utils, string, number, file)
+  - `libs/infrastructure/`: System-level functionality (cache, debug, polyfills)
+  - `libs/formatting/`: Result formatting (results)
+- **`inst/artma/interactive/`**: Interactive UI components (ask, editor, save_preference, effect_summary_stats, welcome)
+- **`inst/artma/variable/`**: Variable analysis and suggestion (detection, suggestion, bma)
+- **`inst/artma/econometric/`**: Econometric calculation helpers (bma, linear, nonlinear, exogeneity, p_hacking)
+- **`inst/artma/methods/`**: Runtime methods (the core analytical functions)
+- **`inst/artma/data/`**: Data pipeline (read, preprocess, compute)
+- **`inst/artma/options/`**: Options system and templates
+- **`inst/artma/data_config/`**: Data configuration handling
+- **`inst/artma/calc/`**: Computation engines for specific methods
+- **`inst/artma/modules/`**: Higher-level orchestration modules
 
 This structure promotes better code reuse, easier debugging, and improved separation of concerns, aligning with modern software development practices. During the package installation, the `inst` folder gets bundled too, and becomes thus available for `box` imports.
 
 # Using the options template
 
-User options are generated in the project from a template file (potentially `options_template.yaml`). This is a nested yaml file, where the end nodes have the following keys:
-
-- **name** (str): Option name.
-- **type** (str): Option type. Must be one of the supported R types (such as `"character"`, `"logical"`,...)
-- **default** (any, optional): Default value for the option.
-- **fixed** (bool, optional): If `true`, this option may not be overwritten by the user in any of the derived user files. Any overwritten fixed options will be reverted to their default upon file validation.
-- **allow_na** (bool, optional): If `true`, this option may be set to `.na`. Otherwise a non-na value will be required when creating the user options file.
-- **prompt** (character, optional): Specifies how a value for this option should be asked for. Accepts the following values:
-  - **"readline"** (default behavior): The user will be prompted through `readline()` with a simple message.
-  - **"file"**: The user will be asked to provide a file path through `tcltk` interactive window.
-  - **"directory"**: The user will be asked to provide a directory path through `tcltk` interactive window.
-- **help** (str, optional): Option help.
+User options files are generated from the self-describing templates in `inst/artma/options/templates/` and validated against them. The template node reference and the option access convention are documented in [contributingGuides/OPTIONS.md](contributingGuides/OPTIONS.md).
 
 # Caching heavy computations
 
-Artma's heavy modelling helpers are expensive to recompute. The
-`artma::cache_cli()` wrapper memoises their return value on disk via `memoise`
-so repeated runs skip the work entirely. On a cache hit it prints a single
-short notice instead of rerunning the function.
-
-## Wrapping functions with cache_cli
-
-Wrap any expensive function with `cache_cli()` when exporting it from a
-module. The wrapper stores the computed value in a `cached_artifact` object on
-disk using `memoise::cache_filesystem`.
-
-```r
-# inside a module
-run_models <- cache_cli(
-  .run_models_impl,
-  extra_keys = list(pkg_version = utils::packageVersion("artma"))
-)
-
-# at call site
-run_models(df, formula)
-```
-
-Key behaviours:
-
-- The wrapped function's own CLI output prints on the first (cold) execution.
-  On a cache hit the output is not replayed; instead a single
-  `Using cached results` notice is emitted, respecting the current verbosity.
-- Provide a custom `cache` (e.g. an in-memory cache) if the default user cache
-  directory is not suitable.
-- `extra_keys` lets you add memoisation key components such as package
-  versions or configuration hashes to avoid sharing stale results. A `stage`
-  entry, when present, names the workflow in the cache hit notice.
-
-### Using `cache_cli_runner` for reusable wrappers
-
-For modules that share a cache signature or need to compute additional key
-components before invoking the underlying implementation, prefer the
-`cache_cli_runner()` helper. It introduces the `cache_signature` argument to the
-memoised layer and accepts a `key_builder` callback so repeated patterns stay
-DRY:
-
-```r
-box::use(
-  artma / libs / infrastructure / cache[cache_cli_runner],
-  artma / data / cache_signatures[build_data_cache_signature]
-)
-
-run_summary <- cache_cli_runner(
-  summary_impl,
-  stage = "my_stage",
-  key_builder = function(...) build_data_cache_signature()
-)
-
-run_summary(df)
-```
-
-`cache_cli_runner()` still exposes all tuning parameters from `cache_cli()` so
-callers can set a custom cache backend, provide invalidation predicates, or
-specify a `max_age` timeout while keeping the call sites concise.
-
-## Inspecting cached artifacts
-
-`cache_cli()` stores a `cached_artifact` containing the computed value and
-metadata (timestamp, extra key material, and the TTL used). Use
-`get_artifact()` to retrieve an artifact by key when debugging the on-disk
-cache.
-
-```r
-cache <- memoise::cache_filesystem(PATHS$DIR_USR_CACHE)
-key <- cache$keys()[[1]]
-artifact <- get_artifact(cache, key)
-
-artifact$value # original return value
-artifact$meta  # timestamp, extra keys, and cache settings
-```
-
-## Invalidation and configuration
-
-Caching is on by default (`artma.cache.use_cache`), so the cache key has to be
-exhaustive. `memoise` hashes the arguments of the memoised call, which covers
-the data frame and any upstream `<dependency>_result` the orchestrator injects.
-Everything else reaches the key through the `cache_signature` that
-`build_data_cache_signature()` builds:
-
-- the data source path and its modification time;
-- the user-authored data config entries;
-- the whole user-authored `artma.*` option group, not a per-method subset, so
-  an option read indirectly through a shared helper cannot be missed;
-- the installed package version;
-- `package_source_fingerprint()`, a hash of every R file under `inst/artma`.
-
-`register_runtime_method()` appends `method_source_hash(stage)` on top, so
-editing one method file invalidates that method alone. Fingerprints are
-memoised per session, which matches when a source edit actually takes effect
-(`box` caches loaded modules for the session too).
-
-Several further mechanisms keep cached artefacts fresh:
-
-- `invalidate_fun` (optional) receives the call arguments and should return
-  `TRUE` when the cache must be bypassed (e.g. negative inputs). When triggered
-  the memoised store is cleared before recomputing so subsequent calls rebuild
-  fresh artefacts.
-- `max_age` enforces a time-to-live in seconds. Set it explicitly when
-  wrapping a function or globally via the `artma.cache.max_age` option. It is a
-  backstop for inputs that change without the signature noticing, such as a
-  data file edited in place with its modification time preserved.
-- Output files recorded during a cold run (graphics, via `save_plot()` and
-  `record_output_file()`) are re-checked on every hit. If one has gone missing,
-  the artefact is dropped and the implementation reruns, so a cache hit never
-  reports success with its plots absent.
-- Disable caching entirely with `options(artma.cache.use_cache = FALSE)` when
-  debugging or benchmarking. The option is read on every call, so toggling it
-  mid-session takes effect immediately.
-- Wipe the on-disk cache with `make clear-cache`.
-
-Combine `invalidate_fun`, `max_age`, and `extra_keys` to model domain-specific
-refresh rules without manually clearing the cache.
+Artma's heavy modelling helpers are memoised on disk via `cache_cli()` and `cache_cli_runner()` (`inst/artma/libs/infrastructure/cache.R`), with caching on by default. How to wrap a function, what goes into the cache key, invalidation, and debugging are documented in [contributingGuides/CACHING.md](contributingGuides/CACHING.md).
 
 # Using `lintr` for Code Quality
 
