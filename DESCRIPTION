@@ -14,7 +14,8 @@ Description: Provides a unified and straightforward interface for
     Ideal for researchers aiming for efficiency and reproducibility, it
     streamlines workflows from data preparation to results interpretation.
 License: GPL-3
-URL: https://github.com/PetrCala/artma
+URL: https://github.com/PetrCala/artma,
+    https://petrcala.github.io/artma/
 BugReports: https://github.com/PetrCala/artma/issues
 Depends:
     R (>= 4.4.0)
