@@ -238,7 +238,11 @@ best_practice_estimate <- function(df, bma_result = NULL) {
     rows <- c(rows, study_rows)
   }
 
-  summary <- do.call(rbind, rows)
+  # Keep the unrounded rows: `summary` is rounded in place for display, and the
+  # estimates slot must carry the numbers as computed.
+  raw_rows <- do.call(rbind, rows)
+
+  summary <- raw_rows
   summary$estimate <- round_if_finite(summary$estimate, round_to)
   summary$standard_error <- round_if_finite(summary$standard_error, round_to)
   summary$ci_lower <- round_if_finite(summary$ci_lower, round_to)
@@ -361,6 +365,7 @@ best_practice_estimate <- function(df, bma_result = NULL) {
 
   invisible(new_method_result(
     tables = tables,
+    estimates = bpe_estimates(raw_rows, n_clusters = n_clusters),
     plots = plots,
     meta = list(
       formula = formula,
@@ -369,6 +374,45 @@ best_practice_estimate <- function(df, bma_result = NULL) {
       bma_source = resolved_bma$source,
       autonomy_level = autonomy_level
     )
+  ))
+}
+
+#' @title Tidy estimates for the best-practice estimate
+#' @description
+#' Map the per-scope rows onto the shared `estimates` schema. Each row is a
+#' linear combination of the BMA posterior means evaluated at one set of
+#' predictor values, so `model` is the scope (`"author"` for the reference
+#' specification, `"study"` for a per-study prediction) and `term` is the study
+#' label the prediction belongs to (`"Author"` for the reference row).
+#'
+#' Standard errors are study-clustered, so every row carries the same
+#' `n_clusters`; the confidence bounds are the t-based ones the display table
+#' shows, taken before rounding.
+#' @param rows *\[data.frame\]* The unrounded best-practice rows
+#'   (`scope`, `study_label`, `estimate`, `standard_error`, `ci_lower`,
+#'   `ci_upper`).
+#' @param n_clusters *\[integer, optional\]* Number of study clusters behind the
+#'   standard errors.
+#' @return *\[data.frame\]* A frame in the shared estimates schema.
+bpe_estimates <- function(rows, n_clusters = NA_integer_) {
+  box::use(
+    artma / modules / runtime_methods[new_estimates]
+  )
+
+  if (!is.data.frame(rows) || nrow(rows) == 0L) {
+    return(new_estimates())
+  }
+
+  new_estimates(data.frame(
+    method = "best_practice_estimate",
+    model = rows$scope,
+    term = rows$study_label,
+    estimate = rows$estimate,
+    std_error = rows$standard_error,
+    conf_low = rows$ci_lower,
+    conf_high = rows$ci_upper,
+    n_clusters = n_clusters,
+    stringsAsFactors = FALSE
   ))
 }
 
@@ -685,5 +729,5 @@ run <- register_runtime_method(
 )
 
 box::export(
-  best_practice_estimate, run, resolve_bma_input_for_bpe
+  best_practice_estimate, bpe_estimates, run, resolve_bma_input_for_bpe
 )

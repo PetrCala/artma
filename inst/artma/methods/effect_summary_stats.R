@@ -197,11 +197,21 @@ effect_summary_stats <- function(df) {
       stringsAsFactors = FALSE
     )
     assign("rows", c(rows_env$rows, list(new_row)), envir = rows_env)
+    # The display row is rounded; keep the raw statistics for the estimates slot.
+    assign(
+      "raw_rows",
+      c(rows_env$raw_rows, stats::setNames(
+        list(list(label = label, unweighted = unweighted, weighted = weighted)),
+        label
+      )),
+      envir = rows_env
+    )
 
     TRUE
   }
 
   rows <- list()
+  raw_rows <- list()
   missing_vars <- character()
 
   for (var_name in effect_vars) {
@@ -266,6 +276,7 @@ effect_summary_stats <- function(df) {
     all_idx <- which(out$`Var Name` == "All Data")
     if (length(all_idx) && all_idx[1] != 1) {
       out <- rbind(out[all_idx[1], , drop = FALSE], out[-all_idx[1], , drop = FALSE])
+      raw_rows <- c(raw_rows[all_idx[1]], raw_rows[-all_idx[1]])
     }
   }
   rownames(out) <- NULL
@@ -286,7 +297,59 @@ effect_summary_stats <- function(df) {
     print_summary_table(out)
   }
 
-  invisible(new_method_result(tables = list(summary = out)))
+  invisible(new_method_result(
+    tables = list(summary = out),
+    estimates = effect_summary_stats_estimates(raw_rows)
+  ))
+}
+
+#' @title Tidy estimates for the effect summary statistics
+#' @description
+#' Flatten the summary table into the shared `estimates` schema. The method is
+#' descriptive rather than inferential, so the mapping is a judgement call:
+#' each row of the display table is one data subset and each of its columns one
+#' statistic, so in the long schema `model` is the subset label (`"All Data"`,
+#' or a variable group such as `"Study year > 2000"`) and `term` names the
+#' statistic (`"mean"`, `"weighted_mean"`, `"median"`, `"min"`, `"max"`,
+#' `"sd"`). `estimate` holds the statistic itself, and there is no test
+#' statistic or p-value to fill.
+#'
+#' The two means carry the confidence bounds that belong to them in `conf_low`
+#' and `conf_high`; the remaining statistics leave those `NA` rather than
+#' borrowing the mean's interval. `n_obs` is the number of finite estimates in
+#' the subset, and is repeated on every statistic of that subset.
+#' @param raw_rows *\[list\]* Per-subset unrounded statistics, each a list with
+#'   `label`, `unweighted`, and `weighted` elements.
+#' @return *\[data.frame\]* A frame in the shared estimates schema.
+effect_summary_stats_estimates <- function(raw_rows) {
+  box::use(
+    artma / modules / runtime_methods[new_estimates]
+  )
+
+  if (!is.list(raw_rows) || length(raw_rows) == 0L) {
+    return(new_estimates())
+  }
+
+  rows <- lapply(raw_rows, function(entry) {
+    unweighted <- entry$unweighted
+    weighted <- entry$weighted
+
+    data.frame(
+      method = "effect_summary_stats",
+      model = entry$label,
+      term = c("mean", "weighted_mean", "median", "min", "max", "sd"),
+      estimate = c(
+        unweighted$mean, weighted$mean, unweighted$median,
+        unweighted$min, unweighted$max, unweighted$sd
+      ),
+      conf_low = c(unweighted$ci[1], weighted$ci[1], NA_real_, NA_real_, NA_real_, NA_real_),
+      conf_high = c(unweighted$ci[2], weighted$ci[2], NA_real_, NA_real_, NA_real_, NA_real_),
+      n_obs = as.integer(unweighted$obs),
+      stringsAsFactors = FALSE
+    )
+  })
+
+  new_estimates(do.call(rbind, rows))
 }
 
 box::use(
@@ -299,4 +362,4 @@ run <- register_runtime_method(
   required_columns = c("effect", "study_size")
 )
 
-box::export(effect_summary_stats, run)
+box::export(effect_summary_stats, effect_summary_stats_estimates, run)

@@ -75,12 +75,68 @@ exogeneity_tests <- function(df) {
 
   invisible(new_method_result(
     tables = list(summary = results$summary),
+    estimates = exogeneity_tests_estimates(results),
     meta = list(
       iv = results$iv,
       puniform = results$puniform,
       skip_reason = results$skipped
     )
   ))
+}
+
+#' @title Tidy estimates for the exogeneity tests
+#' @description
+#' Map the IV and p-uniform* coefficient frames onto the shared `estimates`
+#' schema. Both estimators contribute their own `model` (`"iv"`,
+#' `"puniform"`), and their `term` values carry over unchanged. The numbers are
+#' taken verbatim: the formatted columns sitting alongside them belong to the
+#' display table only.
+#'
+#' The two diagnostics that are not coefficients ride along as notes rather
+#' than rows: a weak first stage on the IV rows, and the p-uniform*
+#' convergence/fallback note on its rows.
+#' @param results *\[list\]* The value returned by `run_exogeneity_tests()`.
+#' @return *\[data.frame\]* A frame in the shared estimates schema.
+exogeneity_tests_estimates <- function(results) {
+  box::use(
+    artma / modules / runtime_methods[new_estimates]
+  )
+
+  as_rows <- function(coefficients, model, note) {
+    if (!is.data.frame(coefficients) || nrow(coefficients) == 0L) {
+      return(NULL)
+    }
+    data.frame(
+      method = "exogeneity_tests",
+      model = model,
+      term = coefficients$term,
+      estimate = coefficients$estimate,
+      std_error = coefficients$std_error,
+      statistic = coefficients$statistic,
+      p_value = coefficients$p_value,
+      n_obs = coefficients$n_obs,
+      note = note %||% NA_character_,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  iv <- results$iv
+  iv_note <- if (isTRUE(iv$weak_instrument)) {
+    "First-stage F below 10; the instrument is weak"
+  } else {
+    NA_character_
+  }
+
+  rows <- Filter(Negate(is.null), list(
+    as_rows(iv$coefficients, "iv", iv_note),
+    as_rows(results$puniform$coefficients, "puniform", results$puniform$note)
+  ))
+
+  if (length(rows) == 0L) {
+    return(new_estimates())
+  }
+
+  new_estimates(do.call(rbind, rows))
 }
 
 box::use(
@@ -94,4 +150,4 @@ run <- register_runtime_method(
   suggests = "AER"
 )
 
-box::export(exogeneity_tests, run)
+box::export(exogeneity_tests, exogeneity_tests_estimates, run)

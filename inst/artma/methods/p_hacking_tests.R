@@ -191,8 +191,99 @@ p_hacking_tests <- function(df) {
       caliper = results$caliper,
       elliott = results$elliott
     ),
+    estimates = p_hacking_tests_estimates(results),
     meta = list(skipped_models = results$skipped)
   ))
+}
+
+#' @title Tidy estimates for the p-hacking tests
+#' @description
+#' Flatten the caliper grid and the Elliott test battery into the shared
+#' `estimates` schema. Neither display table is a coefficient table, so the
+#' dimension mapping is a judgement call rather than a rename:
+#'
+#' * Caliper. The display table is a grid: one column per t-statistic
+#'   threshold, four stacked rows per caliper width, with cells such as
+#'   `"3/6 (6 studies)"`. In the long schema each threshold-width pair is one
+#'   row, `model` is the threshold (`"threshold_1.96"`) and `term` is the
+#'   caliper width (`"width_0.05"`). `estimate` is the share of the window
+#'   above the threshold, `p_value` its test p-value, `n_obs` the number of
+#'   estimates inside the window, and `n_clusters` the number of studies they
+#'   come from. The above/below split is not a separate column: `n_above` is
+#'   `estimate * n_obs`, and the direction (which side carries the excess) is
+#'   in `note` together with the tail inspected.
+#' * Elliott. Each test is one row, `model` is the test family (`"binomial"`,
+#'   `"lcm"`, `"fisher"`, `"discontinuity"`, `"cox_shi"`) and `term` the
+#'   p-value support it was run on (`"[0, 0.05]"`). These tests report a
+#'   p-value and nothing else, so only `p_value` is filled; a test that could
+#'   not run keeps its `NA` and carries the reason in `note`.
+#'
+#' The observation counts printed at the foot of the Elliott table are sample
+#' descriptions rather than test results, and stay in the display table.
+#' @param results *\[list\]* The value returned by `run_p_hacking_tests()`.
+#' @return *\[data.frame\]* A frame in the shared estimates schema.
+p_hacking_tests_estimates <- function(results) {
+  box::use(
+    artma / modules / runtime_methods[new_estimates]
+  )
+
+  caliper_rows <- function(caliper_results) {
+    if (!is.list(caliper_results) || length(caliper_results) == 0L) {
+      return(NULL)
+    }
+
+    do.call(rbind, lapply(caliper_results, function(res) {
+      direction <- res$direction
+      note <- paste0(
+        "tail: ", res$tail %||% NA_character_,
+        "; direction: ", if (is.null(direction) || is.na(direction)) "unknown" else direction
+      )
+      n_studies <- res$n_studies
+      data.frame(
+        method = "p_hacking_tests",
+        model = paste0("threshold_", res$threshold),
+        term = paste0("width_", res$width),
+        estimate = as.numeric(res$share_above),
+        p_value = as.numeric(res$p_value),
+        n_obs = res$n_above + res$n_below,
+        n_clusters = if (is.null(n_studies) || !is.finite(n_studies) || n_studies == 0L) {
+          NA_integer_
+        } else {
+          as.integer(n_studies)
+        },
+        note = note,
+        stringsAsFactors = FALSE
+      )
+    }))
+  }
+
+  elliott_rows <- function(elliott_results) {
+    if (!is.list(elliott_results) || length(elliott_results) == 0L) {
+      return(NULL)
+    }
+
+    do.call(rbind, lapply(elliott_results, function(test) {
+      data.frame(
+        method = "p_hacking_tests",
+        model = test$family %||% "elliott",
+        term = test$support %||% test$test,
+        p_value = as.numeric(test$p_value),
+        note = attr(test$p_value, "reason") %||% NA_character_,
+        stringsAsFactors = FALSE
+      )
+    }))
+  }
+
+  rows <- Filter(Negate(is.null), list(
+    caliper_rows(results$caliper_results),
+    elliott_rows(results$elliott_results)
+  ))
+
+  if (length(rows) == 0L) {
+    return(new_estimates())
+  }
+
+  new_estimates(do.call(rbind, lapply(rows, new_estimates)))
 }
 
 box::use(
@@ -205,4 +296,4 @@ run <- register_runtime_method(
   required_columns = c("effect", "se", "t_stat", "study_id")
 )
 
-box::export(p_hacking_tests, run)
+box::export(p_hacking_tests, p_hacking_tests_estimates, run)

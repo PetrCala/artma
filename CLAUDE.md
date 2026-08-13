@@ -110,9 +110,11 @@ Methods with a custom print method pass `class =` to `new_method_result()` and r
 
 `method`, `model`, `term`, `estimate`, `std_error`, `statistic`, `p_value`, `conf_low`, `conf_high`, `n_obs`, `n_clusters`, `note`
 
-Columns a method does not fill come back as typed `NA`s. `linear_tests` (`linear_tests_estimates()`) is the reference implementation.
+Columns a method does not fill come back as typed `NA`s. `linear_tests` (`linear_tests_estimates()`) is the reference implementation. Every method builds its frame in a standalone `*_estimates()` function that takes the method's own numeric results and returns the shared schema, so the mapping is unit-testable without running the method.
 
-Rounding is a display concern: nothing on the `estimates` path may call `format_number()` or read `artma.output.number_of_decimals`. When a result carries an `estimates` frame, it takes the `<method>.csv` name and the display table moves to `<method>_display.csv`. LaTeX output stays driven by the display table under its original `<method>.tex` name, since it is inherently presentational.
+Every method that reports numbers must fill the slot: `tests/testthat/test-method-estimates-contract.R` walks each discovered method's parse tree and fails when `new_method_result()` is called without an `estimates` argument. Plot-only methods (`funnel_plot`, `box_plot`, `t_stat_histogram`, `prima_facie_graphs`) are listed there as the explicit exception.
+
+Rounding is a display concern: nothing on the `estimates` path may call `format_number()` or read `artma.output.number_of_decimals`. When a result carries a non-empty `estimates` frame, it takes the `<method>.csv` name and the display table moves to `<method>_display.csv`; an empty frame is treated as no estimates at all, so no header-only CSV is written. LaTeX output stays driven by the display table under its original `<method>.tex` name, since it is inherently presentational.
 
 ### Options System
 

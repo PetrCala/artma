@@ -233,11 +233,13 @@ resolve_table_basename <- function(method_name, key) {
 #'
 #' @description
 #' A generic walk over the standard return contract. When the result carries an
-#' `estimates` frame, that frame is the machine-readable artifact and takes the
-#' `<method_name>.csv` name: it is written unrounded, exactly as the method
-#' produced it, and the display table that would otherwise own that name moves
-#' to `<method_name>_display.csv`. LaTeX output is inherently presentational, so
-#' it stays driven by the display tables under their original names and the
+#' `estimates` frame with at least one row, that frame is the machine-readable
+#' artifact and takes the `<method_name>.csv` name: it is written unrounded,
+#' exactly as the method produced it, and the display table that would otherwise
+#' own that name moves to `<method_name>_display.csv`. An empty `estimates`
+#' frame (a plot-only method) is treated as no estimates at all, so no
+#' header-only CSV is written. LaTeX output is inherently presentational, so it
+#' stays driven by the display tables under their original names and the
 #' `estimates` frame is never written as `.tex`.
 #'
 #' Everything else (`plots`, `meta`) is ignored here. There are no per-method
@@ -258,7 +260,10 @@ export_method_result <- function(result, method_name, output_dir) {
   write_tex <- "tex" %in% formats
 
   estimates <- result$estimates
-  has_estimates <- is.data.frame(estimates)
+  # A plot-only method contributes an empty frame (or none at all). Writing it
+  # would leave a header-only CSV next to the graphics and push the display
+  # table to a `_display` name for no reason, so treat it as absent.
+  has_estimates <- is.data.frame(estimates) && nrow(estimates) > 0L
   if (has_estimates && write_csv) {
     save_table(estimates, method_name, output_dir, formats = "csv")
   }

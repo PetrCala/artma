@@ -68,11 +68,19 @@ test_that("effect_summary_stats defaults to the All Data row in non-interactive 
   )
 
   # Should default the effect column in, producing the "All Data" row
-  result <- effect_summary_stats(df)$tables$summary
+  method_result <- effect_summary_stats(df)
+  result <- method_result$tables$summary
 
   expect_true(is.data.frame(result))
   expect_equal(nrow(result), 1)
   expect_equal(result$`Var Name`, "All Data")
+
+  # The same run fills the estimates slot, one row per statistic, unrounded.
+  estimates <- method_result$estimates
+  expect_equal(unique(estimates$model), "All Data")
+  expect_equal(estimates$estimate[estimates$term == "mean"], mean(df$effect))
+  expect_equal(estimates$estimate[estimates$term == "median"], stats::median(df$effect))
+  expect_equal(unique(estimates$n_obs), 3L)
 })
 
 test_that("effect_summary_stats processes configured variables correctly", {

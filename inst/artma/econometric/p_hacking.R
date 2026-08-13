@@ -48,6 +48,13 @@ support_label <- function(p_max) {
   format(p_max, nsmall = 2)
 }
 
+#' @title Interval label for an Elliott support upper bound
+#' @param p_max *[numeric]* Support upper bound, e.g. `0.05`.
+#' @return *[character]* Label such as `"[0, 0.05]"`.
+support_interval_label <- function(p_max) {
+  paste0("[0, ", support_label(p_max), "]")
+}
+
 # Caliper tests (Gerber & Malhotra, 2008) ---------------------------------
 
 CALIPER_TAILS <- c("auto", "positive", "negative", "absolute")
@@ -249,7 +256,10 @@ run_single_caliper <- function(t_stats, threshold = 1.96, width = 0.05,
 #' @param add_significance_marks *[logical]* Whether to add significance marks.
 #' @param round_to *[integer]* Number of decimal places.
 #' @param show_progress *[logical]* Whether to show progress indicator.
-#' @return *[data.frame]* Caliper test results.
+#' @return *[list]* One entry per threshold-width pair. `share_above` and
+#'   `p_value` hold the unrounded numbers; `share_above_formatted` and
+#'   `p_value_formatted` hold the rounded, starred strings the summary table
+#'   prints.
 run_caliper_tests <- function(t_stats, thresholds = c(1.645, 1.96, 2.58),
                               widths = c(0.05, 0.1, 0.2), study_id = NULL,
                               tail = "auto",
@@ -310,8 +320,10 @@ run_caliper_tests <- function(t_stats, thresholds = c(1.645, 1.96, 2.58),
       results[[length(results) + 1]] <- list(
         threshold = thresh,
         width = w,
-        share_above = share_formatted,
-        p_value = p_value_formatted,
+        share_above = res$share_above,
+        p_value = res$p_value,
+        share_above_formatted = share_formatted,
+        p_value_formatted = p_value_formatted,
         n_above = res$n_above,
         n_below = res$n_below,
         n_studies = res$n_studies,
@@ -375,9 +387,9 @@ build_caliper_summary <- function(caliper_results, options) {
         vapply(caliper_results, function(x) x$width == w && x$threshold == thresh, logical(1))
       )]]
 
-      result[row_idx, col_idx + 1] <- res$share_above
+      result[row_idx, col_idx + 1] <- res$share_above_formatted
       result[row_idx + 1, col_idx + 1] <- caliper_direction_label(res$direction)
-      result[row_idx + 2, col_idx + 1] <- res$p_value
+      result[row_idx + 2, col_idx + 1] <- res$p_value_formatted
       # Display ratio or total based on option
       counts <- if (display_ratios) {
         paste0(res$n_above, "/", res$n_below)
@@ -663,6 +675,9 @@ run_p_hacking_tests <- function(df, options) {
       }
     )
     output$caliper <- build_caliper_summary(caliper_results, list(display_ratios = options$caliper_display_ratios))
+    # The summary table is a display grid of formatted strings; the raw
+    # per-pair results ride along so the method can build its estimates frame.
+    output$caliper_results <- caliper_results
   }
 
   # 2. Elliott Tests
@@ -689,6 +704,8 @@ run_p_hacking_tests <- function(df, options) {
     for (p_max in supports) {
       elliott_tests[[paste0("binomial_", support_key(p_max))]] <- list(
         test = paste0("Binomial [0, ", support_label(p_max), "]"),
+        family = "binomial",
+        support = support_interval_label(p_max),
         p_value = run_binomial(pvalues, 0, p_max, type = "c")
       )
     }
@@ -703,6 +720,8 @@ run_p_hacking_tests <- function(df, options) {
     for (p_max in supports) {
       elliott_tests[[paste0("lcm_", support_key(p_max))]] <- list(
         test = paste0("LCM [0, ", support_label(p_max), "]"),
+        family = "lcm",
+        support = support_interval_label(p_max),
         p_value = lcm_skip %||% run_lcm(pvalues, 0, p_max, cdfs)
       )
     }
@@ -711,6 +730,8 @@ run_p_hacking_tests <- function(df, options) {
     for (p_max in supports) {
       elliott_tests[[paste0("fisher_", support_key(p_max))]] <- list(
         test = paste0("Fisher [0, ", support_label(p_max), "]"),
+        family = "fisher",
+        support = support_interval_label(p_max),
         p_value = run_fisher(pvalues, 0, p_max)
       )
     }
@@ -719,6 +740,8 @@ run_p_hacking_tests <- function(df, options) {
     if (options$include_discontinuity) {
       elliott_tests$discontinuity <- list(
         test = "Discontinuity at 0.05",
+        family = "discontinuity",
+        support = "at 0.05",
         p_value = run_discontinuity(pvalues, cutoff = 0.05, bandwidth = options$discontinuity_bandwidth)
       )
     }
@@ -728,6 +751,8 @@ run_p_hacking_tests <- function(df, options) {
       for (p_max in supports) {
         elliott_tests[[paste0("cox_shi_", support_key(p_max))]] <- list(
           test = paste0("Cox-Shi [0, ", support_label(p_max), "]"),
+          family = "cox_shi",
+          support = support_interval_label(p_max),
           p_value = run_cox_shi(
             pvalues, study_id, 0, p_max,
             n_bins = options$cox_shi_bins,
@@ -743,6 +768,7 @@ run_p_hacking_tests <- function(df, options) {
     }
 
     output$elliott <- build_elliott_summary(elliott_tests, pvalues, options)
+    output$elliott_results <- elliott_tests
   }
 
   output$n_pvalues <- length(pvalues)

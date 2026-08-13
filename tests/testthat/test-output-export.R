@@ -387,6 +387,26 @@ test_that("export_results leaves display names alone without an estimates slot",
   expect_equal(list.files(file.path(dir, "tables")), "bma.csv")
 })
 
+test_that("an empty estimates frame writes no header-only CSV", {
+  box::use(artma / modules / runtime_methods[new_estimates])
+  dir <- setup_output_dir()
+
+  export_results(
+    list(funnel_plot = list(tables = list(), estimates = new_estimates())),
+    dir
+  )
+
+  expect_equal(list.files(file.path(dir, "tables")), character())
+
+  # An empty frame also leaves the display table under its own name.
+  export_results(
+    list(bma = list(tables = list(summary = data.frame(a = 1)), estimates = new_estimates())),
+    dir
+  )
+
+  expect_equal(list.files(file.path(dir, "tables")), "bma.csv")
+})
+
 test_that("estimates are never written as LaTeX and the display table keeps <method>.tex", {
   dir <- setup_output_dir()
   local_options(artma.output.table_formats = c("csv", "tex"))

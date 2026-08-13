@@ -138,6 +138,11 @@ fma <- function(df, bma_result = NULL) {
 
   new_method_result(
     tables = list(coefficients = fma_results$coefficients),
+    estimates = fma_estimates(
+      fma_results$coefficients,
+      n_obs = nrow(bma_data),
+      n_clusters = if (is.null(cluster_ids)) NA_integer_ else length(unique(cluster_ids))
+    ),
     meta = list(
       weights = fma_results$weights,
       model = bma_model,
@@ -147,6 +152,39 @@ fma <- function(df, bma_result = NULL) {
       clustered = !is.null(cluster_ids)
     )
   )
+}
+
+#' @title Tidy estimates for FMA
+#' @description
+#' Map the model-averaged coefficient frame onto the shared `estimates` schema,
+#' one row per moderator. The averaged coefficient, its standard error, and the
+#' Wald p-value carry over unrounded; `n_clusters` is filled only when the
+#' standard errors are clustered, so an `NA` there means iid inference.
+#' @param coefficients *\[data.frame\]* The FMA coefficient frame
+#'   (`variable`, `coefficient`, `se`, `p_value`).
+#' @param n_obs *\[integer, optional\]* Observations the FMA was fitted on.
+#' @param n_clusters *\[integer, optional\]* Number of clusters behind the
+#'   standard errors, or `NA` when they are not clustered.
+#' @return *\[data.frame\]* A frame in the shared estimates schema.
+fma_estimates <- function(coefficients, n_obs = NA_integer_, n_clusters = NA_integer_) {
+  box::use(
+    artma / modules / runtime_methods[new_estimates]
+  )
+
+  if (!is.data.frame(coefficients) || nrow(coefficients) == 0L) {
+    return(new_estimates())
+  }
+
+  new_estimates(data.frame(
+    method = "fma",
+    term = coefficients$variable,
+    estimate = coefficients$coefficient,
+    std_error = coefficients$se,
+    p_value = coefficients$p_value,
+    n_obs = n_obs,
+    n_clusters = n_clusters,
+    stringsAsFactors = FALSE
+  ))
 }
 
 #' Align `study_id` cluster IDs with the prepared BMA frame
@@ -204,4 +242,4 @@ run <- register_runtime_method(
   suggests = c("BMS", "quadprog")
 )
 
-box::export(fma, resolve_fma_cluster_ids, run)
+box::export(fma, fma_estimates, resolve_fma_cluster_ids, run)

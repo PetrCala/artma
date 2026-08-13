@@ -121,6 +121,7 @@ maive_estimator <- function(df) {
 
   invisible(new_method_result(
     tables = list(summary = result$summary),
+    estimates = maive_estimates(result$raw, nrow(df)),
     meta = list(
       maive = result$raw,
       interpretation = result$interpretation,
@@ -129,6 +130,117 @@ maive_estimator <- function(df) {
       skip_reason = result$skipped
     )
   ))
+}
+
+#' @title Tidy estimates for the MAIVE estimator
+#' @description
+#' Map the raw MAIVE output onto the shared `estimates` schema. The sectioned
+#' display table mixes coefficients, specification labels, and diagnostics in a
+#' single `Statistic`/`Value` pair, so only the numeric coefficients cross over,
+#' split across two models:
+#'
+#' * `model = "maive"`: the instrumented estimator, with `term = "effect"` (the
+#'   corrected mean), `term = "publication_bias"` (the Egger coefficient), and
+#'   `term = "se_squared"` (the PEESE variance term) when the specification
+#'   reports one. The first-stage F rides along as `term = "first_stage_f"`,
+#'   which fills `statistic` only, since it is a diagnostic rather than an
+#'   estimate.
+#' * `model = "unadjusted"`: the same funnel model without the IV correction,
+#'   reported by MAIVE for comparison.
+#'
+#' Confidence intervals are the normal-approximation ones MAIVE's own summary
+#' shows; the Egger interval uses the bootstrap bounds when the specification
+#' produced them. Anderson-Rubin intervals, the Hausman test, and the
+#' specification labels stay in `meta$maive`.
+#' @param maive_output *\[list, optional\]* The raw output of `maive()`, or
+#'   `NULL` when the estimator was skipped.
+#' @param n_obs *\[integer, optional\]* Observations the estimator ran on.
+#' @return *\[data.frame\]* A frame in the shared estimates schema.
+maive_estimates <- function(maive_output, n_obs = NA_integer_) {
+  box::use(
+    artma / econometric / maive[maive_ci, maive_first_stage_f, maive_p_from_coef],
+    artma / modules / runtime_methods[new_estimates]
+  )
+
+  if (!is.list(maive_output)) {
+    return(new_estimates())
+  }
+
+  numeric_or_na <- function(x) {
+    if (is.numeric(x) && length(x) == 1L && is.finite(x)) as.numeric(x) else NA_real_
+  }
+
+  row <- function(model, term, estimate, std_error = NA_real_, statistic = NA_real_,
+                  p_value = NA_real_, conf = c(NA_real_, NA_real_)) {
+    data.frame(
+      method = "maive",
+      model = model,
+      term = term,
+      estimate = estimate,
+      std_error = std_error,
+      statistic = statistic,
+      p_value = p_value,
+      conf_low = conf[[1L]],
+      conf_high = conf[[2L]],
+      n_obs = n_obs,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  rows <- list()
+
+  beta <- numeric_or_na(maive_output$beta)
+  beta_se <- numeric_or_na(maive_output$SE)
+  rows[[length(rows) + 1L]] <- row(
+    "maive", "effect", beta,
+    std_error = beta_se,
+    p_value = maive_p_from_coef(beta, beta_se),
+    conf = maive_ci(beta, beta_se)
+  )
+
+  egger <- numeric_or_na(maive_output$egger_coef)
+  egger_se <- numeric_or_na(maive_output$egger_se)
+  boot_ci <- maive_output$egger_boot_ci
+  egger_conf <- if (is.numeric(boot_ci) && length(boot_ci) == 2L && all(is.finite(boot_ci))) {
+    as.numeric(boot_ci)
+  } else {
+    maive_ci(egger, egger_se)
+  }
+  rows[[length(rows) + 1L]] <- row(
+    "maive", "publication_bias", egger,
+    std_error = egger_se,
+    p_value = numeric_or_na(maive_output$`pub bias p-value`),
+    conf = egger_conf
+  )
+
+  peese_coef <- numeric_or_na(maive_output$peese_se2_coef)
+  if (!is.na(peese_coef)) {
+    peese_se <- numeric_or_na(maive_output$peese_se2_se)
+    rows[[length(rows) + 1L]] <- row(
+      "maive", "se_squared", peese_coef,
+      std_error = peese_se,
+      p_value = maive_p_from_coef(peese_coef, peese_se),
+      conf = maive_ci(peese_coef, peese_se)
+    )
+  }
+
+  f_stat <- maive_first_stage_f(maive_output)
+  if (!is.na(f_stat)) {
+    rows[[length(rows) + 1L]] <- row("maive", "first_stage_f", NA_real_, statistic = f_stat)
+  }
+
+  beta_standard <- numeric_or_na(maive_output$beta_standard)
+  if (!is.na(beta_standard)) {
+    se_standard <- numeric_or_na(maive_output$SE_standard)
+    rows[[length(rows) + 1L]] <- row(
+      "unadjusted", "effect", beta_standard,
+      std_error = se_standard,
+      p_value = maive_p_from_coef(beta_standard, se_standard),
+      conf = maive_ci(beta_standard, se_standard)
+    )
+  }
+
+  new_estimates(do.call(rbind, rows))
 }
 
 box::use(
@@ -142,4 +254,4 @@ run <- register_runtime_method(
   suggests = "MAIVE"
 )
 
-box::export(maive_estimator, run)
+box::export(maive_estimator, maive_estimates, run)
