@@ -75,6 +75,84 @@ test_that("compute_optional_columns overwrites conflicting existing study_label"
 })
 
 
+test_that("compute_optional_columns takes study_label from a legible study name column when study keys are numeric", {
+  df <- data.frame(
+    study_id = c(1L, 2L, 1L, 3L),
+    study = c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)", "Clark (2010)"),
+    effect = c(0.2, 0.5, 0.1, 0.3),
+    se = c(0.1, 0.2, 0.1, 0.2),
+    n_obs = c(120, 150, 120, 130),
+    stringsAsFactors = FALSE
+  )
+  local_compute_options()
+
+  result <- compute_optional_columns(df)
+
+  expect_equal(
+    result$study_label,
+    c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)", "Clark (2010)")
+  )
+  expect_equal(result$study_id, c(1L, 2L, 1L, 3L))
+})
+
+
+test_that("compute_optional_columns keeps numeric study labels when the name column does not align with study ids", {
+  df <- data.frame(
+    study_id = c(1L, 1L, 2L),
+    # Two different names within study 1: not a usable study label source
+    study = c("Albeigh (2008)", "Albeigh (2009)", "Baker (2009)"),
+    effect = c(0.2, 0.5, 0.1),
+    se = c(0.1, 0.2, 0.1),
+    n_obs = c(120, 150, 120),
+    stringsAsFactors = FALSE
+  )
+  local_compute_options()
+
+  result <- compute_optional_columns(df)
+
+  expect_equal(result$study_label, c("1", "1", "2"))
+})
+
+
+test_that("compute_optional_columns ignores legible columns whose names do not look like study names", {
+  df <- data.frame(
+    study_id = c(1L, 2L, 3L),
+    grp_reward = c("cash (low)", "voucher (mid)", "praise (high)"),
+    effect = c(0.2, 0.5, 0.1),
+    se = c(0.1, 0.2, 0.1),
+    n_obs = c(120, 150, 120),
+    stringsAsFactors = FALSE
+  )
+  local_compute_options()
+
+  result <- compute_optional_columns(df)
+
+  expect_equal(result$study_label, c("1", "2", "3"))
+})
+
+
+test_that("compute_optional_columns preserves a user-supplied legible study_label over numeric keys", {
+  df <- data.frame(
+    study_id = c(1L, 2L, 1L),
+    study_label = c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)"),
+    effect = c(0.2, 0.5, 0.1),
+    se = c(0.1, 0.2, 0.1),
+    n_obs = c(120, 150, 120),
+    stringsAsFactors = FALSE
+  )
+  local_compute_options()
+  withr::local_options(list("artma.verbose" = 2))
+
+  result <- NULL
+  expect_no_message(result <- compute_optional_columns(df))
+
+  expect_equal(
+    result$study_label,
+    c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)")
+  )
+})
+
+
 test_that("compute_optional_columns recomputes a user-supplied precision column when winsorization is active", {
   df <- data.frame(
     study_id = c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)"),
