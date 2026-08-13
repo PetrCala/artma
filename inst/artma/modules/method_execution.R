@@ -17,6 +17,9 @@ box::use(
   artma / libs / core / autonomy[get_autonomy_level, get_default_autonomy_level],
   artma / libs / core / utils[opt_or],
   artma / libs / core / validation[assert],
+  artma / libs / infrastructure / output_files[
+    begin_output_file_capture, end_output_file_capture
+  ],
   artma / visualization / fork_safety[
     graphics_survive_fork, in_forked_worker, with_forked_worker_flag, with_single_threaded_blas
   ]
@@ -360,8 +363,9 @@ describe_dead_worker <- function(outcome, method_name) {
 #'   name, as built by `build_rng_streams()`.
 #' @param workers *\[integer, optional\]* Number of forked workers. `1` runs
 #'   sequentially in the current process.
-#' @return *\[list\]* One `list(value, error, output)` per method, in input
-#'   order.
+#' @return *\[list\]* One `list(value, error, output, files)` per method, in
+#'   input order. `files` holds the paths the method wrote, which is the only
+#'   way the parent learns about them when the method ran in a fork.
 execute_method_layer <- function(method_names, run_one, streams = list(), workers = 1L) {
   assert(is.function(run_one), "`run_one` must be a function.")
   method_names <- as.character(method_names)
@@ -374,7 +378,14 @@ execute_method_layer <- function(method_names, run_one, streams = list(), worker
     if (!is.null(stream)) {
       assign(".Random.seed", stream, envir = globalenv()) # nolint: object_name_linter.
     }
-    with_captured_output(run_one(method_name))
+    # Bracket the method so its output files come back with its outcome. A
+    # forked worker records into its own copy of the capture stack, which dies
+    # with the child, so the paths have to travel back in the return value.
+    capture_id <- begin_output_file_capture()
+    on.exit(end_output_file_capture(capture_id), add = TRUE)
+    outcome <- with_captured_output(run_one(method_name))
+    outcome$files <- end_output_file_capture(capture_id)
+    outcome
   }
 
   if (workers > 1L) {
@@ -403,7 +414,8 @@ execute_method_layer <- function(method_names, run_one, streams = list(), worker
         list(
           value = NULL,
           error = describe_dead_worker(outcome, method_name),
-          output = character()
+          output = character(),
+          files = character()
         )
       },
       outcomes,

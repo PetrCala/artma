@@ -45,8 +45,9 @@ Flags for \code{run} become an in-session \code{options()} overlay applied aroun
 \code{--methods} are forwarded as \code{artma()} arguments.
 
 In \code{--json} mode stdout carries only a JSON run manifest (\code{methods_run},
-\code{methods_skipped} with reasons, \code{output_dir}, \code{exported_files},
-\code{package_version}); all human-readable output is routed to stderr.
+\code{methods_skipped} with reasons, \code{output_dir}, \code{exported_files}, \code{seed},
+\code{package_version}), read back from the \code{run.json} the run wrote; all
+human-readable output is routed to stderr.
 }
 \examples{
 \dontrun{

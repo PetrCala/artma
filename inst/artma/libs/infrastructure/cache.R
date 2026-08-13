@@ -198,7 +198,7 @@ cache_cli <- function(fun,
                       max_age = NULL) {
   box::use(
     artma / libs / infrastructure / output_files[
-      begin_output_file_capture, end_output_file_capture
+      begin_output_file_capture, end_output_file_capture, record_output_files
     ]
   )
 
@@ -300,6 +300,11 @@ cache_cli <- function(fun,
     }
 
     if (cache_hit) {
+      # The worker did not run, so nothing re-recorded the files it wrote on
+      # the cold run. Replay them into the enclosing captures: they are still
+      # this run's outputs, and the run manifest (and through it the report's
+      # plot index) would otherwise lose every cached method's graphics.
+      record_output_files(art$meta$output_files)
       notify_cache_hit(extra_keys)
     }
 

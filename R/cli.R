@@ -31,8 +31,9 @@
 #' `--methods` are forwarded as `artma()` arguments.
 #'
 #' In `--json` mode stdout carries only a JSON run manifest (`methods_run`,
-#' `methods_skipped` with reasons, `output_dir`, `exported_files`,
-#' `package_version`); all human-readable output is routed to stderr.
+#' `methods_skipped` with reasons, `output_dir`, `exported_files`, `seed`,
+#' `package_version`), read back from the `run.json` the run wrote; all
+#' human-readable output is routed to stderr.
 #'
 #' @param args *\[character, optional\]* The argument vector to parse. Defaults
 #'   to `commandArgs(trailingOnly = TRUE)`.
@@ -270,32 +271,55 @@ cli_dispatch_run <- function(flags) {
 #' @title Build the JSON run manifest
 #' @description Summarise an [artma()] result into the manifest emitted in
 #'   `--json` mode: methods that ran, methods that were skipped or failed (with
-#'   reasons), the resolved output directory, the files exported there, and the
-#'   package version.
+#'   reasons), the resolved output directory, the files exported there, the
+#'   effective seed and the package version.
+#'
+#'   The run's own `run.json` is the source of truth, so the CLI reports the
+#'   same run identity as the R API rather than whatever has accumulated in the
+#'   output directory. A run that wrote no manifest (`output.save_results` off,
+#'   or `jsonlite` unavailable) falls back to what the results object carries,
+#'   with an empty file list.
 #' @param results *\[list\]* The value returned by [artma()].
 #' @return *\[list\]* The manifest, ready for `jsonlite::toJSON()`.
 #' @keywords internal
 cli_build_run_manifest <- function(results) {
-  methods_run <- setdiff(names(results), "ma_table")
-
-  skipped <- attr(results, "skipped_methods")
-  failed <- attr(results, "failed_methods")
-  methods_skipped <- c(as.list(skipped), as.list(failed))
-  if (length(methods_skipped) == 0L) {
-    methods_skipped <- stats::setNames(list(), character(0))
-  }
+  box::use(
+    artma / output / run_manifest[manifest_files, read_run_manifest]
+  )
 
   output_dir <- read_last_export_dir() # nolint: box_usage_linter. Package function (R/results.R)
-  exported_files <- character(0)
-  if (!is.null(output_dir) && dir.exists(output_dir)) {
-    exported_files <- list.files(output_dir, recursive = TRUE, full.names = TRUE)
+  run_manifest <- read_run_manifest(output_dir)
+
+  as_reason_map <- function(x) {
+    if (length(x) == 0L) {
+      return(stats::setNames(list(), character(0)))
+    }
+    as.list(x)
+  }
+
+  # I() keeps the list-valued fields arrays in the emitted JSON even when they
+  # hold a single element, so a consumer never has to handle both shapes.
+  if (!is.null(run_manifest)) {
+    return(list(
+      methods_run = I(as.character(run_manifest$methods_run)),
+      methods_skipped = as_reason_map(c(
+        as.list(run_manifest$methods_skipped), as.list(run_manifest$methods_failed)
+      )),
+      output_dir = run_manifest$output_dir %||% output_dir,
+      exported_files = I(manifest_files(run_manifest)),
+      seed = run_manifest$seed,
+      package_version = as.character(run_manifest$artma_version)
+    ))
   }
 
   list(
-    methods_run = as.character(methods_run),
-    methods_skipped = methods_skipped,
+    methods_run = I(as.character(setdiff(names(results), "ma_table"))),
+    methods_skipped = as_reason_map(c(
+      as.list(attr(results, "skipped_methods")), as.list(attr(results, "failed_methods"))
+    )),
     output_dir = output_dir,
-    exported_files = as.character(exported_files),
+    exported_files = I(character(0)),
+    seed = attr(results, "run_info")$seed,
     package_version = as.character(utils::packageVersion("artma"))
   )
 }

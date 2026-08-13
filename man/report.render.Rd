@@ -31,6 +31,12 @@ its own.
 The report can also be produced automatically at the end of every run by
 setting the \code{output.report} option to \code{TRUE}.
 }
+\details{
+Plots come from the \code{run.json} manifest a run leaves in its output directory:
+it records which files each method wrote, so the report embeds exactly those.
+A results directory without a manifest (written before manifests existed, or
+by a run with \code{output.save_results} off) yields a report with tables only.
+}
 \examples{
 \dontrun{
 res <- artma(methods = c("funnel_plot", "effect_summary_stats"), options = "my.yaml")

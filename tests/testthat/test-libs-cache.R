@@ -361,3 +361,38 @@ test_that("cache_cli_runner isolates caches across stages", {
   expect_equal(counts$first, 1L)
   expect_equal(counts$second, 1L)
 })
+
+test_that("a cache hit replays the recorded output files into the enclosing capture", {
+  box::use(
+    artma / libs / infrastructure / cache[cache_cli],
+    artma / libs / infrastructure / output_files[
+      begin_output_file_capture, end_output_file_capture, record_output_file
+    ]
+  )
+
+  FIXTURES$local_cli_silence()
+
+  work <- withr::local_tempdir()
+  plot_path <- file.path(work, "plot.png")
+
+  impl <- function(df) {
+    file.create(plot_path)
+    record_output_file(plot_path)
+    "done"
+  }
+
+  cached <- cache_cli(impl, cache = memoise::cache_memory())
+  sample_df <- data.frame(x = 1)
+
+  capture_files <- function() {
+    id <- begin_output_file_capture()
+    cached(sample_df)
+    end_output_file_capture(id)
+  }
+
+  # The run that wrote the file and the run that reused its result must both
+  # tell the caller about it: the run manifest, and through it the report's
+  # plot index, is built from what the capture saw.
+  expect_equal(basename(capture_files()), "plot.png")
+  expect_equal(basename(capture_files()), "plot.png")
+})
