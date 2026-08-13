@@ -8,8 +8,12 @@
 #
 # Two properties are preserved regardless of how many workers are used:
 #
-#   * CLI output is captured per method and replayed in discovery order after
-#     the layer joins, so forked output never interleaves.
+#   * Output reaches the console in discovery order. Forked methods have their
+#     CLI output captured and replayed after the layer joins, so concurrent
+#     output never interleaves; a sequential layer is already in order and
+#     writes straight to the console. That distinction matters: a sunk method
+#     cannot prompt, because the menu renders into the capture buffer while the
+#     method blocks on a keypress nobody can see.
 #   * Each method runs on a pre-assigned L'Ecuyer-CMRG stream, so a run is
 #     reproducible given the seed whether it executed in parallel or not.
 
@@ -304,6 +308,30 @@ with_captured_output <- function(expr) {
   list(value = result$value, error = result$error, output = captured %||% character())
 }
 
+#' @title Evaluate an expression, trapping errors but leaving output alone
+#' @description
+#' The sequential counterpart of `with_captured_output()`: the same
+#' `list(value, error, output)` shape, but nothing is sunk, so whatever `expr`
+#' prints goes straight to the console and a method that prompts stays visible
+#' and answerable. `output` is always empty, since the console has already seen
+#' it; the caller's replay step is then a no-op.
+#'
+#' Warnings are left to signal normally rather than being folded into the
+#' output text. In the parent process they surface where R would put them
+#' anyway, which is not true of a forked worker.
+#' @param expr *\[any\]* The expression to evaluate. Errors are caught, not
+#'   propagated.
+#' @return *\[list\]* A list with `value`, `error` (a message or `NULL`), and an
+#'   empty `output`.
+without_captured_output <- function(expr) {
+  result <- tryCatch(
+    list(value = expr, error = NULL),
+    error = function(err) list(value = NULL, error = conditionMessage(err))
+  )
+
+  list(value = result$value, error = result$error, output = character())
+}
+
 #' @title Replay captured CLI output
 #' @description Write previously captured lines to the console verbatim,
 #'   preserving any ANSI formatting they carry.
@@ -365,13 +393,22 @@ describe_dead_worker <- function(outcome, method_name) {
 #'   sequentially in the current process.
 #' @return *\[list\]* One `list(value, error, output, files)` per method, in
 #'   input order. `files` holds the paths the method wrote, which is the only
-#'   way the parent learns about them when the method ran in a fork.
+#'   way the parent learns about them when the method ran in a fork. `output`
+#'   is empty for a sequential layer, whose output has already reached the
+#'   console.
 execute_method_layer <- function(method_names, run_one, streams = list(), workers = 1L) {
   assert(is.function(run_one), "`run_one` must be a function.")
   method_names <- as.character(method_names)
   if (length(method_names) == 0L) {
     return(list())
   }
+
+  # Capturing exists to keep concurrent output from interleaving, so a
+  # sequential layer skips it: it is already in order, and sinking it would
+  # make any prompt the method raises invisible and unanswerable.
+  # `resolve_worker_count()` never returns more than one worker for a session
+  # whose autonomy level still lets methods prompt, so the two line up.
+  run_captured <- workers > 1L
 
   run_task <- function(method_name) {
     stream <- streams[[method_name]]
@@ -383,7 +420,11 @@ execute_method_layer <- function(method_names, run_one, streams = list(), worker
     # with the child, so the paths have to travel back in the return value.
     capture_id <- begin_output_file_capture()
     on.exit(end_output_file_capture(capture_id), add = TRUE)
-    outcome <- with_captured_output(run_one(method_name))
+    outcome <- if (run_captured) {
+      with_captured_output(run_one(method_name))
+    } else {
+      without_captured_output(run_one(method_name))
+    }
     outcome$files <- end_output_file_capture(capture_id)
     outcome
   }
@@ -436,5 +477,6 @@ box::export(
   method_stream_seed,
   replay_captured_output,
   resolve_worker_count,
-  with_captured_output
+  with_captured_output,
+  without_captured_output
 )
