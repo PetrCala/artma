@@ -301,6 +301,26 @@ prepare_bma_inputs <- function(df, config, use_vif_optimization, max_groups_to_r
     bma_vars <- bma_vars[bma_vars %in% names(df)]
   }
 
+  # BMA regresses on a numeric design matrix throughout: `get_bma_data()`
+  # z-scores each non-binary column and `run_bma()` asserts every column is
+  # numeric. A character or factor moderator therefore aborts the run, and it
+  # does so from inside `scale()` with a bare "'x' must be numeric" that names
+  # no column. Drop them here instead, where the offender can be named.
+  non_numeric_vars <- bma_vars[vapply(bma_vars, function(v) {
+    !is.numeric(df[[v]]) && !is.logical(df[[v]])
+  }, logical(1))]
+  if (length(non_numeric_vars)) {
+    if (verbosity >= 2) {
+      cli::cli_alert_warning(
+        "Excluding {length(non_numeric_vars)} non-numeric variable{?s} from the BMA moderator set: {.val {non_numeric_vars}}"
+      )
+      cli::cli_inform(
+        "BMA needs numeric moderators. Encode {cli::qty(length(non_numeric_vars))}{?this/these} column{?s} as dummies, or set {.code bma: false} on {?it/them} in the data config."
+      )
+    }
+    bma_vars <- setdiff(bma_vars, non_numeric_vars)
+  }
+
   # Constant columns carry no moderator information, and scaling one yields an
   # all-NaN column that na.omit would then use to drop every observation.
   constant_vars <- bma_vars[vapply(bma_vars, function(v) {
