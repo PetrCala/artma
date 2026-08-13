@@ -118,6 +118,7 @@ Controls how much user interaction happens during analysis. `interactive()` is t
 
 ## Conventions
 
+- Exported API names: snake_case with the noun group first (`options_create`, `config_set`); never add new dotted exports. The dotted names are deprecated aliases; policy and shim pattern: [contributingGuides/API.md](contributingGuides/API.md).
 - Validation: use `validate()` and `assert()` from `artma / libs / core / validation`, not `stopifnot()`. `assert(cond, "message")` takes an explicit error message.
 - Interactive menus: use the `climenu` package (a sub-package of this repository). Never `utils::menu()` or other menu packages.
 - Verbosity: `options(artma.verbose = <1..4>)` scales from errors-only (1) to debug (4); default 3. Call the leveled wrapper (`log_error`/`log_warn`/`log_info`/`log_debug`, or `is_*_enabled()` to gate non-message output) from `artma / libs / core / log`; never compare verbosity numbers outside `libs/core`.
