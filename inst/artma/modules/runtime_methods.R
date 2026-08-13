@@ -186,8 +186,11 @@ METHOD_META_ATTR <- "artma_method_meta"
 #' exports. This replaces the per-file registration trailer that previously
 #' duplicated the `cache_cli_runner` wiring across all method modules.
 #'
-#' The metadata drives the orchestrator in `invoke_runtime_methods()`:
+#' The metadata drives the orchestrator in `invoke_runtime_methods()`, and,
+#' together with `description`, the table printed by `artma::methods.list()`:
 #'
+#' * `description`: a one-line summary of what the method does, shown by
+#'   `artma::methods.list()`. Every method registers one.
 #' * `depends_on`: names of methods that must run before this one. The
 #'   orchestrator topologically sorts by these edges and passes each upstream
 #'   result to the dependent as a `<dependency>_result` argument (for example
@@ -212,6 +215,9 @@ METHOD_META_ATTR <- "artma_method_meta"
 #' @param impl *\[function\]* The method implementation (its `run` worker).
 #' @param stage *\[character\]* Stage label used for cache keys and the cache
 #'   hit notice. Conventionally matches the implementation's name.
+#' @param description *\[character, optional\]* One-line summary of what the
+#'   method does, shown by `artma::methods.list()`. Keep it to a single line;
+#'   the printed table truncates it to the console width.
 #' @param depends_on *\[character, optional\]* Names of methods this one depends
 #'   on. Defaults to no dependencies.
 #' @param required_columns *\[character, optional\]* Columns the method needs in
@@ -237,6 +243,7 @@ METHOD_META_ATTR <- "artma_method_meta"
 #'   implementation otherwise), carrying the method metadata in its
 #'   `artma_method_meta` attribute.
 register_runtime_method <- function(impl, stage,
+                                    description = NA_character_,
                                     depends_on = character(),
                                     required_columns = character(),
                                     suggests = character(),
@@ -276,6 +283,7 @@ register_runtime_method <- function(impl, stage,
   attr(run, METHOD_META_ATTR) <- list(
     stage = stage,
     label = if (is.null(label)) stage else label,
+    description = as.character(description)[1L],
     depends_on = as.character(depends_on),
     required_columns = as.character(required_columns),
     suggests = as.character(suggests),
@@ -291,8 +299,8 @@ register_runtime_method <- function(impl, stage,
 #' @param run_fn *\[function\]* A method's exported `run` wrapper.
 #' @param name *\[character, optional\]* Method name, used as the default stage
 #'   and label when the wrapper carries no metadata.
-#' @return *\[list\]* A list with `stage`, `label`, `depends_on`,
-#'   `required_columns`, `suggests`, and `opt_in`.
+#' @return *\[list\]* A list with `stage`, `label`, `description`,
+#'   `depends_on`, `required_columns`, `suggests`, and `opt_in`.
 get_method_metadata <- function(run_fn, name = NULL) {
   meta <- attr(run_fn, METHOD_META_ATTR, exact = TRUE)
   if (is.null(meta)) {
@@ -302,6 +310,7 @@ get_method_metadata <- function(run_fn, name = NULL) {
   defaults <- list(
     stage = name %||% NA_character_,
     label = name %||% NA_character_,
+    description = NA_character_,
     depends_on = character(),
     required_columns = character(),
     suggests = character(),

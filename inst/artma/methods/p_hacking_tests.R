@@ -293,6 +293,7 @@ box::use(
 run <- register_runtime_method(
   p_hacking_tests,
   stage = "p_hacking_tests",
+  description = "Caliper tests and the Elliott et al. (2022) p-hacking battery",
   required_columns = c("effect", "se", "t_stat", "study_id")
 )
 

@@ -146,6 +146,7 @@ box::use(
 run <- register_runtime_method(
   exogeneity_tests,
   stage = "exogeneity_tests",
+  description = "Publication-bias tests that relax exogeneity (IV regression, p-uniform*)",
   required_columns = c("effect", "se", "study_id", "n_obs", "study_size"),
   suggests = "AER"
 )

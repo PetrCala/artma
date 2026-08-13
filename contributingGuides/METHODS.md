@@ -21,6 +21,7 @@ my_method <- function(df, bma_result = NULL, ...) {
 run <- register_runtime_method(
   my_method,
   stage = "my_method",       # conventionally matches the implementation name
+  description = "One line on what the method does",
   depends_on = "bma",        # methods that must run first
   required_columns = c("effect", "se"),
   suggests = "BMS"           # optional packages the method needs
@@ -29,11 +30,13 @@ run <- register_runtime_method(
 box::export(my_method, run)
 ```
 
-Export `run` plus the implementation (tests import it); do not export other internals unless another module genuinely reuses them. Methods are auto-discovered by scanning `inst/artma/methods/`; `artma::methods.list()` lists them. `df` is the preprocessed data frame; other arguments come from the options system.
+Export `run` plus the implementation (tests import it); do not export other internals unless another module genuinely reuses them. Methods are auto-discovered by scanning `inst/artma/methods/`; `artma::methods.list()` renders the registered metadata of every discovered method as a console table and returns it as a data frame (`inst/artma/modules/methods_table.R`), and the methods-overview vignette repeats the same facts under a parity test. `df` is the preprocessed data frame; other arguments come from the options system.
 
 ## Metadata
 
-The metadata arguments are optional:
+`description` is required in practice: `tests/testthat/test-methods-table.R` fails when a discovered method registers none. It is the one-line summary `artma::methods.list()` prints, so keep it to a single line and lead with what the method produces; the printed table truncates it to the console width.
+
+The remaining metadata arguments are optional:
 
 - `depends_on`: the orchestrator (`invoke_runtime_methods()` in `R/artma.R`) topologically sorts by these edges (erroring on cycles) and passes each upstream result as a `<dependency>_result` argument, so `depends_on = "bma"` yields a `bma_result` parameter. Discovery order is preserved among independent methods.
 - `required_columns`: a method whose columns are missing from the data is skipped with an explanation instead of aborting the run.

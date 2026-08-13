@@ -137,6 +137,7 @@ box::use(
 run <- register_runtime_method(
   nonlinear_tests,
   stage = "nonlinear_tests",
+  description = "Non-linear bias corrections (WAAP, Top10, STEM, selection models)",
   required_columns = c("effect", "se", "study_id")
 )
 

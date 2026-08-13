@@ -374,6 +374,7 @@ box::use(
 run <- register_runtime_method(
   funnel_plot,
   stage = "funnel_plot",
+  description = "Funnel plot of the effect against precision, for spotting asymmetry",
   required_columns = c("effect", "precision")
 )
 

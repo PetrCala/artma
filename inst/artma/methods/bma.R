@@ -941,6 +941,7 @@ box::use(
 run <- register_runtime_method(
   bma,
   stage = "bma",
+  description = "Bayesian Model Averaging over the moderator variables",
   required_columns = c("effect", "se"),
   suggests = "BMS",
   cached = TRUE

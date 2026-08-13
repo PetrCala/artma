@@ -297,6 +297,7 @@ box::use(
 run <- register_runtime_method(
   robma,
   stage = "robma",
+  description = "Robust Bayesian meta-analysis with model-averaged bias correction",
   required_columns = c("effect", "se"),
   suggests = "RoBMA",
   opt_in = TRUE,

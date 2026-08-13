@@ -160,6 +160,7 @@ box::use(
 run <- register_runtime_method(
   linear_tests,
   stage = "linear_tests",
+  description = "Linear funnel-asymmetry regressions of the effect on its standard error",
   required_columns = c("effect", "se", "study_id")
 )
 
