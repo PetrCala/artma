@@ -164,7 +164,8 @@ artma <- function(
       artma / output / export[
         resolve_output_dir, ensure_output_dirs, export_results
       ],
-      artma / output / run_manifest[manifest_plot_index, write_run_manifest]
+      artma / output / run_manifest[manifest_plot_index, write_run_manifest],
+      artma / output / run_summary[render_run_summary]
     )
 
     # Ensure output directories exist before methods run (graphics export
@@ -217,6 +218,7 @@ artma <- function(
     results <- invoke_runtime_methods(methods = methods, df = df, ...)
 
     # Export tabular results
+    run_files <- character()
     if (isTRUE(save_results)) {
       export_results(results, output_dir)
 
@@ -246,12 +248,17 @@ artma <- function(
 
       # Close the capture last, so the manifest lists the exported tables and
       # the report alongside the graphics the methods wrote.
+      run_files <- end_output_file_capture(run_capture)
       write_run_manifest(
         results,
         output_dir = output_dir,
-        run_files = end_output_file_capture(run_capture)
+        run_files = run_files
       )
     }
+
+    # What ran, what did not, and what it produced. Prints on every run; the
+    # console counterpart of the manifest written just above.
+    render_run_summary(results, output_dir = output_dir, run_files = run_files)
 
     if (isTRUE(save_results) && isTRUE(open_results) && interactive()) {
       tryCatch(
@@ -268,13 +275,10 @@ artma <- function(
 
     if (get_verbosity() >= 3) {
       cli::cli_alert_success("Analysis complete.")
-      if (isTRUE(save_results)) {
-        cli::cli_alert_info("Results saved to {.path {output_dir}}")
-        if (!isTRUE(open_results)) {
-          cli::cli_alert_info(
-            "Run {.code artma::results_open()} to open the results directory."
-          )
-        }
+      if (isTRUE(save_results) && !isTRUE(open_results)) {
+        cli::cli_alert_info(
+          "Run {.code artma::results_open()} to open the results directory."
+        )
       }
     }
 
@@ -302,9 +306,9 @@ artma <- function(
 #' Method failures are isolated: a method that throws an error is skipped with
 #' a warning and the remaining methods still run. The run only aborts for
 #' invalid input (for example, unknown method names), never because a method
-#' failed or was skipped. When at least one method fails or is skipped, a
-#' summary is printed at the end, and a final warning is emitted if every method
-#' failed.
+#' failed or was skipped. Skipped and failed methods are attached as attributes
+#' for the closing run summary to report, and a final warning is emitted if
+#' every method failed.
 #' @param methods *\[character\]* A character vector of the methods to invoke.
 #' @param df *\[data.frame\]* The data frame to invoke the methods on.
 #' @param modules_dir *\[character, optional\]* Directory to discover runtime method modules in. Defaults to `NULL`, in which case the standard package methods directory is used. Used mainly for dependency injection in tests.
@@ -425,7 +429,7 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
   methods <- topo_sort_methods(requested_in_order, deps_map)
 
   if (get_verbosity() >= 3) {
-    cli::cli_h3("Running {.emph {CONST$PACKAGE_NAME}} methods")
+    cli::cli_h1("Running {.emph {CONST$PACKAGE_NAME}} methods")
     cli::cli_inform(c(
       "i" = "Invoking {length(methods)} {pluralize('method', length(methods))} in total."
     ))
@@ -656,24 +660,9 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
     output_files = method_output_files
   )
 
-  if ((length(failed_methods) > 0L || length(skipped_methods) > 0L) && get_verbosity() >= 3) {
-    cli::cli_h3("Method run summary")
-    if (length(succeeded_methods) > 0L) {
-      cli::cli_inform(c(
-        "v" = "Succeeded: {.code {succeeded_methods}}"
-      ))
-    }
-    for (skipped_name in names(skipped_methods)) {
-      cli::cli_inform(c(
-        "i" = "Skipped: {.code {skipped_name}} ({skipped_methods[[skipped_name]]})"
-      ))
-    }
-    for (failed_name in names(failed_methods)) {
-      cli::cli_inform(c(
-        "x" = "Failed: {.code {failed_name}} ({failed_methods[[failed_name]]})"
-      ))
-    }
-  }
+  # The per-method outcome summary is rendered once, at the end of the run, by
+  # `render_run_summary()` (artma/output/run_summary), which also reports what
+  # the run wrote and where. The attributes set above are its input.
 
   if (length(failed_methods) > 0L && length(succeeded_methods) == 0L && get_verbosity() >= 2) {
     cli::cli_warn(

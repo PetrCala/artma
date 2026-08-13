@@ -227,6 +227,10 @@ rather than everything that has piled up in the directory. That is what the
 HTML report uses to find each method's plots, and what the CLI reports in
 `--json` mode.
 
+Every run also closes with a `Run summary` block on the console: the same
+facts, read from the same sources, so the manifest and what you saw scroll by
+never disagree.
+
 `run.json` is overwritten by every run into the same output directory: it
 always describes the latest run, never a history. Runs driven by different
 options files already get their own output directory. To keep an older run,

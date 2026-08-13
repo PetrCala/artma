@@ -222,6 +222,20 @@ determine_df_type <- function(path, should_validate = TRUE) {
   file_extension
 }
 
+#' @title Determine the data type of a vector
+#' @description Classify a column into one of the recognized data types.
+#'   Numeric columns are read as follows:
+#'
+#'   - only `0`/`1` values: `dummy`, matching the treatment of a logical column
+#'   - every value a whole number: `int`, whatever its range; identifiers and
+#'     counts are integers, not percentages
+#'   - fractional values, all within `[0, 1]`: `perc`, the proportion type the
+#'     rest of the package assumes (it offers a split at `0.5`)
+#'   - anything else numeric: `float`
+#' @param data *\[vector\]* The column to classify.
+#' @param recognized_data_types *\[character, optional\]* When given, the
+#'   permitted types; a classification outside the set aborts.
+#' @return *\[character\]* The data type.
 determine_vector_type <- function(data, recognized_data_types = NULL) {
   box::use(
     artma / libs / core / validation[validate]
@@ -237,12 +251,12 @@ determine_vector_type <- function(data, recognized_data_types = NULL) {
     "category"
   } else if (is.numeric(data)) {
     clean_data <- data[!is.na(data)]
-    if (all(clean_data == floor(clean_data))) {
-      if (all(clean_data >= 0 & clean_data <= 100)) {
-        "perc"
-      } else {
-        "int"
-      }
+    if (all(clean_data %in% c(0, 1))) {
+      "dummy"
+    } else if (all(clean_data == floor(clean_data))) {
+      "int"
+    } else if (all(clean_data >= 0 & clean_data <= 1)) {
+      "perc"
     } else {
       "float"
     }

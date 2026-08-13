@@ -313,3 +313,44 @@ test_that("standardize_column_names still performs normal renames without collis
   expect_true("study_id" %in% colnames(standardized_df))
   expect_false("study_id_raw" %in% colnames(standardized_df))
 })
+
+
+# determine_vector_type -------------------------------------------------------
+
+test_that("determine_vector_type reads whole-number columns as integers, not percentages", {
+  box::use(artma / data / utils[determine_vector_type])
+
+  # An identifier and a count both live inside [0, 100] on small data sets; the
+  # range alone must not make either of them a percentage.
+  expect_equal(determine_vector_type(1:50), "int")
+  expect_equal(determine_vector_type(c(3, 29, 65, 12)), "int")
+  expect_equal(determine_vector_type(c(120, 4000, 250)), "int")
+})
+
+test_that("determine_vector_type reserves perc for fractional values within [0, 1]", {
+  box::use(artma / data / utils[determine_vector_type])
+
+  expect_equal(determine_vector_type(c(0.05, 0.5, 0.93)), "perc")
+  expect_equal(determine_vector_type(c(0.5, 12.5, 99.5)), "float")
+  expect_equal(determine_vector_type(c(-0.5, 0.25)), "float")
+})
+
+test_that("determine_vector_type classifies 0/1 columns as dummies", {
+  box::use(artma / data / utils[determine_vector_type])
+
+  expect_equal(determine_vector_type(c(0, 1, 1, 0)), "dummy")
+  expect_equal(determine_vector_type(c(TRUE, FALSE, NA)), "dummy")
+})
+
+test_that("determine_vector_type handles non-numeric and empty columns", {
+  box::use(artma / data / utils[determine_vector_type])
+
+  expect_equal(determine_vector_type(c("a", "b")), "category")
+  expect_equal(determine_vector_type(c(NA, NA)), "empty")
+})
+
+test_that("determine_vector_type rejects a type outside the recognized set", {
+  box::use(artma / data / utils[determine_vector_type])
+
+  expect_error(determine_vector_type(1:10, recognized_data_types = c("perc", "float")))
+})

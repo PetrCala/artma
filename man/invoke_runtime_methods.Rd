@@ -40,8 +40,8 @@ than aborting the run.
 Method failures are isolated: a method that throws an error is skipped with
 a warning and the remaining methods still run. The run only aborts for
 invalid input (for example, unknown method names), never because a method
-failed or was skipped. When at least one method fails or is skipped, a
-summary is printed at the end, and a final warning is emitted if every method
-failed.
+failed or was skipped. Skipped and failed methods are attached as attributes
+for the closing run summary to report, and a final warning is emitted if
+every method failed.
 }
 \keyword{internal}
