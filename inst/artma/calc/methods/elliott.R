@@ -1,5 +1,6 @@
 box::use(
-  artma / visualization / fork_safety[in_forked_worker]
+  artma / visualization / fork_safety[in_forked_worker],
+  artma / libs / core / log[is_info_enabled]
 )
 
 #' Format a numeric value with a fixed number of decimals
@@ -61,8 +62,7 @@ simulate_cdfs_parallel <- function(
 
   bb_sup <- numeric(it)
 
-  verbosity <- getOption("artma.verbose", 3L)
-  show_pb <- isTRUE(show_progress) && verbosity >= 3L && it >= 1000L
+  show_pb <- isTRUE(show_progress) && is_info_enabled() && it >= 1000L
 
   if (show_pb) {
     cli::cli_inform("Pre-computing critical values for LCM test via Brownian bridge simulations")

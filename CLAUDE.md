@@ -119,7 +119,7 @@ Controls how much user interaction happens during analysis. `interactive()` is t
 
 - Validation: use `validate()` and `assert()` from `artma / libs / core / validation`, not `stopifnot()`. `assert(cond, "message")` takes an explicit error message.
 - Interactive menus: use the `climenu` package (a sub-package of this repository). Never `utils::menu()` or other menu packages.
-- Verbosity: `options(artma.verbose = <1..4>)` scales from errors-only (1) to debug (4); default 3. Gate output with `get_verbosity() >= 3` from `artma / libs / core / utils`.
+- Verbosity: `options(artma.verbose = <1..4>)` scales from errors-only (1) to debug (4); default 3. Call the leveled wrapper (`log_error`/`log_warn`/`log_info`/`log_debug`, or `is_*_enabled()` to gate non-message output) from `artma / libs / core / log`; never compare verbosity numbers outside `libs/core`.
 - Constants: `CONST` (`inst/artma/const.R`) and `PATHS` (`inst/artma/paths.R`), both globally declared; import with `box::use(artma / const[CONST])`.
 - Style: 2-space indentation; `snake_case` or `dotted.case` names (max 40 chars); prefer `cli::cli_*` over base messaging; custom linters live in `.lintr.R`.
 - Documentation: roxygen2 with type annotations: `@param x *\[character, optional\]* Description`.
