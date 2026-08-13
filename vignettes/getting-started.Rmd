@@ -429,8 +429,7 @@ artma::options.validate("my_analysis.yaml")
 artma::methods.list()
 
 # Check data structure (after loading)
-df <- artma::prepare_data()
-str(df)
+artma::data.preview(options = "my_analysis.yaml")
 ```
 
 ## Next Steps
