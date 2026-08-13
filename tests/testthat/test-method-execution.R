@@ -6,6 +6,7 @@ box::use(
     expect_length,
     expect_match,
     expect_null,
+    expect_output,
     expect_true,
     skip_if,
     skip_if_not_installed,
@@ -157,6 +158,47 @@ test_that("resolve_worker_count respects the environment's process ceiling", {
     ),
     3L
   )
+})
+
+test_that("without_captured_output lets output through and still traps errors", {
+  box::use(artma / modules / method_execution[without_captured_output])
+
+  expect_output(
+    outcome <- without_captured_output({
+      cat("to stdout\n")
+      "value"
+    }),
+    "to stdout"
+  )
+  expect_equal(outcome$value, "value")
+  expect_null(outcome$error)
+  expect_equal(outcome$output, character())
+
+  failed <- without_captured_output(stop("boom"))
+  expect_null(failed$value)
+  expect_match(failed$error, "boom")
+})
+
+test_that("a sequential layer leaves output on the console so prompts stay visible", {
+  box::use(artma / modules / method_execution[execute_method_layer])
+
+  # A method that prompts renders its menu with cat()/cli. Sinking that output
+  # hid the menu while the method blocked on a keypress, hanging the run.
+  expect_output(
+    outcomes <- execute_method_layer(
+      "asks",
+      run_one = function(name) {
+        cat("Do you want to run BMA first?\n")
+        name
+      },
+      workers = 1L
+    ),
+    "Do you want to run BMA first?",
+    fixed = TRUE
+  )
+
+  expect_equal(outcomes[[1L]]$value, "asks")
+  expect_equal(outcomes[[1L]]$output, character())
 })
 
 test_that("with_captured_output captures output instead of printing it", {
