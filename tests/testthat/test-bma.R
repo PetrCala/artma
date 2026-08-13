@@ -567,6 +567,54 @@ test_that("rename_bma_model leaves unmatched regressor names untouched", {
   expect_equal(renamed$reg.names, c("Moderator 1", "not_in_list"))
 })
 
+test_that("prepare_bma_inputs drops non-numeric moderators instead of dying inside scale()", {
+  local_options(list("artma.verbose" = 1))
+
+  # A character moderator used to reach `scale()`, which aborts with a bare
+  # "'x' must be numeric" naming no column.
+  df <- make_demo_bma_data()
+  df$reg_num <- sample(c("a", "b", "c"), nrow(df), replace = TRUE)
+  config <- list(
+    moderator1 = list(var_name = "moderator1", bma = TRUE),
+    moderator2 = list(var_name = "moderator2", bma = TRUE),
+    reg_num = list(var_name = "reg_num", bma = TRUE)
+  )
+
+  expect_message(
+    prepared <- prepare_bma_inputs(
+      df, config,
+      use_vif_optimization = FALSE,
+      max_groups_to_remove = 3,
+      verbosity = 2
+    ),
+    "reg_num"
+  )
+
+  expect_null(prepared$skipped)
+  expect_false("reg_num" %in% colnames(prepared$bma_data))
+  expect_true(all(vapply(prepared$bma_data, is.numeric, logical(1))))
+})
+
+test_that("prepare_bma_inputs keeps logical moderators, which scale() handles", {
+  local_options(list("artma.verbose" = 1))
+
+  df <- make_demo_bma_data()
+  df$flag_mod <- rep(c(TRUE, FALSE), length.out = nrow(df))
+  config <- list(
+    moderator1 = list(var_name = "moderator1", bma = TRUE),
+    flag_mod = list(var_name = "flag_mod", bma = TRUE)
+  )
+
+  prepared <- prepare_bma_inputs(
+    df, config,
+    use_vif_optimization = FALSE,
+    max_groups_to_remove = 3,
+    verbosity = 0
+  )
+
+  expect_true("flag_mod" %in% colnames(prepared$bma_data))
+})
+
 test_that("prepare_bma_inputs warns about the excluded constant moderator", {
   local_options(list("artma.verbose" = 1))
 
