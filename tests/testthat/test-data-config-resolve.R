@@ -242,7 +242,7 @@ test_that("config keys are standardized regardless of which entry point resolves
     "artma.verbose" = 1
   ))
 
-  # Cold cache: this is what public entry points (config.get) hit first
+  # Cold cache: this is what public entry points (config_get) hit first
   cold_config <- get_data_config()
 
   expect_true(all(c("study_id", "effect", "se", "n_obs") %in% names(cold_config)))

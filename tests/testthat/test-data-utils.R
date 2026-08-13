@@ -218,8 +218,8 @@ test_that("the collision abort message names the exact remediation commands", {
         standardize_column_names(mock_df),
         error = function(e) conditionMessage(e)
       )
-      expect_true(grepl('config.set("study_id", drop_conflicting_raw = TRUE)', err, fixed = TRUE))
-      expect_true(grepl('config.reset("study_id")', err, fixed = TRUE))
+      expect_true(grepl('config_set("study_id", drop_conflicting_raw = TRUE)', err, fixed = TRUE))
+      expect_true(grepl('config_reset("study_id")', err, fixed = TRUE))
     }
   )
 })
