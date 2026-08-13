@@ -82,7 +82,7 @@ save_column_mapping_to_options <- function(mapping, options_file_name = NULL, op
 
   # Update options
   if (!is.null(options_file_name)) {
-    artma::options.modify(
+    artma::options_modify(
       user_input = list("data.columns" = store),
       options_file_name = options_file_name,
       options_dir = options_dir

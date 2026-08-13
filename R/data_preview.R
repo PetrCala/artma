@@ -63,7 +63,7 @@
 #' @seealso
 #' - \code{\link{artma}} - Run meta-analysis methods
 #' - \code{prepare_data()} - Prepare data manually
-#' - \code{\link{options.load}} - Load options
+#' - \code{\link{options_load}} - Load options
 #'
 #' @export
 data.preview <- function(

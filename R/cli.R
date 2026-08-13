@@ -5,7 +5,7 @@
 #' Scriptable entry point behind the `artma` launcher and
 #' `Rscript -e 'artma::cli.run()'`. It parses an argument vector, dispatches to
 #' the matching public function (`artma()`, `methods.list()`,
-#' `options.validate()` / `options.create()` / `options.list()`, or the package
+#' `options_validate()` / `options_create()` / `options_list()`, or the package
 #' version) and returns an exit code. No analysis logic lives here: each
 #' subcommand is a thin translation to the existing API.
 #'
@@ -195,16 +195,16 @@ cli_dispatch_options <- function(subaction, flags) {
   options_dir <- flags[["options-dir"]]
 
   switch(subaction,
-    validate = options.validate( # nolint: box_usage_linter. Package function (R/options.R)
+    validate = options_validate( # nolint: box_usage_linter. Package function (R/options.R)
       options_file_name = options_name,
       options_dir = options_dir
     ),
-    create = options.create( # nolint: box_usage_linter. Package function (R/options.R)
+    create = options_create( # nolint: box_usage_linter. Package function (R/options.R)
       options_file_name = options_name,
       options_dir = options_dir
     ),
     list = {
-      files <- options.list(options_dir = options_dir) # nolint: box_usage_linter. Package function (R/options.R)
+      files <- options_list(options_dir = options_dir) # nolint: box_usage_linter. Package function (R/options.R)
       if (length(files) > 0L) {
         writeLines(files, con = stdout())
       }

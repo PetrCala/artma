@@ -56,7 +56,7 @@ persist_expected_schema_cols <- function(cols) {
   tryCatch(
     {
       suppressMessages(
-        artma::options.modify(
+        artma::options_modify(
           options_file_name = options_file_name,
           options_dir = options_dir,
           user_input = list("data.expected_schema_columns" = normalized),

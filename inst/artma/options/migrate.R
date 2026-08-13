@@ -3,7 +3,7 @@
 #'   store. Old files kept column semantics in two places: the name mapping
 #'   under `data.colnames.*` and the per-variable analysis config under
 #'   `data.config`. Both are folded into one `data.columns` record per column.
-#'   Migration runs from the runtime setup and `options.fix()` paths; loading
+#'   Migration runs from the runtime setup and `options_fix()` paths; loading
 #'   itself stays pure and never rewrites files.
 
 #' @title Detect the legacy dual-store format

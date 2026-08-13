@@ -13,7 +13,7 @@ offer_options_fix(options_file_name, options_dir = NULL)
 }
 \description{
 Validate the given options file and, if it has problems, offer the
-interactive user a chance to repair it via \code{\link[=options.fix]{options.fix()}} before it is
+interactive user a chance to repair it via \code{\link[=options_fix]{options_fix()}} before it is
 loaded. Best effort: any failure here is swallowed so that loading (which is
 pure and applies defaults) can still proceed.
 }

@@ -263,7 +263,7 @@ test_that("save_column_mapping_to_options keeps records already in the file", {
 
   # Build a file valid against the real template, then seed it with records
   # a user would have configured before the mapping flow runs.
-  artma::options.create(
+  artma::options_create(
     options_file_name = file_name,
     options_dir = tmp_dir,
     user_input = list("data.source_path" = "some-data.csv"),

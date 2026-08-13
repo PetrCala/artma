@@ -128,7 +128,7 @@
 #'
 #' @seealso
 #' - `artma::methods.list()` - List available methods
-#' - `artma::options.create()` - Create a new options file
+#' - `artma::options_create()` - Create a new options file
 #' - `artma::prepare_data()` - Prepare data manually
 #'
 #' @export
@@ -450,7 +450,7 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
   # one draw is consumed to derive the run seed, following the convention of
   # stochastic R functions, so `set.seed(42); artma(...)` reproduces a run
   # while unseeded runs vary. Loaded options always carry a concrete value or
-  # an explicit NA (options.load() merges the template defaults), so an absent
+  # an explicit NA (options_load() merges the template defaults), so an absent
   # option only occurs in programmatic runs without options, where inheriting
   # the session RNG is the conventional behavior too. The derived seed is
   # pinned into the option for the run's duration so disk-cache signatures,

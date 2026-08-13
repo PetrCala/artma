@@ -157,7 +157,7 @@ funnel_result <- results$funnel_plot
 \seealso{
 \itemize{
 \item \code{artma::methods.list()} - List available methods
-\item \code{artma::options.create()} - Create a new options file
+\item \code{artma::options_create()} - Create a new options file
 \item \code{artma::prepare_data()} - Prepare data manually
 }
 }

@@ -230,7 +230,7 @@ test_that("standardize_column_names still aborts on data missing n_obs when it i
 # the issue) has study_id/effect/se but no n_obs.
 #
 # Options are set directly (as in test-data-index.R) rather than via
-# artma::options.create(), which would run this fixture's n_obs-less data
+# artma::options_create(), which would run this fixture's n_obs-less data
 # through the interactive column-detection workflow; non-interactively, that
 # workflow's "no good candidate" fallback maps the missing n_obs role onto
 # whatever column it lands on first (a pre-existing quirk unrelated to this

@@ -33,7 +33,7 @@ runtime_setup <- function(
     offer_options_fix(options_file_name = options_file_name, options_dir = options_dir)
   }
 
-  runtime_options <- options.load(
+  runtime_options <- options_load(
     options_file_name = options_file_name,
     options_dir = options_dir,
     should_validate = TRUE,
@@ -55,7 +55,7 @@ runtime_setup <- function(
 
 #' @title Offer to fix an outdated options file
 #' @description Validate the given options file and, if it has problems, offer the
-#'   interactive user a chance to repair it via [options.fix()] before it is
+#'   interactive user a chance to repair it via [options_fix()] before it is
 #'   loaded. Best effort: any failure here is swallowed so that loading (which is
 #'   pure and applies defaults) can still proceed.
 #' @param options_file_name *\[character\]* Name of the options file, including the suffix.
@@ -66,7 +66,7 @@ offer_options_fix <- function(options_file_name, options_dir = NULL) {
     {
       errors <- withr::with_options(
         list("artma.verbose" = 1),
-        suppressMessages(options.validate(
+        suppressMessages(options_validate(
           options_file_name = options_file_name,
           options_dir = options_dir,
           failure_action = "return_errors_quiet"
@@ -85,7 +85,7 @@ offer_options_fix <- function(options_file_name, options_dir = NULL) {
         prompt = "How would you like to handle this?"
       )
       if (choice == "Fix now (recommended)") {
-        options.fix(
+        options_fix(
           options_file_name = options_file_name,
           options_dir = options_dir,
           force_default_overwrites = TRUE

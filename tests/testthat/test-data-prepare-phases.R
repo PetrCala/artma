@@ -5,8 +5,8 @@ box::use(
 )
 
 # Both tests drive the same three-phase pipeline over equivalent inputs, so the
-# expensive fixture work (mock CSV plus options.create/options.load, most of
-# this file's runtime) happens once at file scope. options.load() is pure: it
+# expensive fixture work (mock CSV plus options_create/options_load, most of
+# this file's runtime) happens once at file scope. options_load() is pure: it
 # returns the prefixed list (including artma.temp.* bookkeeping) without
 # touching options(), so each test activates the shared list with
 # withr::local_options() and stays isolated; every artma.* key the pipeline
@@ -23,7 +23,7 @@ shared_runtime_options <- local({
   options_dir <- file.path(fixture_dir, "options")
   dir.create(options_dir)
 
-  artma::options.create(
+  artma::options_create(
     options_file_name = "phases.yaml",
     options_dir = options_dir,
     user_input = list(
@@ -38,7 +38,7 @@ shared_runtime_options <- local({
     should_overwrite = TRUE
   )
 
-  artma::options.load(
+  artma::options_load(
     options_file_name = "phases.yaml",
     options_dir = options_dir,
     load_with_prefix = TRUE,

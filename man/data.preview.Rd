@@ -82,6 +82,6 @@ data.preview(mtcars, preprocess = FALSE)
 \itemize{
 \item \code{\link{artma}} - Run meta-analysis methods
 \item \code{prepare_data()} - Prepare data manually
-\item \code{\link{options.load}} - Load options
+\item \code{\link{options_load}} - Load options
 }
 }

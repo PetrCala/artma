@@ -150,9 +150,9 @@ test_that("migration is a one-shot: a second pass is a no-op", {
   expect_identical(readLines(path), first_pass)
 })
 
-test_that("a migrated legacy file loads and round-trips through options.load", {
+test_that("a migrated legacy file loads and round-trips through options_load", {
   box::use(
-    artma[options.load],
+    artma[options_load],
     artma / options / migrate[migrate_legacy_options],
     testing / fixtures / index[FIXTURES]
   )
@@ -173,7 +173,7 @@ test_that("a migrated legacy file loads and round-trips through options.load", {
   withr::local_options(list("artma.verbose" = 1L))
   migrate_legacy_options(file_name, options_dir = tmp_dir)
 
-  loaded <- options.load(
+  loaded <- options_load(
     options_file_name = file_name,
     options_dir = tmp_dir,
     template_path = template_path,

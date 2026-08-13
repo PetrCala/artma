@@ -53,7 +53,7 @@ ask_for_existing_options_file_name <- function(
   }
 
   box::use(
-    artma[options.list],
+    artma[options_list],
     artma / libs / core / string[pluralize]
   )
 
@@ -61,7 +61,7 @@ ask_for_existing_options_file_name <- function(
 
   prompt <- prompt %||% sprintf("Please select the user options file %s you would like to use.", file_str)
 
-  user_options_file_names <- options.list(options_dir = options_dir) # nolint: box_usage_linter.
+  user_options_file_names <- options_list(options_dir = options_dir) # nolint: box_usage_linter.
   if (length(user_options_file_names) == 0) {
     cli::cli_abort("No existing user options files were found. Aborting...")
   }

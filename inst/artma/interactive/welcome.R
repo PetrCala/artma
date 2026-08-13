@@ -163,9 +163,9 @@ is_first_time_user <- function(options_dir = NULL) {
   }
 
   # Method 1: Check for options files (primary method, user's suggestion)
-  # Use fully qualified name since options.list is exported
+  # Use fully qualified name since options_list is exported
   existing_options <- tryCatch(
-    artma::options.list(options_dir = options_dir),
+    artma::options_list(options_dir = options_dir),
     error = function(e) character(0)
   )
 
