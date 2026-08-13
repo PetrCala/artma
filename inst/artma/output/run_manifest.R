@@ -55,7 +55,9 @@ manifest_timestamp <- function(when) {
 #'   platform whose temporary or home directory is a symlink would make two
 #'   spellings of the same location look unrelated. The longest existing
 #'   ancestor is resolved instead, and the rest appended, so a file and the
-#'   directory it sits in always agree.
+#'   directory it sits in always agree. Separators are normalised to `/` for
+#'   the same reason: on Windows an existing path comes back with backslashes
+#'   and one that does not exist keeps whatever it was given.
 #' @param path *\[character\]* Paths to normalise.
 #' @return *\[character\]* Absolute paths.
 #' @keywords internal
@@ -68,14 +70,14 @@ manifest_path <- function(path) {
     if (is.na(p) || !nzchar(p)) {
       return(p)
     }
-    p <- path.expand(p)
+    p <- chartr("\\", "/", path.expand(p))
     tail_parts <- character()
     current <- p
 
     repeat {
       if (file.exists(current)) {
         resolved <- tryCatch(
-          normalizePath(current, mustWork = FALSE),
+          normalizePath(current, winslash = "/", mustWork = FALSE),
           error = function(e) current
         )
         if (length(tail_parts) == 0L) {
