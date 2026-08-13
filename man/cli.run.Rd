@@ -16,7 +16,7 @@ to \code{commandArgs(trailingOnly = TRUE)}.}
 \description{
 Scriptable entry point behind the \code{artma} launcher and
 \verb{Rscript -e 'artma::cli.run()'}. It parses an argument vector, dispatches to
-the matching public function (\code{artma()}, \code{methods.list()},
+the matching public function (\code{artma()}, \code{methods_list()},
 \code{options_validate()} / \code{options_create()} / \code{options_list()}, or the package
 version) and returns an exit code. No analysis logic lives here: each
 subcommand is a thin translation to the existing API.

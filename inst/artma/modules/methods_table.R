@@ -1,7 +1,7 @@
 #' @title Runtime method overview table
 #' @description
 #' Turns the declarative metadata every runtime method registers (see
-#' `register_runtime_method()`) into the frame `artma::methods.list()` returns,
+#' `register_runtime_method()`) into the frame `artma::methods_list()` returns,
 #' plus the fixed-width rendering of that frame for the console.
 NULL
 

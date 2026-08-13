@@ -9,15 +9,15 @@
 #' @examples
 #' \dontrun{
 #' # Get all visualization settings
-#' viz.get()
+#' viz_get()
 #'
 #' # Get just the current theme
-#' viz.get("theme")
+#' viz_get("theme")
 #'
 #' # Get export path
-#' viz.get("export_path")
+#' viz_get("export_path")
 #' }
-viz.get <- function(option = NULL) {
+viz_get <- function(option = NULL) {
   box::use(
     artma / visualization / options[get_visualization_options],
     artma / libs / core / validation[assert]
@@ -41,7 +41,7 @@ viz.get <- function(option = NULL) {
 #' @title Set Visualization Settings
 #' @description Set visualization options for the current session.
 #'   Only provided arguments are changed; others remain unchanged.
-#' @param theme *\[character, optional\]* Color theme. Use `viz.themes()` to see available themes.
+#' @param theme *\[character, optional\]* Color theme. Use `viz_themes()` to see available themes.
 #' @param export_graphics *\[logical, optional\]* If TRUE, export plots to files.
 #' @param export_path *\[character, optional\]* Directory path for exported plots.
 #' @param graph_scale *\[numeric, optional\]* Scaling factor for exported graphics.
@@ -51,17 +51,17 @@ viz.get <- function(option = NULL) {
 #' @examples
 #' \dontrun{
 #' # Change theme
-#' viz.set(theme = "purple")
+#' viz_set(theme = "purple")
 #'
 #' # Enable export with custom path
-#' viz.set(export_graphics = TRUE, export_path = "./output/plots")
+#' viz_set(export_graphics = TRUE, export_path = "./output/plots")
 #'
 #' # Save and restore settings
-#' prev <- viz.set(theme = "red")
+#' prev <- viz_set(theme = "red")
 #' # ... do work ...
-#' do.call(viz.set, prev)
+#' do.call(viz_set, prev)
 #' }
-viz.set <- function(theme = NULL, export_graphics = NULL,
+viz_set <- function(theme = NULL, export_graphics = NULL,
                     export_path = NULL, graph_scale = NULL) {
   box::use(
     artma / visualization / options[
@@ -114,10 +114,33 @@ viz.set <- function(theme = NULL, export_graphics = NULL,
 #' @export
 #' @examples
 #' \dontrun{
-#' viz.themes()
+#' viz_themes()
 #' # [1] "blue" "yellow" "green" "red" "purple"
 #' }
-viz.themes <- function() {
+viz_themes <- function() {
   box::use(artma / visualization / options[get_valid_themes])
   get_valid_themes()
+}
+
+# Deprecated dotted aliases (see contributingGuides/API.md). Removed after 1.0.
+
+#' @rdname artma-deprecated
+#' @export
+viz.get <- function(...) {
+  lifecycle::deprecate_warn("0.4.0", "viz.get()", "viz_get()")
+  viz_get(...)
+}
+
+#' @rdname artma-deprecated
+#' @export
+viz.set <- function(...) {
+  lifecycle::deprecate_warn("0.4.0", "viz.set()", "viz_set()")
+  viz_set(...)
+}
+
+#' @rdname artma-deprecated
+#' @export
+viz.themes <- function(...) {
+  lifecycle::deprecate_warn("0.4.0", "viz.themes()", "viz_themes()")
+  viz_themes(...)
 }

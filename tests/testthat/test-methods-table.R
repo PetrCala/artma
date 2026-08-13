@@ -194,8 +194,8 @@ test_that("every registered runtime method declares a one-line description", {
   }
 })
 
-test_that("methods.list returns the table invisibly", {
-  df <- withr::with_options(list(artma.verbose = 1), artma::methods.list())
+test_that("methods_list returns the table invisibly", {
+  df <- withr::with_options(list(artma.verbose = 1), artma::methods_list())
   expect_true(is.data.frame(df))
   expect_true(all(c("method", "description", "required_columns", "installed") %in% names(df)))
   expect_true("bma" %in% df$method)

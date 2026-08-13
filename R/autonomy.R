@@ -9,10 +9,10 @@
 #' @examples
 #' \dontrun{
 #' # Get current autonomy level
-#' level <- autonomy.get()
+#' level <- autonomy_get()
 #' print(level)
 #' }
-autonomy.get <- function() {
+autonomy_get <- function() {
   box::use(artma / libs / core / autonomy[get_autonomy_level])
   get_autonomy_level()
 }
@@ -32,12 +32,12 @@ autonomy.get <- function() {
 #' @examples
 #' \dontrun{
 #' # Set to fully autonomous mode
-#' autonomy.set("autonomous")
+#' autonomy_set("autonomous")
 #'
 #' # Set to balanced mode
-#' autonomy.set("balanced")
+#' autonomy_set("balanced")
 #' }
-autonomy.set <- function(level) {
+autonomy_set <- function(level) {
   box::use(artma / libs / core / autonomy[set_autonomy_level])
   set_autonomy_level(level)
 }
@@ -48,11 +48,11 @@ autonomy.set <- function(level) {
 #' @export
 #' @examples
 #' \dontrun{
-#' if (!autonomy.is_set()) {
+#' if (!autonomy_is_set()) {
 #'   message("Autonomy level not configured")
 #' }
 #' }
-autonomy.is_set <- function() { # nolint: object_name_linter.
+autonomy_is_set <- function() {
   box::use(artma / libs / core / autonomy[is_autonomy_level_set])
   is_autonomy_level_set()
 }
@@ -66,11 +66,41 @@ autonomy.is_set <- function() { # nolint: object_name_linter.
 #' @export
 #' @examples
 #' \dontrun{
-#' if (autonomy.is_full()) {
+#' if (autonomy_is_full()) {
 #'   message("Running in fully autonomous mode")
 #' }
 #' }
-autonomy.is_full <- function() { # nolint: object_name_linter.
+autonomy_is_full <- function() {
   box::use(artma / libs / core / autonomy[get_autonomy_level])
   !interactive() || identical(get_autonomy_level(), "autonomous")
+}
+
+# Deprecated dotted aliases (see contributingGuides/API.md). Removed after 1.0.
+
+#' @rdname artma-deprecated
+#' @export
+autonomy.get <- function(...) {
+  lifecycle::deprecate_warn("0.4.0", "autonomy.get()", "autonomy_get()")
+  autonomy_get(...)
+}
+
+#' @rdname artma-deprecated
+#' @export
+autonomy.set <- function(...) {
+  lifecycle::deprecate_warn("0.4.0", "autonomy.set()", "autonomy_set()")
+  autonomy_set(...)
+}
+
+#' @rdname artma-deprecated
+#' @export
+autonomy.is_set <- function(...) { # nolint: object_name_linter.
+  lifecycle::deprecate_warn("0.4.0", "autonomy.is_set()", "autonomy_is_set()")
+  autonomy_is_set(...)
+}
+
+#' @rdname artma-deprecated
+#' @export
+autonomy.is_full <- function(...) { # nolint: object_name_linter.
+  lifecycle::deprecate_warn("0.4.0", "autonomy.is_full()", "autonomy_is_full()")
+  autonomy_is_full(...)
 }

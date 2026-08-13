@@ -21,11 +21,11 @@
 #'   Multi-value columns are comma-separated strings.
 #' @examples
 #' \dontrun{
-#' artma::methods.list()
-#' artma::methods.list(available_for = my_data)
+#' artma::methods_list()
+#' artma::methods_list(available_for = my_data)
 #' }
 #' @export
-methods.list <- function(available_for = NULL) {
+methods_list <- function(available_for = NULL) {
   box::use(
     artma / const[CONST],
     artma / libs / core / utils[get_verbosity],
@@ -40,4 +40,13 @@ methods.list <- function(available_for = NULL) {
   }
 
   invisible(methods)
+}
+
+# Deprecated dotted alias (see contributingGuides/API.md). Removed after 1.0.
+
+#' @rdname artma-deprecated
+#' @export
+methods.list <- function(...) {
+  lifecycle::deprecate_warn("0.4.0", "methods.list()", "methods_list()")
+  methods_list(...)
 }

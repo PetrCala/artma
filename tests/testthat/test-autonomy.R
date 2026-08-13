@@ -146,34 +146,34 @@ test_that("get_default_autonomy_level returns 'autonomous'", {
 })
 
 test_that("public API functions work correctly", {
-  box::use(artma[autonomy.get, autonomy.set, autonomy.is_set, autonomy.is_full])
+  box::use(artma[autonomy_get, autonomy_set, autonomy_is_set, autonomy_is_full])
 
   withr::local_options(list(artma.autonomy.level = NULL))
 
-  # Test autonomy.get
-  expect_null(autonomy.get())
+  # Test autonomy_get
+  expect_null(autonomy_get())
 
-  # Test autonomy.set
-  autonomy.set("balanced")
-  expect_equal(autonomy.get(), "balanced")
+  # Test autonomy_set
+  autonomy_set("balanced")
+  expect_equal(autonomy_get(), "balanced")
 
-  # Test autonomy.is_set
-  expect_true(autonomy.is_set())
+  # Test autonomy_is_set
+  expect_true(autonomy_is_set())
   options(artma.autonomy.level = NULL)
-  expect_false(autonomy.is_set())
+  expect_false(autonomy_is_set())
 
-  # Test autonomy.is_full: non-interactive sessions are always fully autonomous
-  autonomy.set("autonomous")
-  expect_true(autonomy.is_full())
-  autonomy.set("balanced")
-  expect_equal(autonomy.is_full(), !interactive())
+  # Test autonomy_is_full: non-interactive sessions are always fully autonomous
+  autonomy_set("autonomous")
+  expect_true(autonomy_is_full())
+  autonomy_set("balanced")
+  expect_equal(autonomy_is_full(), !interactive())
 })
 
 test_that("public API accepts legacy numeric levels with a warning", {
-  box::use(artma[autonomy.get, autonomy.set])
+  box::use(artma[autonomy_get, autonomy_set])
 
   withr::local_options(list(artma.autonomy.level = NULL))
 
-  expect_warning(autonomy.set(4))
-  expect_equal(autonomy.get(), "autonomous")
+  expect_warning(autonomy_set(4))
+  expect_equal(autonomy_get(), "autonomous")
 })

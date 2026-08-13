@@ -4,7 +4,7 @@
 #' @description
 #' Scriptable entry point behind the `artma` launcher and
 #' `Rscript -e 'artma::cli.run()'`. It parses an argument vector, dispatches to
-#' the matching public function (`artma()`, `methods.list()`,
+#' the matching public function (`artma()`, `methods_list()`,
 #' `options_validate()` / `options_create()` / `options_list()`, or the package
 #' version) and returns an exit code. No analysis logic lives here: each
 #' subcommand is a thin translation to the existing API.
@@ -177,7 +177,7 @@ cli_emit_to_stderr <- function(lines) {
 cli_dispatch <- function(parsed) {
   switch(parsed$subcommand,
     run = cli_dispatch_run(parsed$flags),
-    methods = methods.list(), # nolint: box_usage_linter. Package function (R/methods.R)
+    methods = methods_list(), # nolint: box_usage_linter. Package function (R/methods.R)
     version = writeLines(as.character(utils::packageVersion("artma")), con = stdout()),
     options = cli_dispatch_options(parsed$subaction, parsed$flags),
     cli::cli_abort("Unhandled subcommand: {parsed$subcommand}.")

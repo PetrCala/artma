@@ -29,12 +29,12 @@
 #' @examples
 #' \dontrun{
 #' res <- artma(methods = c("funnel_plot", "effect_summary_stats"), options = "my.yaml")
-#' report.render(res)
+#' report_render(res)
 #'
 #' # Write to a specific location and open it
-#' report.render(res, output_file = "~/analysis/report.html", open = TRUE)
+#' report_render(res, output_file = "~/analysis/report.html", open = TRUE)
 #' }
-report.render <- function(results, output_file = NULL, open = interactive()) {
+report_render <- function(results, output_file = NULL, open = interactive()) {
   box::use(
     artma / output / run_manifest[manifest_plot_index, read_run_manifest],
     artma / report / render[gather_report_meta, render_report]
@@ -43,7 +43,7 @@ report.render <- function(results, output_file = NULL, open = interactive()) {
   if (!is.list(results)) {
     cli::cli_abort(c(
       "x" = "{.arg results} must be the named list returned by {.code artma()}.",
-      "i" = "Run {.code res <- artma(...)} first, then {.code report.render(res)}."
+      "i" = "Run {.code res <- artma(...)} first, then {.code report_render(res)}."
     ))
   }
 
@@ -76,4 +76,13 @@ report.render <- function(results, output_file = NULL, open = interactive()) {
     report_meta = gather_report_meta(),
     open = open
   )
+}
+
+# Deprecated dotted alias (see contributingGuides/API.md). Removed after 1.0.
+
+#' @rdname artma-deprecated
+#' @export
+report.render <- function(...) {
+  lifecycle::deprecate_warn("0.4.0", "report.render()", "report_render()")
+  report_render(...)
 }

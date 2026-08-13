@@ -65,12 +65,12 @@ open_dir_in_browser <- function(dir) {
 #' @examples
 #' \dontrun{
 #' # Get the most recent results directory
-#' results.dir()
+#' results_dir()
 #'
 #' # Get results dir for a specific options file
-#' results.dir(options = "my_analysis.yaml")
+#' results_dir(options = "my_analysis.yaml")
 #' }
-results.dir <- function(options = NULL, options_dir = NULL) {
+results_dir <- function(options = NULL, options_dir = NULL) {
   if (is.null(options) && is.null(options_dir)) {
     last_dir <- read_last_export_dir()
     if (!is.null(last_dir)) {
@@ -110,15 +110,15 @@ results.dir <- function(options = NULL, options_dir = NULL) {
 #' @examples
 #' \dontrun{
 #' # Open the most recent results (no prompt if a recent export exists)
-#' results.open()
+#' results_open()
 #'
 #' # Force options-based resolution (will prompt if needed)
-#' results.open(use_last = FALSE)
+#' results_open(use_last = FALSE)
 #'
 #' # Open results for a specific options file
-#' results.open(options = "my_analysis.yaml")
+#' results_open(options = "my_analysis.yaml")
 #' }
-results.open <- function(options = NULL, options_dir = NULL, use_last = TRUE) {
+results_open <- function(options = NULL, options_dir = NULL, use_last = TRUE) {
   if (isTRUE(use_last) && is.null(options) && is.null(options_dir)) {
     last_dir <- read_last_export_dir()
     if (!is.null(last_dir)) {
@@ -135,4 +135,20 @@ results.open <- function(options = NULL, options_dir = NULL, use_last = TRUE) {
       open_dir_in_browser(dir)
     }
   )
+}
+
+# Deprecated dotted aliases (see contributingGuides/API.md). Removed after 1.0.
+
+#' @rdname artma-deprecated
+#' @export
+results.dir <- function(...) {
+  lifecycle::deprecate_warn("0.4.0", "results.dir()", "results_dir()")
+  results_dir(...)
+}
+
+#' @rdname artma-deprecated
+#' @export
+results.open <- function(...) {
+  lifecycle::deprecate_warn("0.4.0", "results.open()", "results_open()")
+  results_open(...)
 }

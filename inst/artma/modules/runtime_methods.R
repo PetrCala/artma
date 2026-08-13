@@ -187,10 +187,10 @@ METHOD_META_ATTR <- "artma_method_meta"
 #' duplicated the `cache_cli_runner` wiring across all method modules.
 #'
 #' The metadata drives the orchestrator in `invoke_runtime_methods()`, and,
-#' together with `description`, the table printed by `artma::methods.list()`:
+#' together with `description`, the table printed by `artma::methods_list()`:
 #'
 #' * `description`: a one-line summary of what the method does, shown by
-#'   `artma::methods.list()`. Every method registers one.
+#'   `artma::methods_list()`. Every method registers one.
 #' * `depends_on`: names of methods that must run before this one. The
 #'   orchestrator topologically sorts by these edges and passes each upstream
 #'   result to the dependent as a `<dependency>_result` argument (for example
@@ -216,7 +216,7 @@ METHOD_META_ATTR <- "artma_method_meta"
 #' @param stage *\[character\]* Stage label used for cache keys and the cache
 #'   hit notice. Conventionally matches the implementation's name.
 #' @param description *\[character, optional\]* One-line summary of what the
-#'   method does, shown by `artma::methods.list()`. Keep it to a single line;
+#'   method does, shown by `artma::methods_list()`. Keep it to a single line;
 #'   the printed table truncates it to the console width.
 #' @param depends_on *\[character, optional\]* Names of methods this one depends
 #'   on. Defaults to no dependencies.
