@@ -46,8 +46,9 @@ remove_empty_rows <- function(df) {
   empty_rows <- all_required_na | all_critical_na
 
   if (any(empty_rows)) {
+    n_empty <- sum(empty_rows)
     df <- df[!empty_rows, , drop = FALSE]
-    cli::cli_alert_success("Removed {.val {sum(empty_rows)}} empty rows.")
+    cli::cli_alert_success("Removed {.val {n_empty}} empty row{?s}.")
   }
   df
 }
@@ -219,6 +220,20 @@ apply_subset_conditions <- function(df) {
   df
 }
 
+#' @title Describe which tail winsorization touched
+#' @description Name only the tails that had values pulled in, so a one-sided
+#'   winsorization does not report "0 lower".
+#' @param n_lower *\[integer\]* Values pulled up to the lower quantile.
+#' @param n_upper *\[integer\]* Values pulled down to the upper quantile.
+#' @return *\[character\]* One phrase per affected tail.
+#' @keywords internal
+winsorization_tails <- function(n_lower, n_upper) {
+  c(
+    if (n_lower > 0) cli::format_inline("{n_lower} lower"),
+    if (n_upper > 0) cli::format_inline("{n_upper} upper")
+  )
+}
+
 #' @title Winsorize data
 #' @description Winsorize effect and standard error columns at specified quantiles.
 #' @param df *\[data.frame\]* The data frame to winsorize
@@ -255,7 +270,8 @@ winsorize_data <- function(df) {
     df$effect <- pmax(pmin(df$effect, upper_q), lower_q)
 
     if (get_verbosity() >= 3 && (n_lower + n_upper) > 0) {
-      cli::cli_alert_info("Winsorized {.val {n_lower + n_upper}} effect values ({n_lower} lower, {n_upper} upper)")
+      tails <- winsorization_tails(n_lower, n_upper)
+      cli::cli_alert_info("Winsorized {.val {n_lower + n_upper}} effect value{?s} ({tails})")
     }
   }
 
@@ -270,7 +286,8 @@ winsorize_data <- function(df) {
     df$se <- pmax(pmin(df$se, upper_q), lower_q)
 
     if (get_verbosity() >= 3 && (n_lower + n_upper) > 0) {
-      cli::cli_alert_info("Winsorized {.val {n_lower + n_upper}} SE values ({n_lower} lower, {n_upper} upper)")
+      tails <- winsorization_tails(n_lower, n_upper)
+      cli::cli_alert_info("Winsorized {.val {n_lower + n_upper}} SE value{?s} ({tails})")
     }
   }
 
