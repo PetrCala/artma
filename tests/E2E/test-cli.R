@@ -39,7 +39,7 @@ stderr_file <- tempfile("artma-cli-stderr-", fileext = ".txt")
 # parentheses in the `-e` expression abort the run under `sh` before Rscript is
 # ever reached ("Syntax error: \"(\" unexpected").
 cli_args <- c(
-  "-e", shQuote("quit(save = 'no', status = artma::cli.run())"),
+  "-e", shQuote("quit(save = 'no', status = artma::cli_run())"),
   "run",
   "--options", "cli.yaml",
   "--options-dir", shQuote(options_dir),

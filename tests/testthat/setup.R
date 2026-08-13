@@ -69,7 +69,7 @@ if (any(vapply(sys.calls(), function(call) identical(as.character(call[[1]]), "c
   # all, so they compose safely with this - use those instead of
   # `capture.output(..., type = "message")` in new tests. The one exception
   # is `tests/testthat/test-cli.R`, which legitimately needs to capture raw
-  # stdout/stderr to test `cli.run()`'s actual command-line behavior; it
+  # stdout/stderr to test `cli_run()`'s actual command-line behavior; it
   # explicitly suspends and restores this sink around its own capture (see
   # the comment there) rather than nesting inside it.
   sink(file(nullfile(), open = "wt"), type = "output")
