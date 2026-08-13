@@ -1,6 +1,7 @@
 box::use(
   testthat[
     expect_equal,
+    expect_error,
     expect_false,
     expect_gt,
     expect_match,
@@ -210,8 +211,8 @@ test_that("linear tests return tidy coefficients and summary", {
   expect_named(
     res$meta$coefficients,
     c(
-      "estimate", "std_error", "statistic", "p_value", "term", "model",
-      "model_label", "n_obs", "term_label", "bootstrap_lower",
+      "estimate", "std_error", "statistic", "p_value", "term", "vcov_type",
+      "model", "model_label", "n_obs", "term_label", "bootstrap_lower",
       "bootstrap_upper", "significance", "estimate_rounded",
       "std_error_rounded", "estimate_formatted", "std_error_formatted",
       "bootstrap_formatted", "ci_conflict"
@@ -224,9 +225,17 @@ test_that("linear tests return tidy coefficients and summary", {
     c(
       "Publication Bias", "(Std. Error)", "Bootstrap CI (PB)",
       "Effect Beyond Bias", "(Std. Error)", "Bootstrap CI (Effect)",
-      "Total Observations"
+      "Total Observations", "Standard Errors"
     )
   )
+
+  # The between column cannot be clustered, so the table has to say so.
+  expect_equal(
+    res$tables$summary[["Between Effects"]][[8L]],
+    "Heteroskedasticity-robust (HC1)"
+  )
+  expect_equal(res$tables$summary[["OLS"]][[8L]], "Cluster-robust (HC1)")
+
   expect_true(all(res$meta$coefficients$significance %in% c("", "*", "**", "***")))
   expect_equal(res$meta$options$bootstrap_replications, 10L)
 })
@@ -475,6 +484,68 @@ test_that("within fast path merges duplicated resampled clusters like plm", {
     unname(plm::within_intercept(model)[[1L]]),
     tolerance = 1e-12
   )
+})
+
+test_that("between effects standard errors are heteroskedasticity-robust on group means", {
+  skip_if_not_installed("plm")
+  skip_if_not_installed("sandwich")
+
+  df <- make_demo_data()
+  df$study_id <- droplevels(factor(df$study_id))
+
+  specs <- linear_model_specs()
+  names(specs) <- vapply(specs, function(spec) spec$name, character(1))
+  be_spec <- specs[["be"]]
+
+  model <- be_spec$fit(df)
+
+  # The reason the between column needs its own tidy path: plm::vcovHC accepts
+  # only random/within/pooling/fd models. Should a future plm gain `between`
+  # support, this expectation fails rather than the numbers changing quietly.
+  expect_error(
+    plm::vcovHC(model, type = "HC1", cluster = "group"),
+    regexp = "random"
+  )
+
+  tidy <- be_spec$tidy(model, df)
+
+  group <- droplevels(factor(df$study_id))
+  first_in_group <- !duplicated(as.integer(group))
+  means <- data.frame(
+    effect = stats::ave(df$effect, group)[first_in_group],
+    se = stats::ave(df$se, group)[first_in_group]
+  )
+  means_model <- stats::lm(effect ~ se, data = means)
+  oracle <- lmtest::coeftest(
+    means_model,
+    vcov. = sandwich::vcovHC(means_model, type = "HC1")
+  )
+
+  expect_equal(tidy$estimate[tidy$term == "effect"], oracle["(Intercept)", "Estimate"])
+  expect_equal(tidy$std_error[tidy$term == "effect"], oracle["(Intercept)", "Std. Error"])
+  expect_equal(tidy$std_error[tidy$term == "publication_bias"], oracle["se", "Std. Error"])
+  expect_equal(unique(tidy$vcov_type), "Heteroskedasticity-robust (HC1)")
+
+  # Point estimates still come from the between estimator itself.
+  expect_equal(
+    tidy$estimate[tidy$term == "publication_bias"],
+    unname(stats::coef(model)[["se"]])
+  )
+
+  # Clustering by study after collapsing to one row per study is degenerate:
+  # vcovCL returns the HC1 matrix element for element, which is why
+  # heteroskedasticity-robust is the ceiling rather than a shortcut.
+  expect_equal(
+    sandwich::vcovCL(means_model, cluster = seq_len(nrow(means)), type = "HC1"),
+    sandwich::vcovHC(means_model, type = "HC1")
+  )
+
+  # The classical standard errors the old path fell through to are different
+  # numbers, not a rounding difference.
+  expect_false(isTRUE(all.equal(
+    unname(tidy$std_error[tidy$term == "publication_bias"]),
+    unname(sqrt(diag(stats::vcov(model)))[["se"]])
+  )))
 })
 
 test_that("between effects fast path matches plm on duplicated resampled clusters", {
@@ -899,6 +970,14 @@ test_that("linear_tests_estimates flags CI conflicts and handles an empty frame"
   expect_true(is.na(estimates$note[1]))
   expect_match(estimates$note[2], "disagree")
   expect_equal(estimates$conf_low, coefficients$bootstrap_lower)
+
+  # The variance estimator travels with the numbers, so an exported CSV keeps
+  # the distinction that would otherwise live only in a console warning.
+  coefficients$vcov_type <- c("Cluster-robust (HC1)", "Heteroskedasticity-robust (HC1)")
+  annotated <- linear_tests_estimates(coefficients)
+  expect_equal(annotated$note[1], "Standard errors: Cluster-robust (HC1)")
+  expect_match(annotated$note[2], "^Standard errors: Heteroskedasticity-robust \\(HC1\\); ")
+  expect_match(annotated$note[2], "disagree$")
 
   empty <- linear_tests_estimates(data.frame())
   expect_equal(nrow(empty), 0L)
