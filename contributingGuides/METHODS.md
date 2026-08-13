@@ -30,11 +30,11 @@ run <- register_runtime_method(
 box::export(my_method, run)
 ```
 
-Export `run` plus the implementation (tests import it); do not export other internals unless another module genuinely reuses them. Methods are auto-discovered by scanning `inst/artma/methods/`; `artma::methods.list()` renders the registered metadata of every discovered method as a console table and returns it as a data frame (`inst/artma/modules/methods_table.R`), and the methods-overview vignette repeats the same facts under a parity test. `df` is the preprocessed data frame; other arguments come from the options system.
+Export `run` plus the implementation (tests import it); do not export other internals unless another module genuinely reuses them. Methods are auto-discovered by scanning `inst/artma/methods/`; `artma::methods_list()` renders the registered metadata of every discovered method as a console table and returns it as a data frame (`inst/artma/modules/methods_table.R`), and the methods-overview vignette repeats the same facts under a parity test. `df` is the preprocessed data frame; other arguments come from the options system.
 
 ## Metadata
 
-`description` is required in practice: `tests/testthat/test-methods-table.R` fails when a discovered method registers none. It is the one-line summary `artma::methods.list()` prints, so keep it to a single line and lead with what the method produces; the printed table truncates it to the console width.
+`description` is required in practice: `tests/testthat/test-methods-table.R` fails when a discovered method registers none. It is the one-line summary `artma::methods_list()` prints, so keep it to a single line and lead with what the method produces; the printed table truncates it to the console width.
 
 The remaining metadata arguments are optional:
 

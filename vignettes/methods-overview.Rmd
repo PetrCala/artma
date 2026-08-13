@@ -14,13 +14,13 @@ vignette: >
 List the methods available in your installed version at any time with:
 
 ```r
-artma::methods.list()
+artma::methods_list()
 ```
 
 That prints one row per method: what it does, the data columns it needs, the methods that run before it, the optional packages it uses (with an `install <pkg>` status when one is missing), and whether it is opt-in. It also returns the same information as a data frame, invisibly. Pass your data to check the required columns before a run, so you see which methods would be skipped rather than finding out afterwards:
 
 ```r
-methods <- artma::methods.list(available_for = my_data)
+methods <- artma::methods_list(available_for = my_data)
 methods[!methods$available, c("method", "missing_columns", "missing_packages")]
 ```
 
@@ -28,7 +28,7 @@ The tables below carry the same metadata; a test keeps them in step with what th
 
 ## How methods execute
 
-Each method is a plain function registered with `register_runtime_method()`, which attaches declarative metadata: a one-line `description`, a `depends_on` list of upstream methods, a `required_columns` list of data columns it needs, and a `suggests` list of optional packages it needs. `methods.list()` reads that metadata back, so the printed overview cannot fall out of step with what the methods declare.
+Each method is a plain function registered with `register_runtime_method()`, which attaches declarative metadata: a one-line `description`, a `depends_on` list of upstream methods, a `required_columns` list of data columns it needs, and a `suggests` list of optional packages it needs. `methods_list()` reads that metadata back, so the printed overview cannot fall out of step with what the methods declare.
 
 When you call `artma(methods = ...)`, the requested methods are topologically sorted by their `depends_on` edges, so a method that builds on another method's output (for example, `best_practice_estimate` builds on `bma`) always runs after it and receives its result as a `<dependency>_result` argument. Ties preserve discovery order; dependency cycles abort the run.
 
@@ -110,10 +110,10 @@ results <- artma(methods = "all", options = "my_analysis.yaml")
 results <- artma(methods = c("funnel_plot", "bma", "fma"), options = "my_analysis.yaml")
 ```
 
-To see the skips in advance, hand your prepared data to `methods.list()`:
+To see the skips in advance, hand your prepared data to `methods_list()`:
 
 ```r
-methods <- artma::methods.list(available_for = my_data)
+methods <- artma::methods_list(available_for = my_data)
 subset(methods, !available)[, c("method", "missing_columns", "missing_packages")]
 ```
 

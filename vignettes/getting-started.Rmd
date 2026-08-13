@@ -28,7 +28,7 @@ When you run this in an interactive R session, artma will:
 4. **Let you choose methods** - Select which analyses you want to run
 5. **Run your analysis** - Execute everything and return results
 
-If you want artma to open the results folder for you at the end of a run, set `open_results = TRUE`. You can always access your results later manually using `artma::results.open()`.
+If you want artma to open the results folder for you at the end of a run, set `open_results = TRUE`. You can always access your results later manually using `artma::results_open()`.
 
 That's it! The function handles all the complexity behind the scenes.
 
@@ -140,7 +140,7 @@ For scripts and automation:
 
 ```r
 # Create options file programmatically
-artma::options.create(
+artma::options_create(
   options_file_name = "analysis_2025",
   user_input = list(
     "data.source_path" = "/path/to/data.csv",
@@ -239,7 +239,7 @@ copy its directory, or point `output.dir` at a per-run location.
 To see what methods are available:
 
 ```r
-artma::methods.list()
+artma::methods_list()
 ```
 
 This prints all available methods to the console.
@@ -271,10 +271,10 @@ Options files are created automatically when needed, but you can also create the
 
 ```r
 # Interactive creation
-artma::options.create()
+artma::options_create()
 
 # Programmatic creation
-artma::options.create(
+artma::options_create(
   options_file_name = "my_analysis",
   user_input = list(
     "data.source_path" = "/path/to/data.csv",
@@ -290,16 +290,16 @@ artma::options.create(
 
 ```r
 # List all options files
-artma::options.list()
+artma::options_list()
 
 # Copy an options file
-artma::options.copy(
+artma::options_copy(
   options_file_name_from = "baseline.yaml",
   options_file_name_to = "sensitivity.yaml"
 )
 
 # Modify an options file
-artma::options.modify(
+artma::options_modify(
   options_file_name = "my_analysis.yaml",
   options_to_modify = list(
     "methods.effect_summary_stats.conf_level" = 0.99
@@ -307,7 +307,7 @@ artma::options.modify(
 )
 
 # Validate an options file
-artma::options.validate("my_analysis.yaml")
+artma::options_validate("my_analysis.yaml")
 ```
 
 For detailed information about options files, see the [Understanding Options Files](options-files.html) vignette.
@@ -392,7 +392,7 @@ options(artma.verbose = 4)  # Verbose: everything
 If you're modifying options files manually, validate them:
 
 ```r
-artma::options.validate("my_analysis.yaml")
+artma::options_validate("my_analysis.yaml")
 ```
 
 This catches errors before you run the analysis.
@@ -402,8 +402,8 @@ This catches errors before you run the analysis.
 ### Documentation
 
 - `?artma` - Main function help
-- `?artma::methods.list` - List available methods
-- `?artma::options.create` - Create options files
+- `?artma::methods_list` - List available methods
+- `?artma::options_create` - Create options files
 - Vignettes - Detailed guides (like this one!)
 
 ### Verbosity Levels
@@ -423,14 +423,13 @@ When in doubt, validate:
 
 ```r
 # Validate options file
-artma::options.validate("my_analysis.yaml")
+artma::options_validate("my_analysis.yaml")
 
 # Check available methods
-artma::methods.list()
+artma::methods_list()
 
-# Check data structure (after loading)
-df <- artma::prepare_data()
-str(df)
+# Check how artma reads and preprocesses your data
+artma::data_preview(options = "my_analysis.yaml")
 ```
 
 ## Next Steps
