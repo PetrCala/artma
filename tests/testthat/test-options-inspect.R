@@ -72,14 +72,14 @@ test_that("option name tokens expand exact names and group prefixes", {
   expect_equal(expand_option_tokens("methods.bm", all_names)$not_found, "methods.bm")
 })
 
-test_that("options.help with no arguments prints the whole option tree", {
-  box::use(artma[options.help])
+test_that("options_help with no arguments prints the whole option tree", {
+  box::use(artma[options_help])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- local_template(tmp_dir)
 
   output <- testthat::capture_output(
-    options.help(template_path = template_path),
+    options_help(template_path = template_path),
     print = TRUE
   )
 
@@ -90,14 +90,14 @@ test_that("options.help with no arguments prints the whole option tree", {
   expect_false(grepl("Number of iterations", output, fixed = TRUE))
 })
 
-test_that("options.help expands a group name to every option beneath it", {
-  box::use(artma[options.help])
+test_that("options_help expands a group name to every option beneath it", {
+  box::use(artma[options_help])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- local_template(tmp_dir)
 
   output <- testthat::capture_output(
-    options.help("methods.bma", template_path = template_path),
+    options_help("methods.bma", template_path = template_path),
     print = TRUE
   )
 
@@ -106,8 +106,8 @@ test_that("options.help expands a group name to every option beneath it", {
   expect_false(grepl("Confidence level", output, fixed = TRUE))
 })
 
-test_that("options.help reports unrecognized names but still explains the rest", {
-  box::use(artma[options.help])
+test_that("options_help reports unrecognized names but still explains the rest", {
+  box::use(artma[options_help])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- local_template(tmp_dir)
@@ -115,7 +115,7 @@ test_that("options.help reports unrecognized names but still explains the rest",
   messages <- character(0)
   output <- testthat::capture_output(
     messages <- testthat::capture_messages(
-      options.help(c("nonsense", "general.name"), template_path = template_path)
+      options_help(c("nonsense", "general.name"), template_path = template_path)
     ),
     print = TRUE
   )
@@ -124,8 +124,8 @@ test_that("options.help reports unrecognized names but still explains the rest",
   expect_true(grepl("Friendly name for the configuration", output, fixed = TRUE))
 })
 
-test_that("options.list(details = TRUE) describes each options file", {
-  box::use(artma[options.list])
+test_that("options_list(details = TRUE) describes each options file", {
+  box::use(artma[options_list])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- local_template(tmp_dir)
@@ -147,7 +147,7 @@ test_that("options.list(details = TRUE) describes each options file", {
     file.path(tmp_dir, "tweaked.yaml")
   )
 
-  details <- options.list(options_dir = tmp_dir, details = TRUE, template_path = template_path)
+  details <- options_list(options_dir = tmp_dir, details = TRUE, template_path = template_path)
 
   expect_s3_class(details, "data.frame")
   expect_named(details, c("file", "data_source_path", "modified", "last_run", "n_non_default"))
@@ -169,29 +169,29 @@ test_that("options.list(details = TRUE) describes each options file", {
   expect_true(all(is.na(details$last_run)))
 })
 
-test_that("options.list(details = TRUE) returns an empty frame when no files exist", {
-  box::use(artma[options.list])
+test_that("options_list(details = TRUE) returns an empty frame when no files exist", {
+  box::use(artma[options_list])
 
   template_path <- local_template(withr::local_tempdir())
   empty_dir <- withr::local_tempdir()
 
-  details <- options.list(options_dir = empty_dir, details = TRUE, template_path = template_path)
+  details <- options_list(options_dir = empty_dir, details = TRUE, template_path = template_path)
 
   expect_s3_class(details, "data.frame")
   expect_equal(nrow(details), 0L)
 })
 
-test_that("options.list without details keeps returning file names", {
-  box::use(artma[options.list])
+test_that("options_list without details keeps returning file names", {
+  box::use(artma[options_list])
 
   tmp_dir <- withr::local_tempdir()
   yaml::write_yaml(list(general = list(name = "One")), file.path(tmp_dir, "one.yaml"))
 
-  expect_identical(options.list(options_dir = tmp_dir), "one.yaml")
+  expect_identical(options_list(options_dir = tmp_dir), "one.yaml")
 })
 
-test_that("options.diff reports differing options and deviations from defaults", {
-  box::use(artma[options.diff])
+test_that("options_diff reports differing options and deviations from defaults", {
+  box::use(artma[options_diff])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- local_template(tmp_dir)
@@ -213,7 +213,7 @@ test_that("options.diff reports differing options and deviations from defaults",
     file.path(tmp_dir, "tweaked.yaml")
   )
 
-  diff <- options.diff(
+  diff <- options_diff(
     options_file_name_a = "baseline.yaml",
     options_file_name_b = "tweaked.yaml",
     options_dir = tmp_dir,
@@ -238,8 +238,8 @@ test_that("options.diff reports differing options and deviations from defaults",
   )
 })
 
-test_that("options.diff on identical files reports no differences", {
-  box::use(artma[options.copy, options.diff])
+test_that("options_diff on identical files reports no differences", {
+  box::use(artma[options_copy, options_diff])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- local_template(tmp_dir)
@@ -252,14 +252,14 @@ test_that("options.diff on identical files reports no differences", {
     ),
     file.path(tmp_dir, "baseline.yaml")
   )
-  options.copy(
+  options_copy(
     options_file_name_from = "baseline.yaml",
     options_file_name_to = "clone.yaml",
     options_dir = tmp_dir,
     should_overwrite = TRUE
   )
 
-  diff <- options.diff(
+  diff <- options_diff(
     options_file_name_a = "baseline.yaml",
     options_file_name_b = "clone.yaml",
     options_dir = tmp_dir,
@@ -294,7 +294,7 @@ test_that("value comparison tolerates YAML type noise but not missing keys", {
 
 # Help strings are rendered through cli::format_inline(), which also makes them
 # glue templates: a literal brace (e.g. `\usepackage{booktabs}`) is evaluated as
-# an R expression and aborts. That took out `options.help("output")` entirely, so
+# an R expression and aborts. That took out `options_help("output")` entirely, so
 # guard both the template content and the renderer.
 test_that("every template help string renders without a glue error", {
   box::use(artma / options / template[get_option_defs])

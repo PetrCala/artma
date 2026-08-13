@@ -128,7 +128,7 @@ print_option_tree <- function(defs) {
   cli::cli_h1("artma options")
   cli::cli_text(
     "{length(defs)} option{?s} in {length(unique(sections))} section{?s}. ",
-    "Call {.code artma::options.help('<name>')} with an option or a group name for details."
+    "Call {.code artma::options_help('<name>')} with an option or a group name for details."
   )
   cli::cat_line()
 
@@ -252,7 +252,7 @@ collect_deviations <- function(flat_options, defaults, leaf_names) {
 }
 
 #' @title Describe the user options files in a directory
-#' @description Builds the data frame behind `artma::options.list(details = TRUE)`.
+#' @description Builds the data frame behind `artma::options_list(details = TRUE)`.
 #' @param options_dir *\[character\]* Directory holding the user options files.
 #' @param template_path *\[character\]* Path to the options template.
 #' @return *\[data.frame\]* One row per options file.

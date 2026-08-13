@@ -22,7 +22,7 @@ box::use(testing / fixtures / index[FIXTURES])
 # Keys the code reads at runtime that are deliberately absent from the
 # template (the template reader strips the `temp` block, and the rest are
 # session state never stored in an options file):
-#   - temp.*            scratch values populated by options.load
+#   - temp.*            scratch values populated by options_load
 #   - options_file_name populated when an options file is loaded
 #   - welcome.shown     session flag set after the welcome screen is shown
 # Note: data.config, data.source_path, and data.expected_schema_columns are
@@ -192,7 +192,7 @@ test_that("template leaves and consumed option keys stay in parity", {
 })
 
 test_that("options files predating the cache.max_age rename reconcile to the default", {
-  box::use(artma[options.load, options.validate])
+  box::use(artma[options_load, options_validate])
 
   FIXTURES$local_cli_silence()
 
@@ -222,7 +222,7 @@ test_that("options files predating the cache.max_age rename reconcile to the def
   yaml::write_yaml(legacy, file.path(tmp_dir, "legacy.yaml"))
 
   # validation surfaces the renamed key as missing
-  errors <- options.validate(
+  errors <- options_validate(
     options_file_name = "legacy.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -236,7 +236,7 @@ test_that("options files predating the cache.max_age rename reconcile to the def
   expect_true("cache.max_age" %in% missing_names)
 
   # loading applies the template default; the legacy value does not leak in
-  loaded <- options.load(
+  loaded <- options_load(
     options_file_name = "legacy.yaml",
     options_dir = tmp_dir,
     template_path = template_path,

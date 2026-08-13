@@ -34,7 +34,7 @@ test_that("artma() writes report.html when output.report is enabled", {
   output_dir <- file.path(work, "out")
   dir.create(output_dir)
 
-  artma::options.create(
+  artma::options_create(
     options_file_name = "report_it.yaml",
     options_dir = options_dir,
     user_input = list(
@@ -78,7 +78,7 @@ test_that("artma() renders one report section per method for a real method set",
   output_dir <- file.path(work, "out")
   dir.create(output_dir)
 
-  artma::options.create(
+  artma::options_create(
     options_file_name = "golden_report.yaml",
     options_dir = options_dir,
     user_input = list(

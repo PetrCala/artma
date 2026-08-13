@@ -189,7 +189,7 @@ test_that("artma() writes a run.json describing exactly that run", {
   output_dir <- file.path(work, "out")
   dir.create(output_dir)
 
-  artma::options.create(
+  artma::options_create(
     options_file_name = "manifest_it.yaml",
     options_dir = options_dir,
     user_input = list(

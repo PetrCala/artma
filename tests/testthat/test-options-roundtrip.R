@@ -16,7 +16,7 @@ box::use(
 )
 
 # The flatten/nest pair is the choke point every options rewrite passes
-# through (options.create, options.fix, options.modify). A value shape it
+# through (options_create, options_fix, options_modify). A value shape it
 # fails to represent is silently dropped from the user's file.
 
 test_that("is_descendable only accepts fully named, non-empty lists", {

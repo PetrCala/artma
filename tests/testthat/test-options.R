@@ -1,7 +1,7 @@
 box::use(testthat[test_that, expect_equal, expect_true, expect_false, expect_null, expect_setequal, expect_length, expect_no_error, expect_error, expect_identical])
 
 test_that("options lifecycle helpers operate on user files", {
-  box::use(artma[options.create, options.copy, options.delete, options.fix, options.list, options.load, options.validate])
+  box::use(artma[options_create, options_copy, options_delete, options_fix, options_list, options_load, options_validate])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -43,7 +43,7 @@ test_that("options lifecycle helpers operate on user files", {
   yaml::write_yaml(valid_options, file.path(tmp_dir, "valid.yaml"))
   yaml::write_yaml(invalid_options, file.path(tmp_dir, "invalid.yaml"))
 
-  no_errors <- options.validate(
+  no_errors <- options_validate(
     options_file_name = "valid.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -51,7 +51,7 @@ test_that("options lifecycle helpers operate on user files", {
   )
   expect_length(no_errors, 0)
 
-  with_errors <- options.validate(
+  with_errors <- options_validate(
     options_file_name = "invalid.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -59,7 +59,7 @@ test_that("options lifecycle helpers operate on user files", {
   )
   expect_equal(with_errors[[1]]$type, "type_mismatch")
 
-  options.copy(
+  options_copy(
     options_file_name_from = "valid.yaml",
     options_file_name_to = "copied.yaml",
     options_dir = tmp_dir,
@@ -68,17 +68,17 @@ test_that("options lifecycle helpers operate on user files", {
   expect_true(file.exists(file.path(tmp_dir, "copied.yaml")))
 
   expect_setequal(
-    options.list(options_dir = tmp_dir),
+    options_list(options_dir = tmp_dir),
     c("copied.yaml", "invalid.yaml", "valid.yaml")
   )
 
-  verbose_names <- options.list(
+  verbose_names <- options_list(
     options_dir = tmp_dir,
     should_return_verbose_names = TRUE
   )
   expect_true("Primary" %in% verbose_names)
 
-  loaded <- options.load(
+  loaded <- options_load(
     options_file_name = "valid.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -96,7 +96,7 @@ test_that("options lifecycle helpers operate on user files", {
   })
   expect_null(getOption("artma.general.name"))
 
-  options.create(
+  options_create(
     options_file_name = "new.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -112,7 +112,7 @@ test_that("options lifecycle helpers operate on user files", {
   expect_equal(created$data$threshold, 8L)
   expect_true(created$data$enabled)
 
-  options.fix(
+  options_fix(
     options_file_name = "invalid.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -121,7 +121,7 @@ test_that("options lifecycle helpers operate on user files", {
   fixed <- yaml::read_yaml(file.path(tmp_dir, "invalid.yaml"))
   expect_equal(fixed$data$threshold, 10L)
 
-  options.delete(
+  options_delete(
     options_file_name = "copied.yaml",
     options_dir = tmp_dir,
     skip_confirmation = TRUE
@@ -129,8 +129,8 @@ test_that("options lifecycle helpers operate on user files", {
   expect_false(file.exists(file.path(tmp_dir, "copied.yaml")))
 })
 
-test_that("options.load accepts a file name without the .yaml suffix", {
-  box::use(artma[options.load])
+test_that("options_load accepts a file name without the .yaml suffix", {
+  box::use(artma[options_load])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -147,7 +147,7 @@ test_that("options.load accepts a file name without the .yaml suffix", {
   yaml::write_yaml(template, template_path)
   yaml::write_yaml(list(general = list(name = "Primary")), file.path(tmp_dir, "dummy_run.yaml"))
 
-  loaded <- options.load(
+  loaded <- options_load(
     options_file_name = "dummy_run",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -159,8 +159,8 @@ test_that("options.load accepts a file name without the .yaml suffix", {
   expect_equal(loaded$`artma.temp.file_name`, "dummy_run.yaml")
 })
 
-test_that("options.load backfills missing and invalid values with template defaults", {
-  box::use(artma[options.load])
+test_that("options_load backfills missing and invalid values with template defaults", {
+  box::use(artma[options_load])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -200,7 +200,7 @@ test_that("options.load backfills missing and invalid values with template defau
 
   loaded <- NULL
   expect_no_error({
-    loaded <- options.load(
+    loaded <- options_load(
       options_file_name = "stale.yaml",
       options_dir = tmp_dir,
       template_path = template_path,
@@ -214,8 +214,8 @@ test_that("options.load backfills missing and invalid values with template defau
   expect_equal(loaded$`artma.calc.se_zero_handling`, "stop")
 })
 
-test_that("options.load warns when it substitutes an invalid value", {
-  box::use(artma[options.load])
+test_that("options_load warns when it substitutes an invalid value", {
+  box::use(artma[options_load])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -240,7 +240,7 @@ test_that("options.load warns when it substitutes an invalid value", {
   withr::local_options(list("artma.verbose" = 3))
 
   msgs <- testthat::capture_messages(
-    options.load(
+    options_load(
       options_file_name = "stale.yaml",
       options_dir = tmp_dir,
       template_path = template_path,
@@ -252,8 +252,8 @@ test_that("options.load warns when it substitutes an invalid value", {
   expect_true(any(grepl("calc.precision_type", msgs, fixed = TRUE)))
 })
 
-test_that("options.load never writes to the options file", {
-  box::use(artma[options.load])
+test_that("options_load never writes to the options file", {
+  box::use(artma[options_load])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -276,7 +276,7 @@ test_that("options.load never writes to the options file", {
   before_content <- readLines(opts_path)
   before_mtime <- file.mtime(opts_path)
 
-  options.load(
+  options_load(
     options_file_name = "stale.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -288,8 +288,8 @@ test_that("options.load never writes to the options file", {
   expect_equal(file.mtime(opts_path), before_mtime)
 })
 
-test_that("options.load aborts when a required option without a default is missing", {
-  box::use(artma[options.load])
+test_that("options_load aborts when a required option without a default is missing", {
+  box::use(artma[options_load])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -306,7 +306,7 @@ test_that("options.load aborts when a required option without a default is missi
   )
 
   expect_error(
-    options.load(
+    options_load(
       options_file_name = "opts.yaml",
       options_dir = tmp_dir,
       template_path = template_path,
@@ -317,8 +317,8 @@ test_that("options.load aborts when a required option without a default is missi
   )
 })
 
-test_that("options.load parses the template only once per load", {
-  box::use(artma[options.load])
+test_that("options_load parses the template only once per load", {
+  box::use(artma[options_load])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -346,7 +346,7 @@ test_that("options.load parses the template only once per load", {
     .package = "yaml"
   )
 
-  options.load(
+  options_load(
     options_file_name = "opts.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -357,8 +357,8 @@ test_that("options.load parses the template only once per load", {
   expect_equal(n_template_reads, 1L)
 })
 
-test_that("options.load backfills defaults when loading without prefix", {
-  box::use(artma[options.load])
+test_that("options_load backfills defaults when loading without prefix", {
+  box::use(artma[options_load])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -386,7 +386,7 @@ test_that("options.load backfills defaults when loading without prefix", {
   )
   yaml::write_yaml(stale_options, file.path(tmp_dir, "stale-no-prefix.yaml"))
 
-  loaded <- options.load(
+  loaded <- options_load(
     options_file_name = "stale-no-prefix.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -399,8 +399,8 @@ test_that("options.load backfills defaults when loading without prefix", {
   expect_equal(loaded$data.winsorization_level, 0)
 })
 
-test_that("options.create honors nested user_input on the create-new path", {
-  box::use(artma[options.create])
+test_that("options_create honors nested user_input on the create-new path", {
+  box::use(artma[options_create])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -424,14 +424,14 @@ test_that("options.create honors nested user_input on the create-new path", {
 
   # Nested and flat dotted user_input must produce identical files; the
   # create-new branch previously dropped nested values silently (issue #321).
-  options.create(
+  options_create(
     options_file_name = "nested.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
     user_input = list(data = list(source_path = "some.csv")),
     should_validate = TRUE
   )
-  options.create(
+  options_create(
     options_file_name = "flat.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -447,8 +447,8 @@ test_that("options.create honors nested user_input on the create-new path", {
   expect_identical(nested, flat)
 })
 
-test_that("options.create generates mock data for the 'mock' source path shortcut", {
-  box::use(artma[options.create])
+test_that("options_create generates mock data for the 'mock' source path shortcut", {
+  box::use(artma[options_create])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -466,7 +466,7 @@ test_that("options.create generates mock data for the 'mock' source path shortcu
 
   withr::local_options(list("artma.verbose" = 1))
 
-  options.create(
+  options_create(
     options_file_name = "mock.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -484,7 +484,7 @@ test_that("options.create generates mock data for the 'mock' source path shortcu
 })
 
 test_that("a missing required option aborts naming the option, without a cli meta-error", {
-  box::use(artma[options.create])
+  box::use(artma[options_create])
 
   testthat::skip_if(interactive())
 
@@ -504,7 +504,7 @@ test_that("a missing required option aborts naming the option, without a cli met
   withr::local_options(list("artma.verbose" = 1))
 
   err <- expect_error(
-    options.create(
+    options_create(
       options_file_name = "missing.yaml",
       options_dir = tmp_dir,
       template_path = template_path,
@@ -519,8 +519,8 @@ test_that("a missing required option aborts naming the option, without a cli met
   expect_false(grepl("Could not evaluate", conditionMessage(err), fixed = TRUE))
 })
 
-test_that("options.modify merges a nested user_input into a list-type option without dropping siblings", {
-  box::use(artma[options.modify])
+test_that("options_modify merges a nested user_input into a list-type option without dropping siblings", {
+  box::use(artma[options_modify])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -580,7 +580,7 @@ test_that("options.modify merges a nested user_input into a list-type option wit
   )
   yaml::write_yaml(original, file.path(tmp_dir, "user.yaml"))
 
-  options.modify(
+  options_modify(
     options_file_name = "user.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -608,8 +608,8 @@ test_that("options.modify merges a nested user_input into a list-type option wit
   expect_true(modified$methods$p_hacking_tests$caliper_cluster)
 })
 
-test_that("options.modify leaves the file untouched when the modified options fail validation", {
-  box::use(artma[options.modify])
+test_that("options_modify leaves the file untouched when the modified options fail validation", {
+  box::use(artma[options_modify])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -631,7 +631,7 @@ test_that("options.modify leaves the file untouched when the modified options fa
   original_contents <- readLines(options_path)
 
   expect_error(
-    options.modify(
+    options_modify(
       options_file_name = "user.yaml",
       options_dir = tmp_dir,
       template_path = template_path,
@@ -643,8 +643,8 @@ test_that("options.modify leaves the file untouched when the modified options fa
   expect_identical(readLines(options_path), original_contents)
 })
 
-test_that("options.list includes files with the .yml suffix", {
-  box::use(artma[options.list])
+test_that("options_list includes files with the .yml suffix", {
+  box::use(artma[options_list])
 
   tmp_dir <- withr::local_tempdir()
 
@@ -658,13 +658,13 @@ test_that("options.list includes files with the .yml suffix", {
   )
 
   expect_setequal(
-    options.list(options_dir = tmp_dir),
+    options_list(options_dir = tmp_dir),
     c("long.yaml", "short.yml")
   )
 })
 
 test_that("options files are stamped with the package version on write", {
-  box::use(artma[options.create])
+  box::use(artma[options_create])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -680,7 +680,7 @@ test_that("options files are stamped with the package version on write", {
   )
   yaml::write_yaml(template, template_path)
 
-  options.create(
+  options_create(
     options_file_name = "stamped.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -697,7 +697,7 @@ test_that("options files are stamped with the package version on write", {
 })
 
 test_that("autonomy level from an options file is honored via the withr runtime path", {
-  box::use(artma[options.load])
+  box::use(artma[options_load])
   box::use(artma / libs / core / autonomy[get_autonomy_level])
 
   tmp_dir <- withr::local_tempdir()
@@ -718,7 +718,7 @@ test_that("autonomy level from an options file is honored via the withr runtime 
     file.path(tmp_dir, "auto.yaml")
   )
 
-  runtime_options <- options.load(
+  runtime_options <- options_load(
     options_file_name = "auto.yaml",
     options_dir = tmp_dir,
     template_path = template_path,
@@ -733,7 +733,7 @@ test_that("autonomy level from an options file is honored via the withr runtime 
 })
 
 test_that("a legacy numeric autonomy.level in an options file migrates cleanly on load", {
-  box::use(artma[options.load])
+  box::use(artma[options_load])
   box::use(artma / libs / core / autonomy[get_autonomy_level])
 
   tmp_dir <- withr::local_tempdir()
@@ -759,7 +759,7 @@ test_that("a legacy numeric autonomy.level in an options file migrates cleanly o
 
   loaded <- NULL
   expect_no_error({
-    loaded <- options.load(
+    loaded <- options_load(
       options_file_name = "legacy-autonomy.yaml",
       options_dir = tmp_dir,
       template_path = template_path,

@@ -200,7 +200,7 @@ validate_user_input <- function(user_input) {
 #' inline markup. That also makes them glue templates, so a literal brace in the
 #' text (`\usepackage{booktabs}`) is interpolated as an R expression and errors.
 #' Braces meant literally must be doubled in the template, but one malformed
-#' entry must not take down `options.help()` for a whole group, so fall back to
+#' entry must not take down `options_help()` for a whole group, so fall back to
 #' the raw text instead of propagating the error.
 #' @param help *\[character\]* The help text to print
 #' @return `NULL`

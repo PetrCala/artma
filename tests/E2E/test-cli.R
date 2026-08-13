@@ -22,7 +22,7 @@ dir.create(options_dir)
 output_dir <- tempfile("artma-cli-output-")
 dir.create(output_dir)
 
-artma::options.create(
+artma::options_create(
   options_file_name = "cli.yaml",
   options_dir = options_dir,
   user_input = list(
