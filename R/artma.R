@@ -22,7 +22,9 @@
 #' @return *\[list\]* A named list containing results from each method, indexed by
 #'   method name. The structure of each result depends on the specific method.
 #'   Methods that fail are omitted from the list; their names and error messages
-#'   are attached as the `failed_methods` attribute.
+#'   are attached as the `failed_methods` attribute. The `run_info` attribute
+#'   carries the run's identity: the methods requested, the effective seed, and
+#'   the files each method wrote.
 #'
 #' @details
 #' The `artma()` function is the primary way to interact with the artma package.
@@ -73,6 +75,20 @@
 #' `general.seed` to `NA` derives the run seed from the session RNG instead,
 #' so calling `set.seed()` before `artma()` governs reproducibility the way
 #' it does for any stochastic R function.
+#'
+#' ## Run Manifest
+#'
+#' Every run that saves results writes a `run.json` into its output directory:
+#' when it ran, the options file and data source behind it, the methods
+#' requested, run, skipped and failed, the effective seed, and the files it
+#' wrote. The file list is recorded as the files are written, so it describes
+#' this run rather than the accumulated contents of the directory, and it is
+#' what the HTML report uses to find each method's plots.
+#'
+#' The manifest is overwritten on every run into the same output directory: it
+#' always describes the latest run, never a history. Runs driven by different
+#' options files already get their own output directory, so keep a run by
+#' copying its directory or by pointing `output.dir` somewhere per-run.
 #'
 #' ## Method Failures
 #'
@@ -142,9 +158,13 @@ artma <- function(
     box::use(
       artma / data / index[prepare_data],
       artma / libs / core / utils[get_verbosity],
+      artma / libs / infrastructure / output_files[
+        begin_output_file_capture, end_output_file_capture
+      ],
       artma / output / export[
-        resolve_output_dir, resolve_graphics_dir, ensure_output_dirs, export_results
-      ]
+        resolve_output_dir, ensure_output_dirs, export_results
+      ],
+      artma / output / run_manifest[manifest_plot_index, write_run_manifest]
     )
 
     # Ensure output directories exist before methods run (graphics export
@@ -155,6 +175,11 @@ artma <- function(
       output_dir <- resolve_output_dir()
       ensure_output_dirs(output_dir)
     }
+
+    # Record every file this run writes, so the manifest describes the run
+    # rather than whatever has accumulated in the output directory.
+    run_capture <- begin_output_file_capture()
+    on.exit(end_output_file_capture(run_capture), add = TRUE)
 
     # Prepare data: use provided data or load from options
     if (is.null(data)) {
@@ -206,7 +231,7 @@ artma <- function(
             render_report(
               results = results,
               output_file = file.path(output_dir, "report.html"),
-              graphics_dir = resolve_graphics_dir(output_dir),
+              plot_index = manifest_plot_index(attr(results, "run_info")$output_files),
               report_meta = gather_report_meta(),
               open = FALSE
             )
@@ -218,6 +243,14 @@ artma <- function(
           }
         )
       }
+
+      # Close the capture last, so the manifest lists the exported tables and
+      # the report alongside the graphics the methods wrote.
+      write_run_manifest(
+        results,
+        output_dir = output_dir,
+        run_files = end_output_file_capture(run_capture)
+      )
     }
 
     if (isTRUE(save_results) && isTRUE(open_results) && interactive()) {
@@ -292,6 +325,7 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
     artma / const[CONST],
     artma / libs / core / string[pluralize],
     artma / libs / core / utils[get_verbosity],
+    artma / libs / infrastructure / output_files[record_output_files],
     artma / modules / method_execution[
       build_rng_streams,
       execute_method_layer,
@@ -401,6 +435,7 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
   succeeded_methods <- character()
   failed_methods <- character()
   skipped_methods <- character()
+  method_output_files <- list()
 
   extra_args <- list(...)
 
@@ -545,6 +580,14 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
 
       replay_captured_output(outcome$output)
 
+      # Files a method wrote are recorded per method (for the report's plot
+      # index) and replayed into the enclosing run capture, which never saw
+      # them when the method ran in a forked worker.
+      if (length(outcome$files) > 0L) {
+        method_output_files[[method_name]] <- unique(as.character(outcome$files))
+        record_output_files(outcome$files)
+      }
+
       if (!is.null(outcome$error)) {
         failed_methods[[method_name]] <- outcome$error
         if (get_verbosity() >= 2) {
@@ -603,6 +646,15 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
   if (length(skipped_methods) > 0L) {
     attr(results, "skipped_methods") <- skipped_methods
   }
+
+  # Run identity, for the per-run manifest: what was asked for, which seed the
+  # run settled on, and which files each method wrote. One attribute rather
+  # than three, so printing a result list stays readable.
+  attr(results, "run_info") <- list(
+    methods_requested = methods,
+    seed = run_seed,
+    output_files = method_output_files
+  )
 
   if ((length(failed_methods) > 0L || length(skipped_methods) > 0L) && get_verbosity() >= 3) {
     cli::cli_h3("Method run summary")

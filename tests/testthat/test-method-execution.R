@@ -405,3 +405,31 @@ test_that("execute_method_layer captures output from forked workers", {
   expect_true(any(grepl("running a", outcomes[[1L]]$output, fixed = TRUE)))
   expect_true(any(grepl("running b", outcomes[[2L]]$output, fixed = TRUE)))
 })
+
+test_that("execute_method_layer returns the files each method wrote", {
+  box::use(
+    artma / libs / infrastructure / output_files[record_output_file],
+    artma / modules / method_execution[execute_method_layer]
+  )
+
+  work <- withr::local_tempdir()
+
+  run_one <- function(name) {
+    path <- file.path(work, paste0(name, ".png"))
+    file.create(path)
+    record_output_file(path)
+    name
+  }
+
+  # Sequentially and in forks alike: a forked child records into its own copy
+  # of the capture stack, so the paths only reach the parent through the
+  # outcome, and the run manifest would otherwise miss every parallel method.
+  for (workers in c(1L, 2L)) {
+    skip_if(workers > 1L && !can_fork(), "forking is unavailable")
+
+    outcomes <- execute_method_layer(c("a", "b"), run_one = run_one, workers = workers)
+
+    expect_equal(basename(outcomes[[1L]]$files), "a.png")
+    expect_equal(basename(outcomes[[2L]]$files), "b.png")
+  }
+})

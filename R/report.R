@@ -17,6 +17,13 @@
 #' @param open *\[logical, optional\]* Whether to open the report in a browser
 #'   after writing it. Only ever honoured in an interactive session. Defaults to
 #'   `interactive()`.
+#'
+#' @details
+#' Plots come from the `run.json` manifest a run leaves in its output directory:
+#' it records which files each method wrote, so the report embeds exactly those.
+#' A results directory without a manifest (written before manifests existed, or
+#' by a run with `output.save_results` off) yields a report with tables only.
+#'
 #' @return *\[character\]* The path of the written report file (invisibly).
 #' @export
 #' @examples
@@ -29,7 +36,7 @@
 #' }
 report.render <- function(results, output_file = NULL, open = interactive()) {
   box::use(
-    artma / output / export[resolve_graphics_dir],
+    artma / output / run_manifest[manifest_plot_index, read_run_manifest],
     artma / report / render[gather_report_meta, render_report]
   )
 
@@ -54,12 +61,18 @@ report.render <- function(results, output_file = NULL, open = interactive()) {
     output_dir <- dirname(output_file)
   }
 
-  graphics_dir <- resolve_graphics_dir(output_dir)
+  # The manifest lives with the run's outputs. When the report is written
+  # somewhere else entirely, fall back to the last run's directory, which is
+  # the run the results in hand came from.
+  manifest <- read_run_manifest(output_dir)
+  if (is.null(manifest)) {
+    manifest <- read_run_manifest(read_last_export_dir()) # nolint: box_usage_linter. # Package function from R/results.R
+  }
 
   render_report(
     results = results,
     output_file = output_file,
-    graphics_dir = graphics_dir,
+    plot_index = manifest_plot_index(manifest),
     report_meta = gather_report_meta(),
     open = open
   )

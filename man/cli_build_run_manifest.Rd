@@ -15,7 +15,13 @@ cli_build_run_manifest(results)
 \description{
 Summarise an \code{\link[=artma]{artma()}} result into the manifest emitted in
 \code{--json} mode: methods that ran, methods that were skipped or failed (with
-reasons), the resolved output directory, the files exported there, and the
-package version.
+reasons), the resolved output directory, the files exported there, the
+effective seed and the package version.
+
+The run's own \code{run.json} is the source of truth, so the CLI reports the
+same run identity as the R API rather than whatever has accumulated in the
+output directory. A run that wrote no manifest (\code{output.save_results} off,
+or \code{jsonlite} unavailable) falls back to what the results object carries,
+with an empty file list.
 }
 \keyword{internal}

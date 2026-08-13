@@ -37,6 +37,22 @@ record_output_file <- function(path) {
   invisible(NULL)
 }
 
+#' @title Record several files at once
+#' @description Vectorised `record_output_file()`, for replaying a set of paths
+#'   into the current captures: the files a forked method worker wrote (which
+#'   the parent's capture never saw) and the files a cache hit did not rewrite.
+#' @param paths *\[character\]* Paths of the files that were written.
+#' @return `NULL`, invisibly.
+record_output_files <- function(paths) {
+  if (length(paths) == 0L) {
+    return(invisible(NULL))
+  }
+  for (path in as.character(paths)) {
+    record_output_file(path)
+  }
+  invisible(NULL)
+}
+
 #' @title Start recording output files
 #' @description Open a capture frame. Frames nest: a recorded path is added to
 #'   every open frame, so an outer cached stage sees the files written by the
@@ -81,5 +97,6 @@ box::export(
   begin_output_file_capture,
   end_output_file_capture,
   record_output_file,
+  record_output_files,
   recorded_output_files_missing
 )

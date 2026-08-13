@@ -179,3 +179,57 @@ test_that("cli.run methods dispatches to methods.list without error", {
   res <- run_cli("methods")
   expect_equal(res$code, 0L)
 })
+
+# --- Run manifest ----------------------------------------------------------
+
+# Point the marker that names the last results directory at a temp directory,
+# and return that directory.
+local_export_dir <- function(.local_envir = parent.frame()) {
+  cache_dir <- withr::local_tempdir(.local_envir = .local_envir)
+  withr::local_envvar(R_USER_CACHE_DIR = cache_dir, .local_envir = .local_envir)
+
+  output_dir <- withr::local_tempdir(.local_envir = .local_envir)
+  marker_dir <- tools::R_user_dir("artma", which = "cache")
+  dir.create(marker_dir, recursive = TRUE, showWarnings = FALSE)
+  writeLines(output_dir, file.path(marker_dir, "last_export_dir"))
+  output_dir
+}
+
+test_that("the CLI manifest reports the run, not the output directory's contents", {
+  testthat::skip_if_not_installed("jsonlite")
+  box::use(artma / output / run_manifest[write_run_manifest])
+
+  output_dir <- local_export_dir()
+  dir.create(file.path(output_dir, "tables"))
+  written <- file.path(output_dir, "tables", "fma.csv")
+  file.create(written)
+  # Left behind by an earlier run into the same directory.
+  file.create(file.path(output_dir, "tables", "stale.csv"))
+
+  results <- list(fma = list(tables = list(), plots = list(), meta = list()))
+  attr(results, "skipped_methods") <- c(bma = "missing suggested package: BMS")
+  attr(results, "run_info") <- list(methods_requested = c("fma", "bma"), seed = 77L)
+  write_run_manifest(results, output_dir = output_dir, run_files = written)
+
+  manifest <- artma:::cli_build_run_manifest(list())
+
+  expect_equal(as.character(manifest$methods_run), "fma")
+  expect_equal(manifest$methods_skipped$bma, "missing suggested package: BMS")
+  expect_equal(manifest$seed, 77)
+  expect_equal(basename(manifest$exported_files), "fma.csv")
+})
+
+test_that("the CLI manifest falls back to the results when no run.json exists", {
+  output_dir <- local_export_dir()
+
+  results <- list(fma = list())
+  attr(results, "failed_methods") <- c(bma = "boom")
+  attr(results, "run_info") <- list(methods_requested = "fma", seed = 5L)
+
+  manifest <- artma:::cli_build_run_manifest(results)
+
+  expect_equal(as.character(manifest$methods_run), "fma")
+  expect_equal(manifest$methods_skipped$bma, "boom")
+  expect_equal(manifest$output_dir, output_dir)
+  expect_equal(length(manifest$exported_files), 0L)
+})

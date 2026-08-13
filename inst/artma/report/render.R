@@ -13,13 +13,6 @@ box::use(
   artma / libs / formatting / results[format_number]
 )
 
-# Filename base-names some methods use for their exported PNGs differ from the
-# method name. Map the exceptions so the report can find their graphics.
-PLOT_NAME_ALIASES <- list(
-  prima_facie_graphs = "prima_facie",
-  nonlinear_tests = "stem"
-)
-
 #' Escape HTML-significant characters in a scalar or vector of strings.
 #' @param x *\[character\]* Text to escape.
 #' @return *\[character\]* Escaped text.
@@ -164,35 +157,30 @@ render_table_html <- function(df, round_to) {
   )
 }
 
-#' Locate the PNG files a method exported.
+#' Look up the PNG files a method exported.
 #'
-#' Matches files in `graphics_dir` whose stem equals, or begins with, the method
-#' name (or one of its known base-name aliases). Returns an empty vector when the
-#' directory is absent or nothing matches, so callers can degrade gracefully.
+#' Reads the run's plot index (the paths the run recorded as it wrote them, see
+#' `artma/output/run_manifest`) rather than guessing from file names, so a
+#' method whose PNGs are named after something other than itself still gets its
+#' plots, and plots left behind by an earlier run never leak in. Returns an
+#' empty vector when the method has no entry, so callers degrade gracefully.
 #'
 #' @param method_name *\[character\]* The method name.
-#' @param graphics_dir *\[character or NULL\]* Directory the run wrote graphics to.
-#' @return *\[character\]* Absolute paths to matching PNG files.
+#' @param plot_index *\[list or NULL\]* Named list of PNG paths per method.
+#' @return *\[character\]* Absolute paths to the method's PNG files.
 #' @keywords internal
-resolve_method_pngs <- function(method_name, graphics_dir) {
-  if (is.null(graphics_dir) || !dir.exists(graphics_dir)) {
+resolve_method_pngs <- function(method_name, plot_index) {
+  if (!is.list(plot_index) || length(plot_index) == 0L) {
     return(character())
   }
 
-  prefixes <- unique(c(method_name, PLOT_NAME_ALIASES[[method_name]]))
-  files <- list.files(graphics_dir, pattern = "\\.png$", full.names = TRUE)
-  if (length(files) == 0L) {
+  files <- plot_index[[method_name]]
+  if (is.null(files)) {
     return(character())
   }
 
-  stems <- tools::file_path_sans_ext(basename(files))
-  keep <- vapply(stems, function(stem) {
-    any(vapply(prefixes, function(p) {
-      identical(stem, p) || startsWith(stem, paste0(p, "_"))
-    }, logical(1)))
-  }, logical(1))
-
-  sort(files[keep])
+  files <- as.character(unlist(files, use.names = FALSE))
+  sort(unique(files[file.exists(files)]))
 }
 
 #' Embed a PNG file as a base64 data URI.
@@ -270,11 +258,11 @@ scalar_skip_reason <- function(value) {
 #' Build the inner HTML of a method section.
 #' @param result *\[list\]* A `new_method_result`-shaped list.
 #' @param method_name *\[character\]* The method name.
-#' @param graphics_dir *\[character or NULL\]* Directory holding exported graphics.
+#' @param plot_index *\[list or NULL\]* Named list of PNG paths per method.
 #' @param round_to *\[integer\]* Number of decimals for numeric columns.
 #' @return *\[character\]* The section body HTML.
 #' @keywords internal
-build_section_body <- function(result, method_name, graphics_dir, round_to) {
+build_section_body <- function(result, method_name, plot_index, round_to) {
   # A method that ran but skipped itself records the reason under
   # meta$skip_reason. meta$skipped_models (partial skips) does not suppress the
   # section, so it is deliberately not read here.
@@ -310,7 +298,7 @@ build_section_body <- function(result, method_name, graphics_dir, round_to) {
   }
 
   plots_html <- render_plots_html(
-    resolve_method_pngs(method_name, graphics_dir),
+    resolve_method_pngs(method_name, plot_index),
     has_plots = count_plots(result) > 0L
   )
   if (nzchar(plots_html)) {
@@ -371,14 +359,15 @@ gather_report_meta <- function() {
 #' @param report_meta *\[list, optional\]* Named strings for the header:
 #'   `package_version`, `render_date`, `data_source`, `options_file`,
 #'   `autonomy_level`. Missing entries render as "Not recorded".
-#' @param graphics_dir *\[character or NULL, optional\]* Directory the run wrote
-#'   its PNG graphics to. When `NULL`, no plots are embedded.
+#' @param plot_index *\[list or NULL, optional\]* Named list mapping each method
+#'   to the PNG files it wrote, as built by `manifest_plot_index()` from the
+#'   run's recorded outputs. When `NULL`, no plots are embedded.
 #' @param round_to *\[integer, optional\]* Number of decimals for numeric table
 #'   cells. Defaults to the `artma.output.number_of_decimals` option (3).
 #' @return *\[character\]* The complete HTML document as a single string.
 build_report_html <- function(results,
                               report_meta = list(),
-                              graphics_dir = NULL,
+                              plot_index = NULL,
                               round_to = NULL) {
   if (!is.list(results)) {
     cli::cli_abort("`results` must be the named list returned by artma().")
@@ -439,7 +428,7 @@ build_report_html <- function(results,
       next
     }
     title <- humanize_name(method_name)
-    body <- build_section_body(result, method_name, graphics_dir, round_to)
+    body <- build_section_body(result, method_name, plot_index, round_to)
     entry <- build_section(make_anchor(method_name), title, body, section_tpl)
     toc_lines <- c(toc_lines, entry$toc)
     section_html <- c(section_html, entry$html)
@@ -503,8 +492,8 @@ build_report_html <- function(results,
 #'
 #' @param results *\[list\]* Named list of method results from `artma()`.
 #' @param output_file *\[character\]* Absolute path of the HTML file to write.
-#' @param graphics_dir *\[character or NULL, optional\]* Directory holding the
-#'   run's exported graphics. Defaults to `NULL` (no plots embedded).
+#' @param plot_index *\[list or NULL, optional\]* The run's plot index (see
+#'   [build_report_html()]). Defaults to `NULL` (no plots embedded).
 #' @param report_meta *\[list, optional\]* Header metadata (see
 #'   [build_report_html()]).
 #' @param round_to *\[integer, optional\]* Decimals for numeric table cells.
@@ -513,11 +502,14 @@ build_report_html <- function(results,
 #' @return *\[character\]* The path of the written file (invisibly).
 render_report <- function(results,
                           output_file,
-                          graphics_dir = NULL,
+                          plot_index = NULL,
                           report_meta = list(),
                           round_to = NULL,
                           open = FALSE) {
-  box::use(artma / libs / core / utils[get_verbosity])
+  box::use(
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / infrastructure / output_files[record_output_file]
+  )
 
   if (!is.character(output_file) || length(output_file) != 1L || !nzchar(output_file)) {
     cli::cli_abort("`output_file` must be a single non-empty file path.")
@@ -526,12 +518,13 @@ render_report <- function(results,
   html <- build_report_html(
     results,
     report_meta = report_meta,
-    graphics_dir = graphics_dir,
+    plot_index = plot_index,
     round_to = round_to
   )
 
   dir.create(dirname(output_file), recursive = TRUE, showWarnings = FALSE)
   writeLines(html, output_file, useBytes = TRUE)
+  record_output_file(output_file)
 
   if (get_verbosity() >= 3) {
     cli::cli_alert_success("HTML report written to {.path {output_file}}")

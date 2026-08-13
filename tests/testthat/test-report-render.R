@@ -140,19 +140,37 @@ test_that("build_report_html ignores skipped_models, which are partial skips", {
   expect_match(html, "ols", fixed = TRUE)
 })
 
-test_that("resolve_method_pngs matches by method name and alias", {
+test_that("resolve_method_pngs reads the run's plot index, not the file names", {
   gdir <- local_tempdir()
   file.create(file.path(gdir, "funnel_plot_effect_precision.png"))
-  file.create(file.path(gdir, "prima_facie_1.png"))
-  file.create(file.path(gdir, "unrelated.png"))
+  # A method whose PNG is named after nothing in particular still gets it: the
+  # index records what the run wrote, so no name matching is involved.
+  file.create(file.path(gdir, "stem_funnel.png"))
+  file.create(file.path(gdir, "left_over_from_an_earlier_run.png"))
 
-  funnel <- resolve_method_pngs("funnel_plot", gdir)
-  expect_equal(basename(funnel), "funnel_plot_effect_precision.png")
+  index <- list(
+    funnel_plot = file.path(gdir, "funnel_plot_effect_precision.png"),
+    nonlinear_tests = file.path(gdir, "stem_funnel.png")
+  )
 
-  prima <- resolve_method_pngs("prima_facie_graphs", gdir)
-  expect_equal(basename(prima), "prima_facie_1.png")
+  expect_equal(
+    basename(resolve_method_pngs("funnel_plot", index)),
+    "funnel_plot_effect_precision.png"
+  )
+  expect_equal(
+    basename(resolve_method_pngs("nonlinear_tests", index)),
+    "stem_funnel.png"
+  )
 
+  # Nothing that the run did not record is ever picked up.
+  expect_equal(length(resolve_method_pngs("bma", index)), 0L)
   expect_equal(length(resolve_method_pngs("funnel_plot", NULL)), 0L)
+})
+
+test_that("resolve_method_pngs drops indexed files that have since disappeared", {
+  gdir <- local_tempdir()
+  index <- list(funnel_plot = file.path(gdir, "gone.png"))
+  expect_equal(length(resolve_method_pngs("funnel_plot", index)), 0L)
 })
 
 # A tiny valid PNG (1x1 transparent) written to disk for embedding tests.
@@ -170,7 +188,8 @@ write_tiny_png <- function(path) {
 
 test_that("build_report_html embeds plots as base64 data URIs", {
   gdir <- local_tempdir()
-  write_tiny_png(file.path(gdir, "funnel_plot_effect_precision.png"))
+  png_path <- file.path(gdir, "funnel_plot_effect_precision.png")
+  write_tiny_png(png_path)
 
   results <- list(
     funnel_plot = list(
@@ -179,7 +198,7 @@ test_that("build_report_html embeds plots as base64 data URIs", {
       meta = list()
     )
   )
-  html <- build_report_html(results, graphics_dir = gdir)
+  html <- build_report_html(results, plot_index = list(funnel_plot = png_path))
 
   expect_match(html, "src=\"data:image/png;base64,", fixed = TRUE)
 })
@@ -192,13 +211,17 @@ test_that("build_report_html notes absent plot files instead of erroring", {
       meta = list()
     )
   )
-  html <- build_report_html(results, graphics_dir = local_tempdir())
+  html <- build_report_html(
+    results,
+    plot_index = list(funnel_plot = file.path(local_tempdir(), "never_written.png"))
+  )
   expect_match(html, "were not found", fixed = TRUE)
 })
 
 test_that("the rendered report is fully self-contained", {
   gdir <- local_tempdir()
-  write_tiny_png(file.path(gdir, "funnel_plot_effect_precision.png"))
+  png_path <- file.path(gdir, "funnel_plot_effect_precision.png")
+  write_tiny_png(png_path)
 
   results <- list(
     funnel_plot = list(
@@ -207,7 +230,7 @@ test_that("the rendered report is fully self-contained", {
       meta = list()
     )
   )
-  html <- build_report_html(results, graphics_dir = gdir)
+  html <- build_report_html(results, plot_index = list(funnel_plot = png_path))
 
   # No external network references of any kind.
   expect_no_match(html, "http://", fixed = TRUE)

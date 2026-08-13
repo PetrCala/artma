@@ -160,20 +160,26 @@ table_caption <- function(name) {
 #' @param output_dir *\[character\]* The base output directory.
 #' @param formats *\[character\]* The formats to write, from `resolve_table_formats()`.
 save_table <- function(df, name, output_dir, formats = resolve_table_formats()) {
+  box::use(artma / libs / infrastructure / output_files[record_output_file])
+
   tables_dir <- file.path(output_dir, "tables")
 
   if ("csv" %in% formats) {
-    utils::write.csv(df, file = file.path(tables_dir, paste0(name, ".csv")), row.names = FALSE)
+    csv_path <- file.path(tables_dir, paste0(name, ".csv"))
+    utils::write.csv(df, file = csv_path, row.names = FALSE)
+    record_output_file(csv_path)
   }
 
   if ("tex" %in% formats) {
     box::use(artma / output / latex[write_latex_table])
+    tex_path <- file.path(tables_dir, paste0(name, ".tex"))
     write_latex_table(
       df,
-      path = file.path(tables_dir, paste0(name, ".tex")),
+      path = tex_path,
       caption = table_caption(name),
       label = paste0("tab:", name)
     )
+    record_output_file(tex_path)
   }
 
   invisible()

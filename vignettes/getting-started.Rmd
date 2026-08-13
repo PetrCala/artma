@@ -214,6 +214,24 @@ effect_results <- results$effect_summary_stats
 str(effect_results)
 ```
 
+### What a Run Leaves on Disk
+
+A run that saves results writes them into its output directory (`tables/` for
+the exported tables, `graphics/` for the plots) together with a `run.json`
+manifest describing that run: when it happened, which options file and data
+source it used, the methods requested, run, skipped and failed, the effective
+seed, and the files it wrote.
+
+The file list is recorded as the files are written, so it describes the run
+rather than everything that has piled up in the directory. That is what the
+HTML report uses to find each method's plots, and what the CLI reports in
+`--json` mode.
+
+`run.json` is overwritten by every run into the same output directory: it
+always describes the latest run, never a history. Runs driven by different
+options files already get their own output directory. To keep an older run,
+copy its directory, or point `output.dir` at a per-run location.
+
 ## Choosing Methods
 
 ### Discovering Available Methods

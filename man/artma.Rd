@@ -38,7 +38,9 @@ after exporting results. Defaults to \code{FALSE}.}
 \emph{[list]} A named list containing results from each method, indexed by
 method name. The structure of each result depends on the specific method.
 Methods that fail are omitted from the list; their names and error messages
-are attached as the \code{failed_methods} attribute.
+are attached as the \code{failed_methods} attribute. The \code{run_info} attribute
+carries the run's identity: the methods requested, the effective seed, and
+the files each method wrote.
 }
 \description{
 Main entry point for the artma package. This function orchestrates the complete
@@ -97,6 +99,21 @@ sequential, and regardless of which other methods ran alongside. Setting
 \code{general.seed} to \code{NA} derives the run seed from the session RNG instead,
 so calling \code{set.seed()} before \code{artma()} governs reproducibility the way
 it does for any stochastic R function.
+}
+
+\subsection{Run Manifest}{
+
+Every run that saves results writes a \code{run.json} into its output directory:
+when it ran, the options file and data source behind it, the methods
+requested, run, skipped and failed, the effective seed, and the files it
+wrote. The file list is recorded as the files are written, so it describes
+this run rather than the accumulated contents of the directory, and it is
+what the HTML report uses to find each method's plots.
+
+The manifest is overwritten on every run into the same output directory: it
+always describes the latest run, never a history. Runs driven by different
+options files already get their own output directory, so keep a run by
+copying its directory or by pointing \code{output.dir} somewhere per-run.
 }
 
 \subsection{Method Failures}{
