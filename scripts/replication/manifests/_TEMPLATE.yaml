@@ -1,0 +1,86 @@
+# Replication manifest template.
+#
+# One file per thesis. Copy to `<id>.yaml` and fill in. Every field under
+# `reported` is transcribed by hand from the thesis PDF -- that transcription is
+# the only part of this pipeline a machine cannot do for you, and it is what the
+# comparison ultimately rests on. Always record `source` so a reviewer can find
+# the number in the original text.
+
+# --- Identity -----------------------------------------------------------------
+id: author_year_topic # unique slug; also the output file stem
+title: "Full Thesis Title: A Meta-Analysis"
+author: "Firstname Lastname"
+supervisor: "Tomas Havranek" # or "Zuzana Havrankova"
+degree: master # bachelor | master
+year: 2025
+thesis_url: "https://dspace.cuni.cz/handle/20.500.11956/XXXXXX"
+
+# --- Data ---------------------------------------------------------------------
+# `url` is fetched by run_replication.R when the local file is absent.
+# `sha256` is optional but strongly recommended: it pins the exact dataset the
+# comparison was built against, so a silently re-uploaded file cannot change
+# your results without you noticing.
+data:
+  url: "https://meta-analysis.cz/.../dataset.xlsx"
+  file: "author_year_topic.xlsx" # resolved under scripts/replication/data/
+  sha256: ~ # e.g. "9f86d081884c7d65..."
+  sheet: ~ # Excel sheet name or index, if applicable
+
+# Author-supplied replication code, if any. Not executed -- recorded so the
+# comparison can note whether a third column (the author's own code output)
+# is even obtainable.
+code:
+  url: ~
+  language: ~ # R | Stata | Python
+
+# --- Column mapping -----------------------------------------------------------
+# artma canonical name -> column name in the source file.
+# `effect`, `se` and `study_id` are required by most methods; the rest are
+# optional and only needed by the methods that declare them.
+columns:
+  effect: "effect"
+  se: "se"
+  study_id: "study"
+  # n_obs: "obs"
+  # t_stat: "t"
+
+# --- Methods to run -----------------------------------------------------------
+# See `artma::methods_list()`. Keep this to the methods the thesis actually
+# reports, otherwise the comparison table fills with rows that have no
+# author-side counterpart.
+methods:
+  - effect_summary_stats
+  - linear_tests
+  - nonlinear_tests
+
+# --- Author's reported numbers ------------------------------------------------
+# Each entry pins ONE comparable quantity and says where artma's equivalent
+# lives in the estimates frame. `artma_model` and `artma_term` are matched
+# against the `model` and `term` columns of the method's estimates output;
+# both accept a regular expression, anchored automatically.
+#
+# Leave `std_error` as ~ when the thesis reports only a point estimate.
+reported:
+  - label: "Mean effect (unweighted)"
+    artma_method: effect_summary_stats
+    artma_model: "all"
+    artma_term: "mean"
+    estimate: 0.000
+    std_error: ~
+    source: "Table 4.1, p. 28"
+
+  - label: "FAT (publication bias)"
+    artma_method: linear_tests
+    artma_model: "OLS"
+    artma_term: "se"
+    estimate: 0.000
+    std_error: 0.000
+    source: "Table 5.2, p. 34"
+
+  - label: "PET (effect beyond bias)"
+    artma_method: linear_tests
+    artma_model: "OLS"
+    artma_term: "(Intercept)"
+    estimate: 0.000
+    std_error: 0.000
+    source: "Table 5.2, p. 34"
