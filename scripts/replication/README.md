@@ -16,6 +16,7 @@ Rscript scripts/replication/run_replication.R              # every manifest
 Rscript scripts/replication/run_replication.R --only=<id>  # a single thesis
 Rscript scripts/replication/run_replication.R --list       # list the manifests
 Rscript scripts/replication/test_harness.R                 # harness unit tests
+Rscript scripts/replication/audit_estimators.R             # artma vs reference implementations
 ```
 
 `run_replication.R` writes:
@@ -236,6 +237,80 @@ column mapping or the filter is wrong and every other number will be too.
 
 The default tolerance is deliberately loose because theses print rounded tables;
 tighten it per claim when a thesis reports more digits.
+
+## What the estimator audit found
+
+`audit_estimators.R` compares artma against from-scratch reference
+implementations rather than against the theses, so it separates "artma is wrong"
+from "the thesis is wrong". Current result:
+
+```
+120 comparisons over 10 datasets
+  be / fe / ols / ols_precision_weighted / ols_study_weighted / re   20/20 agree each
+No disagreements: every artma linear estimator reproduces the reference exactly.
+```
+
+Specifically verified:
+
+- All six linear estimators match base R / `plm` implementations of the Stata
+  specifications to machine precision, on every dataset.
+- The fixed-effects "effect beyond bias" equals Stata's `xtreg, fe` `_cons`
+  (`mean(y) - b*mean(x)`). artma reaches it via `plm::within_intercept()`; the
+  two agree exactly. This matters because a within estimator has no natural
+  intercept, so it is a plausible place for a bug — there isn't one.
+- Clustered standard errors from `sandwich`'s HC1 equal Stata's `cluster()`
+  finite-sample convention (relative difference ~1e-16).
+- `ols_study_weighted`'s bootstrap uses a dedicated `1/study_size` path rather
+  than the squared-weight convention the other weighted models use, which is
+  correct and easy to get wrong.
+
+All 26 `linear_tests` mismatches against the theses have artma equal to the
+independent reference. None is an artma defect.
+
+### One genuine finding: the IV instrument is chosen by first-stage strength
+
+`exogeneity_tests` defaults to `iv_instrument: "automatic"`, which builds four
+candidates — `1/sqrt(n_obs)`, `1/n_obs`, `1/n_obs^2`, `log(n_obs)` — and picks
+whichever has the strongest first-stage F. `1/sqrt(n_obs)` is used only to break
+ties (`WEAK_INSTRUMENT_TIEBREAK`).
+
+The literature does not do this. The practitioner's guide motivates the
+instrument theoretically (precision scales with `1/sqrt(N)`), and the published
+replication packages hard-code it: `ivreg pcc (sepcc = root)`,
+`gen inv_sqrt_nobs = sqrt(inv_nobs)`, `1/sqrt(nobs)`.
+
+On Simpartl (2023), which reports an IV column:
+
+| Instrument | FAT | PET |
+| --- | ---: | ---: |
+| thesis, Table 1 | 0.376 | −0.088 |
+| `1/sqrt(n_obs)` (reference) | 0.347 | **−0.08806** |
+| `1/n_obs` (what artma picks) | 0.109 | −0.066 |
+| `log(n_obs)` | 0.574 | −0.109 |
+
+The reference instrument reproduces the reported PET to four decimals; artma's
+choice does not. Two problems, one practical and one methodological:
+
+1. It silently departs from the field standard, so an artma IV column is not
+   comparable to a published one.
+2. Selecting an instrument by its in-sample first-stage F is a specification
+   search over the same data used for inference. It biases toward strong-looking
+   first stages and understates the resulting uncertainty — the pathology IV
+   exists to avoid. The code carefully argues against selecting on R-squared,
+   Wu-Hausman and Sargan, but selecting on F is subject to the same objection.
+
+Suggested change: default `iv_instrument` to `1/sqrt(n_obs)` and keep
+`"automatic"` as an explicit opt-in for exploration.
+
+### A softer one: winsorization is on by default
+
+`data.winsorization_level` defaults to `0.01`, so artma winsorizes `effect` and
+`se` unless told not to. The practitioner's guide's tenth recommendation is to
+"inspect outliers and influence points but be careful about deleting or
+winsorizing them". The effect is not small — Kozlíková's precision-weighted FAT
+is −16.10 as reported, −16.31 unwinsorized, and −5.67 under artma's default.
+Opt-in would match the guidance and make runs comparable to published tables by
+default.
 
 ## Scope and honesty
 
