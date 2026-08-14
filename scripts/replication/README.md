@@ -131,19 +131,53 @@ listing is the intended way to fix the regex.
 bias-corrected effect (PET, the intercept), and `publication_bias` is the funnel
 asymmetry slope (FAT). A thesis usually prints them the other way round.
 
-### One systematic difference worth knowing
+### Weighting conventions, and which one is right
 
-artma's `ols_precision_weighted` fits with weights `precision^2`, and since
-`precision_type` defaults to `1/SE`, that is **inverse-variance** weighting
-(`1/SE²`). Most of these theses label a column "Precision" but define it in
-their table notes as weighting by `1/SE` — a different estimator. Prokš (2026)
-happens to report both conventions in separate tables, which pins this down: his
-inverse-variance table matches artma, his "precision-weighted" table does not.
+artma's `ols_precision_weighted` fits `effect ~ se` with weights `precision^2`,
+and since `precision_type` defaults to `1/SE` that is **inverse-variance**
+weighting (1/SE²). That is the correct choice, for three independent reasons:
 
-Where a thesis's note states the convention, the manifest says so in a comment.
-The mapping is left pointing at artma's nearest labelled counterpart rather than
-being quietly retargeted to whichever row agrees, so the disagreement stays
-visible in `SUMMARY.md`.
+1. **It is the canonical FAT-PET specification.** WLS of `effect ~ se` with
+   1/SE² weights is algebraically identical to OLS of `t ~ 1/SE` — the Egger
+   funnel-asymmetry regression, in which the slope on precision is the
+   bias-corrected effect and the intercept is the bias. (Verified numerically:
+   the two agree to 1e-10.)
+2. **It is efficient.** Under the usual meta-analytic error structure
+   `Var(e_i) ∝ SE_i²`, inverse-variance weights are the GLS/BLUE choice.
+   Weighting by 1/SE is neither efficient nor equivalent to any standard
+   estimator.
+3. **It is what the literature prescribes** — Stanley & Doucouliagos's
+   unrestricted WLS meta-regression (Statistics in Medicine 2015; Research
+   Synthesis Methods 2017).
+
+The theses are not consistent with one another, and their table notes are a poor
+guide: several say "weighted by the inverse of the standard error" over code that
+squares it. Read from the published code:
+
+| Weighting actually used | Theses |
+| --- | --- |
+| 1/SE² (standard, matches artma) | Křenková, Kozlíková, Hatalová, Prokš, Horák |
+| 1/SE (non-standard) | Simpartl, Pokorná, Juračková |
+| Not determinable | Nguyenová (no code), Maryško (code only as PDF) |
+
+Prokš is the useful case: he computes both (`w_iv = 1/vi`, `w_prec = 1/sei`) in
+separate tables, so his inverse-variance table matches artma and his
+"precision-weighted" one does not.
+
+Mappings are left pointing at artma's nearest labelled counterpart rather than
+retargeted to whichever row agrees, and each manifest records what its thesis's
+code actually did. Where a thesis used 1/SE, the divergence is that thesis's
+departure from the standard estimator, not an artma defect.
+
+### Winsorization has to be matched per thesis
+
+artma winsorizes `effect` and `se` at `data.winsorization_level`, default 0.01.
+The theses vary: some winsorize at 1%, one at 2.5%, several not at all, and
+Kozlíková winsorizes the effect asymmetrically at (0.01, 0.95) while leaving
+`se` alone. Getting this wrong moves estimates a long way — Kozlíková's
+precision-weighted FAT is −16.10 as reported, −16.31 unwinsorized, and −5.67
+under artma's default. Each manifest sets `data.winsorization_level` to match its
+thesis's code, with the evidence quoted in a comment.
 
 ## Reading the published files
 

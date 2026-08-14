@@ -20,6 +20,11 @@ dataset:
   code_published: true
   code_files: ["code1.pdf"]
 
+# Winsorization matched to the thesis's own published code:
+# No winsorization in the published code.
+artma_options:
+  data.winsorization_level: 0
+
 columns:
   effect: "bs"
   se: "sebs"
@@ -91,8 +96,9 @@ claims:
     artma_model: "^re$"
     artma_term: "^effect$"
 
-  # "Precision = inverse standard error weights" per the table note, i.e. 1/se,
-  # whereas artma weights by 1/se^2.
+  # The table note reads "Precision = inverse standard error weights". The code
+  # is published only as a PDF, so the weighting cannot be read off it; sibling
+  # theses using the same wording square the precision, as artma does.
   - id: fat_precision
     label: "Publication bias, precision-weighted"
     reported: 0.346

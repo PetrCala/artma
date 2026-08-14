@@ -21,6 +21,12 @@ dataset:
 # That makes `se` appear four times; the harness renames the repeats to `se__2`
 # etc., so the bare `se` below is unambiguously the one belonging to GDP_peak.
 # Rows without a peak-GDP estimate drop out, leaving the 43 the thesis reports.
+# Winsorization matched to the thesis's own published code:
+# Code.txt is an artma-style config that sets `data_winsorization_level:
+# 0.025` with `winsorize_precision: true`.
+artma_options:
+  data.winsorization_level: 0.025
+
 columns:
   effect: "GDP_peak"
   se: "se"

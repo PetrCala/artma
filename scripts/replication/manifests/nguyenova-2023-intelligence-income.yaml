@@ -68,9 +68,10 @@ claims:
     artma_model: "^ols_study_weighted$"
     artma_term: "^effect$"
 
-  # The thesis note defines "Precision" as weighting by the inverse of the
-  # standard error (1/se); artma weights by 1/se^2. The two are not the same
-  # estimator, so a divergence here is expected rather than a defect.
+  # The table note says "weighted by the inverse of their standard error". In
+  # this literature that phrase usually names the *precision variable* (1/se)
+  # whose square becomes the WLS weight, which is what artma does. No code was
+  # published for this thesis, so which was meant cannot be settled here.
   - id: fat_precision
     label: "Publication bias, precision-weighted"
     reported: 4.960

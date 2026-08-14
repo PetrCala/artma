@@ -19,6 +19,12 @@ dataset:
   code_published: true
   code_files: ["full_sample_code.R", "education_code.R", "labor_code.R"]
 
+# Winsorization matched to the thesis's own published code:
+# full_sample_code.R winsorizes pcc and se_pcc at probs (0.01, 0.99),
+# matching artma's default; set explicitly.
+artma_options:
+  data.winsorization_level: 0.01
+
 columns:
   effect: "pcc"
   se: "se"

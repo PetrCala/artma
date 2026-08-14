@@ -23,7 +23,10 @@ dataset:
 # `precision` = 1/se or by `study_size` = estimates per study). Verified
 # empirically on this dataset: replacing every n_obs with a constant leaves all
 # twelve linear_tests estimates bit-identical (max absolute difference 0).
+# Winsorization matched to the thesis's own published code:
+# No Winsorize() call anywhere in the published R scripts.
 artma_options:
+  data.winsorization_level: 0
   data.na_handling: "median"
 
 columns:

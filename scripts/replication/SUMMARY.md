@@ -4,7 +4,7 @@ Replication of IES (Charles University) bachelor's and master's meta-analysis th
 
 - Theses attempted: **10** (10 replicated, 0 failed)
 - Claims checked: **112**
-- Verdicts: match **62**, close **15**, mismatch **35**
+- Verdicts: match **71**, close **13**, mismatch **28**
 
 Generated 2026-08-14 by `scripts/replication/run_replication.R`.
 
@@ -18,18 +18,18 @@ Pooling `match` and `close` as agreement, across every resolved claim. These rat
 
 | Term | Claims | Agreeing | Rate |
 | --- | ---: | ---: | ---: |
-| `effect` | 50 | 40 | 80% |
-| `publication_bias` | 50 | 27 | 54% |
+| `effect` | 50 | 41 | 82% |
+| `publication_bias` | 50 | 33 | 66% |
 
 **By model (linear_tests)**
 
 | Model | Claims | Agreeing | Rate |
 | --- | ---: | ---: | ---: |
-| `be` | 18 | 14 | 78% |
-| `fe` | 18 | 7 | 39% |
-| `ols` | 18 | 17 | 94% |
-| `ols_precision_weighted` | 22 | 16 | 73% |
-| `ols_study_weighted` | 18 | 10 | 56% |
+| `be` | 18 | 15 | 83% |
+| `fe` | 18 | 9 | 50% |
+| `ols` | 18 | 18 | 100% |
+| `ols_precision_weighted` | 22 | 18 | 82% |
+| `ols_study_weighted` | 18 | 11 | 61% |
 | `re` | 6 | 3 | 50% |
 
 **By method**
@@ -38,7 +38,7 @@ Pooling `match` and `close` as agreement, across every resolved claim. These rat
 | --- | ---: | ---: | ---: |
 | `effect_summary_stats` | 10 | 10 | 100% |
 | `exogeneity_tests` | 2 | 0 | 0% |
-| `linear_tests` | 100 | 67 | 67% |
+| `linear_tests` | 100 | 74 | 74% |
 
 ## Per-thesis results
 
@@ -76,19 +76,19 @@ Pooling `match` and `close` as agreement, across every resolved claim. These rat
 
 | Claim | Source in thesis | Reported | artma | Diff | Verdict |
 | --- | --- | ---: | ---: | ---: | --- |
-| Sample mean, peak effect on GDP | Table 3.2, p. 12 (All Data) | 0.2390 | 0.2380 | -0.0010 | match |
-| Publication bias, OLS | Table 4.1, p. 19 (Peak Effect on GDP) | 1.2830 | 1.2574 | -0.0256 | match |
-| Effect beyond bias, OLS | Table 4.1, p. 19 (Peak Effect on GDP) | 0.0120 | 0.0140 | 0.0020 | match |
-| Publication bias, fixed effects | Table 4.1, p. 19 (Peak Effect on GDP) | 1.4090 | 1.3927 | -0.0163 | match |
-| Effect beyond bias, fixed effects | Table 4.1, p. 19 (Peak Effect on GDP) | -0.0110 | -0.0101 | 0.0009 | match |
-| Publication bias, between effects | Table 4.1, p. 19 (Peak Effect on GDP) | 1.1010 | 1.0530 | -0.0480 | match |
-| Effect beyond bias, between effects | Table 4.1, p. 19 (Peak Effect on GDP) | 0.0480 | 0.0520 | 0.0040 | match |
-| Publication bias, random effects | Table 4.1, p. 19 (Peak Effect on GDP) | 1.3130 | 1.2776 | -0.0354 | match |
-| Effect beyond bias, random effects | Table 4.1, p. 19 (Peak Effect on GDP) | 0.0130 | 0.0142 | 0.0012 | match |
-| Publication bias, study-weighted | Table 4.1, p. 19 (Peak Effect on GDP) | 1.5530 | 1.0516 | -0.5014 | MISMATCH |
-| Effect beyond bias, study-weighted | Table 4.1, p. 19 (Peak Effect on GDP) | -0.0620 | 0.0522 | 0.1142 | MISMATCH |
-| Publication bias, precision-weighted | Table 4.1, p. 19 (Peak Effect on GDP) | 1.5900 | 1.5841 | -0.0059 | match |
-| Effect beyond bias, precision-weighted | Table 4.1, p. 19 (Peak Effect on GDP) | -0.0040 | -0.0043 | -0.0003 | match |
+| Sample mean, peak effect on GDP | Table 3.2, p. 12 (All Data) | 0.2390 | 0.2386 | -0.0004 | match |
+| Publication bias, OLS | Table 4.1, p. 19 (Peak Effect on GDP) | 1.2830 | 1.2828 | -0.0002 | match |
+| Effect beyond bias, OLS | Table 4.1, p. 19 (Peak Effect on GDP) | 0.0120 | 0.0116 | -0.0004 | match |
+| Publication bias, fixed effects | Table 4.1, p. 19 (Peak Effect on GDP) | 1.4090 | 1.4086 | -0.0004 | match |
+| Effect beyond bias, fixed effects | Table 4.1, p. 19 (Peak Effect on GDP) | -0.0110 | -0.0107 | 0.0003 | match |
+| Publication bias, between effects | Table 4.1, p. 19 (Peak Effect on GDP) | 1.1010 | 1.1006 | -0.0004 | match |
+| Effect beyond bias, between effects | Table 4.1, p. 19 (Peak Effect on GDP) | 0.0480 | 0.0478 | -0.0002 | match |
+| Publication bias, random effects | Table 4.1, p. 19 (Peak Effect on GDP) | 1.3130 | 1.3125 | -0.0005 | match |
+| Effect beyond bias, random effects | Table 4.1, p. 19 (Peak Effect on GDP) | 0.0130 | 0.0125 | -0.0005 | match |
+| Publication bias, study-weighted | Table 4.1, p. 19 (Peak Effect on GDP) | 1.5530 | 1.1058 | -0.4472 | MISMATCH |
+| Effect beyond bias, study-weighted | Table 4.1, p. 19 (Peak Effect on GDP) | -0.0620 | 0.0472 | 0.1092 | MISMATCH |
+| Publication bias, precision-weighted | Table 4.1, p. 19 (Peak Effect on GDP) | 1.5900 | 1.5893 | -0.0007 | match |
+| Effect beyond bias, precision-weighted | Table 4.1, p. 19 (Peak Effect on GDP) | -0.0040 | -0.0044 | -0.0004 | match |
 
 ### Juračková, Martina (2023) — Standing Tall Pays Off: A Meta-Analysis of Height Premium
 
@@ -124,16 +124,16 @@ Pooling `match` and `close` as agreement, across every resolved claim. These rat
 
 | Claim | Source in thesis | Reported | artma | Diff | Verdict |
 | --- | --- | ---: | ---: | ---: | --- |
-| Publication bias, OLS | Table 4.1, p. 25 (Marshallian, Meat) | -0.4840 | -0.7557 | -0.2717 | MISMATCH |
-| Mean beyond bias, OLS | Table 4.1, p. 25 (Marshallian, Meat) | -0.8350 | -0.7854 | 0.0496 | close |
-| Publication bias, fixed effects | Table 4.1, p. 25 (Marshallian, Meat) | -0.5900 | -1.0224 | -0.4324 | MISMATCH |
-| Mean beyond bias, fixed effects | Table 4.1, p. 25 (Marshallian, Meat) | -0.8100 | -0.7292 | 0.0808 | close |
-| Publication bias, between effects | Table 4.1, p. 25 (Marshallian, Meat) | -0.6230 | -0.7453 | -0.1223 | MISMATCH |
-| Mean beyond bias, between effects | Table 4.1, p. 25 (Marshallian, Meat) | -0.7830 | -0.7637 | 0.0193 | match |
-| Publication bias, precision-weighted | Table 4.1, p. 25 (Marshallian, Meat) | -16.0950 | -5.6692 | 10.4258 | MISMATCH |
-| Mean beyond bias, precision-weighted | Table 4.1, p. 25 (Marshallian, Meat) | -0.2630 | -0.6138 | -0.3508 | MISMATCH |
-| Publication bias, study-weighted | Table 4.1, p. 25 (Marshallian, Meat) | -0.6610 | -0.8791 | -0.2181 | MISMATCH |
-| Mean beyond bias, study-weighted | Table 4.1, p. 25 (Marshallian, Meat) | -0.7770 | -0.7423 | 0.0347 | match |
+| Publication bias, OLS | Table 4.1, p. 25 (Marshallian, Meat) | -0.4840 | -0.5070 | -0.0230 | match |
+| Mean beyond bias, OLS | Table 4.1, p. 25 (Marshallian, Meat) | -0.8350 | -0.8344 | 0.0006 | match |
+| Publication bias, fixed effects | Table 4.1, p. 25 (Marshallian, Meat) | -0.5900 | -0.6251 | -0.0351 | close |
+| Mean beyond bias, fixed effects | Table 4.1, p. 25 (Marshallian, Meat) | -0.8100 | -0.8070 | 0.0030 | match |
+| Publication bias, between effects | Table 4.1, p. 25 (Marshallian, Meat) | -0.6230 | -0.6640 | -0.0410 | close |
+| Mean beyond bias, between effects | Table 4.1, p. 25 (Marshallian, Meat) | -0.7830 | -0.7807 | 0.0023 | match |
+| Publication bias, precision-weighted | Table 4.1, p. 25 (Marshallian, Meat) | -16.0950 | -16.3146 | -0.2196 | match |
+| Mean beyond bias, precision-weighted | Table 4.1, p. 25 (Marshallian, Meat) | -0.2630 | -0.2545 | 0.0085 | match |
+| Publication bias, study-weighted | Table 4.1, p. 25 (Marshallian, Meat) | -0.6610 | -0.7228 | -0.0618 | close |
+| Mean beyond bias, study-weighted | Table 4.1, p. 25 (Marshallian, Meat) | -0.7770 | -0.7710 | 0.0060 | match |
 
 ### Křenková, Pavlína (2023) — The Price Elasticity of Milk Demand: A Meta-Analysis
 
@@ -145,19 +145,19 @@ Pooling `match` and `close` as agreement, across every resolved claim. These rat
 
 | Claim | Source in thesis | Reported | artma | Diff | Verdict |
 | --- | --- | ---: | ---: | ---: | --- |
-| Mean elasticity (milk composite) | Table 3.1, p. 11 | -0.6000 | -0.6008 | -0.0008 | match |
+| Mean elasticity (milk composite) | Table 3.1, p. 11 | -0.6000 | -0.6024 | -0.0024 | match |
 | Median elasticity | Table 3.1, p. 11 | -0.3800 | -0.3818 | -0.0018 | match |
-| SD of elasticity | Table 3.1, p. 11 | 0.6300 | 0.6112 | -0.0188 | match |
-| Publication bias, OLS | Table 4.1, p. 21 | -1.0310 | -1.0739 | -0.0429 | match |
-| Effect beyond bias, OLS | Table 4.1, p. 21 | -0.4630 | -0.4616 | 0.0014 | match |
-| Publication bias, fixed effects | Table 4.1, p. 21 | -0.0910 | -0.2549 | -0.1639 | MISMATCH |
-| Effect beyond bias, fixed effects | Table 4.1, p. 21 | -0.5900 | -0.5677 | 0.0223 | match |
-| Publication bias, between effects | Table 4.1, p. 21 | -1.4000 | -1.4989 | -0.0989 | close |
-| Effect beyond bias, between effects | Table 4.1, p. 21 | -0.3860 | -0.3812 | 0.0048 | match |
-| Publication bias, precision-weighted | Table 4.1, p. 21 | -4.1560 | -4.2912 | -0.1352 | match |
-| Effect beyond bias, precision-weighted | Table 4.1, p. 21 | -0.3060 | -0.2998 | 0.0062 | match |
-| Publication bias, study-weighted | Table 4.1, p. 21 | -1.1360 | -1.2183 | -0.0823 | close |
-| Effect beyond bias, study-weighted | Table 4.1, p. 21 | -0.4210 | -0.4164 | 0.0046 | match |
+| SD of elasticity | Table 3.1, p. 11 | 0.6300 | 0.6285 | -0.0015 | match |
+| Publication bias, OLS | Table 4.1, p. 21 | -1.0310 | -1.0311 | -0.0001 | match |
+| Effect beyond bias, OLS | Table 4.1, p. 21 | -0.4630 | -0.4632 | -0.0002 | match |
+| Publication bias, fixed effects | Table 4.1, p. 21 | -0.0910 | -0.0906 | 0.0004 | match |
+| Effect beyond bias, fixed effects | Table 4.1, p. 21 | -0.5900 | -0.5902 | -0.0002 | match |
+| Publication bias, between effects | Table 4.1, p. 21 | -1.4000 | -1.4004 | -0.0004 | match |
+| Effect beyond bias, between effects | Table 4.1, p. 21 | -0.3860 | -0.3863 | -0.0003 | match |
+| Publication bias, precision-weighted | Table 4.1, p. 21 | -4.1560 | -4.1561 | -0.0001 | match |
+| Effect beyond bias, precision-weighted | Table 4.1, p. 21 | -0.3060 | -0.3056 | 0.0004 | match |
+| Publication bias, study-weighted | Table 4.1, p. 21 | -1.1360 | -1.1362 | -0.0002 | match |
+| Effect beyond bias, study-weighted | Table 4.1, p. 21 | -0.4210 | -0.4215 | -0.0005 | match |
 
 ### Maryško, Karel (2025) — How Does ESG Performance Affect Earnings? A Meta-Analysis
 
@@ -169,17 +169,17 @@ Pooling `match` and `close` as agreement, across every resolved claim. These rat
 
 | Claim | Source in thesis | Reported | artma | Diff | Verdict |
 | --- | --- | ---: | ---: | ---: | --- |
-| Unweighted mean PCC, all studies | Table 3.1, p. 18 | 0.0330 | 0.0331 | 0.0001 | match |
-| Publication bias, OLS | Table 4.1, p. 25 (PCC) | 0.9000 | 0.8843 | -0.0157 | match |
-| Effect beyond bias, OLS | Table 4.1, p. 25 (PCC) | 0.0030 | 0.0036 | 0.0006 | match |
-| Publication bias, fixed effects | Table 4.1, p. 25 (PCC) | 0.3460 | 3.4278 | 3.0818 | MISMATCH |
-| Effect beyond bias, fixed effects | Table 4.1, p. 25 (PCC) | 0.0170 | -0.0812 | -0.0982 | MISMATCH |
-| Publication bias, random effects | Table 4.1, p. 25 (PCC) | 0.8810 | 1.4547 | 0.5737 | MISMATCH |
-| Effect beyond bias, random effects | Table 4.1, p. 25 (PCC) | 0.0030 | -0.0197 | -0.0227 | MISMATCH |
-| Publication bias, precision-weighted | Table 4.1, p. 25 (PCC) | 0.3460 | 0.3744 | 0.0284 | close |
-| Effect beyond bias, precision-weighted | Table 4.1, p. 25 (PCC) | 0.0170 | 0.0164 | -0.0006 | match |
-| Publication bias, study-weighted | Table 4.1, p. 25 (PCC) | 1.4880 | 0.4671 | -1.0209 | MISMATCH |
-| Effect beyond bias, study-weighted | Table 4.1, p. 25 (PCC) | -0.0010 | 0.0177 | 0.0187 | MISMATCH |
+| Unweighted mean PCC, all studies | Table 3.1, p. 18 | 0.0330 | 0.0327 | -0.0003 | match |
+| Publication bias, OLS | Table 4.1, p. 25 (PCC) | 0.9000 | 0.8999 | -0.0001 | match |
+| Effect beyond bias, OLS | Table 4.1, p. 25 (PCC) | 0.0030 | 0.0026 | -0.0004 | match |
+| Publication bias, fixed effects | Table 4.1, p. 25 (PCC) | 0.3460 | 3.5268 | 3.1808 | MISMATCH |
+| Effect beyond bias, fixed effects | Table 4.1, p. 25 (PCC) | 0.0170 | -0.0853 | -0.1023 | MISMATCH |
+| Publication bias, random effects | Table 4.1, p. 25 (PCC) | 0.8810 | 1.4753 | 0.5943 | MISMATCH |
+| Effect beyond bias, random effects | Table 4.1, p. 25 (PCC) | 0.0030 | -0.0212 | -0.0242 | MISMATCH |
+| Publication bias, precision-weighted | Table 4.1, p. 25 (PCC) | 0.3460 | 0.3464 | 0.0004 | match |
+| Effect beyond bias, precision-weighted | Table 4.1, p. 25 (PCC) | 0.0170 | 0.0166 | -0.0004 | match |
+| Publication bias, study-weighted | Table 4.1, p. 25 (PCC) | 1.4880 | 0.5098 | -0.9782 | MISMATCH |
+| Effect beyond bias, study-weighted | Table 4.1, p. 25 (PCC) | -0.0010 | 0.0156 | 0.0166 | MISMATCH |
 
 ### Nguyenová, Van Anh (2023) — How much does intelligence predict lifetime income? A Meta-Analysis
 
@@ -234,13 +234,13 @@ Pooling `match` and `close` as agreement, across every resolved claim. These rat
 
 | Claim | Source in thesis | Reported | artma | Diff | Verdict |
 | --- | --- | ---: | ---: | ---: | --- |
-| Publication bias (FAT), OLS | Table 5.1, p. 40 | -0.4440 | -0.4902 | -0.0462 | close |
-| Effect beyond bias (PET), OLS | Table 5.1, p. 40 | -0.0150 | -0.0079 | 0.0071 | close |
-| Publication bias (FAT), between-study | Table 5.2, p. 41 | -0.3930 | -0.3901 | 0.0029 | match |
-| Effect beyond bias (PET), between-study | Table 5.2, p. 41 | -0.0220 | -0.0215 | 0.0005 | match |
-| Publication bias (FAT), inverse-variance weighted | Table 5.4, p. 42 | -1.2010 | -1.1976 | 0.0034 | match |
+| Publication bias (FAT), OLS | Table 5.1, p. 40 | -0.4440 | -0.4437 | 0.0003 | match |
+| Effect beyond bias (PET), OLS | Table 5.1, p. 40 | -0.0150 | -0.0154 | -0.0004 | match |
+| Publication bias (FAT), between-study | Table 5.2, p. 41 | -0.3930 | -0.3933 | -0.0003 | match |
+| Effect beyond bias (PET), between-study | Table 5.2, p. 41 | -0.0220 | -0.0223 | -0.0003 | match |
+| Publication bias (FAT), inverse-variance weighted | Table 5.4, p. 42 | -1.2010 | -1.2009 | 0.0001 | match |
 | Effect beyond bias (PET), inverse-variance weighted | Table 5.4, p. 42 | -0.0001 | -0.0001 | -0.0000 | match |
-| Publication bias (FAT), thesis's 1/se-weighted OLS | Table 5.3, p. 41 | -0.5730 | -1.1976 | -0.6246 | MISMATCH |
+| Publication bias (FAT), thesis's 1/se-weighted OLS | Table 5.3, p. 41 | -0.5730 | -1.2009 | -0.6279 | MISMATCH |
 | Effect beyond bias (PET), thesis's 1/se-weighted OLS | Table 5.3, p. 41 | -0.0021 | -0.0001 | 0.0020 | match |
 
 ### Simpartl, Josef (2023) — Military expenditure and economic growth: A meta-analysis
@@ -253,14 +253,14 @@ Pooling `match` and `close` as agreement, across every resolved claim. These rat
 
 | Claim | Source in thesis | Reported | artma | Diff | Verdict |
 | --- | --- | ---: | ---: | ---: | --- |
-| Publication bias, precision-weighted (WLS) | Table 1, p. 35 | 0.3160 | -0.0758 | -0.3918 | MISMATCH |
-| Mean beyond bias, precision-weighted (WLS) | Table 1, p. 35 | -0.0830 | -0.0684 | 0.0146 | close |
-| Publication bias, study-weighted | Table 1, p. 35 | 0.6160 | 0.6222 | 0.0062 | match |
-| Mean beyond bias, study-weighted | Table 1, p. 35 | -0.1070 | -0.1122 | -0.0052 | match |
-| Publication bias, fixed effects | Table 1, p. 35 | -0.1860 | 0.0926 | 0.2786 | MISMATCH |
-| Mean beyond bias, fixed effects | Table 1, p. 35 | -0.0590 | -0.0648 | -0.0058 | close |
-| Publication bias, between effects | Table 1, p. 35 | 0.4290 | 0.6890 | 0.2600 | MISMATCH |
-| Mean beyond bias, between effects | Table 1, p. 35 | -0.0920 | -0.1196 | -0.0276 | MISMATCH |
-| Publication bias, instrumental variable | Table 1, p. 35 | 0.3760 | 0.1158 | -0.2602 | MISMATCH |
-| Mean beyond bias, instrumental variable | Table 1, p. 35 | -0.0880 | -0.0669 | 0.0211 | MISMATCH |
+| Publication bias, precision-weighted (WLS) | Table 1, p. 35 | 0.3160 | -0.0648 | -0.3808 | MISMATCH |
+| Mean beyond bias, precision-weighted (WLS) | Table 1, p. 35 | -0.0830 | -0.0703 | 0.0127 | close |
+| Publication bias, study-weighted | Table 1, p. 35 | 0.6160 | 0.6577 | 0.0417 | close |
+| Mean beyond bias, study-weighted | Table 1, p. 35 | -0.1070 | -0.1178 | -0.0108 | close |
+| Publication bias, fixed effects | Table 1, p. 35 | -0.1860 | 0.1257 | 0.3117 | MISMATCH |
+| Mean beyond bias, fixed effects | Table 1, p. 35 | -0.0590 | -0.0680 | -0.0090 | close |
+| Publication bias, between effects | Table 1, p. 35 | 0.4290 | 0.7310 | 0.3020 | MISMATCH |
+| Mean beyond bias, between effects | Table 1, p. 35 | -0.0920 | -0.1260 | -0.0340 | MISMATCH |
+| Publication bias, instrumental variable | Table 1, p. 35 | 0.3760 | 0.1087 | -0.2673 | MISMATCH |
+| Mean beyond bias, instrumental variable | Table 1, p. 35 | -0.0880 | -0.0664 | 0.0216 | MISMATCH |
 

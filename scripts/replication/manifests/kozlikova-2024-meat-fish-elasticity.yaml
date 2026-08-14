@@ -27,7 +27,13 @@ dataset:
 # models takes n_obs as an input (they weight by `precision` = 1/se or by
 # `study_size` = estimates per study). Dropping the rows instead would change
 # the very estimates under comparison.
+# Winsorization matched to the thesis's own published code:
+# code.txt winsorizes the *effect only*, asymmetrically at probs (0.01,
+# 0.95), and leaves the standard error untouched. artma's winsorization is
+# symmetric and covers se as well, so it cannot express this; 0 is the
+# closest faithful setting.
 artma_options:
+  data.winsorization_level: 0
   data.na_handling: "median"
 
 columns:

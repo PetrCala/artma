@@ -22,6 +22,12 @@ dataset:
   code_published: true
   code_files: ["Jurackova_code.txt"]
 
+# Winsorization matched to the thesis's own published code:
+# Jurackova_code.txt winsorizes effect and se at probs (0.01, 0.99), which
+# is artma's default; set explicitly so it is not an accident.
+artma_options:
+  data.winsorization_level: 0.01
+
 columns:
   effect: "effect_same_unit"
   se: "se_same_unit"
@@ -125,6 +131,9 @@ claims:
     artma_model: "^ols_study_weighted$"
     artma_term: "^effect$"
 
+  # Jurackova_code.txt runs `weights = precision_w` with `precision <- 1/se`,
+  # i.e. 1/se weights rather than artma's 1/se^2, so this pair compares two
+  # different estimators.
   - id: fat_precision
     label: "Publication bias, precision-weighted"
     reported: 1.529

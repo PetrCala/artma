@@ -19,6 +19,12 @@ dataset:
   code_published: true
   code_files: ["code.R"]
 
+# Winsorization matched to the thesis's own published code:
+# code.R contains no Winsorize() call, so the reported tables are
+# unwinsorized.
+artma_options:
+  data.winsorization_level: 0
+
 columns:
   effect: "Estimate"
   se: "Standard_Error"

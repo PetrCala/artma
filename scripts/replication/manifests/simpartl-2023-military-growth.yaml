@@ -19,6 +19,12 @@ dataset:
   code_published: true
   code_files: ["RCode.txt"]
 
+# Winsorization matched to the thesis's own published code:
+# RCode.txt winsorizes only `data_h` for the heterogeneity section; the
+# Table 1 regressions run on the raw `dataset`.
+artma_options:
+  data.winsorization_level: 0
+
 columns:
   effect: "PCC"
   se: "PCCSE"
@@ -28,6 +34,9 @@ columns:
 # Table 1 is the full dataset (405 estimates from 67 studies). The thesis
 # reports no plain OLS column, so there is no `ols` claim here.
 claims:
+  # RCode.txt line 212 runs `lm(PCC ~ PCCSE, weights = 1/PCCSE)` -- weights of
+  # 1/se, not the 1/se^2 that artma (and Stanley-Doucouliagos WLS) use. This
+  # pair is therefore comparing two different estimators.
   - id: fat_precision
     label: "Publication bias, precision-weighted (WLS)"
     reported: 0.316

@@ -21,6 +21,12 @@ dataset:
 # `St. error__2`, so the bare name below is the causal one. Rows with no causal
 # estimate drop out on their own, leaving the 387 estimates from 23 studies the
 # thesis reports for this panel.
+# Winsorization matched to the thesis's own published code:
+# Code winsorizes the causal effect and its standard error at probs (0.01,
+# 0.99), matching artma's default; set explicitly.
+artma_options:
+  data.winsorization_level: 0.01
+
 columns:
   effect: "Causal effect"
   se: "St. error"
@@ -82,8 +88,10 @@ claims:
     artma_model: "^be$"
     artma_term: "^effect$"
 
-  # The thesis states it weights by precision = 1/st.error; artma weights by
-  # 1/st.error^2, so this pair is not expected to line up.
+  # Verified against the published code: `lm(..., weights = win_Precision)` with
+  # `win_Precision <- 1/win_St.error`, so the weight really is 1/se, not 1/se^2.
+  # That is a genuine departure from the Stanley-Doucouliagos WLS that artma
+  # implements, so this pair is expected to diverge.
   - id: fat_precision
     label: "Publication bias, precision-weighted"
     reported: 1.136
