@@ -101,7 +101,17 @@ WEAK_INSTRUMENT_TIEBREAK <- "1/sqrt(n_obs)"
 #' Ranks candidate instruments by first-stage strength: the "Weak
 #' instruments" F-statistic reported by `AER::ivreg`'s diagnostics, which is
 #' the standard weak-instruments diagnostic for a single endogenous
-#' regressor. R-squared, Wu-Hausman, and Sargan are deliberately not used
+#' regressor.
+#'
+#' This is reachable only via `iv_instrument = "automatic"` and is not the
+#' default, because ranking instruments on the same data used for inference is
+#' a specification search: it favors whichever instrument happens to look
+#' strongest in sample and leaves the reported standard errors ignorant of the
+#' selection step. The default, `1/sqrt(n_obs)`, is fixed a priori on the
+#' grounds that an estimator's standard error scales with `1/sqrt(N)`, and is
+#' what the applied literature uses.
+#'
+#' R-squared, Wu-Hausman, and Sargan are deliberately not used
 #' for selection: IV R-squared is unbounded below and has no
 #' instrument-quality interpretation; Wu-Hausman measures how strongly the
 #' data reject exogeneity, a property of the data rather than the
@@ -177,13 +187,17 @@ find_best_instrument <- function(df, instruments, instruments_verbose) {
 #' @title Run IV regression with specified or automatic instrument
 #' @description
 #' Performs IV regression of effect on se using an instrumental variable.
-#' Can automatically select the best instrument from a predefined set.
+#' Defaults to `1/sqrt(n_obs)`, the instrument the applied literature uses and
+#' the one motivated by the estimator's standard error scaling with `1/sqrt(N)`.
+#' Can instead select from a predefined set by first-stage strength, which is an
+#' exploratory option rather than a sound default (see `find_best_instrument()`).
 #' @param df *[data.frame]* Data frame with columns: effect, se, study_id, n_obs.
-#' @param iv_instrument *[character]* Instrument specification or "automatic" for auto-selection.
+#' @param iv_instrument *[character]* Instrument specification, or "automatic" to
+#'   select by first-stage strength.
 #' @param add_significance_marks *[logical]* Whether to add significance asterisks.
 #' @param round_to *[integer]* Number of decimal places for rounding.
 #' @return *[list]* Contains coefficients, instrument name, and Anderson-Rubin F-statistic.
-run_iv_regression <- function(df, iv_instrument = "automatic", add_significance_marks = TRUE, round_to = 3L) {
+run_iv_regression <- function(df, iv_instrument = "1/sqrt(n_obs)", add_significance_marks = TRUE, round_to = 3L) {
   validate(
     is.data.frame(df),
     is.character(iv_instrument),
