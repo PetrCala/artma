@@ -1,0 +1,128 @@
+id: kozlikova-2024-meat-fish-elasticity
+
+thesis:
+  author: "Kozlíková, Kateřina"
+  title: "Price elasticities of meat, fish and seafood: A meta-analysis"
+  degree: bachelor
+  year: 2024
+  advisor: "Havránková, Zuzana"
+  handle: "20.500.11956/193521"
+  url: "https://dspace.cuni.cz/handle/20.500.11956/193521"
+
+dataset:
+  url: "https://dspace.cuni.cz/bitstream/handle/20.500.11956/193521/130403547.zip?sequence=4&isAllowed=y"
+  archive_member: "data_cleaned.csv"
+  sha256: "1694f7b7f1339c9a99d0dcfe8d107e41296c44e99126c77c21263d761a59343d"
+  # Table 4.1 is split into four panels. This manifest replicates the
+  # "Marshallian / Meat" panel, which the thesis reports as N = 202 — exactly the
+  # count this filter selects from the published file.
+  row_filter: "Uncompensated_Marshallian == 1 & Fish == 0 & Seafood == 0"
+  code_published: true
+  code_files: ["code.txt"]
+
+# 13 of the 202 estimates have no reported sample size. artma treats n_obs as a
+# required column and aborts on gaps, so they are median-imputed to keep the
+# sample at the 202 the thesis reports. This does not touch the compared
+# numbers: with the default `precision_type: 1/SE`, none of the six linear
+# models takes n_obs as an input (they weight by `precision` = 1/se or by
+# `study_size` = estimates per study). Dropping the rows instead would change
+# the very estimates under comparison.
+artma_options:
+  data.na_handling: "median"
+
+columns:
+  effect: "Estimate"
+  se: "Standard_Error"
+  study_id: "Study_Code"
+  n_obs: "No_observations"
+
+claims:
+  - id: fat_ols
+    label: "Publication bias, OLS"
+    reported: -0.484
+    reported_se: 0.160
+    source: "Table 4.1, p. 25 (Marshallian, Meat)"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_ols
+    label: "Mean beyond bias, OLS"
+    reported: -0.835
+    reported_se: 0.042
+    source: "Table 4.1, p. 25 (Marshallian, Meat)"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^effect$"
+
+  - id: fat_fe
+    label: "Publication bias, fixed effects"
+    reported: -0.590
+    reported_se: 0.083
+    source: "Table 4.1, p. 25 (Marshallian, Meat)"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_fe
+    label: "Mean beyond bias, fixed effects"
+    reported: -0.810
+    reported_se: 0.043
+    source: "Table 4.1, p. 25 (Marshallian, Meat)"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^effect$"
+
+  - id: fat_be
+    label: "Publication bias, between effects"
+    reported: -0.623
+    reported_se: 0.326
+    source: "Table 4.1, p. 25 (Marshallian, Meat)"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_be
+    label: "Mean beyond bias, between effects"
+    reported: -0.783
+    reported_se: 0.090
+    source: "Table 4.1, p. 25 (Marshallian, Meat)"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^effect$"
+
+  - id: fat_precision
+    label: "Publication bias, precision-weighted"
+    reported: -16.095
+    reported_se: 3.603
+    source: "Table 4.1, p. 25 (Marshallian, Meat)"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_precision
+    label: "Mean beyond bias, precision-weighted"
+    reported: -0.263
+    reported_se: 0.118
+    source: "Table 4.1, p. 25 (Marshallian, Meat)"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^effect$"
+
+  - id: fat_study
+    label: "Publication bias, study-weighted"
+    reported: -0.661
+    reported_se: 0.283
+    source: "Table 4.1, p. 25 (Marshallian, Meat)"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_study
+    label: "Mean beyond bias, study-weighted"
+    reported: -0.777
+    reported_se: 0.050
+    source: "Table 4.1, p. 25 (Marshallian, Meat)"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^effect$"

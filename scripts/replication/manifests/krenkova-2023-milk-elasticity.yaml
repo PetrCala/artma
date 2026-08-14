@@ -1,0 +1,143 @@
+id: krenkova-2023-milk-elasticity
+
+thesis:
+  author: "Křenková, Pavlína"
+  title: "The Price Elasticity of Milk Demand: A Meta-Analysis"
+  degree: bachelor
+  year: 2023
+  advisor: "Havránková, Zuzana"
+  handle: "20.500.11956/181954"
+  url: "https://dspace.cuni.cz/handle/20.500.11956/181954"
+
+dataset:
+  url: "https://dspace.cuni.cz/bitstream/handle/20.500.11956/181954/130357765.zip?sequence=4&isAllowed=y"
+  archive_member: "dta.csv"
+  sha256: "4945c70bc6d1442f1b7c93baad8198c3f0c6180428b4c85212e9102b8feae019"
+  # The published file pools all three goods; every table replicated here is the
+  # "milk composite" panel, which the thesis defines by this dummy (138 of 291).
+  row_filter: "Milk == 1"
+  code_published: true
+  code_files: ["code.R"]
+
+columns:
+  effect: "Estimate"
+  se: "Standard_Error"
+  study_id: "Study_Code"
+  n_obs: "observations"
+
+claims:
+  - id: mean_effect
+    label: "Mean elasticity (milk composite)"
+    reported: -0.60
+    source: "Table 3.1, p. 11"
+    method: effect_summary_stats
+    artma_model: "^All Data$"
+    artma_term: "^mean$"
+
+  - id: median_effect
+    label: "Median elasticity"
+    reported: -0.38
+    source: "Table 3.1, p. 11"
+    method: effect_summary_stats
+    artma_model: "^All Data$"
+    artma_term: "^median$"
+
+  - id: sd_effect
+    label: "SD of elasticity"
+    reported: 0.63
+    source: "Table 3.1, p. 11"
+    method: effect_summary_stats
+    artma_model: "^All Data$"
+    artma_term: "^sd$"
+
+  # Table 4.1 prints one column per estimator. "Standard Error (publication
+  # bias)" is the FAT slope; "Constant (mean beyond bias)" is the PET intercept.
+  - id: fat_ols
+    label: "Publication bias, OLS"
+    reported: -1.031
+    reported_se: 0.329
+    source: "Table 4.1, p. 21"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_ols
+    label: "Effect beyond bias, OLS"
+    reported: -0.463
+    reported_se: 0.054
+    source: "Table 4.1, p. 21"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^effect$"
+
+  - id: fat_fe
+    label: "Publication bias, fixed effects"
+    reported: -0.091
+    reported_se: 0.242
+    source: "Table 4.1, p. 21"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_fe
+    label: "Effect beyond bias, fixed effects"
+    reported: -0.590
+    reported_se: 0.043
+    source: "Table 4.1, p. 21"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^effect$"
+
+  - id: fat_be
+    label: "Publication bias, between effects"
+    reported: -1.400
+    reported_se: 0.293
+    source: "Table 4.1, p. 21"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_be
+    label: "Effect beyond bias, between effects"
+    reported: -0.386
+    reported_se: 0.081
+    source: "Table 4.1, p. 21"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^effect$"
+
+  - id: fat_precision
+    label: "Publication bias, precision-weighted"
+    reported: -4.156
+    reported_se: 1.219
+    source: "Table 4.1, p. 21"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_precision
+    label: "Effect beyond bias, precision-weighted"
+    reported: -0.306
+    reported_se: 0.073
+    source: "Table 4.1, p. 21"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^effect$"
+
+  - id: fat_study
+    label: "Publication bias, study-weighted"
+    reported: -1.136
+    reported_se: 0.314
+    source: "Table 4.1, p. 21"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_study
+    label: "Effect beyond bias, study-weighted"
+    reported: -0.421
+    reported_se: 0.056
+    source: "Table 4.1, p. 21"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^effect$"

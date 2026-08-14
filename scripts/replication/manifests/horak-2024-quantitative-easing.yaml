@@ -1,0 +1,145 @@
+id: horak-2024-quantitative-easing
+
+thesis:
+  author: "Horák, Matyáš"
+  title: "The Effects of Quantitative Easing: A Meta-Analysis"
+  degree: bachelor
+  year: 2024
+  advisor: "Havránek, Tomáš"
+  handle: "20.500.11956/193473"
+  url: "https://dspace.cuni.cz/handle/20.500.11956/193473"
+
+dataset:
+  url: "https://dspace.cuni.cz/bitstream/handle/20.500.11956/193473/130404211.zip?sequence=4&isAllowed=y"
+  archive_member: "Data.csv"
+  sha256: "6f6f7e5eda04653b708cadb180f04404b2b05c15e41c91a23970520044815d55"
+  code_published: true
+  code_files: ["Code.txt"]
+
+# The file is laid out as one block per outcome (GDP peak, GDP cumulative,
+# inflation peak, inflation cumulative), each block being <outcome>, se, t_stat.
+# That makes `se` appear four times; the harness renames the repeats to `se__2`
+# etc., so the bare `se` below is unambiguously the one belonging to GDP_peak.
+# Rows without a peak-GDP estimate drop out, leaving the 43 the thesis reports.
+columns:
+  effect: "GDP_peak"
+  se: "se"
+  study_id: "study_id"
+  n_obs: "obs_n"
+
+claims:
+  - id: mean_effect
+    label: "Sample mean, peak effect on GDP"
+    reported: 0.239
+    source: "Table 3.2, p. 12 (All Data)"
+    method: effect_summary_stats
+    artma_model: "^All Data$"
+    artma_term: "^mean$"
+
+  - id: fat_ols
+    label: "Publication bias, OLS"
+    reported: 1.283
+    reported_se: 0.129
+    source: "Table 4.1, p. 19 (Peak Effect on GDP)"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_ols
+    label: "Effect beyond bias, OLS"
+    reported: 0.012
+    reported_se: 0.019
+    source: "Table 4.1, p. 19 (Peak Effect on GDP)"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^effect$"
+
+  - id: fat_fe
+    label: "Publication bias, fixed effects"
+    reported: 1.409
+    reported_se: 0.108
+    source: "Table 4.1, p. 19 (Peak Effect on GDP)"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_fe
+    label: "Effect beyond bias, fixed effects"
+    reported: -0.011
+    reported_se: 0.023
+    source: "Table 4.1, p. 19 (Peak Effect on GDP)"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^effect$"
+
+  - id: fat_be
+    label: "Publication bias, between effects"
+    reported: 1.101
+    reported_se: 0.197
+    source: "Table 4.1, p. 19 (Peak Effect on GDP)"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_be
+    label: "Effect beyond bias, between effects"
+    reported: 0.048
+    reported_se: 0.033
+    source: "Table 4.1, p. 19 (Peak Effect on GDP)"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^effect$"
+
+  - id: fat_re
+    label: "Publication bias, random effects"
+    reported: 1.313
+    reported_se: 0.094
+    source: "Table 4.1, p. 19 (Peak Effect on GDP)"
+    method: linear_tests
+    artma_model: "^re$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_re
+    label: "Effect beyond bias, random effects"
+    reported: 0.013
+    reported_se: 0.024
+    source: "Table 4.1, p. 19 (Peak Effect on GDP)"
+    method: linear_tests
+    artma_model: "^re$"
+    artma_term: "^effect$"
+
+  - id: fat_study
+    label: "Publication bias, study-weighted"
+    reported: 1.553
+    reported_se: 0.097
+    source: "Table 4.1, p. 19 (Peak Effect on GDP)"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_study
+    label: "Effect beyond bias, study-weighted"
+    reported: -0.062
+    reported_se: 0.026
+    source: "Table 4.1, p. 19 (Peak Effect on GDP)"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^effect$"
+
+  - id: fat_precision
+    label: "Publication bias, precision-weighted"
+    reported: 1.590
+    reported_se: 0.172
+    source: "Table 4.1, p. 19 (Peak Effect on GDP)"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_precision
+    label: "Effect beyond bias, precision-weighted"
+    reported: -0.004
+    reported_se: 0.002
+    source: "Table 4.1, p. 19 (Peak Effect on GDP)"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^effect$"

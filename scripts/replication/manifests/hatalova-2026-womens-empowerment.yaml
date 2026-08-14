@@ -1,0 +1,147 @@
+id: hatalova-2026-womens-empowerment
+
+thesis:
+  author: "Hatalová, Lucia Mária"
+  title: "Women's Empowerment and Economic Development: A Meta-Analysis"
+  degree: master
+  year: 2026
+  advisor: "Havránek, Tomáš"
+  handle: "20.500.11956/210665"
+  url: "https://dspace.cuni.cz/handle/20.500.11956/210665"
+
+dataset:
+  url: "https://dspace.cuni.cz/bitstream/handle/20.500.11956/210665/120544761.zip?sequence=4&isAllowed=y"
+  archive_member: "Data.xlsx"
+  sha256: "5c19f8b6052b8438cf4ce6749b4af8e6a5bffc84f5cda10d5544f0c8e429ad16"
+  sheet: 1
+  # No filter: this is the "Full Aggregate Model" column, N = 904, matching the
+  # workbook exactly.
+  code_published: true
+  code_files: ["full_sample_code.R", "education_code.R", "labor_code.R"]
+
+columns:
+  effect: "pcc"
+  se: "se"
+  study_id: "study_id"
+  n_obs: "n_obs"
+
+claims:
+  - id: mean_effect
+    label: "Unweighted mean PCC, all estimates"
+    reported: 0.126
+    source: "Table 3.1, p. 25"
+    method: effect_summary_stats
+    artma_model: "^All Data$"
+    artma_term: "^mean$"
+
+  # Panel A of Table 4.1 is "Effect beyond bias" (PET); Panel B is the
+  # publication-bias slope (FAT). Both are read from the "Full Aggregate Model"
+  # column. The thesis prints identical point estimates for Precision-Weighted
+  # and Fixed-Effects in both panels; they are transcribed as printed.
+  - id: pet_ols
+    label: "Effect beyond bias, baseline OLS"
+    reported: 0.176
+    reported_se: 0.020
+    source: "Table 4.1, p. 32 (Panel A, full aggregate)"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^effect$"
+
+  - id: pet_study
+    label: "Effect beyond bias, study-weighted"
+    reported: 0.075
+    reported_se: 0.025
+    source: "Table 4.1, p. 32 (Panel A, full aggregate)"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^effect$"
+
+  - id: pet_precision
+    label: "Effect beyond bias, precision-weighted"
+    reported: 0.138
+    reported_se: 0.027
+    source: "Table 4.1, p. 32 (Panel A, full aggregate)"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^effect$"
+
+  - id: pet_fe
+    label: "Effect beyond bias, fixed effects"
+    reported: 0.138
+    reported_se: 0.004
+    source: "Table 4.1, p. 32 (Panel A, full aggregate)"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^effect$"
+
+  - id: pet_be
+    label: "Effect beyond bias, between effects"
+    reported: 0.065
+    reported_se: 0.046
+    source: "Table 4.1, p. 32 (Panel A, full aggregate)"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^effect$"
+
+  - id: pet_re
+    label: "Effect beyond bias, random effects"
+    reported: 0.170
+    reported_se: 0.018
+    source: "Table 4.1, p. 32 (Panel A, full aggregate)"
+    method: linear_tests
+    artma_model: "^re$"
+    artma_term: "^effect$"
+
+  - id: fat_ols
+    label: "Publication bias, baseline OLS"
+    reported: -0.500
+    reported_se: 0.213
+    source: "Table 4.1, p. 32 (Panel B, full aggregate)"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^publication_bias$"
+
+  - id: fat_study
+    label: "Publication bias, study-weighted"
+    reported: 0.619
+    reported_se: 0.323
+    source: "Table 4.1, p. 32 (Panel B, full aggregate)"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: fat_precision
+    label: "Publication bias, precision-weighted"
+    reported: -0.052
+    reported_se: 0.294
+    source: "Table 4.1, p. 32 (Panel B, full aggregate)"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: fat_fe
+    label: "Publication bias, fixed effects"
+    reported: -0.052
+    reported_se: 0.066
+    source: "Table 4.1, p. 32 (Panel B, full aggregate)"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^publication_bias$"
+
+  - id: fat_be
+    label: "Publication bias, between effects"
+    reported: 0.582
+    reported_se: 0.539
+    source: "Table 4.1, p. 32 (Panel B, full aggregate)"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^publication_bias$"
+
+  - id: fat_re
+    label: "Publication bias, random effects"
+    reported: -0.433
+    reported_se: 0.181
+    source: "Table 4.1, p. 32 (Panel B, full aggregate)"
+    method: linear_tests
+    artma_model: "^re$"
+    artma_term: "^publication_bias$"

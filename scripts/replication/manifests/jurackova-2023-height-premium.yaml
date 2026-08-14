@@ -1,0 +1,144 @@
+id: jurackova-2023-height-premium
+
+thesis:
+  author: "Juračková, Martina"
+  title: "Standing Tall Pays Off: A Meta-Analysis of Height Premium"
+  degree: master
+  year: 2023
+  advisor: "Havránková, Zuzana"
+  handle: "20.500.11956/186222"
+  url: "https://dspace.cuni.cz/handle/20.500.11956/186222"
+
+dataset:
+  url: "https://dspace.cuni.cz/bitstream/handle/20.500.11956/186222/120458436.zip?sequence=4&isAllowed=y"
+  archive_member: "Jurackova_data.csv"
+  sha256: "3a62e1358490473c305f0960313c69ef62fd8752d67918fe648e492222351e78"
+  delim: ";"
+  decimal_mark: ","
+  # Table 4.1 Panel A and the "causal" column of Table 3.2 both describe the
+  # estimates identified from exogenous variation. This filter reproduces the
+  # thesis's stated panel size exactly: 127 estimates from 15 studies.
+  row_filter: "endogeneity == 1"
+  code_published: true
+  code_files: ["Jurackova_code.txt"]
+
+columns:
+  effect: "effect_same_unit"
+  se: "se_same_unit"
+  study_id: "study"
+  n_obs: "n_of_observations"
+
+claims:
+  - id: mean_effect
+    label: "Unweighted mean height premium (causal)"
+    reported: 0.115
+    source: "Table 3.2, p. 25 (causal column)"
+    method: effect_summary_stats
+    artma_model: "^All Data$"
+    artma_term: "^mean$"
+
+  - id: median_effect
+    label: "Median height premium (causal)"
+    reported: 0.078
+    source: "Table 3.2, p. 25 (causal column)"
+    method: effect_summary_stats
+    artma_model: "^All Data$"
+    artma_term: "^median$"
+
+  - id: sd_effect
+    label: "SD of height premium (causal)"
+    reported: 0.149
+    source: "Table 3.2, p. 25 (causal column)"
+    method: effect_summary_stats
+    artma_model: "^All Data$"
+    artma_term: "^sd$"
+
+  - id: fat_ols
+    label: "Publication bias, OLS"
+    reported: 0.874
+    reported_se: 0.314
+    source: "Table 4.1, p. 33 (Panel A: causal effects)"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_ols
+    label: "Mean beyond bias, OLS"
+    reported: 0.058
+    reported_se: 0.015
+    source: "Table 4.1, p. 33 (Panel A: causal effects)"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^effect$"
+
+  - id: fat_be
+    label: "Publication bias, between effects"
+    reported: 1.567
+    reported_se: 0.219
+    source: "Table 4.1, p. 33 (Panel A: causal effects)"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_be
+    label: "Mean beyond bias, between effects"
+    reported: 0.028
+    reported_se: 0.010
+    source: "Table 4.1, p. 33 (Panel A: causal effects)"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^effect$"
+
+  - id: fat_fe
+    label: "Publication bias, fixed effects"
+    reported: 2.242
+    reported_se: 0.115
+    source: "Table 4.1, p. 33 (Panel A: causal effects)"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_fe
+    label: "Mean beyond bias, fixed effects"
+    reported: 0.005
+    reported_se: 0.001
+    source: "Table 4.1, p. 33 (Panel A: causal effects)"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^effect$"
+
+  - id: fat_study
+    label: "Publication bias, study-weighted"
+    reported: 1.027
+    reported_se: 0.366
+    source: "Table 4.1, p. 33 (Panel A: causal effects)"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_study
+    label: "Mean beyond bias, study-weighted"
+    reported: 0.028
+    reported_se: 0.010
+    source: "Table 4.1, p. 33 (Panel A: causal effects)"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^effect$"
+
+  - id: fat_precision
+    label: "Publication bias, precision-weighted"
+    reported: 1.529
+    reported_se: 0.232
+    source: "Table 4.1, p. 33 (Panel A: causal effects)"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_precision
+    label: "Mean beyond bias, precision-weighted"
+    reported: 0.019
+    reported_se: 0.006
+    source: "Table 4.1, p. 33 (Panel A: causal effects)"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^effect$"

@@ -1,0 +1,130 @@
+id: marysko-2025-esg-earnings
+
+thesis:
+  author: "Maryško, Karel"
+  title: "How Does ESG Performance Affect Earnings? A Meta-Analysis"
+  degree: bachelor
+  year: 2025
+  advisor: "Havránek, Tomáš"
+  handle: "20.500.11956/202746"
+  url: "https://dspace.cuni.cz/handle/20.500.11956/202746"
+
+dataset:
+  url: "https://dspace.cuni.cz/bitstream/handle/20.500.11956/202746/130438350.zip?sequence=4&isAllowed=y"
+  # The archive ships several files; this is the partial-correlation input the
+  # PCC tables are built from (108 estimates, 45 studies).
+  archive_member: "inputdata - pcc.csv"
+  sha256: "2729b690094641170ed4d2c5c7b0bfa55455b8764d5f48d3c3f490902344b0db"
+  delim: ";"
+  decimal_mark: ","
+  code_published: true
+  code_files: ["code1.pdf"]
+
+columns:
+  effect: "bs"
+  se: "sebs"
+  study_id: "studyid"
+  n_obs: "Ns"
+
+claims:
+  - id: mean_effect
+    label: "Unweighted mean PCC, all studies"
+    reported: 0.033
+    source: "Table 3.1, p. 18"
+    method: effect_summary_stats
+    artma_model: "^All Data$"
+    artma_term: "^mean$"
+
+  - id: fat_ols
+    label: "Publication bias, OLS"
+    reported: 0.900
+    reported_se: 0.497
+    source: "Table 4.1, p. 25 (PCC)"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_ols
+    label: "Effect beyond bias, OLS"
+    reported: 0.003
+    reported_se: 0.015
+    source: "Table 4.1, p. 25 (PCC)"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^effect$"
+
+  # The thesis prints identical numbers for the FE and Precision columns
+  # (0.346 / 0.017); transcribed as printed rather than second-guessed.
+  - id: fat_fe
+    label: "Publication bias, fixed effects"
+    reported: 0.346
+    reported_se: 0.663
+    source: "Table 4.1, p. 25 (PCC)"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_fe
+    label: "Effect beyond bias, fixed effects"
+    reported: 0.017
+    reported_se: 0.019
+    source: "Table 4.1, p. 25 (PCC)"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^effect$"
+
+  - id: fat_re
+    label: "Publication bias, random effects"
+    reported: 0.881
+    reported_se: 0.558
+    source: "Table 4.1, p. 25 (PCC)"
+    method: linear_tests
+    artma_model: "^re$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_re
+    label: "Effect beyond bias, random effects"
+    reported: 0.003
+    reported_se: 0.018
+    source: "Table 4.1, p. 25 (PCC)"
+    method: linear_tests
+    artma_model: "^re$"
+    artma_term: "^effect$"
+
+  # "Precision = inverse standard error weights" per the table note, i.e. 1/se,
+  # whereas artma weights by 1/se^2.
+  - id: fat_precision
+    label: "Publication bias, precision-weighted"
+    reported: 0.346
+    reported_se: 0.517
+    source: "Table 4.1, p. 25 (PCC)"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_precision
+    label: "Effect beyond bias, precision-weighted"
+    reported: 0.017
+    reported_se: 0.014
+    source: "Table 4.1, p. 25 (PCC)"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^effect$"
+
+  - id: fat_study
+    label: "Publication bias, study-weighted"
+    reported: 1.488
+    reported_se: 0.555
+    source: "Table 4.1, p. 25 (PCC)"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_study
+    label: "Effect beyond bias, study-weighted"
+    reported: -0.001
+    reported_se: 0.014
+    source: "Table 4.1, p. 25 (PCC)"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^effect$"

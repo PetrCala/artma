@@ -1,0 +1,121 @@
+id: pokorna-2023-parental-schooling
+
+thesis:
+  author: "Pokorná, Anastasia"
+  title: "The Causal Effect of Parents' Schooling on Children's Schooling: A Meta-Analysis"
+  degree: master
+  year: 2023
+  advisor: "Havránková, Zuzana"
+  handle: "20.500.11956/179488"
+  url: "https://dspace.cuni.cz/handle/20.500.11956/179488"
+
+dataset:
+  url: "https://dspace.cuni.cz/bitstream/handle/20.500.11956/179488/120437903.zip?sequence=4&isAllowed=y"
+  archive_member: "Data_Pashkina_Pokorna_Final.csv"
+  sha256: "af29dee6a51832379955b965ef986fc676ffba8ab6d93aec11e3468193d9051e"
+  code_published: true
+  code_files: ["Code_Pokorna (Pashkina).txt"]
+
+# The file holds causal effects and non-causal associations side by side, each
+# followed by its own "St. error" column. The harness suffixes the repeat to
+# `St. error__2`, so the bare name below is the causal one. Rows with no causal
+# estimate drop out on their own, leaving the 387 estimates from 23 studies the
+# thesis reports for this panel.
+columns:
+  effect: "Causal effect"
+  se: "St. error"
+  study_id: "Study"
+  n_obs: "Sample size"
+
+claims:
+  - id: fat_ols
+    label: "Publication bias, OLS"
+    reported: 1.350
+    reported_se: 0.109
+    source: "Table 4.1, p. 27 (Panel A, causal effects)"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_ols
+    label: "Mean beyond bias, OLS"
+    reported: 0.044
+    reported_se: 0.011
+    source: "Table 4.1, p. 27 (Panel A, causal effects)"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^effect$"
+
+  - id: fat_fe
+    label: "Publication bias, fixed effects"
+    reported: 0.894
+    reported_se: 0.071
+    source: "Table 4.1, p. 27 (Panel A, causal effects)"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_fe
+    label: "Mean beyond bias, fixed effects"
+    reported: 0.081
+    reported_se: 0.002
+    source: "Table 4.1, p. 27 (Panel A, causal effects)"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^effect$"
+
+  - id: fat_be
+    label: "Publication bias, between effects"
+    reported: 2.010
+    reported_se: 0.228
+    source: "Table 4.1, p. 27 (Panel A, causal effects)"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_be
+    label: "Mean beyond bias, between effects"
+    reported: -0.042
+    reported_se: 0.049
+    source: "Table 4.1, p. 27 (Panel A, causal effects)"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^effect$"
+
+  # The thesis states it weights by precision = 1/st.error; artma weights by
+  # 1/st.error^2, so this pair is not expected to line up.
+  - id: fat_precision
+    label: "Publication bias, precision-weighted"
+    reported: 1.136
+    reported_se: 0.093
+    source: "Table 4.1, p. 27 (Panel B, causal effects)"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_precision
+    label: "Mean beyond bias, precision-weighted"
+    reported: 0.072
+    reported_se: 0.006
+    source: "Table 4.1, p. 27 (Panel B, causal effects)"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^effect$"
+
+  - id: fat_study
+    label: "Publication bias, study-size weighted"
+    reported: 1.698
+    reported_se: 0.158
+    source: "Table 4.1, p. 27 (Panel B, causal effects)"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_study
+    label: "Mean beyond bias, study-size weighted"
+    reported: 0.002
+    reported_se: 0.019
+    source: "Table 4.1, p. 27 (Panel B, causal effects)"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^effect$"

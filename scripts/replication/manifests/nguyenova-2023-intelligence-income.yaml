@@ -1,0 +1,126 @@
+id: nguyenova-2023-intelligence-income
+
+thesis:
+  author: "Nguyenová, Van Anh"
+  title: "How much does intelligence predict lifetime income? A Meta-Analysis"
+  degree: bachelor
+  year: 2023
+  advisor: "Havránková, Zuzana"
+  handle: "20.500.11956/185024"
+  url: "https://dspace.cuni.cz/handle/20.500.11956/185024"
+
+dataset:
+  # Published as a bare CSV rather than an archive.
+  url: "https://dspace.cuni.cz/bitstream/handle/20.500.11956/185024/130372509.csv?sequence=4&isAllowed=y"
+  sha256: "c490791ab37bf0697272b8f9649f0021f38251a79fcdce4d2f44b60c2c00052f"
+  delim: ";"
+  decimal_mark: ","
+  code_published: false
+
+columns:
+  effect: "effect"
+  se: "standard_error"
+  study_id: "study_id"
+  n_obs: "n_obs"
+
+claims:
+  - id: mean_effect
+    label: "Unweighted mean effect, all estimates"
+    reported: 0.078
+    source: "Table 3.1, p. 20"
+    method: effect_summary_stats
+    artma_model: "^All Data$"
+    artma_term: "^mean$"
+
+  - id: fat_ols
+    label: "Publication bias, OLS"
+    reported: 0.377
+    reported_se: 0.143
+    source: "Table 4.1, p. 26"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_ols
+    label: "Effect beyond bias, OLS"
+    reported: 0.070
+    reported_se: 0.004
+    source: "Table 4.1, p. 26"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^effect$"
+
+  - id: fat_study
+    label: "Publication bias, study-weighted"
+    reported: 0.470
+    reported_se: 0.119
+    source: "Table 4.1, p. 26"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_study
+    label: "Effect beyond bias, study-weighted"
+    reported: 0.046
+    reported_se: 0.003
+    source: "Table 4.1, p. 26"
+    method: linear_tests
+    artma_model: "^ols_study_weighted$"
+    artma_term: "^effect$"
+
+  # The thesis note defines "Precision" as weighting by the inverse of the
+  # standard error (1/se); artma weights by 1/se^2. The two are not the same
+  # estimator, so a divergence here is expected rather than a defect.
+  - id: fat_precision
+    label: "Publication bias, precision-weighted"
+    reported: 4.960
+    reported_se: 0.326
+    source: "Table 4.1, p. 26"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_precision
+    label: "Effect beyond bias, precision-weighted"
+    reported: 0.007
+    reported_se: 0.004
+    source: "Table 4.1, p. 26"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^effect$"
+
+  - id: fat_fe
+    label: "Publication bias, fixed effects"
+    reported: 0.151
+    reported_se: 0.076
+    source: "Table 4.1, p. 26"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_fe
+    label: "Effect beyond bias, fixed effects"
+    reported: 0.075
+    reported_se: 0.002
+    source: "Table 4.1, p. 26"
+    method: linear_tests
+    artma_model: "^fe$"
+    artma_term: "^effect$"
+
+  - id: fat_be
+    label: "Publication bias, between effects"
+    reported: 0.421
+    reported_se: 0.621
+    source: "Table 4.1, p. 26"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_be
+    label: "Effect beyond bias, between effects"
+    reported: 0.081
+    reported_se: 0.017
+    source: "Table 4.1, p. 26"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^effect$"

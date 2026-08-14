@@ -1,0 +1,114 @@
+id: proks-2026-temperature-growth
+
+thesis:
+  author: "Prokš, Petr"
+  title: "Temperature and Growth: A Meta-Analysis"
+  degree: master
+  year: 2026
+  advisor: "Havránek, Tomáš"
+  handle: "20.500.11956/206898"
+  url: "https://dspace.cuni.cz/handle/20.500.11956/206898"
+
+dataset:
+  url: "https://dspace.cuni.cz/bitstream/handle/20.500.11956/206898/120534453.zip?sequence=4&isAllowed=y"
+  archive_member: "metaanalysis_data.csv"
+  sha256: "24c3a5332371485a9b7acd7ac78709a480522b8554eab8350428ed17c5789f82"
+  code_published: true
+  code_files: ["BMA.R", "FMA.R", "linear_publication_bias_method.R", "non_linear_publication_bias_method.R"]
+
+# The published file leaves `observations` empty for 226 of the 261 estimates.
+# artma treats n_obs as required and aborts on gaps, so it is median-imputed.
+# This is safe for everything compared here: with the default
+# `precision_type: 1/SE`, no linear model reads n_obs (they weight by
+# `precision` = 1/se or by `study_size` = estimates per study). Verified
+# empirically on this dataset: replacing every n_obs with a constant leaves all
+# twelve linear_tests estimates bit-identical (max absolute difference 0).
+artma_options:
+  data.na_handling: "median"
+
+columns:
+  effect: "Estimate"
+  se: "SE"
+  study_id: "study"
+  n_obs: "observations"
+
+claims:
+  # Table 5.1 prints the same point estimates twice (plain and study-clustered
+  # standard errors); artma always clusters, so only the estimate is compared.
+  - id: fat_ols
+    label: "Publication bias (FAT), OLS"
+    reported: -0.444
+    reported_se: 0.336
+    source: "Table 5.1, p. 40"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_ols
+    label: "Effect beyond bias (PET), OLS"
+    reported: -0.015
+    reported_se: 0.024
+    source: "Table 5.1, p. 40"
+    method: linear_tests
+    artma_model: "^ols$"
+    artma_term: "^effect$"
+
+  - id: fat_be
+    label: "Publication bias (FAT), between-study"
+    reported: -0.393
+    reported_se: 0.254
+    source: "Table 5.2, p. 41"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_be
+    label: "Effect beyond bias (PET), between-study"
+    reported: -0.022
+    reported_se: 0.045
+    source: "Table 5.2, p. 41"
+    method: linear_tests
+    artma_model: "^be$"
+    artma_term: "^effect$"
+
+  # This thesis is the one place in this set that reports BOTH weighting
+  # conventions, which pins down what artma actually does. artma's
+  # `ols_precision_weighted` fits with weights = precision^2 = 1/se^2, i.e.
+  # inverse-variance weighting (Table 5.4) -- NOT the 1/se weighting the thesis
+  # labels "precision-weighted" (Table 5.3). Both are compared against the same
+  # artma row on purpose: the pair shows which convention artma implements.
+  - id: fat_ivw
+    label: "Publication bias (FAT), inverse-variance weighted"
+    reported: -1.201
+    reported_se: 0.387
+    source: "Table 5.4, p. 42"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_ivw
+    label: "Effect beyond bias (PET), inverse-variance weighted"
+    reported: -0.00013
+    reported_se: 0.00008
+    source: "Table 5.4, p. 42"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^effect$"
+
+  - id: fat_precision_1_over_se
+    label: "Publication bias (FAT), thesis's 1/se-weighted OLS"
+    reported: -0.573
+    reported_se: 0.199
+    source: "Table 5.3, p. 41"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^publication_bias$"
+
+  - id: pet_precision_1_over_se
+    label: "Effect beyond bias (PET), thesis's 1/se-weighted OLS"
+    reported: -0.0021
+    reported_se: 0.0016
+    source: "Table 5.3, p. 41"
+    method: linear_tests
+    artma_model: "^ols_precision_weighted$"
+    artma_term: "^effect$"
