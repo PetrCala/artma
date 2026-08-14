@@ -23,7 +23,7 @@ exogeneity_tests <- function(df) {
   resolved_options <- c(
     list(add_significance_marks = resolve_add_significance_marks()),
     resolve_options(opt, list(
-      iv_instrument = opt_spec(default = "automatic", type = "character"),
+      iv_instrument = opt_spec(default = "1/sqrt(n_obs)", type = "character"),
       puniform_alpha = opt_spec(
         default = 0.05, type = "numeric",
         constraint = function(x) x > 0 && x < 1,

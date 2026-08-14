@@ -210,16 +210,27 @@ methods:
   exogeneity_tests:
     iv_instrument:
       type: "enum: automatic|1/sqrt(n_obs)|1/n_obs|1/n_obs^2|log(n_obs)"
-      default: "automatic"
+      default: "1/sqrt(n_obs)"
       help: |
         Instrument to use for the instrumental variable (IV) regression.
-        Use {.strong automatic} to rank candidates by first-stage F-statistic
-        (the weak-instruments diagnostic) and pick the strongest, breaking
-        ties in favor of {.strong 1/sqrt(n_obs)}, the theoretically motivated
-        instrument. A warning is printed if the selected instrument's
-        first-stage F falls below the conventional weak-instrument threshold
-        of 10. Alternatively, specify a specific instrument formula involving
-        n_obs.
+        Defaults to {.strong 1/sqrt(n_obs)}, the theoretically motivated
+        instrument: the standard error of an estimator scales with 1/sqrt(N),
+        so sample size predicts reported precision without being a channel for
+        selective reporting. It is also the instrument used throughout the
+        applied literature, which keeps results comparable with published
+        meta-analyses.
+
+        {.strong automatic} instead ranks the candidates by first-stage
+        F-statistic and picks the strongest, breaking ties in favor of
+        {.strong 1/sqrt(n_obs)}. Treat it as an exploratory option rather than
+        a default: choosing an instrument by its first-stage strength on the
+        same data used for inference is a specification search, which biases
+        selection toward instruments that look strong in sample and understates
+        the uncertainty of the resulting estimates.
+
+        A warning is printed if the selected instrument's first-stage F falls
+        below the conventional weak-instrument threshold of 10. Alternatively,
+        specify a specific instrument formula involving n_obs.
 
     puniform_alpha:
       type: "numeric"

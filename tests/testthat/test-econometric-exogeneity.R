@@ -62,7 +62,7 @@ make_weak_instrument_df <- function(seed = 99, n = 120, mu = 0.5, bias = 1.0) {
 
 default_exogeneity_options <- function(...) {
   defaults <- list(
-    iv_instrument = "automatic",
+    iv_instrument = "1/sqrt(n_obs)",
     add_significance_marks = TRUE,
     round_to = 3L,
     puniform_alpha = 0.05,
@@ -93,7 +93,33 @@ test_that("run_iv_regression recovers the effect and bias from a known DGP", {
   expect_false(res$weak_instrument)
 })
 
-test_that("run_iv_regression auto-selects the sample-size instrument", {
+test_that("run_iv_regression defaults to the a-priori sample-size instrument", {
+  skip_if_not_installed("AER")
+  local_options(artma.verbose = 1)
+
+  # The default is fixed rather than selected: ranking candidates by their
+  # first-stage F on the same data used for inference is a specification
+  # search, so "automatic" is opt-in only.
+  df <- make_exogeneity_df()
+  res <- run_iv_regression(df)
+
+  expect_equal(res$instrument_name, "1/sqrt(n_obs)")
+  expect_equal(
+    res$coefficients$estimate,
+    run_iv_regression(df, iv_instrument = "1/sqrt(n_obs)")$coefficients$estimate
+  )
+})
+
+test_that("the iv_instrument template default matches the method's opt_spec", {
+  # CLAUDE.md: an opt_spec default that drifts from the template default makes
+  # getOption() and the options file disagree about what a fresh run does.
+  tpl <- yaml::read_yaml(
+    system.file("artma/options/templates/options_template.yaml", package = "artma")
+  )
+  expect_equal(tpl$methods$exogeneity_tests$iv_instrument$default, "1/sqrt(n_obs)")
+})
+
+test_that("run_iv_regression still auto-selects when explicitly asked", {
   skip_if_not_installed("AER")
   local_options(artma.verbose = 1)
 
