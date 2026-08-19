@@ -1,18 +1,16 @@
 <div align="center">
-    <h1>
-        Automatic Replication Tools for Meta-analysis
-    </h1>
-    <h4>
-    Effortlessly bridging the gap between data and models
-    </h4>
 
-  <!-- badges: start -->
+<h1>Automatic Replication Tools for Meta-analysis</h1>
+
+<h4>Effortlessly bridging the gap between data and models</h4>
+
+<!-- badges: start -->
 
 [![R build status](https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml)
 [![CRAN Status](https://www.r-pkg.org/badges/version/artma)](https://cran.r-project.org/package=artma)
 [![codecov](https://codecov.io/gh/PetrCala/artma/graph/badge.svg?token=6XNXVDOT80)](https://codecov.io/gh/PetrCala/artma)
 
-  <!-- badges: end -->
+<!-- badges: end -->
 
 </div>
 

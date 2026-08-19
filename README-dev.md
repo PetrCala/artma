@@ -1,10 +1,9 @@
 <div align="center">
-    <h1>
-        Automatic Replication Tools for Meta-analysis
-    </h1>
-    <h4>
-    Developer Documentation
-    </h4>
+
+<h1>Automatic Replication Tools for Meta-analysis</h1>
+
+<h4>Developer Documentation</h4>
+
 </div>
 
 - [How to run](#how-to-run)
