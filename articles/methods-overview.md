@@ -1,0 +1,168 @@
+# Methods Overview
+
+## Introduction
+
+**artma** ships a set of runtime methods: the analytical functions that
+[`artma()`](https://petrcala.github.io/artma/reference/artma.md) runs on
+your data. This vignette describes what each method does, what it
+depends on, and what it returns, so you can pick the right ones for your
+analysis. For a hands-on introduction to running methods, see the
+[Getting
+Started](https://petrcala.github.io/artma/articles/getting-started.md)
+vignette.
+
+List the methods available in your installed version at any time with:
+
+``` r
+
+artma::methods_list()
+```
+
+That prints one row per method: what it does, the data columns it needs,
+the methods that run before it, the optional packages it uses (with an
+`install <pkg>` status when one is missing), and whether it is opt-in.
+It also returns the same information as a data frame, invisibly. Pass
+your data to check the required columns before a run, so you see which
+methods would be skipped rather than finding out afterwards:
+
+``` r
+
+methods <- artma::methods_list(available_for = my_data)
+methods[!methods$available, c("method", "missing_columns", "missing_packages")]
+```
+
+The tables below carry the same metadata; a test keeps them in step with
+what the methods register.
+
+## How methods execute
+
+Each method is a plain function registered with
+`register_runtime_method()`, which attaches declarative metadata: a
+one-line `description`, a `depends_on` list of upstream methods, a
+`required_columns` list of data columns it needs, and a `suggests` list
+of optional packages it needs.
+[`methods_list()`](https://petrcala.github.io/artma/reference/methods_list.md)
+reads that metadata back, so the printed overview cannot fall out of
+step with what the methods declare.
+
+When you call `artma(methods = ...)`, the requested methods are
+topologically sorted by their `depends_on` edges, so a method that
+builds on another method’s output (for example, `best_practice_estimate`
+builds on `bma`) always runs after it and receives its result as a
+`<dependency>_result` argument. Ties preserve discovery order;
+dependency cycles abort the run.
+
+Before each method runs, its `required_columns` are checked against your
+data and its `suggests` packages against what’s installed. A method that
+fails either check is skipped with an explanation instead of aborting
+the whole run, the only exception being a non-interactive run that
+requested exactly that one method with a missing suggested package,
+which aborts with a clear error. A method that throws an error is
+likewise caught and skipped; the run continues, and skipped/failed
+methods are reported at the end (as the `failed_methods` attribute on
+the returned list).
+
+Every method returns a `tables`/`plots`/`meta` triple: `tables` are
+exported as CSV, `plots` are available for programmatic access and
+printing, and `meta` holds anything else (fitted models, fit parameters,
+skip reasons).
+
+## Descriptive and exploratory methods
+
+These methods summarize or visualize the data; none depend on another
+method.
+
+| Method | What it does | Required columns |
+|----|----|----|
+| `effect_summary_stats` | Summary statistics (mean, weighted mean, CIs, median, SD) of the main effect, grouped by variables flagged in the data config | `effect`, `study_size` |
+| `variable_summary_stats` | Descriptive statistics (mean, median, min, max, SD, missingness) for each variable flagged for summary in the data config | none |
+| `funnel_plot` | Funnel plot of effect against precision, for spotting publication bias/asymmetry, with configurable outlier filtering | `effect`, `precision` |
+| `box_plot` | Box plots of the effect grouped by a categorical variable, auto-splitting into multiple plots when there are many groups | `effect` |
+| `prima_facie_graphs` | Density/histogram overlays of the effect distribution split by detected categorical groups (e.g. published vs. unpublished) | `effect` |
+| `t_stat_histogram` | Histograms of the t-statistic distribution, with a full-range and a zoomed-in view, plus significance reference lines | `t_stat` |
+
+## Publication-bias diagnostics
+
+These methods test for publication bias and selective reporting; none
+depend on another method.
+
+| Method | What it does | Required columns | Packages |
+|----|----|----|----|
+| `linear_tests` | Linear funnel-asymmetry regressions of effect on standard error (FAT-PET): OLS, panel Fixed/Between/Random Effects, and study-size/precision-weighted variants | `effect`, `se`, `study_id` | none |
+| `nonlinear_tests` | Non-linear publication-bias corrections: WAAP, Top10, STEM (funnel and MSE variants), a hierarchical Bayesian model, a selection-model (p-uniform-style) estimator, and the endogenous kink test | `effect`, `se`, `study_id` | none |
+| `exogeneity_tests` | Diagnostics that relax the exogeneity assumption: instrumental-variable regression and the p-uniform\* test | `effect`, `se`, `study_id`, `n_obs`, `study_size` | `AER` |
+| `p_hacking_tests` | Caliper tests around significance thresholds and the Elliott et al. (2022) battery | `effect`, `se`, `t_stat`, `study_id` | none |
+| `maive` | The MAIVE estimator: corrects the mean effect for publication bias, p-hacking, and spurious precision by instrumenting reported variances with the inverse sample size | `effect`, `se`, `n_obs` | `MAIVE` |
+
+`maive` needs `MAIVE` version 0.2.4 or newer.
+
+## Moderator and heterogeneity analysis
+
+These methods examine how the effect varies with moderator variables.
+`fma` and `best_practice_estimate` both build on `bma`.
+
+| Method | What it does | Required columns | Depends on | Packages | Opt-in |
+|----|----|----|----|----|----|
+| `bma` | Bayesian Model Averaging over moderator variables, estimating posterior inclusion probability and posterior mean/SD for each candidate moderator | `effect`, `se` | none | `BMS` | no |
+| `fma` | Frequentist Model Averaging over the same moderators, using the BMA model (computed on demand if not already available) to order and select predictors | `effect`, `se` | `bma` | `BMS`, `quadprog` | no |
+| `best_practice_estimate` | A “best-practice” point estimate and CI for the effect, plugging literature-informed or user-supplied moderator values into the BMA coefficients; also computes economic-significance metrics | `effect`, `study_id` | `bma` | `BMS` | no |
+| `robma` | Robust Bayesian meta-analysis (model-averaged publication-bias correction) via the `RoBMA` package; run it by requesting it by name | `effect`, `se` | none | `RoBMA` | yes |
+
+If you request both `bma` and `fma` (directly or via a dependency) and
+both produce coefficient tables, artma adds a unified `ma_table` entry
+to the results combining them.
+
+When moderators are selected automatically, `bma` always adds the
+standard error (`se`) and sample size (`study_size`) to the moderator
+set as priority variables; the standard-error term acts as a
+publication-bias control inside BMA by convention. They show up in the
+Model Averaging results alongside your own moderators, and a note is
+printed during variable selection.
+
+Automatic selection also excludes columns detected as derived encodings
+of the effect or its standard error, such as winsorized copies of the
+effect, t-statistics, or inverse standard errors, which many published
+datasets ship alongside the raw variables. Keeping one would make BMA
+regress the effect on a transform of itself, hiding every genuine
+moderator. Detection is based on rank and outlier-clipped correlations
+with the effect, the SE, 1/se, and effect/se (threshold 0.9); excluded
+columns are listed in a warning. If such a column is configured
+explicitly (`bma: true`), it is kept but warned about. To keep one on
+purpose without warnings, set `bma_allow_derived: true` on its entry in
+the data config.
+
+`robma` needs the `RoBMA` package, which in turn requires a working JAGS
+installation (via `rjags`). On Windows, CRAN’s RoBMA source can fail to
+compile against JAGS 4.3.1; if RoBMA is not installed, the method is
+skipped with an explanation rather than aborting the run.
+
+## Choosing methods
+
+Methods whose required columns are missing from your data, or whose
+suggested packages aren’t installed, are skipped with an explanation
+rather than aborting the run, so it’s safe to request `methods = "all"`
+even if your data or R environment doesn’t support every method:
+
+``` r
+
+# Run everything artma supports for your data
+results <- artma(methods = "all", options = "my_analysis.yaml")
+
+# Run a specific combination
+results <- artma(methods = c("funnel_plot", "bma", "fma"), options = "my_analysis.yaml")
+```
+
+To see the skips in advance, hand your prepared data to
+[`methods_list()`](https://petrcala.github.io/artma/reference/methods_list.md):
+
+``` r
+
+methods <- artma::methods_list(available_for = my_data)
+subset(methods, !available)[, c("method", "missing_columns", "missing_packages")]
+```
+
+See the [Getting
+Started](https://petrcala.github.io/artma/articles/getting-started.md)
+vignette for the full workflow, and the [Understanding Options
+Files](https://petrcala.github.io/artma/articles/options-files.md)
+vignette for how to configure each method’s parameters.

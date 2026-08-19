@@ -1,0 +1,514 @@
+# How to run
+
+``` R
+<h1>
+    Automatic Replication Tools for Meta-analysis
+</h1>
+<h4>
+Developer Documentation
+</h4>
+```
+
+- [How to run](#how-to-run)
+- [Required packages](#required-packages)
+  - [Runtime Dependencies (`Imports`)](#runtime-dependencies-imports)
+  - [Development Dependencies
+    (`Suggests`)](#development-dependencies-suggests)
+    - [Dependency versioning policy](#dependency-versioning-policy)
+- [Importing modules](#importing-modules)
+- [Validating Conditions](#validating-conditions)
+  - [Using the `validate` Function](#using-the-validate-function)
+  - [Examples using the validate
+    function](#examples-using-the-validate-function)
+    - [Valid Conditions](#valid-conditions)
+    - [Invalid Conditions](#invalid-conditions)
+  - [Using the `assert` Function](#using-the-assert-function)
+  - [Examples using the assert
+    function](#examples-using-the-assert-function)
+- [Formatting code](#formatting-code)
+- [Understanding the folder
+  structure](#understanding-the-folder-structure)
+- [Using the options template](#using-the-options-template)
+- [Caching heavy computations](#caching-heavy-computations)
+- [Using `lintr` for Code Quality](#using-lintr-for-code-quality)
+  - [Installation](#installation)
+  - [Usage](#usage)
+  - [Set up box paths](#set-up-box-paths)
+- [Docstrings and documentation](#docstrings-and-documentation)
+  - [Annotating function argument
+    types](#annotating-function-argument-types)
+- [Creating a new package version](#creating-a-new-package-version)
+- [Generating package news](#generating-package-news)
+- [Formatting commits](#formatting-commits)
+  - [Commit lints](#commit-lints)
+- [Running tests](#running-tests)
+- [Code of Conduct](#code-of-conduct)
+
+Welcome to the developer documentation for artma (Automatic Replication
+Tools for Meta-analysis). This guide covers setup, development
+workflows, code standards, and other technical details needed for
+contributing to the project.
+
+1.  Clone the repository using
+
+    ``` bash
+    git clone https://github.com/PetrCala/artma.git
+    ```
+
+2.  Navigate to the project root
+
+    ``` bash
+    cd artma
+    ```
+
+3.  Set up the local environment by executing
+
+    ``` bash
+    make setup
+    ```
+
+4.  See the list of available commands by running
+
+    ``` bash
+    make help
+    ```
+
+# Required packages
+
+Below is a list of required packages and reasoning for why they are
+needed.
+
+## Runtime Dependencies (`Imports`)
+
+These packages are required for the package to function correctly when
+used by others.
+
+- `box`: Python-style module system used for the package’s internal
+  imports.
+- `cli`: styled and structured console output (messages, warnings,
+  etc.).
+- `climenu`: interactive CLI menus with keyboard navigation, search, and
+  multi-select.
+- `ggplot2`: plotting engine for funnel plots, box plots, and
+  histograms.
+- `ggtext`: rich-text rendering for ggplot2 labels and titles.
+- `lmtest`: hypothesis tests for linear regression models.
+- `memoise`: on-disk caching of heavy computations.
+- `Rcpp`: C++ integration for performance-critical routines (see
+  `LinkingTo`).
+- `rlang`: condition handling and tidy evaluation helpers.
+- `sandwich`: robust and clustered covariance-matrix estimators.
+- `withr`: temporarily change global state (e.g., options, env vars)
+  within a controlled context.
+- `yaml`: parsing and reading `.yaml` options files.
+
+## Optional Dependencies (`Suggests`)
+
+These packages are not required to load the package. Some power
+development tooling; others are gated behind a method’s declarative
+`suggests` (or a call-site
+[`requireNamespace()`](https://rdrr.io/r/base/ns-load.html) guard) and
+are only needed when that analysis runs.
+
+Development and tooling:
+
+- `box.linters`: box-specific linting support.
+- `covr`: code coverage reporting.
+- `devtools`: package development tools (e.g., `load_all()`, `check()`,
+  `test()`).
+- `fs`: file-system handling with a consistent API.
+- `knitr`: dynamic report generation for vignettes and R Markdown.
+- `languageserver`: LSP support for IDE features like autocomplete and
+  linting.
+- `lintr`: static style and lint checks.
+- `mathjaxr`: MathJax support for documentation previews.
+- `optparse`: command-line argument parsing for scripts.
+- `pkgbuild`: tools for building R packages.
+- `remotes`: install packages from GitHub or other remote sources.
+- `rex`: human-readable regular-expression construction.
+- `rmarkdown`: rendering and previewing Markdown-based reports.
+- `roxygen2`: inline documentation generation.
+- `testthat`: unit testing framework.
+
+Optional analysis features (installed on demand for specific methods):
+
+- `AER`, `ivmodel`: instrumental-variable estimators.
+- `bayesm`, `BMS`: Bayesian model averaging back-ends.
+- `car`: additional regression diagnostics.
+- `corrplot`: correlation-matrix visualisation.
+- `fdrtool`, `rddensity`: p-hacking and density-discontinuity tests.
+- `haven`, `readxl`, `writexl`, `jsonlite`: reading and writing non-CSV
+  data formats.
+- `MAIVE`: MAIVE meta-analysis estimator.
+- `mice`: multiple imputation of missing values.
+- `NlcOptim`, `quadprog`: non-linear and quadratic optimisation used by
+  some estimators.
+- `plm`: panel-data linear models.
+
+### Dependency versioning policy
+
+The `DESCRIPTION` file lists the **minimum** versions that guarantee the
+features we rely on rather than pinning dependencies to an exact
+release. Locking to a single version is discouraged for R packages
+because:
+
+1.  CRAN and most user installations resolve dependencies from the most
+    recent release. Requiring an exact version would force users to
+    manually locate and install archived tarballs whenever upstream
+    publishes a patch release.
+2.  Continuous integration environments (including CRAN checks) always
+    install the latest dependency versions. Exact pins would therefore
+    cause installation failures the moment a dependency increments,
+    blocking releases and automated QA.
+3.  Upstream security and bug fixes would be missed until the package is
+    republished with refreshed pins, which is the opposite of
+    reproducibility.
+
+Instead, we track the smallest version that exposes the APIs we call so
+that the package stays installable while still guaranteeing the required
+functionality.
+
+# Importing modules
+
+For any imports within the project, we use [the **box**
+package](https://klmr.me/box/articles/box.html). This emulates
+Python-like module imports, allowing us to maintain a complex, yet
+transparent structure of the project. Here, each script behaves as a
+standalone module, and only the necessary functions are imported from
+it. This keeps the workspace clean, as it does the source of all
+functions used across the project. To read more on how to use box, see
+[the official documentation](https://klmr.me/box/articles/box.html).
+
+# Validating Conditions
+
+In this project, we use several custom validation function to ensure
+that certain conditions hold true before proceeding with further
+computations or operations. These help catch errors as early as
+possible. Inspired by modern error handling practices in R, we leverage
+the `rlang` package for structured error messages.
+
+## Using the `validate` Function
+
+To quickly check that a condition is met, use the `validate` function.
+This function checks whether each argument passed to it is either a
+single logical value (TRUE or FALSE). It validates each condition and
+aborts with an appropriate error message if any condition does not hold.
+In case of validating an object type (such as through `is.character`,
+`is.logical`, etc.), the function prints a verbose message to the user.
+
+## Examples using the validate function
+
+### Valid Conditions
+
+``` r
+
+validate(TRUE, 1 == 1, is.function(print))
+```
+
+### Invalid Conditions
+
+The following examples will abort with an error message:
+
+``` r
+
+validate(FALSE)
+validate(TRUE, 1 == 2, FALSE)
+validate("not a condition")
+```
+
+## Using the `assert` Function
+
+To check that a condition is met, and print a custom verbose message at
+the same time, use the `assert` function. This works similarly to the
+assert functions in other languages, such as
+[Python](https://www.w3schools.com/python/ref_keyword_assert.asp).
+
+## Examples using the assert function
+
+``` r
+
+# The following pass
+assert(TRUE, "This condition is TRUE")
+assert(x == 1, "'x' should be equal to 1") # Passes if x is equal to 1
+assert(grep('word$', 'a string that ends in a custom word'), "The string should end with 'word'")
+
+# The following fail with an error message
+assert(FALSE, "This error message will be printed")
+assert(x == 1, "'x' should be equal to 1") # Fails if x is not equal to 1
+```
+
+# Formatting code
+
+We use `styler` for code formatting. See [the package website
+here](https://github.com/r-lib/styler?tab=readme-ov-file).
+
+Depending on your IDE of choice, the setup for using *styler* may
+differ, so we highly recommend you read through the documentation.
+
+# Understanding the folder structure
+
+This package is structured with most files located in the `inst/artma`
+folder, following the design principles encouraged by the box package.
+This setup allows for a modular and clean organization of the package’s
+components. By keeping the R directory focused on exported functions and
+placing the core logic and internal scripts in the `inst/artma` folder,
+the package leverages box’s module-based approach to encapsulate
+functionality.
+
+The module structure is organized by domain:
+
+- **`inst/artma/libs/`**: Shared utilities organized by category:
+  - `libs/core/`: Fundamental utilities (validation, utils, string,
+    number, file)
+  - `libs/infrastructure/`: System-level functionality (cache, debug,
+    polyfills)
+  - `libs/formatting/`: Result formatting (results)
+- **`inst/artma/interactive/`**: Interactive UI components (ask, editor,
+  save_preference, effect_summary_stats, welcome)
+- **`inst/artma/variable/`**: Variable analysis and suggestion
+  (detection, suggestion, bma)
+- **`inst/artma/econometric/`**: Econometric calculation helpers (bma,
+  linear, nonlinear, exogeneity, p_hacking)
+- **`inst/artma/methods/`**: Runtime methods (the core analytical
+  functions)
+- **`inst/artma/data/`**: Data pipeline (read, preprocess, compute)
+- **`inst/artma/options/`**: Options system and templates
+- **`inst/artma/data_config/`**: Data configuration handling
+- **`inst/artma/calc/`**: Computation engines for specific methods
+- **`inst/artma/modules/`**: Higher-level orchestration modules
+
+This structure promotes better code reuse, easier debugging, and
+improved separation of concerns, aligning with modern software
+development practices. During the package installation, the `inst`
+folder gets bundled too, and becomes thus available for `box` imports.
+
+# Using the options template
+
+User options files are generated from the self-describing templates in
+`inst/artma/options/templates/` and validated against them. The template
+node reference and the option access convention are documented in
+[contributingGuides/OPTIONS.md](https://petrcala.github.io/artma/contributingGuides/OPTIONS.md).
+
+# Caching heavy computations
+
+Artma’s heavy modelling helpers are memoised on disk via `cache_cli()`
+and `cache_cli_runner()` (`inst/artma/libs/infrastructure/cache.R`),
+with caching on by default. How to wrap a function, what goes into the
+cache key, invalidation, and debugging are documented in
+[contributingGuides/CACHING.md](https://petrcala.github.io/artma/contributingGuides/CACHING.md).
+
+# Using `lintr` for Code Quality
+
+This project uses the `lintr` package to ensure code quality and
+adherence to style guidelines. Linting rules are defined in `.lintr.R`
+at the project root, which uses `box.linters` defaults and adds custom
+rules (see `R/linters.R`).
+
+## Installation
+
+The `lintr`, `box.linters`, and `languageserver` packages are
+automatically installed through `make setup`. To install them manually:
+
+``` r
+
+install.packages(c("lintr", "languageserver"))
+remotes::install_github("appsilon/box.linters")
+```
+
+## Usage
+
+To lint the whole package, run the following **in a shell terminal**:
+
+``` bash
+make lint
+```
+
+To lint a specific file:
+
+``` r
+
+lintr::lint("path/to/your/file.R")
+```
+
+## IDE setup (VS Code / Cursor)
+
+The R Language Server (`languageserver`) provides real-time linting in
+VS Code and Cursor via the
+[REditorSupport.r](https://marketplace.visualstudio.com/items?itemName=REditorSupport.r)
+extension.
+
+**Known issue**: The `languageserver` package calls
+`lintr::lint(path, text = content)`. When the `text` parameter is
+provided, lintr defaults `parse_settings = FALSE` and skips config file
+discovery entirely. This means `.lintr.R` is ignored and default linters
+are used instead.
+
+**Workaround**: The project `.Rprofile` pre-loads the lintr settings
+before the language server starts linting. This works because when
+`parse_settings = FALSE`, lintr also skips resetting the settings, so
+pre-loaded configuration persists. This file is committed to the
+repository so all developers benefit automatically.
+
+If IDE linting still shows incorrect rules after cloning, restart the R
+Language Server (`Cmd+Shift+P` \> “R: Restart R Terminal” or reload the
+window).
+
+## Set up box paths
+
+To make the lints valid for the `box.linters` package, R expects
+`box.path` to be set to the `inst` folder base. This makes the relative
+box imports work correctly. During runtime, this is handled by
+`ensure_valid_boxpath`, but in development, you must set this path
+manually.
+
+To do so, put the following into your global `~/.Rprofile`:
+
+``` r
+
+# ~/.Rprofile
+options(box.path = "<path-to-the-artma-package>/inst")
+```
+
+# Docstrings and documentation
+
+## Annotating function argument types
+
+To denote the expected type of a function argument, use the following
+syntax in the function docstring:
+
+``` r
+
+#' @param some_arg *\[character, optional\]* This argument does the following. Defaults to `NULL`.
+```
+
+# Creating a new package version
+
+A new version of the package can be created upon merging a pull request
+to the master branch with the tag `release:new-version`. For details,
+read through the [release cycle
+vignette](https://cran.r-project.org/web/packages/artma/vignettes/release-cycle.html).
+
+# Generating package news
+
+We use [**git-chglog**](https://github.com/git-chglog/git-chglog) to
+automatically update the `NEWS.md` file from the commit history upon a
+new version creation. This is done automatically within the build and
+tag deploy cycle.
+
+# Formatting commits
+
+Commits should follow the [conventional commit
+format](https://www.conventionalcommits.org/en/v1.0.0/), using specific
+prefixes to indicate the type of change. Common prefixes include:
+
+- `build:` for changes that affect the build system or external
+  dependencies
+- `chore:` for maintenance tasks, dependency updates, etc.
+- `ci:` for changes to CI configuration files and scripts
+- `docs:` for documentation changes
+- `feat:` for new features
+- `fix:` for bug fixes
+- `perf:` for performance improvements
+- `refactor:` for code restructuring without behavior changes
+- `revert:` for reverting previous commits
+- `style:` for formatting changes that don’t affect code behavior
+- `test:` for adding or modifying tests
+
+The commit message should have a clear, concise subject line following
+the format `<type>: <description>`. For example:
+`feat: add support for custom linting rules`. If needed, add a more
+detailed description in the commit body, separated from the subject by a
+blank line. Breaking changes should be noted with a `BREAKING CHANGE:`
+footer.
+
+## Commit lints
+
+To ensure consistent commit wording across the project, we use a
+[**commit lint
+workflow**](https://petrcala.github.io/artma/.github/workflows/commit-lint.yaml).
+Here, we follow the `@commitlint/config-conventional` set of lint rules
+for commit formatting. If any of your commits do not adhere to these
+rules, your pull request will be rejected.
+
+To see a full list of the commit lint rules, visit [this
+link](https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional).
+
+You may feel like these requirements are a little too strict, but
+keeping a unified commit message format **allows us to automate the
+package release cycle**. To be more specific, we construct the package
+changelog automatically from the commit history upon every new release.
+As such, a standardized formatting is required.
+
+# Running tests
+
+Tests can be run in several ways depending on your needs:
+
+1.  **Run all tests**:
+
+    ``` bash
+    make test
+    ```
+
+    This will execute all test files in the project.
+
+2.  **Run a specific test file**:
+
+    ``` bash
+    make test-file FILE=path/to/test_file.R
+    ```
+
+    Replace `path/to/test_file.R` with the relative path to your test
+    file from the `tests` directory.
+
+3.  **Run tests with a filter**:
+
+    ``` bash
+    make test-filter FILTER="test_name"
+    ```
+
+    This will run only the tests that match the specified filter
+    pattern.
+
+The test script uses
+[`devtools::test()`](https://devtools.r-lib.org/reference/test.html)
+under the hood, which means you can also run tests directly from R:
+
+``` r
+
+# Run all tests
+devtools::test()
+
+# Run a specific test file
+devtools::test_active_file("tests/testthat/test_file.R")
+
+# Run tests with a filter
+devtools::test(filter = "test_name")
+```
+
+For more information about writing and organizing tests, refer to the
+[testthat documentation](https://testthat.r-lib.org/).
+
+# Release machinery status
+
+The package is currently distributed via r-universe, not CRAN. Some
+release automation in this repository anticipates a future CRAN
+submission and is not yet active:
+
+- **Active**: `build-and-tag.yaml` (tagging, version bump, r-universe
+  build), `scripts/R/get_cran_version.R`,
+  `scripts/R/generate_cran_comments.R`, `.chglog/` (changelog
+  generation).
+- **Dormant, kept for when CRAN submission happens**:
+  `submit-to-cran.yaml`, the reverse-dependency check step in
+  `build-and-tag.yaml` (commented out), `scripts/R/release.R`.
+
+When CRAN submission becomes real, re-enable the dormant workflow steps
+and recreate the `revdep/` directory (removed in a repository hygiene
+sweep) for `revdepcheck::revdep_check()` output.
+
+# Code of Conduct
+
+Please note that the artma project is released with a [Contributor Code
+of
+Conduct](https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html).
+By contributing to this project, you agree to abide by its terms.

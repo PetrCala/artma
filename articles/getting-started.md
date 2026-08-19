@@ -1,0 +1,492 @@
+# Getting Started with artma
+
+## Introduction
+
+**artma** (Automatic Replication Tools for Meta-Analysis) is an R
+package designed to make meta-analysis accessible, reproducible, and
+comprehensive. This vignette will get you up and running quickly,
+showing you how to use artma for your meta-analysis needs.
+
+## Quick Start: Your First Analysis
+
+The simplest way to use artma is to call the main function:
+
+``` r
+
+library(artma)
+results <- artma()
+```
+
+When you run this in an interactive R session, artma will:
+
+1.  **Guide you through creating an options file** - This stores all
+    your analysis settings
+2.  **Help you load your data** - You’ll specify where your dataset is
+    located
+3.  **Map your columns** - artma will recognize common column names or
+    let you specify them
+4.  **Let you choose methods** - Select which analyses you want to run
+5.  **Run your analysis** - Execute everything and return results
+
+If you want artma to open the results folder for you at the end of a
+run, set `open_results = TRUE`. You can always access your results later
+manually using
+[`artma::results_open()`](https://petrcala.github.io/artma/reference/results_open.md).
+
+That’s it! The function handles all the complexity behind the scenes.
+
+## Understanding the Core Concepts
+
+Before diving deeper, it helps to understand three key concepts:
+
+### 1. The `artma()` Function
+
+[`artma()`](https://petrcala.github.io/artma/reference/artma.md) is the
+main entry point for the package. It orchestrates everything:
+
+- **Loading configuration** from options files
+- **Preparing your data** (reading, cleaning, validating)
+- **Running analytical methods** (funnel plots, Bayesian analysis, etc.)
+- **Returning results** in a structured format
+
+You can use it in different ways:
+
+``` r
+
+# Fully interactive - prompts for everything
+artma()
+
+# Specify methods to run
+artma(methods = c("funnel_plot", "bma"))
+
+# Use a specific options file
+artma(options = "my_analysis.yaml")
+
+# Provide data directly (bypasses file reading)
+artma(data = my_dataframe, methods = "effect_summary_stats")
+```
+
+### 2. Options Files
+
+Options files are YAML configuration files that store all your analysis
+settings. Think of them as recipes for your meta-analysis:
+
+- **Data location** - Where your dataset is stored
+- **Column mappings** - Which columns contain effect sizes, standard
+  errors, etc.
+- **Method parameters** - Settings for each analysis method
+- **Output preferences** - How you want results formatted
+
+The key benefit: **reproducibility**. Save your options file, and you
+can rerun the exact same analysis anytime.
+
+### 3. Methods
+
+Methods are the analytical functions that perform specific meta-analysis
+tasks. Each method does something different:
+
+- `effect_summary_stats` - Calculate overall effect sizes and confidence
+  intervals
+- `funnel_plot` - Visualize publication bias
+- `bma` - Bayesian Model Averaging
+- `linear_tests` - Test linear relationships
+- `nonlinear_tests` - Test nonlinear relationships
+- `exogeneity_tests` - Test for endogeneity
+- `p_hacking_tests` - Detect p-hacking patterns
+- `maive` - MAIVE estimator, correcting for publication bias, p-hacking,
+  and spurious precision
+- `variable_summary_stats` - Summary statistics for variables
+
+You can run one method, multiple methods, or all methods in a single
+call. For a full description of every method, see the [Methods
+Overview](https://petrcala.github.io/artma/articles/methods-overview.md)
+vignette.
+
+## Common Workflows
+
+### Workflow 1: Interactive Analysis (Recommended for Beginners)
+
+This is the easiest way to get started:
+
+``` r
+
+# Step 1: Load the package
+library(artma)
+
+# Step 2: Run interactively
+results <- artma()
+
+# Step 3: Explore results
+names(results)  # See which methods ran
+results$effect_summary_stats  # Access specific results
+```
+
+During the interactive session, you’ll be guided through:
+
+- Creating or selecting an options file
+- Specifying your data file path
+- Mapping column names (artma tries to auto-detect these)
+- Choosing which methods to run
+
+### Workflow 2: Using an Existing Options File
+
+Once you’ve created an options file, reuse it:
+
+``` r
+
+# Run with a specific options file
+results <- artma(options = "my_analysis.yaml")
+
+# Or specify the directory too
+results <- artma(
+  options = "my_analysis.yaml",
+  options_dir = "~/my_meta_analyses/configs"
+)
+```
+
+This is perfect when:
+
+- You’re rerunning a previous analysis
+- You want to share your analysis configuration
+- You’re doing sensitivity analyses with different parameters
+
+### Workflow 3: Programmatic Analysis
+
+For scripts and automation:
+
+``` r
+
+# Create options file programmatically
+artma::options_create(
+  options_file_name = "analysis_2025",
+  user_input = list(
+    "data.source_path" = "/path/to/data.csv",
+    "data.columns" = list(
+      effect = list(source_name = "effect_size"),
+      se = list(source_name = "standard_error")
+    ),
+    "methods.effect_summary_stats.conf_level" = 0.95
+  )
+)
+
+# Run analysis
+results <- artma(
+  options = "analysis_2025",
+  methods = c("effect_summary_stats", "funnel_plot")
+)
+```
+
+### Workflow 4: Using Data Already in R
+
+If your data is already loaded in R:
+
+``` r
+
+# Your data frame
+my_data <- data.frame(
+  effect = c(0.5, 0.3, 0.7, 0.4),
+  se = c(0.1, 0.15, 0.12, 0.11),
+  study = c("Study A", "Study B", "Study C", "Study D"),
+  n_obs = c(100, 150, 120, 130)
+)
+
+# Run analysis directly
+results <- artma(
+  data = my_data,
+  methods = "effect_summary_stats"
+)
+```
+
+Note: When you provide data directly, you still need options for method
+parameters, but artma will handle data reading automatically.
+
+## Understanding Results
+
+The [`artma()`](https://petrcala.github.io/artma/reference/artma.md)
+function returns a named list, where each element corresponds to a
+method that was run:
+
+``` r
+
+results <- artma(methods = c("effect_summary_stats", "funnel_plot"))
+
+# Structure:
+# results
+# ├── effect_summary_stats  (results from effect summary statistics)
+# └── funnel_plot           (results from funnel plot analysis)
+```
+
+The structure of each result depends on the method. Some methods return:
+
+- Summary statistics (tables, means, confidence intervals)
+- Test results (p-values, test statistics)
+- Visualizations (plots, graphs)
+- Model objects (for further analysis)
+
+To explore results:
+
+``` r
+
+# See what methods ran
+names(results)
+
+# Access a specific result
+effect_results <- results$effect_summary_stats
+
+# The structure varies by method - use str() to explore
+str(effect_results)
+```
+
+### What a Run Leaves on Disk
+
+A run that saves results writes them into its output directory
+(`tables/` for the exported tables, `graphics/` for the plots) together
+with a `run.json` manifest describing that run: when it happened, which
+options file and data source it used, the methods requested, run,
+skipped and failed, the effective seed, and the files it wrote.
+
+The file list is recorded as the files are written, so it describes the
+run rather than everything that has piled up in the directory. That is
+what the HTML report uses to find each method’s plots, and what the CLI
+reports in `--json` mode.
+
+Every run also closes with a `Run summary` block on the console: the
+same facts, read from the same sources, so the manifest and what you saw
+scroll by never disagree.
+
+`run.json` is overwritten by every run into the same output directory:
+it always describes the latest run, never a history. Runs driven by
+different options files already get their own output directory. To keep
+an older run, copy its directory, or point `output.dir` at a per-run
+location.
+
+## Choosing Methods
+
+### Discovering Available Methods
+
+To see what methods are available:
+
+``` r
+
+artma::methods_list()
+```
+
+This prints all available methods to the console.
+
+### Selecting Methods
+
+You have several options:
+
+``` r
+
+# Run specific methods
+artma(methods = c("effect_summary_stats", "bma"))
+
+# Run all methods
+artma(methods = "all")
+
+# Interactive selection (if methods not specified)
+artma()  # Will prompt you to choose
+```
+
+### Method Execution Order
+
+Methods run in a predefined order (you don’t need to worry about this,
+but it’s good to know). If you specify multiple methods, they’ll execute
+in the optimal sequence automatically.
+
+## Working with Options Files
+
+### Creating Options Files
+
+Options files are created automatically when needed, but you can also
+create them explicitly:
+
+``` r
+
+# Interactive creation
+artma::options_create()
+
+# Programmatic creation
+artma::options_create(
+  options_file_name = "my_analysis",
+  user_input = list(
+    "data.source_path" = "/path/to/data.csv",
+    "data.columns" = list(
+      effect = list(source_name = "effect_size"),
+      se = list(source_name = "standard_error")
+    )
+  )
+)
+```
+
+### Managing Options Files
+
+``` r
+
+# List all options files
+artma::options_list()
+
+# Copy an options file
+artma::options_copy(
+  options_file_name_from = "baseline.yaml",
+  options_file_name_to = "sensitivity.yaml"
+)
+
+# Modify an options file
+artma::options_modify(
+  options_file_name = "my_analysis.yaml",
+  options_to_modify = list(
+    "methods.effect_summary_stats.conf_level" = 0.99
+  )
+)
+
+# Validate an options file
+artma::options_validate("my_analysis.yaml")
+```
+
+For detailed information about options files, see the [Understanding
+Options
+Files](https://petrcala.github.io/artma/articles/options-files.md)
+vignette.
+
+## Data Requirements
+
+### Required Columns
+
+Your dataset needs certain columns for artma to work. The minimum
+required columns are:
+
+- **Effect size** - The effect you’re analyzing (e.g., correlation, mean
+  difference)
+- **Standard error** - The uncertainty in the effect size
+- **Study identifier** - A unique identifier for each study/observation
+
+### Column Mapping
+
+artma uses flexible column mapping. Your columns don’t need specific
+names - you just need to tell artma which column contains what. For
+example:
+
+- Your effect column might be called `beta`, `effect_size`, `r`, or `d`
+- Your standard error column might be called `se`, `standard_error`, or
+  `se_beta`
+- Your study column might be called `study`, `paper_id`, or
+  `observation`
+
+artma tries to auto-detect these mappings, but you can always specify
+them manually.
+
+### Supported Data Formats
+
+artma can read data from:
+
+- CSV files (`.csv`)
+- Excel files (`.xlsx`, `.xls`)
+- JSON files (`.json`)
+- Stata files (`.dta`)
+- R data files (`.rds`)
+
+### Data Preprocessing
+
+artma automatically handles:
+
+- Missing value detection and treatment
+- Data type conversion
+- Column standardization
+- Outlier detection (with optional winsorization)
+
+You control these behaviors through your options file.
+
+## Tips for Success
+
+### 1. Start Simple
+
+Begin with a single method to understand the workflow:
+
+``` r
+
+results <- artma(methods = "effect_summary_stats")
+```
+
+Once comfortable, add more methods.
+
+### 2. Use Descriptive Options File Names
+
+Name your options files clearly:
+
+- `charity_effects_2025.yaml` - Better than `config1.yaml`
+- `sensitivity_analysis.yaml` - Better than `test.yaml`
+
+### 3. Save Your Options Files
+
+Options files are your analysis recipes. Save them with your project for
+reproducibility.
+
+### 4. Check Verbosity
+
+Control how much information artma displays:
+
+``` r
+
+# In your options file or via options()
+options(artma.verbose = 3)  # Default: informative
+options(artma.verbose = 1)  # Minimal: errors only
+options(artma.verbose = 4)  # Verbose: everything
+```
+
+### 5. Validate Before Running
+
+If you’re modifying options files manually, validate them:
+
+``` r
+
+artma::options_validate("my_analysis.yaml")
+```
+
+This catches errors before you run the analysis.
+
+## Getting Help
+
+### Documentation
+
+- [`?artma`](https://petrcala.github.io/artma/reference/artma.md) - Main
+  function help
+- [`?artma::methods_list`](https://petrcala.github.io/artma/reference/methods_list.md) -
+  List available methods
+- [`?artma::options_create`](https://petrcala.github.io/artma/reference/options_create.md) -
+  Create options files
+- Vignettes - Detailed guides (like this one!)
+
+### Verbosity Levels
+
+If something isn’t working, increase verbosity:
+
+``` r
+
+options(artma.verbose = 4)  # Maximum detail
+results <- artma()
+```
+
+This shows everything artma is doing, which helps diagnose issues.
+
+### Validation
+
+When in doubt, validate:
+
+``` r
+
+# Validate options file
+artma::options_validate("my_analysis.yaml")
+
+# Check available methods
+artma::methods_list()
+
+# Check how artma reads and preprocesses your data
+artma::data_preview(options = "my_analysis.yaml")
+```
+
+## Next Steps
+
+Once you’re comfortable with the basics, read the options vignette for
+deeper configuration and try a few methods on your own data.

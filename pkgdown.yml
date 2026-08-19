@@ -1,0 +1,12 @@
+pandoc: 3.8.3
+pkgdown: 2.2.1
+pkgdown_sha: ~
+articles:
+  getting-started: getting-started.html
+  methods-overview: methods-overview.html
+  options-files: options-files.html
+  release-cycle: release-cycle.html
+last_built: 2026-08-19T14:05Z
+urls:
+  reference: https://petrcala.github.io/artma/reference
+  article: https://petrcala.github.io/artma/articles
