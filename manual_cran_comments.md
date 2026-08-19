@@ -1,8 +1,7 @@
-* Resubmission. The previous submission was returned because
+* Resubmission. The 0.4.0 submission was returned because
   `https://petrcala.github.io/artma/`, listed in the DESCRIPTION URL field,
-  returned 404. The pkgdown site is not published yet, so the URL has been
-  dropped from DESCRIPTION (and from the generated `man/artma-package.Rd`).
-  It will be added back once the site is live.
+  returned 404. The pkgdown site is now published and that URL resolves, so
+  it is kept in DESCRIPTION.
 
 * This release fixes the segmentation fault reported on
   r-devel-linux-x86_64-fedora-clang and r-devel-linux-x86_64-fedora-gcc.
@@ -15,11 +14,12 @@
   usable viewer and falls back to printing the first rows, so the check no
   longer reaches it.
 
-* The version jumps from the 0.3.3 currently on CRAN to 0.4.0. Version 0.3.5
-  was built and tagged, but it never reached CRAN: submissions were closed
-  from Aug 5 to Aug 19, 2026 for CRAN team vacation and maintenance. This
-  submission therefore also carries everything that was in 0.3.5, including
-  the segmentation fault fix described above.
+* The version jumps from the 0.3.3 currently on CRAN to 0.4.1. Versions
+  0.3.5 and 0.4.0 were built and tagged but neither reached CRAN: submissions
+  were closed from Aug 5 to Aug 19, 2026 for CRAN team vacation and
+  maintenance, and 0.4.0 was returned over the invalid URL noted above. This
+  submission therefore carries everything from both, including the
+  segmentation fault fix described above.
 
 * The user-facing function names moved to snake_case in this release, so
   `options.list()` became `options_list()`, `cli.run()` became `cli_run()`,
