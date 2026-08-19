@@ -5,6 +5,37 @@
 
 > 2026-08-19
 
+### Bug Fixes
+
+* keep lintr in Suggests, it is used by the linter unit tests
+* drop LazyData and dead Suggests, honour absolute graphics export path
+* **bma:** drop non-numeric moderators instead of failing inside scale()
+* **bpe:** gate the "run BMA first?" prompt on the autonomy level
+* **data:** derive study_label from a legible study name column when study keys are numeric
+* **data:** write mock data to a durable user dir instead of tempfile
+* **exogeneity:** default the IV instrument to 1/sqrt(n_obs) ([#450](https://github.com/PetrCala/artma/issues/450))
+* **linear:** make between-effects standard errors robust and label every model's vcov
+* **methods:** keep sequential method output on the console so prompts show
+* **output:** add a closing run summary and stop reading integers as percentages
+* **output:** resolve absolute graphics path in writers and escape literal braces in help
+* **output:** normalise manifest paths to forward slashes for Windows
+* **output:** drop zero counts from the run summary and winsorization notes
+* **report:** split method skip contract into skip_reason and skipped_models
+
+### Features
+
+* **api:** rename cli.* to cli_* and keep cli.run as a permanent alias
+* **api:** rename autonomy, viz, methods, report, results exports to snake_case
+* **api:** rename config.* and data.preview with deprecated aliases
+* **api:** rename options.* exports to options_* with deprecated aliases
+* **api:** add lifecycle dependency and snake_case API naming guide
+* **core:** add leveled verbosity log wrappers, fix drifted defaults
+* **methods:** show the registered method metadata in methods.list()
+* **options:** make options discoverable via help tree, list details and diff
+* **output:** write a per-run run.json and drive the report and CLI from it
+* **output:** roll the estimates slot out across the remaining runtime methods
+* **output:** add an unrounded tidy estimates slot to the method contract
+
 
 <a name="v0.3.5"></a>
 
@@ -14,78 +45,194 @@
 
 ### Bug Fixes
 
-* prime data-config cache when data is passed directly to artma()
-* quiet dependency and validation noise in real runs and logs
-* keep MAIVE pin CRAN-resolvable and gate tests on the runtime floor
-* require MAIVE 0.2.5 for unrounded estimates
-* correct FE intercept SE vcov and study-weighted OLS weights in linear tests
-* use inverse-variance WAAP pilot weights and clustered WLS standard errors
-* restore RoxygenNote 7.3.3 and man page dropped by roxygen 8 regeneration
-* drop unused fs Suggests dependency and its dir_create lint rule
-* force sequential execution when already inside a forked worker
-* quoted data paths, duplicate column mapping, exogeneity table gaps
+* replace the homemade digest hash and stop the data cache invalidating itself
+* align LCM defaults and wire chunk_size option in p_hacking_tests
 * let column config data_type override type detection ([#253](https://github.com/PetrCala/artma/issues/253))
 * stop false study_id warning on valid string labels ([#250](https://github.com/PetrCala/artma/issues/250))
 * declare rjags in Suggests for the RoBMA test guard
 * target the RoBMA 4.x API in the robma method
+* make data config keys deterministic and invalidate the config df cache
+* update the climenu version to 0.1.5 to avoid an error
+* handle NULL var_name in config during column validation
+* silence the bma and fma run if the verbose_output is FALSE
+* prime data-config cache when data is passed directly to artma()
+* quiet dependency and validation noise in real runs and logs
+* requirements on bma-dependent methods
+* strict bpe requirements
+* schema reconcile
+* keep MAIVE pin CRAN-resolvable and gate tests on the runtime floor
+* require MAIVE 0.2.5 for unrounded estimates
 * install MAIVE from CRAN instead of GitHub
+* schema reconciliation messages
 * make BPE recommendation fallback an explicit no-recommendation outcome
+* declare runtime dependencies correctly
+* locate linters.R without the here package
 * recompute user-supplied precision after winsorization
+* locate the package root when the checkout is not named artma
 * implement puniform_method P (method of moments) branch
-* align LCM defaults and wire chunk_size option in p_hacking_tests
+* correct FE intercept SE vcov and study-weighted OLS weights in linear tests
+* use inverse-variance WAAP pilot weights and clustered WLS standard errors
+* isolate runtime method failures and always export partial results
+* quoted data paths, duplicate column mapping, exogeneity table gaps
 * prevent bma/best_practice_estimate crash on small BMA models
+* failing tests
+* options correctness fixes and dead code removal
 * draw mock standard errors from a strictly positive range
 * honor the cache TTL option and add a template-to-code option parity test
 * replace literal unicode escape text with ascii equivalents
-* options correctness fixes and dead code removal
-* make data config keys deterministic and invalidate the config df cache
-* replace the homemade digest hash and stop the data cache invalidating itself
-* isolate runtime method failures and always export partial results
-* locate the package root when the checkout is not named artma
-* locate linters.R without the here package
-* declare runtime dependencies correctly
-* failing tests
-* schema reconciliation messages
-* schema reconcile
-* strict bpe requirements
-* requirements on bma-dependent methods
-* silence the bma and fma run if the verbose_output is FALSE
-* handle NULL var_name in config during column validation
-* update the climenu version to 0.1.5 to avoid an error
+* force sequential execution when already inside a forked worker
+* restore RoxygenNote 7.3.3 and man page dropped by roxygen 8 regeneration
+* drop unused fs Suggests dependency and its dir_create lint rule
+* **bma:** align VIF masks, split multi-model params, keep unmatched regressor names
+* **bma:** exclude derived effect/se encodings from auto-selected moderators
+* **bma:** skip gracefully instead of crashing with a single moderator
+* **bpe:** apply overrides and report estimates on the raw effect scale
+* **bpe:** auto-detect dummy predictors for factor summary table
+* **cache:** record base-graphics plots so cached reruns restore them
+* **ci:** quote E2E test-file array so both fixture tests actually run
+* **data:** abort on colliding column-rename targets in standardize_column_names
+* **data:** treat NA options as unset and drop non-numeric required NAs under remove
+* **data:** silence duplicate drop_conflicting_raw log in configure phase
+* **data:** stop strategy no longer aborts on optional-column NAs
+* **data:** only hard-require columns the requested methods need
+* **data:** guard imputation of mostly-missing columns and drop constant BMA moderators
+* **data:** import get_verbosity in standardize_column_names, update stale test calls
+* **data:** stop treating lowercase na/n-a strings as missing values
+* **data:** default zero-SE handling to remove-with-warning instead of abort
+* **detection:** detect dummy/categorical type even with group_category set
+* **e2e:** shell-quote CLI args so the Rscript subprocess starts under sh
+* **effect-summary-stats:** correct weighted-mean SE, per-study weights, unrounded CI
+* **effect_summary_stats:** default effect column when nothing configured
+* **elliott:** use integer knot indices in pure R CDF simulation fallback
+* **endo-kink:** use model df, not residual df, in heterogeneity variance divisor ([#371](https://github.com/PetrCala/artma/issues/371))
+* **exogeneity:** use se^2 as p-uniform* study variance and fix selection threshold
+* **exogeneity:** fill formatted columns when p-uniform* skips estimation
+* **exogeneity:** stop p-uniform* LRT collapsing to L=0, fall back to P on ML failure
+* **exogeneity:** rank IV instruments by first-stage F, drop backwards votes
+* **exogeneity:** cluster IV diagnostics and AR test, signed p-uniform search, true bias test
+* **fma:** correct Mallows criterion, Buckland SE centering, and data scaling
+* **formatting:** stop wide summary tables splitting into two blocks
+* **formatting:** apply wide-table print fix to remaining call sites
+* **linear:** raise bootstrap replications and flag CI/star disagreement
+* **maive:** guardrail AR interval when constant N disables instrument
+* **maive:** align se option with MAIVE 0.2.4, report effective spec and AR guardrails
+* **maive:** resolve add_significance_marks via shared helper restoring scalar check
+* **maive:** flag weak first-stage instrument and document maive_first_stage
+* **modules:** newline-terminate captured cli messages, NA-safe parallel option read
+* **nonlinear:** skip degenerate corner-solution fits instead of tabulating them
+* **nonlinear:** allow general selection cutoffs, cluster SEs by study, report pub probabilities
+* **options:** flatten nested user_input on create, honor mock input, fix CONST scope
+* **options:** merge nested user_input safely and validate before overwrite
+* **options:** normalize .yaml suffix when loading options file
+* **options:** keep the unified column store when migrating legacy options
+* **options:** stop options rewrites from dropping column records and value shapes
+* **output:** plain ellipsis, no raw NA cells, label standardized BPE values
+* **output:** resolve auto output dir per options file and never persist it
+* **p-hacking:** orient caliper tail, cluster by study, show direction
+* **p-hacking:** rewrite Cox-Shi against canonical Elliott et al. implementation
+* **p_hacking:** respecify caliper test as Gerber-Malhotra binomial test
+* **p_hacking_tests:** seed LCM/MAIVE, real cpp fallback, skip reasons
+* **p_hacking_tests:** quick wins from p-hacking suite review ([#257](https://github.com/PetrCala/artma/issues/257))
+* **p_hacking_tests:** keep install/upgrade hints in MAIVE skip reason
+* **preview:** skip utils::View() when no data viewer is available
+* **rng:** strip BMS wall-clock reseed and key method RNG streams by name
+* **run:** cap forked workers at the environment's process limit
+* **run:** pin BLAS/OpenMP to one thread while forking method layers
+* **run:** use a fork-safe graphics device so parallel runs can export plots
+* **stem,robma:** cluster RoBMA by study, align stem MSE table and plot rows
+* **tests:** probe an actual JAGS model fit to catch macOS oldrel crash
+* **tests:** avoid rjags segfault in robma JAGS probe on CI
+* **tests:** probe rjags for JAGS in a subprocess to avoid CI crash
+* **variable_summary_stats:** obs column counts non-missing observations
+* **vcov:** warn on silent clustering downgrades; sign-correct zero-SE t-stats
+* **vcov:** warn on no-cluster single-step downgrade to stats::vcov()
+* **viz:** skip plot previews in forked workers to avoid quartz fork crash
+* **viz:** probe the cairo device instead of trusting capabilities()
 
 ### Code Refactoring
 
-* unify weak-instrument F threshold constant in exogeneity.R
-* simplify non-idiomatic constructs and reuse significance_mark
-* extract shared helpers for duplicated logic
-* restore stats imports used via formula environments, with comment
-* vectorize row-wise loops and hoist repeated computation
-* remove dead functions, unused imports and unreachable branches
-* unify column mapping and data config into one per-column store
-* consolidate R CMD check workarounds into one generated manifest
-* split prepare_data into configure, compute, and persist phases
-* strict option access and fail-loud coercion
-* declarative method metadata replacing execution order and dependency plumbing
 * add shared method registration helper and standard return contract
-* unify required, reserved, and computed column name lists
 * make options.load pure and parse the options template once
-* collapse the 5-level autonomy system into a 3-value enum
-* unify file-read dispatch and post-read normalization
-* replace the cli replay cache layer with plain memoise
-* handle data columns through reconciliation
-* unify bma and fma into a single table
 * box plot max boxes per plot option
+* simplify non-idiomatic constructs and reuse significance_mark
+* unify bma and fma into a single table
+* handle data columns through reconciliation
+* replace the cli replay cache layer with plain memoise
+* unify file-read dispatch and post-read normalization
+* collapse the 5-level autonomy system into a 3-value enum
+* vectorize row-wise loops and hoist repeated computation
+* unify required, reserved, and computed column name lists
+* declarative method metadata replacing execution order and dependency plumbing
+* unify weak-instrument F threshold constant in exogeneity.R
+* strict option access and fail-loud coercion
+* split prepare_data into configure, compute, and persist phases
+* consolidate R CMD check workarounds into one generated manifest
+* unify column mapping and data config into one per-column store
+* extract shared helpers for duplicated logic
+* remove dead functions, unused imports and unreachable branches
+* restore stats imports used via formula environments, with comment
+* **bma:** extract shared unwrap_bma_result from bpe and fma
+* **bpe:** split best_practice_estimate into econometric core and viz plots
+* **data:** drop dead interactive branch, move column mapping persistence
+* **data:** split schema_reconcile into detect, ui, persist layers
+* **data:** extract shared column profiler into data/profile.R
+* **data:** move na/se-zero configure resolvers into data/configure.R
+* **econometric:** route four vcov ladders through shared robust_vcov
+* **elliott:** make C++ CDF simulation the sole production path
+* **formatting:** consolidate nonlinear formatting helpers into shared modules
+* **formatting:** share one summary-table builder across econometric tests
+* **methods:** extract shared resolve_variable_groups equal/gltl resolver
+* **options:** add spec-driven option resolver and migrate method files
+* **options:** template-sourced typed option accessors
+* **options:** share one option type registry across coerce and validate
+* **visualization:** unify plot export and tick-interval math
+* **visualization:** drop ggtext, use plain element_text for ticks
 
 ### Features
 
 * add opt-in RoBMA runtime method
-* add BPE summary stats grouped by factor levels
-* add BPE per-factor density and sorted scatter plots
-* add economic significance table to best_practice_estimate
-* support user-defined data subset conditions
-* attach STEM funnel and MSE plots to nonlinear_tests output
-* add BMA prior-comparison plot for multiple parameter sets
 * add bpe
+* add BMA prior-comparison plot for multiple parameter sets
+* attach STEM funnel and MSE plots to nonlinear_tests output
+* support user-defined data subset conditions
+* add economic significance table to best_practice_estimate
+* add BPE per-factor density and sorted scatter plots
+* add BPE summary stats grouped by factor levels
+* **bma:** announce auto-included priority moderators during variable selection
+* **cache:** harden cache signature and enable caching by default
+* **cli:** add scriptable command-line interface with cli.run and cli.install
+* **coverage:** measure inst/artma box modules, upload merged report to codecov
+* **data:** reconcile column-mapping conflicts and give actionable collision errors
+* **fma:** add cluster-robust standard errors clustered by study_id
+* **funnel_plot:** report filtered observation count in subtitle and output
+* **hooks:** add local git hooks for style/lint and commit-msg checks
+* **linear:** precheck panel specs and skip with plain-language reasons
+* **linear:** enable bootstrap CIs for the between effects spec
+* **maive:** add automatic first-stage selection from sample-size spread
+* **maive:** split MAIVE into its own method with sectioned, annotated output
+* **nonlinear:** report effect heterogeneity (tau) for STEM, Hierarchical, and Endogenous Kink
+* **output:** add LaTeX table export via output.table_formats
+* **p-hacking:** make Elliott supports configurable and surface Cox-Shi skip reasons ([#369](https://github.com/PetrCala/artma/issues/369))
+* **p_hacking:** raise default LCM iterations to 10000
+* **report:** add self-contained HTML report renderer via report.render()
+* **robma:** enable parallel MCMC chains when cores allow
+* **run:** run independent runtime methods in parallel layers
+* **visualization:** add optional interactive HTML plot export
+
+### Performance Improvements
+
+* **bpe:** split study row indices once instead of rescanning per study
+* **elliott:** share pair lambdas across Cox-Shi bound orders
+* **funnel_plot:** split rows by study once in aggregate_study_medians
+* **linear:** fast-path random effects bootstrap via Swamy-Arora replication
+* **linear:** fast-path bootstrap estimates without per-replication plm/vcov
+* **linear:** skip vcov math and trim columns in bootstrap replications
+* **linear:** hoist cluster split out of bootstrap loop
+* **methods:** cache only expensive stages via cached opt-in on register_runtime_method
+* **p_hacking_tests:** cache LCM critical-value simulation under a narrow key
+* **prima_facie_graphs:** vectorize group column and median split construction
+* **stem:** replace O(n^2) outer-product submatrix sums with cumsum
+* **visualization:** use ragg for faster PNG export when available
 
 
 <a name="v0.3.3"></a>
