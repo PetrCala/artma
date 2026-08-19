@@ -104,12 +104,15 @@ present_detected_mapping <- function(
 #' @param auto_mapping *\[list\]* Automatically recognized mapping
 #' @param required_only *\[logical\]* If TRUE, only ask for required columns
 #' @param show_detected_first *\[logical\]* If TRUE, show detected columns first for confirmation
+#' @param is_interactive *\[logical, optional\]* Whether the session is
+#'   interactive. Injectable for testing; defaults to `interactive()`.
 #' @return *\[list\]* User-confirmed column mapping
-interactive_column_mapping <- function(df, auto_mapping = list(), required_only = TRUE, show_detected_first = FALSE) {
+interactive_column_mapping <- function(df, auto_mapping = list(), required_only = TRUE, show_detected_first = FALSE, is_interactive = interactive()) {
   box::use(
     artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / autonomy[should_prompt_user],
+    artma / libs / core / log[log_warn],
     artma / data / column_recognition[
       get_required_column_names,
       get_column_patterns
@@ -132,7 +135,7 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
   # Track missing required columns
   missing_required <- setdiff(required_cols, names(auto_mapping))
 
-  if (!should_prompt_user(required_level = "autonomous")) {
+  if (!should_prompt_user(required_level = "autonomous", is_interactive = is_interactive)) {
     if (get_verbosity() >= 3) {
       cli::cli_inform("Autonomy level is high - using auto-detected column mappings")
     }
@@ -140,9 +143,21 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
     if (length(missing_required) == 0) {
       return(auto_mapping)
     }
-    # If some required columns are missing, we still need to map them
-    # But we'll skip the interactive confirmation and just use auto-detection if possible
-    # For now, fall through to handle missing required columns
+    # Some required columns could not be auto-detected. Outside an interactive
+    # session the menus below cannot ask; climenu's fallback would pick the
+    # first entry, silently mapping e.g. n_obs to effect. Leave the columns
+    # unmapped instead: methods that need them are skipped at runtime.
+    if (!is_interactive) {
+      log_warn(paste(
+        "Could not auto-detect required column{?s} {.field {missing_required}}",
+        "and cannot prompt for a mapping in a non-interactive session.",
+        "Leaving {?it/them} unmapped; methods that need {?it/them} will be skipped.",
+        "To map {?it/them} manually, set {.code data.columns} in the options file."
+      ))
+      return(auto_mapping)
+    }
+    # Interactive session at autonomous level: fall through so the user can
+    # resolve the missing required columns via the prompts below.
   }
 
   # Track user's choice from the initial presentation

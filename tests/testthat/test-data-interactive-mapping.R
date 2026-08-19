@@ -2,6 +2,7 @@ box::use(
   testthat[
     expect_equal,
     expect_false,
+    expect_message,
     expect_no_error,
     expect_null,
     expect_true,
@@ -12,16 +13,53 @@ box::use(
 box::use(
   artma / data / interactive_mapping[
     confirm_column_mapping,
-    format_mapping_display
+    format_mapping_display,
+    interactive_column_mapping
   ],
   artma / data_config / column_mapping[save_column_mapping_to_options],
   artma / data / column_recognition[get_required_column_names]
 )
 
 
-# Note: interactive_column_mapping and column_mapping_workflow require
-# user interaction via climenu, so they are tested in E2E tests instead.
-# However, we test the non-interactive helper functions here.
+# Note: the prompting paths of interactive_column_mapping and
+# column_mapping_workflow require user interaction via climenu, so they are
+# tested in E2E tests instead. The non-interactive branches and helper
+# functions are tested here.
+
+
+test_that("interactive_column_mapping never guesses a missing required column non-interactively", {
+  df <- data.frame(
+    effect = c(0.5, 0.7),
+    se = c(0.1, 0.2),
+    study_id = c("A", "B")
+  )
+
+  # n_obs is required but absent from the data, so it cannot be auto-detected.
+  auto_mapping <- list(
+    effect = "effect",
+    se = "se",
+    study_id = "study_id"
+  )
+
+  withr::local_options(list("artma.verbose" = 2))
+
+  # The warning must name the column that stays unmapped.
+  expect_message(
+    result <- interactive_column_mapping(
+      df = df,
+      auto_mapping = auto_mapping,
+      required_only = TRUE,
+      show_detected_first = TRUE,
+      is_interactive = FALSE
+    ),
+    "n_obs"
+  )
+
+  # The missing required column stays unmapped instead of falling back to the
+  # first menu entry, which used to silently map n_obs to effect.
+  expect_equal(result, auto_mapping)
+  expect_false("n_obs" %in% names(result))
+})
 
 
 test_that("confirm_column_mapping returns mapping unchanged", {
