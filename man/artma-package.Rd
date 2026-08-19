@@ -11,7 +11,6 @@ Provides a unified and straightforward interface for performing a variety of met
 Useful links:
 \itemize{
   \item \url{https://github.com/PetrCala/artma}
-  \item \url{https://petrcala.github.io/artma/}
   \item Report bugs at \url{https://github.com/PetrCala/artma/issues}
 }
 
