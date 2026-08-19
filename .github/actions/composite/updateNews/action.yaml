@@ -20,6 +20,11 @@ runs:
       with:
         ref: master
         token: ${{ inputs.ARTMA_BOT_COMMIT_TOKEN }}
+        # git-chglog derives the new version's commit range from
+        # `<latest tag>..HEAD`. The default shallow checkout grafts HEAD to a
+        # single commit, so that range collapses to the release commit alone
+        # and the new section comes out empty. Full history is required.
+        fetch-depth: 0
 
     # Installed from the upstream release tarball rather than Homebrew.
     # git-chglog only ships via its own tap, and Homebrew now refuses formulae
@@ -47,12 +52,29 @@ runs:
       shell: bash
       run: |
         git fetch origin master
-        git fetch --tags
+        git fetch --tags --force
+        # Guard against a shallow checkout silently truncating the changelog
+        # range (see fetch-depth above).
+        if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+          echo "::error::Repository is shallow; git-chglog needs full history." >&2
+          exit 1
+        fi
 
     - name: Update NEWS
       shell: bash
+      env:
+        NEW_TAG: v${{ inputs.NEW_VERSION }}
       run: |
-        git-chglog --output NEWS.md --next-tag "v${{ inputs.NEW_VERSION }}"
+        git-chglog --output NEWS.md --next-tag "$NEW_TAG"
+
+        # An empty section means the commit range or the Conventional Commits
+        # header pattern in .chglog/config.yml stopped matching. Fail here
+        # rather than pushing an empty changelog and publishing empty release
+        # notes off the back of it.
+        if ! sed -n "/^<a name=\"$NEW_TAG\"><\/a>$/,/^<a name=/p" NEWS.md | grep -q '^\* '; then
+          echo "::error::git-chglog produced no entries for $NEW_TAG. Check the commit range and .chglog/config.yml."
+          exit 1
+        fi
 
     - name: Commit NEWS if changed
       shell: bash
