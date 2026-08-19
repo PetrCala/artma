@@ -388,3 +388,24 @@ test_that("'mice' leaves guarded columns unimputed", {
   expect_equal(sum(is.na(result$mod_sparse)), 18)
   expect_false(anyNA(result$mod_dense))
 })
+
+# -- detect_missing_values: absent required columns ----------------------------
+
+test_that("a required column absent from the frame is not scanned for NAs", {
+  box::use(artma / data / na_handling[detect_missing_values, handle_missing_values])
+
+  local_options(list(
+    "artma.data.na_handling" = "stop",
+    "artma.verbose" = 1
+  ))
+
+  # A dataset without n_obs is legitimate since methods declare their own
+  # required columns (#400); the NA scan must not invent a phantom entry for
+  # the absent name and abort the run.
+  df <- make_df()
+  df$n_obs <- NULL
+
+  summary <- detect_missing_values(df)
+  expect_false(summary$has_required_na)
+  expect_no_error(handle_missing_values(df))
+})

@@ -41,8 +41,12 @@ label_with_source_names <- function(counts) {
 #' @return *\[list\]* Summary of missing values with columns and counts
 #' @keywords internal
 detect_missing_values <- function(df) {
-  required_cols <- get_required_colnames()
   all_cols <- colnames(df)
+  # A required column the frame does not carry (possible since methods declare
+  # their own requirements, see #400) must not enter the NA scan: indexing
+  # na_counts by an absent name would inject a phantom NA-named entry that
+  # aborts the run with an unnamed "missing values" error.
+  required_cols <- intersect(get_required_colnames(), all_cols)
   optional_cols <- setdiff(all_cols, required_cols)
 
   # Count missing values per column
