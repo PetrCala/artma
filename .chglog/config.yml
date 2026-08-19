@@ -18,9 +18,13 @@ options:
       perf: Performance Improvements
       refactor: Code Refactoring
   header:
-    pattern: "^(\\w*)\\:\\s(.*)$"
+    # Conventional Commits, with the scope group optional and an optional
+    # `!` breaking-change marker. Single-quoted so the regex is not also
+    # subject to YAML backslash escaping.
+    pattern: '^(\w+)(?:\(([^()]+)\))?!?:\s(.*)$'
     pattern_maps:
       - Type
+      - Scope
       - Subject
   notes:
     keywords:
