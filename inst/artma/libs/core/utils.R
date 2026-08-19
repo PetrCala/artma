@@ -20,6 +20,13 @@ data_viewer_available <- function() {
   if (!interactive()) {
     return(FALSE)
   }
+  # Examples and tests run in a subprocess of `R CMD check`. A viewer crash
+  # there aborts the whole check rather than failing one expectation, so stay
+  # on the printing fallback whenever a check is in progress, no matter how
+  # the subprocess reports itself.
+  if (!identical(Sys.getenv("_R_CHECK_PACKAGE_NAME_"), "")) {
+    return(FALSE)
+  }
   if (identical(.Platform$OS.type, "windows")) {
     return(TRUE)
   }
