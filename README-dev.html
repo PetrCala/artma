@@ -347,6 +347,13 @@
 <div class="section level1">
 <h1 id="generating-package-news">Generating package news<a class="anchor" aria-label="anchor" href="#generating-package-news"></a></h1>
 <p>We use <a href="https://github.com/git-chglog/git-chglog" class="external-link"><strong>git-chglog</strong></a> to automatically update the <code>NEWS.md</code> file from the commit history upon a new version creation. This is done automatically within the build and tag deploy cycle.</p>
+<p>Two things about that generator are easy to trip over:</p>
+<ul><li>
+<code>NEWS.md</code> is <strong>regenerated in full</strong> on every release, from <code>.chglog/config.yml</code> and <code>.chglog/CHANGELOG.tpl.md</code>. Hand-written entries do not survive; if a change needs prose, put it in the commit subject. Only <code>feat</code>, <code>fix</code>, <code>perf</code> and <code>refactor</code> commits are listed (see the <code>filters</code> block in the config).</li>
+<li>The new version’s entries come from the <code>&lt;latest tag&gt;..HEAD</code> range, so the release checkout needs the <strong>full</strong> git history. A shallow checkout collapses that range to the release commit alone and silently produces an empty section, which then becomes an empty GitHub release body. <code>.github/actions/composite/updateNews/action.yaml</code> pins <code>fetch-depth: 0</code> and fails the release if either the repository is shallow or the generated section has no entries.</li>
+</ul><p>To preview the changelog for an unreleased version without cutting a release:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="ex">git-chglog</span> <span class="at">--next-tag</span> <span class="st">"v&lt;new-version&gt;"</span></span></code></pre></div>
+<p><code>tests/testthat/test-release-notes.R</code> guards the header pattern (scoped commits included) and the <code>NEWS.md</code> slicing that produces the GitHub release body.</p>
 </div>
 <div class="section level1">
 <h1 id="formatting-commits">Formatting commits<a class="anchor" aria-label="anchor" href="#formatting-commits"></a></h1>
@@ -373,7 +380,7 @@
 <code>style:</code> for formatting changes that don’t affect code behavior</li>
 <li>
 <code>test:</code> for adding or modifying tests</li>
-</ul><p>The commit message should have a clear, concise subject line following the format <code>&lt;type&gt;: &lt;description&gt;</code>. For example: <code>feat: add support for custom linting rules</code>. If needed, add a more detailed description in the commit body, separated from the subject by a blank line. Breaking changes should be noted with a <code>BREAKING CHANGE:</code> footer.</p>
+</ul><p>The commit message should have a clear, concise subject line following the format <code>&lt;type&gt;: &lt;description&gt;</code>, or <code>&lt;type&gt;(&lt;scope&gt;): &lt;description&gt;</code> when a scope helps. For example: <code>feat: add support for custom linting rules</code> or <code>fix(bma): drop non-numeric moderators</code>. The scope is rendered in bold at the front of the changelog entry. If needed, add a more detailed description in the commit body, separated from the subject by a blank line. Breaking changes should be noted with a <code>BREAKING CHANGE:</code> footer.</p>
 <div class="section level2">
 <h2 id="commit-lints">Commit lints<a class="anchor" aria-label="anchor" href="#commit-lints"></a></h2>
 <p>To ensure consistent commit wording across the project, we use a <a href=".github/workflows/commit-lint.yaml"><strong>commit lint workflow</strong></a>. Here, we follow the <code>@commitlint/config-conventional</code> set of lint rules for commit formatting. If any of your commits do not adhere to these rules, your pull request will be rejected.</p>
@@ -386,21 +393,21 @@
 <p>Tests can be run in several ways depending on your needs:</p>
 <ol style="list-style-type: decimal"><li>
 <p><strong>Run all tests</strong>:</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">make</span> test</span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">make</span> test</span></code></pre></div>
 <p>This will execute all test files in the project.</p>
 </li>
 <li>
 <p><strong>Run a specific test file</strong>:</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">make</span> test-file FILE=path/to/test_file.R</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">make</span> test-file FILE=path/to/test_file.R</span></code></pre></div>
 <p>Replace <code>path/to/test_file.R</code> with the relative path to your test file from the <code>tests</code> directory.</p>
 </li>
 <li>
 <p><strong>Run tests with a filter</strong>:</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">make</span> test-filter FILTER=<span class="st">"test_name"</span></span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="fu">make</span> test-filter FILTER=<span class="st">"test_name"</span></span></code></pre></div>
 <p>This will run only the tests that match the specified filter pattern.</p>
 </li>
 </ol><p>The test script uses <code><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">devtools::test()</a></code> under the hood, which means you can also run tests directly from R:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Run all tests</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">test</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>

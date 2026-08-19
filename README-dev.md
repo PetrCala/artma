@@ -395,6 +395,32 @@ automatically update the `NEWS.md` file from the commit history upon a
 new version creation. This is done automatically within the build and
 tag deploy cycle.
 
+Two things about that generator are easy to trip over:
+
+- `NEWS.md` is **regenerated in full** on every release, from
+  `.chglog/config.yml` and `.chglog/CHANGELOG.tpl.md`. Hand-written
+  entries do not survive; if a change needs prose, put it in the commit
+  subject. Only `feat`, `fix`, `perf` and `refactor` commits are listed
+  (see the `filters` block in the config).
+- The new version’s entries come from the `<latest tag>..HEAD` range, so
+  the release checkout needs the **full** git history. A shallow
+  checkout collapses that range to the release commit alone and silently
+  produces an empty section, which then becomes an empty GitHub release
+  body. `.github/actions/composite/updateNews/action.yaml` pins
+  `fetch-depth: 0` and fails the release if either the repository is
+  shallow or the generated section has no entries.
+
+To preview the changelog for an unreleased version without cutting a
+release:
+
+``` bash
+git-chglog --next-tag "v<new-version>"
+```
+
+`tests/testthat/test-release-notes.R` guards the header pattern (scoped
+commits included) and the `NEWS.md` slicing that produces the GitHub
+release body.
+
 # Formatting commits
 
 Commits should follow the [conventional commit
@@ -415,11 +441,13 @@ prefixes to indicate the type of change. Common prefixes include:
 - `test:` for adding or modifying tests
 
 The commit message should have a clear, concise subject line following
-the format `<type>: <description>`. For example:
-`feat: add support for custom linting rules`. If needed, add a more
-detailed description in the commit body, separated from the subject by a
-blank line. Breaking changes should be noted with a `BREAKING CHANGE:`
-footer.
+the format `<type>: <description>`, or `<type>(<scope>): <description>`
+when a scope helps. For example:
+`feat: add support for custom linting rules` or
+`fix(bma): drop non-numeric moderators`. The scope is rendered in bold
+at the front of the changelog entry. If needed, add a more detailed
+description in the commit body, separated from the subject by a blank
+line. Breaking changes should be noted with a `BREAKING CHANGE:` footer.
 
 ## Commit lints
 
