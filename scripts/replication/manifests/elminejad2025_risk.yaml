@@ -1,0 +1,99 @@
+# Elminejad, Havranek & Irsova (2025), relative risk aversion.
+#
+# The paper winsorizes rra and se at the 10th and 90th percentiles (winsor2
+# cuts(10 90) in the published rra.do; the text says "5% level" but the code
+# is what reproduces Table 2) and reports Table 2 weighted
+# by inverse variance, so only the WLS column (artma's Precision Weighted OLS)
+# is estimator-matched; the paper's FE/BE/Study columns carry the same
+# weighting, which artma's unweighted FE/BE do not, and are not transcribed.
+# Table 3's corrections map onto artma's nonlinear battery directly. The
+# selection model follows the paper's assumption of t-distributed effects with
+# the single 1.96 threshold.
+#
+# This dataset is the reference case for why artma's UNWEIGHTED linear
+# estimators should not be compared to this paper: the raw effect column spans
+# -810 to 2,104, and unweighted FAT-PET lands an order of magnitude above
+# every weighted or nonlinear estimate. That is expected estimator behaviour
+# on fat tails, not an artma defect.
+
+id: elminejad2025_risk
+title: "Relative Risk Aversion: A Meta-Analysis"
+author: "Ali Elminejad, Tomas Havranek, Zuzana Irsova"
+year: 2025
+degree: "journal article (Journal of Economic Surveys 39(5), 2315-2333)"
+source_url: "https://doi.org/10.1111/joes.12689"
+
+data:
+  url: "https://meta-analysis.cz/data/v1/risk/risk.csv"
+  file: "risk.csv"
+  sha256: "3ab01a188121b20c6b816e9a19ddc7e462ffb2cfc6d5a222feff9153034aa652"
+
+code:
+  url: "https://meta-analysis.cz/risk/risk.zip"
+  language: Stata
+
+columns:
+  effect: "rra"
+  se: "se"
+  study_id: "idstudy"
+  n_obs: "obs"
+
+options:
+  data.winsorization_level: 0.10
+  # The paper exported the winsorized data to Kasy's hosted metastudy app,
+  # whose publication probability is a step function of |t|: t-distributed
+  # effects, single 1.96 threshold, symmetric. With these two options artma's
+  # selection model reproduces the paper's 0.960 exactly.
+  methods.nonlinear_tests.selection_model: "t"
+  methods.nonlinear_tests.selection_symmetric: true
+
+methods:
+  - linear_tests
+  - nonlinear_tests
+
+reported:
+  - label: "WLS: mean corrected RRA"
+    artma_method: linear_tests
+    artma_model: "ols_precision_weighted"
+    artma_term: "effect"
+    estimate: 1.199
+    std_error: 0.257
+    source: "Table 2, Panel A (all studies), WLS column"
+
+  - label: "WLS: publication bias"
+    artma_method: linear_tests
+    artma_model: "ols_precision_weighted"
+    artma_term: "publication_bias"
+    estimate: 1.865
+    std_error: 0.362
+    source: "Table 2, Panel A (all studies), WLS column"
+
+  - label: "WAAP (Ioannidis et al. 2017)"
+    artma_method: nonlinear_tests
+    artma_model: "waap"
+    artma_term: "effect"
+    estimate: 1.318
+    std_error: 0.250
+    source: "Table 3, Panel A (all studies)"
+
+  - label: "Selection model (Andrews & Kasy 2019)"
+    artma_method: nonlinear_tests
+    artma_model: "selection"
+    artma_term: "effect"
+    estimate: 0.960
+    std_error: 0.035
+    source: "Table 3, Panel A (all studies)"
+
+# The paper's stem-based estimate (Table 3: 1.467, SE 0.951) is not
+# transcribed: it was produced by Furukawa's own R code, and none of artma's
+# stem variants (study medians, first estimate, all estimates; winsorized or
+# raw inputs) reproduces it, so the exact spec is not recoverable from the
+# published replication files.
+
+  - label: "Endogenous kink (Bom & Rachinger 2019)"
+    artma_method: nonlinear_tests
+    artma_model: "endogenous_kink"
+    artma_term: "effect"
+    estimate: 1.199
+    std_error: 0.046
+    source: "Table 3, Panel A (all studies)"

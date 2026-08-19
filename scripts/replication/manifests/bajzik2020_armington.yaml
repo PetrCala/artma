@@ -1,0 +1,110 @@
+# Bajzik, Havranek, Irsova & Schwarz (2020), the Armington elasticity.
+#
+# Table 2 is computed on the long-run subsample (srun == 0, N = 2,968) using
+# the 2.5%-winsorized effect and standard error the dataset ships as `armel_w`
+# and `se_w`, so the manifest maps those columns directly and turns artma's own
+# winsorization off. Panel C (WAAP, selection model, stem) uses the RAW,
+# unwinsorized values instead, so those rows are deliberately not transcribed
+# here: a single run cannot match both input specs, and the linear panels are
+# the ones the winsorized mapping reproduces exactly.
+#
+# The abstract's "2.5-5.1, median 3.8" is a conditional best-practice
+# counterfactual, not a pooled estimate; the pooled corrected estimates below
+# are the comparable quantities. Do not "fix" this manifest by targeting the
+# abstract.
+
+id: bajzik2020_armington
+title: "Estimating the Armington Elasticity: The Importance of Study Design and Publication Bias"
+author: "Josef Bajzik, Tomas Havranek, Zuzana Irsova, Jiri Schwarz"
+year: 2020
+degree: "journal article (Journal of International Economics 127, 103383)"
+source_url: "https://doi.org/10.1016/j.jinteco.2020.103383"
+
+data:
+  url: "https://meta-analysis.cz/data/v1/armington/armington.csv"
+  file: "armington.csv"
+  sha256: "579d5b004862038104fce623dbe88a6f7756595efbf02dd5e953e8d7f253b851"
+
+code:
+  url: "https://meta-analysis.cz/armington/armington.do"
+  language: Stata
+
+columns:
+  effect: "armel_w"
+  se: "se_w"
+  study_id: "idstudy"
+  n_obs: "nobs"
+  srun: "srun"
+
+options:
+  data.winsorization_level: 0
+  data.subset_conditions: "srun == 0"
+
+methods:
+  - linear_tests
+  - nonlinear_tests
+
+reported:
+  - label: "FAT-PET OLS: effect beyond bias"
+    artma_method: linear_tests
+    artma_model: "ols"
+    artma_term: "effect"
+    estimate: 0.901
+    std_error: 0.168
+    source: "Table 2, Panel A, long-run column"
+
+  - label: "FAT-PET OLS: publication bias"
+    artma_method: linear_tests
+    artma_model: "ols"
+    artma_term: "publication_bias"
+    estimate: 0.805
+    std_error: 0.0630
+    source: "Table 2, Panel A, long-run column"
+
+  - label: "Fixed effects: effect beyond bias"
+    artma_method: linear_tests
+    artma_model: "fe"
+    artma_term: "effect"
+    estimate: 1.047
+    std_error: 0.0476
+    source: "Table 2, Panel A, long-run column"
+
+  - label: "Fixed effects: publication bias"
+    artma_method: linear_tests
+    artma_model: "fe"
+    artma_term: "publication_bias"
+    estimate: 0.627
+    std_error: 0.0580
+    source: "Table 2, Panel A, long-run column"
+
+  - label: "Study-weighted OLS: effect beyond bias"
+    artma_method: linear_tests
+    artma_model: "ols_study_weighted"
+    artma_term: "effect"
+    estimate: 1.134
+    std_error: 0.168
+    source: "Table 2, Panel B, long-run column"
+
+  - label: "Study-weighted OLS: publication bias"
+    artma_method: linear_tests
+    artma_model: "ols_study_weighted"
+    artma_term: "publication_bias"
+    estimate: 0.821
+    std_error: 0.139
+    source: "Table 2, Panel B, long-run column"
+
+  - label: "Hierarchical Bayes: effect beyond bias"
+    artma_method: nonlinear_tests
+    artma_model: "hierarchical"
+    artma_term: "effect"
+    estimate: 1.250
+    std_error: 0.0476
+    source: "Table 2, Panel A, long-run column"
+
+  - label: "Hierarchical Bayes: publication bias"
+    artma_method: nonlinear_tests
+    artma_model: "hierarchical"
+    artma_term: "publication_bias"
+    estimate: 0.630
+    std_error: 0.190
+    source: "Table 2, Panel A, long-run column"
