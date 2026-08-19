@@ -1,17 +1,91 @@
 
-<a name="unreleased"></a>
+<a name="v0.4.0"></a>
 
-## Unreleased
+## [v0.4.0](https://github.com/PetrCala/artma/compare/v0.3.5...v0.4.0)
 
-### Bug Fixes
+> 2026-08-19
 
-* An absolute `visualization.export_path` is now used as-is instead of being joined onto the output directory. Runs made before this fix may have left a stray nested `var/folders/...` (or similar) directory tree inside an existing results directory; those can be deleted by hand, the package does not clean them up.
 
 <a name="v0.3.5"></a>
 
 ## [v0.3.5](https://github.com/PetrCala/artma/compare/v0.3.3...v0.3.5)
 
 > 2026-08-09
+
+### Bug Fixes
+
+* prime data-config cache when data is passed directly to artma()
+* quiet dependency and validation noise in real runs and logs
+* keep MAIVE pin CRAN-resolvable and gate tests on the runtime floor
+* require MAIVE 0.2.5 for unrounded estimates
+* correct FE intercept SE vcov and study-weighted OLS weights in linear tests
+* use inverse-variance WAAP pilot weights and clustered WLS standard errors
+* restore RoxygenNote 7.3.3 and man page dropped by roxygen 8 regeneration
+* drop unused fs Suggests dependency and its dir_create lint rule
+* force sequential execution when already inside a forked worker
+* quoted data paths, duplicate column mapping, exogeneity table gaps
+* let column config data_type override type detection ([#253](https://github.com/PetrCala/artma/issues/253))
+* stop false study_id warning on valid string labels ([#250](https://github.com/PetrCala/artma/issues/250))
+* declare rjags in Suggests for the RoBMA test guard
+* target the RoBMA 4.x API in the robma method
+* install MAIVE from CRAN instead of GitHub
+* make BPE recommendation fallback an explicit no-recommendation outcome
+* recompute user-supplied precision after winsorization
+* implement puniform_method P (method of moments) branch
+* align LCM defaults and wire chunk_size option in p_hacking_tests
+* prevent bma/best_practice_estimate crash on small BMA models
+* draw mock standard errors from a strictly positive range
+* honor the cache TTL option and add a template-to-code option parity test
+* replace literal unicode escape text with ascii equivalents
+* options correctness fixes and dead code removal
+* make data config keys deterministic and invalidate the config df cache
+* replace the homemade digest hash and stop the data cache invalidating itself
+* isolate runtime method failures and always export partial results
+* locate the package root when the checkout is not named artma
+* locate linters.R without the here package
+* declare runtime dependencies correctly
+* failing tests
+* schema reconciliation messages
+* schema reconcile
+* strict bpe requirements
+* requirements on bma-dependent methods
+* silence the bma and fma run if the verbose_output is FALSE
+* handle NULL var_name in config during column validation
+* update the climenu version to 0.1.5 to avoid an error
+
+### Code Refactoring
+
+* unify weak-instrument F threshold constant in exogeneity.R
+* simplify non-idiomatic constructs and reuse significance_mark
+* extract shared helpers for duplicated logic
+* restore stats imports used via formula environments, with comment
+* vectorize row-wise loops and hoist repeated computation
+* remove dead functions, unused imports and unreachable branches
+* unify column mapping and data config into one per-column store
+* consolidate R CMD check workarounds into one generated manifest
+* split prepare_data into configure, compute, and persist phases
+* strict option access and fail-loud coercion
+* declarative method metadata replacing execution order and dependency plumbing
+* add shared method registration helper and standard return contract
+* unify required, reserved, and computed column name lists
+* make options.load pure and parse the options template once
+* collapse the 5-level autonomy system into a 3-value enum
+* unify file-read dispatch and post-read normalization
+* replace the cli replay cache layer with plain memoise
+* handle data columns through reconciliation
+* unify bma and fma into a single table
+* box plot max boxes per plot option
+
+### Features
+
+* add opt-in RoBMA runtime method
+* add BPE summary stats grouped by factor levels
+* add BPE per-factor density and sorted scatter plots
+* add economic significance table to best_practice_estimate
+* support user-defined data subset conditions
+* attach STEM funnel and MSE plots to nonlinear_tests output
+* add BMA prior-comparison plot for multiple parameter sets
+* add bpe
 
 
 <a name="v0.3.3"></a>
