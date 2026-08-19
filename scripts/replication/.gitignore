@@ -3,3 +3,8 @@
 data/
 work/
 output/
+
+# The repo root ignores `lib/` (a Python convention); this harness's lib/ is
+# source code and must be tracked. This line is why PR #448 shipped without
+# its lib layer -- keep it.
+!lib/

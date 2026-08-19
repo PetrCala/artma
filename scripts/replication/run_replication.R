@@ -163,21 +163,39 @@ apply_column_mapping <- function(df, mapping) {
 # --- artma invocation ---------------------------------------------------------
 
 #' Build a throwaway options file pointing artma at the normalised dataset.
+#'
+#' A manifest can override or extend the defaults through its `options` block
+#' (flat "dotted.key: value" pairs) -- e.g. to match a paper's winsorization
+#' level or restrict to the subsample its tables are computed on.
 prepare_options <- function(manifest, data_path) {
   options_name <- sprintf("replication_%s.yaml", manifest$id)
+
+  # Overwriting merges with the existing file's values, which would carry a
+  # previous run's auto-detected column records into this one. Each run gets a
+  # options file built only from the manifest.
+  unlink(file.path(WORK_DIR, options_name))
+
+  user_input <- list(
+    "data.source_path" = data_path,
+    # The normalised CSV already uses artma's canonical column names, so
+    # auto-detection has nothing to add; skipping it also stops the
+    # non-interactive mapping prompt from inventing a mapping for canonical
+    # columns the dataset genuinely lacks (e.g. n_obs).
+    "data.config_setup" = "manual",
+    "data.na_handling" = "stop",
+    "output.dir" = file.path(OUT_DIR, manifest$id),
+    "general.seed" = 20250101L,
+    "autonomy.level" = "autonomous",
+    "verbose" = 2L
+  )
+  overrides <- manifest$options %||% list()
+  user_input[names(overrides)] <- overrides
 
   artma::options_create(
     options_file_name = options_name,
     options_dir = WORK_DIR,
     should_overwrite = TRUE,
-    user_input = list(
-      "data.source_path" = data_path,
-      "data.na_handling" = "stop",
-      "output.dir" = file.path(OUT_DIR, manifest$id),
-      "general.seed" = 20250101L,
-      "autonomy.level" = "autonomous",
-      "verbose" = 2L
-    )
+    user_input = user_input
   )
 
   options_name
@@ -250,7 +268,7 @@ main <- function() {
   }
 
   manifests <- read_manifests(MANIFEST_DIR, args$ids)
-  message(sprintf("Replicating %d thesis/theses.", length(manifests)))
+  message(sprintf("Replicating %d paper(s).", length(manifests)))
 
   dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 
@@ -281,7 +299,7 @@ main <- function() {
   writeLines(summary_markdown(combined), file.path(OUT_DIR, "SUMMARY.md"))
 
   message(sprintf(
-    "\nWrote %d comparison row(s) across %d thesis/theses to %s",
+    "\nWrote %d comparison row(s) across %d paper(s) to %s",
     nrow(combined), length(comparisons), OUT_DIR
   ))
   print(table(combined$verdict))
@@ -294,7 +312,7 @@ write_thesis_report <- function(manifest, comparison) {
     sprintf("- **Author**: %s", manifest$author),
     sprintf("- **Supervisor**: %s", manifest$supervisor),
     sprintf("- **Year**: %s (%s)", manifest$year, manifest$degree %||% "thesis"),
-    if (!is.null(manifest$thesis_url)) sprintf("- **Thesis**: %s", manifest$thesis_url),
+    sprintf("- **Source**: %s", manifest$source_url %||% manifest$thesis_url),
     "",
     comparison_markdown(comparison)
   )
@@ -307,7 +325,7 @@ summary_markdown <- function(combined) {
     "# artma replication summary",
     "",
     sprintf(
-      "%d quantities compared across %d thesis/theses.",
+      "%d quantities compared across %d paper(s).",
       nrow(combined), length(unique(combined$thesis_id))
     ),
     "",
