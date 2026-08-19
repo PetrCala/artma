@@ -79,6 +79,17 @@ test_that("the data viewer is never opened in a non-interactive session", {
   expect_false(data_viewer_available())
 })
 
+test_that("the data viewer is never opened while R CMD check is running", {
+  box::use(artma / libs / core / utils[data_viewer_available])
+
+  # `utils::View()` crashed the CRAN checks for 0.3.3 (a null dereference in
+  # the X11 data entry window), which takes the whole check down instead of
+  # failing a single expectation.
+  withr::local_envvar(c("_R_CHECK_PACKAGE_NAME_" = "artma"))
+
+  expect_false(data_viewer_available())
+})
+
 test_that("data_preview prints a preview when no viewer is available", {
   box::use(artma / libs / core / utils[data_viewer_available])
 
