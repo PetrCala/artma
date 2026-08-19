@@ -74,7 +74,7 @@ jobs:
       BUILD_ARTIFACTS: ${{ steps.getBuildArtifacts.outputs.ARTIFACTS }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: master
           # The ARTMA_BOT_COMMIT_TOKEN is a personal access token tied to ArtmaBot
@@ -220,7 +220,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Upload the prebuild artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: prebuild-artifacts
           path: ${{ steps.getPrebuildArtifacts.outputs.ARTIFACTS }}
@@ -235,7 +235,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Upload R package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-artifacts
           path: ${{ steps.getBuildArtifacts.outputs.ARTIFACTS }}
@@ -246,13 +246,13 @@ jobs:
     needs: [build]
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: master
           token: ${{ secrets.ARTMA_BOT_COMMIT_TOKEN }}
 
       - name: Download the artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
 
       - name: Display structure of downloaded artifacts
         run: ls -R
@@ -280,7 +280,7 @@ jobs:
           git push origin ${{ steps.unpackMetadata.outputs.TAG_NAME }}
 
       - name: Upload release asset
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.unpackMetadata.outputs.TAG_NAME }}
           files: |
