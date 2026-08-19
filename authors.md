@@ -7,7 +7,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/PetrCala/artma/blob/master/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/PetrCala/artma/blob/ci/node24-action-bumps/DESCRIPTION)
 
 Čala P (2026). *artma: Automatic Replication Tools for Meta-Analysis*. R
 package version 0.4.1, <https://github.com/PetrCala/artma>.
