@@ -1,0 +1,60 @@
+# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
+#
+# Builds the pkgdown site and publishes it to the gh-pages branch, which
+# GitHub Pages serves at https://petrcala.github.io/artma/. That URL is
+# deliberately absent from the DESCRIPTION URL field until the site is live:
+# CRAN checks every URL in DESCRIPTION and rejected the 0.4.0 submission over
+# the 404. Point Pages at the gh-pages branch after the first run, confirm the
+# site loads, then add the URL back to DESCRIPTION and regenerate the docs.
+name: pkgdown
+
+on:
+  push:
+    branches: [master]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pkgdown:
+    runs-on: ubuntu-latest
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Setup JAGS
+        uses: ./.github/actions/setup-jags
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::pkgdown, local::.
+          needs: website
+
+      - name: Build site
+        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
+        shell: Rscript {0}
+
+      - name: Deploy to GitHub pages
+        uses: JamesIves/github-pages-deploy-action@v4.5.0
+        with:
+          clean: false
+          branch: gh-pages
+          folder: docs
