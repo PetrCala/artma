@@ -1,0 +1,53 @@
+# Reckova & Irsova (2015), climate sensitivity.
+#
+# Only the uncorrected mean is transcribed. The paper's corrected estimates
+# (Table 1, Table 2) could not be reproduced from the public dataset and
+# do-file: the specifications regress the t-statistic on 1/SE plus controls
+# (mean/SE, SE), the preferred estimator is a mixed-effects multilevel model
+# artma does not implement, and the plain bivariate t-form OLS on the public
+# CSV (`tstat = estimate/se_low` per the do-file) yields 0.594, not Table 2's
+# 1.692, so the exact spec behind that row is not recoverable. artma's
+# Precision Weighted OLS is the algebraic equivalent of the bivariate t-form
+# and reproduces the 0.594 exactly; there is simply no transcribable paper
+# number for it. Do not add corrected rows here without first reconciling the
+# spec against the online appendix.
+#
+# The do-file uses `se_low` (CI-implied lower standard error) as the precision
+# measure and does not winsorize.
+
+id: reckova2015_climate
+title: "Publication Bias in Measuring Anthropogenic Climate Change"
+author: "Dominika Reckova, Zuzana Irsova"
+year: 2015
+degree: "journal article (Energy & Environment 26(5), 853-862)"
+source_url: "https://meta-analysis.cz/climate/climate2.pdf"
+
+data:
+  url: "https://meta-analysis.cz/data/v1/climate/climate.csv"
+  file: "climate.csv"
+  sha256: "b0336dae46eb11b0d143bc1a4f3347a5acb01c1938c3f710b1cd0811a40c3e8a"
+
+code:
+  url: "https://meta-analysis.cz/climate/climate.do"
+  language: Stata
+
+columns:
+  effect: "estimate"
+  se: "se_low"
+  study_id: "idstudy"
+
+options:
+  data.winsorization_level: 0
+
+methods:
+  - effect_summary_stats
+  - linear_tests
+
+reported:
+  - label: "Uncorrected mean climate sensitivity"
+    artma_method: effect_summary_stats
+    artma_model: "All Data"
+    artma_term: "mean"
+    estimate: 3.27
+    std_error: ~
+    source: "p. 859, discussion of Table 1"

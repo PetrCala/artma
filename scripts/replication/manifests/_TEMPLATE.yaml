@@ -1,19 +1,20 @@
 # Replication manifest template.
 #
-# One file per thesis. Copy to `<id>.yaml` and fill in. Every field under
-# `reported` is transcribed by hand from the thesis PDF -- that transcription is
-# the only part of this pipeline a machine cannot do for you, and it is what the
-# comparison ultimately rests on. Always record `source` so a reviewer can find
-# the number in the original text.
+# One file per paper (or thesis). Copy to `<id>.yaml` and fill in. Every field
+# under `reported` is transcribed by hand from the source PDF -- that
+# transcription is the only part of this pipeline a machine cannot do for you,
+# and it is what the comparison ultimately rests on. Always record `source` so
+# a reviewer can find the number in the original text. Before transcribing
+# anything, check the paper against the roster criteria in ../README.md.
 
 # --- Identity -----------------------------------------------------------------
 id: author_year_topic # unique slug; also the output file stem
-title: "Full Thesis Title: A Meta-Analysis"
+title: "Full Title: A Meta-Analysis"
 author: "Firstname Lastname"
-supervisor: "Tomas Havranek" # or "Zuzana Havrankova"
-degree: master # bachelor | master
+supervisor: ~ # thesis supervisor, if a thesis
+degree: "journal article (Journal, volume, pages)" # or: bachelor | master
 year: 2025
-thesis_url: "https://dspace.cuni.cz/handle/20.500.11956/XXXXXX"
+source_url: "https://doi.org/..." # or the dspace handle for a thesis
 
 # --- Data ---------------------------------------------------------------------
 # `url` is fetched by run_replication.R when the local file is absent.
@@ -43,6 +44,19 @@ columns:
   study_id: "study"
   # n_obs: "obs"
   # t_stat: "t"
+  # A column needed only by a subset filter can be carried through under its
+  # own name:
+  # srun: "srun"
+
+# --- artma options ------------------------------------------------------------
+# Flat "dotted.key: value" pairs merged over the runner's defaults. This is
+# where the paper's spec is mirrored: winsorization, subsamples, per-method
+# settings. Read the paper's replication code, not only its text -- when the
+# two disagree, the code is what produced the tables.
+# options:
+#   data.winsorization_level: 0.10
+#   data.subset_conditions: "srun == 0"
+#   methods.nonlinear_tests.selection_model: "t"
 
 # --- Methods to run -----------------------------------------------------------
 # See `artma::methods_list()`. Keep this to the methods the thesis actually
