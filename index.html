@@ -56,15 +56,15 @@
 </nav><div class="container template-home">
 <div class="row">
   <main id="main" class="col-md-9"><div align="center">
-<div class="sourceCode" id="cb1"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="sc">&lt;</span>h1<span class="sc">&gt;</span></span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>    Automatic Replication Tools <span class="cf">for</span> Meta<span class="sc">-</span>analysis</span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="sc">&lt;</span><span class="er">/</span>h1<span class="sc">&gt;</span></span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="er">&lt;</span>h4<span class="sc">&gt;</span></span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>Effortlessly bridging the gap between data and models</span>
-<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="sc">&lt;</span><span class="er">/</span>h4<span class="sc">&gt;</span></span></code></pre></div>
-<p><!-- badges: start --></p>
-<p><a href="https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R build status"></a> <a href="https://cran.r-project.org/package=artma" class="external-link"><img src="https://www.r-pkg.org/badges/version/artma" alt="CRAN Status"></a> <a href="https://codecov.io/gh/PetrCala/artma" class="external-link"><img src="https://codecov.io/gh/PetrCala/artma/graph/badge.svg?token=6XNXVDOT80" alt="codecov"></a></p>
-<p><!-- badges: end --></p>
+<div class="page-header"><h1>
+Automatic Replication Tools for Meta-analysis
+</h1></div>
+<h4>
+Effortlessly bridging the gap between data and models
+</h4>
+<!-- badges: start -->
+
+<!-- badges: end -->
 </div>
 <p><strong>artma</strong> provides a unified interface for running a wide range of meta-analysis methods directly on your data. Point it at a dataset, answer a few questions (or configure everything up front in a YAML file), and it runs the analyses, exports tables and plots, and returns the results as R objects.</p>
 <ul>
@@ -93,13 +93,13 @@
 <li><a href="#learn-more">Learn more</a></li>
 </ul>
 <div class="section level1">
-<div class="page-header"><h1 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
-</h1></div>
+<h1 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+</h1>
 <p>From CRAN:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"artma"</span><span class="op">)</span></span></code></pre></div>
 <p>From GitHub (development version):</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"PetrCala/artma"</span><span class="op">)</span></span></code></pre></div>
 <p>For local development, clone the repository (see <a href="README-dev.html">README-dev.md</a>) and load it with <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code>.</p>
 </div>
@@ -107,12 +107,12 @@
 <h1 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h1>
 <p>The simplest way to use artma is fully interactively:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/PetrCala/artma" class="external-link">artma</a></span><span class="op">)</span></span>
 <span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/artma.html">artma</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>In an interactive session, artma walks you through creating an options file, locating your data, mapping your columns, and choosing which methods to run. Everything you decide is saved to the options file, so subsequent runs are reproducible.</p>
 <p>Once you have an options file, runs can be fully scripted:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Run specific methods</span></span>
 <span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/artma.html">artma</a></span><span class="op">(</span></span>
 <span>  methods <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"funnel_plot"</span>, <span class="st">"bma"</span>, <span class="st">"fma"</span><span class="op">)</span>,</span>
@@ -229,23 +229,23 @@
 </h1>
 <p>All settings for an analysis live in a hierarchical YAML options file: the data path, column mappings, method parameters, output preferences, and so on. Options files make analyses reproducible and let you keep separate configurations for different projects side by side.</p>
 <p>When loaded, every option is available under the <code>artma.</code> prefix:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"artma.verbose"</span><span class="op">)</span> <span class="co"># e.g. 3</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="creating-and-loading">Creating and loading<a class="anchor" aria-label="anchor" href="#creating-and-loading"></a>
 </h2>
 <p>If you call a runtime method without an options file, artma prompts you to create one. You can also do it explicitly:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/options_create.html">options_create</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>Pass the file name to <code><a href="reference/artma.html">artma()</a></code> to use it for a run:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/artma.html">artma</a></span><span class="op">(</span></span>
 <span>  options <span class="op">=</span> <span class="st">"my_analysis.yaml"</span>,</span>
 <span>  options_dir <span class="op">=</span> <span class="st">"path/to/your/options"</span> <span class="co"># optional, defaults to the standard directory</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Options are loaded only for the duration of the call, so different configurations never leak across sessions or invocations.</p>
 <p>Useful helpers:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/options_list.html">options_list</a></span><span class="op">(</span><span class="op">)</span>              <span class="co"># names of your existing options files</span></span>
 <span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/options_open.html">options_open</a></span><span class="op">(</span><span class="op">)</span>              <span class="co"># open a file for editing</span></span>
 <span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/options_help.html">options_help</a></span><span class="op">(</span><span class="op">)</span>              <span class="co"># documentation for every available option</span></span>
@@ -258,7 +258,7 @@
 <div class="section level2">
 <h2 id="modifying-options">Modifying options<a class="anchor" aria-label="anchor" href="#modifying-options"></a>
 </h2>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/options_modify.html">options_modify</a></span><span class="op">(</span></span>
 <span>  options_file_name <span class="op">=</span> <span class="st">"my_analysis.yaml"</span>,</span>
 <span>  user_input <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"verbose"</span> <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
@@ -302,14 +302,14 @@
 </h2>
 <p>artma reads CSV, TSV, Excel (<code>.xlsx</code>/<code>.xls</code>), JSON, Stata (<code>.dta</code>), and RDS files. You can also skip file reading entirely by passing a data frame via <code>artma(data = ...)</code>; it still goes through preprocessing and validation.</p>
 <p>Preview any dataset (from a path, a data frame, or your options file) with:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/data_preview.html">data_preview</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="per-variable-configuration">Per-variable configuration<a class="anchor" aria-label="anchor" href="#per-variable-configuration"></a>
 </h2>
 <p>Each column in your dataset has a configuration entry that controls how it participates in the analyses: its type, which methods use it, grouping flags, and so on. Sensible defaults are auto-detected from the data; only your deviations from the defaults are persisted in the options file.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/config_get.html">config_get</a></span><span class="op">(</span><span class="op">)</span>                          <span class="co"># the fully resolved config</span></span>
 <span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/config_get.html">config_get</a></span><span class="op">(</span>var_name <span class="op">=</span> <span class="st">"study_size"</span><span class="op">)</span>   <span class="co"># one variable's entry</span></span>
 <span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/config_set.html">config_set</a></span><span class="op">(</span><span class="st">"study_size"</span>, bma <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>  <span class="co"># override specific fields</span></span>
@@ -347,7 +347,7 @@
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/autonomy_get.html">autonomy_get</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/autonomy_set.html">autonomy_set</a></span><span class="op">(</span><span class="st">"balanced"</span><span class="op">)</span></span></code></pre></div>
 <p>Non-interactive sessions (scripts, CI) never prompt, regardless of the level.</p>
@@ -356,11 +356,11 @@
 <h1 id="results-and-visualization">Results and visualization<a class="anchor" aria-label="anchor" href="#results-and-visualization"></a>
 </h1>
 <p>Tables are exported as CSV and plots as graphics files into the results directory:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/results_dir.html">results_dir</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># print and return the path</span></span>
 <span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/results_open.html">results_open</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># open it in your file browser</span></span></code></pre></div>
 <p>Plot appearance is configurable per session:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/viz_themes.html">viz_themes</a></span><span class="op">(</span><span class="op">)</span>             <span class="co"># available themes</span></span>
 <span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/viz_get.html">viz_get</a></span><span class="op">(</span><span class="op">)</span>                <span class="co"># current settings</span></span>
 <span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="reference/viz_set.html">viz_set</a></span><span class="op">(</span>theme <span class="op">=</span> <span class="st">"purple"</span><span class="op">)</span></span></code></pre></div>
@@ -369,7 +369,7 @@
 <h1 id="custom-methods">Custom methods<a class="anchor" aria-label="anchor" href="#custom-methods"></a>
 </h1>
 <p>Runtime methods live in <code>inst/artma/methods/</code>, one file per method, and are discovered automatically. Each method is a plain function registered with <code>register_runtime_method()</code>, which declares its dependencies, required data columns, and optional packages, and wires in caching:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">box</span><span class="fu">::</span><span class="fu"><a href="https://klmr.me/box/reference/use.html" class="external-link">use</a></span><span class="op">(</span></span>
 <span>  <span class="va">artma</span> <span class="op">/</span> <span class="va">modules</span> <span class="op">/</span> <span class="va">runtime_methods</span><span class="op">[</span><span class="va">new_estimates</span>, <span class="va">new_method_result</span>, <span class="va">register_runtime_method</span><span class="op">]</span></span>
 <span><span class="op">)</span></span>
@@ -440,7 +440,14 @@
 </ul>
 </div>
 
-
+<div class="dev-status">
+<h2 data-toc-skip>Dev status</h2>
+<ul class="list-unstyled">
+<li><a href="https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/PetrCala/artma/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R build status"></a></li>
+<li><a href="https://cran.r-project.org/package=artma" class="external-link"><img src="https://www.r-pkg.org/badges/version/artma" alt="CRAN Status"></a></li>
+<li><a href="https://codecov.io/gh/PetrCala/artma" class="external-link"><img src="https://codecov.io/gh/PetrCala/artma/graph/badge.svg?token=6XNXVDOT80" alt="codecov"></a></li>
+</ul>
+</div>
 
   </aside>
 </div>

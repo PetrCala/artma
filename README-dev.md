@@ -1,13 +1,6 @@
-# How to run
+# Automatic Replication Tools for Meta-analysis
 
-``` R
-<h1>
-    Automatic Replication Tools for Meta-analysis
-</h1>
-<h4>
-Developer Documentation
-</h4>
-```
+#### Developer Documentation
 
 - [How to run](#how-to-run)
 - [Required packages](#required-packages)
@@ -48,6 +41,8 @@ Welcome to the developer documentation for artma (Automatic Replication
 Tools for Meta-analysis). This guide covers setup, development
 workflows, code standards, and other technical details needed for
 contributing to the project.
+
+# How to run
 
 1.  Clone the repository using
 
