@@ -1,3 +1,9 @@
+* Resubmission. The previous submission was returned because
+  `https://petrcala.github.io/artma/`, listed in the DESCRIPTION URL field,
+  returned 404. The pkgdown site is not published yet, so the URL has been
+  dropped from DESCRIPTION (and from the generated `man/artma-package.Rd`).
+  It will be added back once the site is live.
+
 * This release fixes the segmentation fault reported on
   r-devel-linux-x86_64-fedora-clang and r-devel-linux-x86_64-fedora-gcc.
 
