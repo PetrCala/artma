@@ -1,4 +1,24 @@
 
+<a name="v0.4.1"></a>
+
+## [v0.4.1](https://github.com/PetrCala/artma/compare/v0.4.0...v0.4.1)
+
+> 2026-08-19
+
+### Bug Fixes
+
+* **chglog:** parse scoped conventional commits and show the scope
+* **ci:** pin full history for git-chglog and fail on an empty NEWS section
+* **cran:** restore the pkgdown site URL now that the site is live
+* **cran:** drop the unpublished pkgdown site URL from DESCRIPTION
+* **preview:** never open the data viewer while R CMD check runs
+* **release:** abort when NEWS.md has no notes for the version being released
+
+### Features
+
+* **replication:** add harness for replicating IES theses with artma
+
+
 <a name="v0.4.0"></a>
 
 ## [v0.4.0](https://github.com/PetrCala/artma/compare/v0.3.5...v0.4.0)
