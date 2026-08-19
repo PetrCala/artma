@@ -23,7 +23,7 @@ jobs:
     needs: getTagName
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Checkout to the tag that was used for the release
           ref: ${{ needs.getTagName.outputs.tag }}
