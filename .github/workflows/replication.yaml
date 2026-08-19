@@ -1,0 +1,110 @@
+# Re-runs the flagship replication manifests (scripts/replication/) against
+# the published papers' numbers and fails when any comparison regresses beyond
+# the "close" tolerance.
+#
+# Deliberately NOT a PR gate: the runs are slow, need network access to
+# meta-analysis.cz, and a red result is information to investigate, not a
+# reason to block an unrelated merge. It runs on releases (a numeric change
+# should be noticed when it ships), monthly (to catch silent upstream dataset
+# changes; checksums make those a hard error), and on demand.
+name: Replication
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+  schedule:
+    # Monthly; the offset avoids the top-of-hour load spike.
+    - cron: "23 5 2 * *"
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  replicate:
+    runs-on: ubuntu-latest
+
+    name: Replicate flagship papers
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          dependencies: '"all"'
+          extra-packages: |
+            any::digest
+            local::.
+
+      - name: Check the harness layers
+        run: Rscript scripts/replication/test_harness.R
+
+      - name: Run the replication manifests
+        run: Rscript scripts/replication/run_replication.R
+
+      - name: Enforce verdicts
+        run: |
+          Rscript -e '
+            comparison <- read.csv("scripts/replication/output/comparison_all.csv")
+            print(comparison[, c("thesis_id", "quantity", "author_estimate", "artma_estimate", "verdict")])
+            bad <- !comparison$verdict %in% c("replicated", "close")
+            if (any(bad)) {
+              cat("\nComparisons outside tolerance:\n")
+              print(comparison[bad, c("thesis_id", "quantity", "verdict")])
+              quit(status = 1L)
+            }
+            cat(sprintf("\nAll %d comparisons replicated or close.\n", nrow(comparison)))
+          '
+
+      - name: Upload comparison output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: replication-output
+          path: |
+            scripts/replication/output/*.md
+            scripts/replication/output/*.csv
+
+  # Failures otherwise go unnoticed since nobody watches the schedule tab.
+  notify-on-failure:
+    needs: replicate
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: File or update a replication failure issue
+        run: |
+          set -euo pipefail
+          MARKER="ci: replication run failing"
+          REPO="${{ github.repository }}"
+          RUN_URL="${{ github.server_url }}/${REPO}/actions/runs/${{ github.run_id }}"
+
+          {
+            echo "A replication run failed: a flagship paper comparison moved outside tolerance,"
+            echo "a pinned dataset changed upstream, or the run itself broke."
+            echo ""
+            echo "Run: $RUN_URL"
+          } > /tmp/issue-body.md
+
+          EXISTING=$(gh issue list --repo "$REPO" --state open --search "\"$MARKER\" in:title" \
+            --json number --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$REPO" --body-file /tmp/issue-body.md
+          else
+            gh issue create --repo "$REPO" --title "$MARKER" --body-file /tmp/issue-body.md
+          fi
