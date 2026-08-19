@@ -1,11 +1,9 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
 #
 # Builds the pkgdown site and publishes it to the gh-pages branch, which
-# GitHub Pages serves at https://petrcala.github.io/artma/. That URL is
-# deliberately absent from the DESCRIPTION URL field until the site is live:
-# CRAN checks every URL in DESCRIPTION and rejected the 0.4.0 submission over
-# the 404. Point Pages at the gh-pages branch after the first run, confirm the
-# site loads, then add the URL back to DESCRIPTION and regenerate the docs.
+# GitHub Pages serves at https://petrcala.github.io/artma/. That URL is listed
+# in DESCRIPTION and CRAN checks every URL there, so a broken deploy here is a
+# submission blocker, not a docs nuisance: it is what got 0.4.0 returned.
 name: pkgdown
 
 on:
