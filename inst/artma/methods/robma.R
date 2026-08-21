@@ -1,6 +1,10 @@
 # Minimum number of usable observations required to attempt a fit.
 MIN_OBSERVATIONS <- 3L
 
+# RoBMA 4.0.0 renamed the data and prior arguments (yi, sei, cluster,
+# prior_effect, ...); older versions reject them, so refuse to fit below it.
+ROBMA_MIN_VERSION <- "4.0.0"
+
 #' @title Robust Bayesian Meta-Analysis
 #' @description
 #' Run robust Bayesian meta-analysis (RoBMA, Bartos et al.) over the effect
@@ -106,6 +110,25 @@ robma <- function(df) {
     reason <- sprintf(
       "fewer than %d usable observations (%d available)",
       MIN_OBSERVATIONS, nrow(fit_data)
+    )
+    if (get_verbosity() >= 2) {
+      cli::cli_alert_warning("Skipping RoBMA: {reason}")
+    }
+    return(new_method_result(
+      tables = list(summary = empty_robma_table()),
+      meta = list(model = NULL, n_obs = nrow(fit_data), skip_reason = reason)
+    ))
+  }
+
+  installed_version <- tryCatch(
+    utils::packageVersion("RoBMA"),
+    error = function(e) NULL
+  )
+  if (is.null(installed_version) || installed_version < ROBMA_MIN_VERSION) {
+    reason <- sprintf(
+      "RoBMA >= %s is required (installed: %s)",
+      ROBMA_MIN_VERSION,
+      if (is.null(installed_version)) "none" else as.character(installed_version)
     )
     if (get_verbosity() >= 2) {
       cli::cli_alert_warning("Skipping RoBMA: {reason}")

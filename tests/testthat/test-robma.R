@@ -13,7 +13,9 @@ box::use(
 # step in a subprocess, not here, so a crash kills only the disposable probe
 # instead of the whole test process.
 skip_if_no_jags <- function() {
-  skip_if_not_installed("RoBMA")
+  # 4.0.0 renamed the data and prior arguments (yi/sei/prior_effect/...);
+  # older binaries linger on some CRAN platforms and reject those names.
+  skip_if_not_installed("RoBMA", minimum_version = "4.0.0")
   rscript <- file.path(R.home("bin"), "Rscript")
   probe_expr <- paste(
     "ok <- tryCatch({",
