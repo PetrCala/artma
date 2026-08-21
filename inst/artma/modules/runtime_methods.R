@@ -371,18 +371,19 @@ missing_required_columns <- function(df, required_columns) {
 #' @param suggests *\[character\]* Optional packages the method declares.
 #' @param is_installed *\[function, optional\]* Predicate testing whether a
 #'   package is installed. Injectable for testing; defaults to
-#'   `requireNamespace`.
+#'   `find.package`.
 #' @return *\[character\]* The missing package names (empty when all present).
 missing_suggested_packages <- function(suggests, is_installed = NULL) {
   if (length(suggests) == 0L) {
     return(character())
   }
   if (is.null(is_installed)) {
-    # suppressMessages: requireNamespace(quietly = TRUE) still lets through
-    # namespace-loading messages from a suggested package's own dependencies
-    # (e.g. RoBMA lazily loading runjags), which have no user-actionable
-    # content and only fire once per session anyway.
-    is_installed <- function(pkg) suppressMessages(requireNamespace(pkg, quietly = TRUE))
+    # find.package, not requireNamespace: probing availability must not load
+    # the package. Loading can run native initialization (RoBMA pulls in the
+    # system JAGS library on load), which crashes the whole session on
+    # platforms where that library is broken; observed on macOS oldrel CI,
+    # where methods_list() died probing RoBMA this way.
+    is_installed <- function(pkg) length(find.package(pkg, quiet = TRUE)) > 0L
   }
   suggests <- as.character(suggests)
   suggests[!vapply(suggests, function(pkg) isTRUE(is_installed(pkg)), logical(1))]
