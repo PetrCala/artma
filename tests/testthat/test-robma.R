@@ -1,7 +1,7 @@
 box::use(
   testthat[
     expect_equal, expect_false, expect_null, expect_s3_class, expect_true,
-    skip, skip_if_not_installed, test_that
+    skip, test_that
   ],
   withr[local_options]
 )
@@ -9,16 +9,26 @@ box::use(
 # RoBMA fits through JAGS, a system library. Loading the rjags namespace is
 # not a sufficient probe: on some platforms (observed on macOS oldrel CI)
 # rjags loads fine but segfaults later, when it asks the *system* JAGS to
-# load its dynamic modules while compiling an actual model. Reproduce that
-# step in a subprocess, not here, so a crash kills only the disposable probe
-# instead of the whole test process.
+# load its dynamic modules while compiling an actual model. On others, merely
+# loading the RoBMA namespace crashes the same way. So nothing here may load
+# RoBMA or rjags in this process: installedness comes from package metadata
+# (find.package/packageVersion, NOT skip_if_not_installed, whose probe is
+# requireNamespace and therefore loads), and every actual load happens in a
+# subprocess, so a crash kills only the disposable probe instead of the whole
+# test process.
 skip_if_no_jags <- function() {
+  if (length(find.package("RoBMA", quiet = TRUE)) == 0L) {
+    skip("RoBMA is not installed")
+  }
   # 4.0.0 renamed the data and prior arguments (yi/sei/prior_effect/...);
   # older binaries linger on some CRAN platforms and reject those names.
-  skip_if_not_installed("RoBMA", minimum_version = "4.0.0")
+  if (utils::packageVersion("RoBMA") < "4.0.0") {
+    skip("RoBMA >= 4.0.0 is not installed")
+  }
   rscript <- file.path(R.home("bin"), "Rscript")
   probe_expr <- paste(
     "ok <- tryCatch({",
+    "  loadNamespace('RoBMA');",
     "  m <- rjags::jags.model(",
     "    textConnection('model { x ~ dnorm(0, 1) }'), n.chains = 1, quiet = TRUE",
     "  );",
