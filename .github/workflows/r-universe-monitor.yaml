@@ -1,0 +1,108 @@
+# Watches the package's r-universe checks (https://petrcala.r-universe.dev/artma)
+# and files an issue labelled 'r-universe-failure' when any config breaks.
+# The detection logic lives in .github/scripts/r_universe_monitor.py, which
+# also deduplicates against open issues and closes them once checks are green.
+#
+# When the ANTHROPIC_API_KEY secret is configured, a second job hands the new
+# issue to claude-code-action to diagnose the failure and open a fix PR against
+# master. Without the secret the workflow degrades to issue-only and the issue
+# can be picked up locally. Merging the fix to master is the release: r-universe
+# rebuilds from master automatically.
+name: R-universe Monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily; the offset avoids the top-of-hour load spike.
+    - cron: "37 6 * * *"
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    name: Check r-universe status
+    permissions:
+      issues: write
+    outputs:
+      issue_number: ${{ steps.detect.outputs.issue_number }}
+      fix_enabled: ${{ steps.gate.outputs.fix_enabled }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Fetch check status and sync issues
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/r_universe_monitor.py
+
+      # Secrets cannot be referenced in job-level if conditions, so export
+      # their presence as a step output instead.
+      - name: Decide whether the fix job can run
+        id: gate
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "fix_enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fix_enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  fix:
+    needs: monitor
+    if: needs.monitor.outputs.issue_number != '' && needs.monitor.outputs.fix_enabled == 'true'
+    runs-on: ubuntu-latest
+    name: Open an automated fix PR
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          dependencies: '"all"'
+          extra-packages: local::.
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: --allowedTools "Bash,WebFetch"
+          prompt: |
+            The r-universe checks for this R package are failing. Issue
+            #${{ needs.monitor.outputs.issue_number }} in ${{ github.repository }}
+            lists the failing configs with links to their build logs.
+
+            1. Read the issue: gh issue view ${{ needs.monitor.outputs.issue_number }}.
+            2. Fetch the failing build logs. The build runs live in the
+               r-universe/petrcala repository; use the job log links from the
+               issue, or gh run view <run-id> --repo r-universe/petrcala --log-failed.
+            3. Diagnose the failure and make the smallest change that fixes it.
+               Follow the conventions in CLAUDE.md. The package is already
+               installed in this environment, so you can reproduce with
+               Rscript or the make targets.
+            4. Run the tests relevant to your change (make test, or
+               make test-file FILE=<path> for a focused run).
+            5. Create a branch named fix/r-universe-$(date +%Y-%m-%d), commit
+               with a single-line Conventional Commits message under 100
+               characters (no body, no attribution trailers), push it, and
+               open a PR against master with gh pr create. The PR body must
+               reference the issue with "Fixes #${{ needs.monitor.outputs.issue_number }}".
+            6. If you cannot find a safe fix, comment your diagnosis on the
+               issue instead of opening a speculative PR.
+
+            Do not use em dashes or en dashes anywhere in what you write.
