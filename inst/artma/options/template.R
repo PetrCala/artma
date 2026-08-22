@@ -218,6 +218,7 @@ sanitize_prompt_input <- function(input_val, prompt_type) {
 prompt_user_for_option_value <- function(opt) {
   box::use(
     artma / const[CONST],
+    artma / libs / core / file_picker[choose_path_interactively, path_picker_available],
     artma / libs / core / validation[assert],
     artma / options / utils[print_options_help_text]
   )
@@ -254,9 +255,25 @@ prompt_user_for_option_value <- function(opt) {
     return(prompt_function(opt = opt))
   }
 
+  is_path_prompt <- prompt_type %in% c("file", "directory")
+  # A picker window is offered only where one can actually be opened. Where it
+  # cannot, the hint never mentions it, so the user is not invited to press
+  # <Enter> for a dialog that will not appear.
+  picker_available <- is_path_prompt && path_picker_available()
+  picker_on_enter <- picker_available && is.null(opt$default)
+
   hints <- switch(prompt_type,
-    "file" = cli::format_inline("type in {.emph {'choose'}} or press {.code <Enter>} to select a file interactively"),
-    "directory" = cli::format_inline("type in {.emph {'choose'}} or press {.code <Enter>} to select a directory interactively"),
+    "file" = ,
+    "directory" = {
+      noun <- if (identical(prompt_type, "file")) "a file" else "a directory"
+      if (picker_on_enter) {
+        cli::format_inline("type in {.emph {'choose'}} or press {.code <Enter>} to select {noun} interactively")
+      } else if (picker_available) {
+        cli::format_inline("type in {.emph {'choose'}} to select {noun} interactively")
+      } else {
+        character(0)
+      }
+    },
     "readline" = character(0),
     cli::cli_abort(cli::format_inline("Invalid prompt type {.emph {prompt_type}}."))
   )
@@ -268,17 +285,41 @@ prompt_user_for_option_value <- function(opt) {
   }
 
   hint_msg <- if (length(hints)) paste0(" (or ", paste(hints, collapse = ", "), ")") else ""
-  input_val <- readline(prompt = cli::format_inline("Enter a value for {.strong {opt$name}}{hint_msg}: "))
-  input_val <- sanitize_prompt_input(input_val, prompt_type)
+  prompt_msg <- cli::format_inline("Enter a value for {.strong {opt$name}}{hint_msg}: ")
 
-  if (input_val == "choose" || is.na(input_val) || (!nzchar(input_val) && prompt_type %in% c("file", "directory"))) {
-    input_val <- switch(prompt_type,
-      file = tcltk::tk_choose.files(default = "", caption = "Select file", multi = FALSE),
-      directory = tcltk::tk_choose.dir(default = getwd(), caption = "Select directory"),
-      cli::cli_abort(cli::format_inline("Interactive selection is not supported for type {.emph {prompt_type}}."))
-    )
-    Sys.sleep(0.5) # Allow tk to print the closing message into the console
-  } else if (input_val == "mock" && prompt_type == "file") {
+  input_val <- ""
+  attempts_left <- CONST$OPTIONS$MAX_PROMPT_ATTEMPTS
+  while (attempts_left > 0L) {
+    attempts_left <- attempts_left - 1L
+    input_val <- sanitize_prompt_input(readline(prompt = prompt_msg), prompt_type)
+    if (length(input_val) != 1 || is.na(input_val)) {
+      input_val <- ""
+    }
+    wants_picker <- is_path_prompt &&
+      (identical(input_val, "choose") || (!nzchar(input_val) && picker_on_enter))
+    if (!wants_picker) {
+      break
+    }
+    if (!picker_available) {
+      cli::cli_alert_warning("No graphical file picker is available in this session. Type the full path instead.")
+      next
+    }
+    caption <- if (identical(prompt_type, "file")) "Select file" else "Select directory"
+    input_val <- choose_path_interactively(type = prompt_type, caption = caption)
+    if (nzchar(input_val)) {
+      break
+    }
+    cli::cli_alert_info("Nothing was selected. Type the path directly, or {.emph {'choose'}} to reopen the picker.")
+  }
+
+  # A picker request that was never satisfied is not a path; blanking it lets the
+  # empty-answer branch below report a missing required option instead of saving
+  # the literal "choose".
+  if (is_path_prompt && identical(input_val, "choose")) {
+    input_val <- ""
+  }
+
+  if (input_val == "mock" && prompt_type == "file") {
     box::use(artma / data / mock[materialize_mock_data_path])
     input_val <- materialize_mock_data_path()
   }

@@ -16,7 +16,7 @@ The template files are self-describing, so copy an existing node when adding an 
 - **default** (any, optional): default value for the option.
 - **fixed** (bool, optional): if `true`, this option may not be overwritten by the user in any of the derived user files. Any overwritten fixed options are reverted to their default upon file validation.
 - **allow_na** (bool, optional): if `true`, this option may be set to `.na`. Otherwise a non-NA value is required when creating the user options file.
-- **prompt** (str, optional): how a value for this option should be asked for: `"readline"` (the default), `"file"`, or `"directory"` (the latter two open a `tcltk` window).
+- **prompt** (str, optional): how a value for this option should be asked for: `"readline"` (the default), `"file"`, or `"directory"`. The latter two accept a typed path and also offer a graphical picker, opened through `choose_path_interactively()` (`libs/core/file_picker.R`): the native chooser on macOS and Windows, `tcltk` on other systems. The picker is offered only where one can actually be opened, and never through `tcltk` on macOS, where loading it aborts the R session.
 - **help** (str, optional): option help text.
 
 ## Access convention
