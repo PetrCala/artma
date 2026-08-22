@@ -1,5 +1,11 @@
 box::use(
-  artma / data / profile[profile_column]
+  artma / data / profile[profile_column],
+  artma / data / role_evidence[
+    MIN_ROWS_FOR_EVIDENCE,
+    CORE_EVIDENCE_ROLES,
+    assign_core_roles,
+    profile_role_values
+  ]
 )
 
 #' Single home for every confidence threshold the column-matching engine uses.
@@ -34,6 +40,7 @@ get_column_patterns <- function() {
         "^d$",
         "^g$",
         "^r$",
+        "^yi$",
         "^pcc$",
         "^pearson[_\\.]?r$",
         "^cohen[_\\.]?d$",
@@ -47,14 +54,19 @@ get_column_patterns <- function() {
       ),
       keywords = c("effect", "estimate", "coef", "beta", "es", "pcc", "pearson", "cohen", "hedges", "odds", "ratio", "risk", "hazard"),
       priority = 1,
-      # Exclude keywords are regexes. `(^|_)id` keeps identifier columns such
-      # as `idcoeff` or `effect_id` from matching the `coef`/`effect` keywords:
-      # they name the estimate they index, not the estimate itself.
-      exclude_keywords = c("standard", "error", "se", "(^|_)id")
+      # Identifier-flavored names (idcoeff, coef_id, estimate_no) must never
+      # ride an effect keyword into a match; the entries below are regexes.
+      # They name the estimate they index, not the estimate itself.
+      exclude_keywords = c(
+        "standard", "error", "se",
+        "(^|[_\\.])id", "id([_\\.]|$)", "index",
+        "(^|[_\\.])no([_\\.]|$)", "(^|[_\\.])num(ber)?([_\\.]|$)", "count"
+      )
     ),
     se = list(
       patterns = c(
         "^se$",
+        "^sei$",
         "^std[_\\.]?err(or)?$",
         "^standard[_\\.]?error$",
         "^stderr$",
@@ -80,6 +92,7 @@ get_column_patterns <- function() {
       patterns = c(
         "^t[_\\.]?stat(istic)?$",
         "^t[_\\.]?value$",
+        "^t$",
         "^tval$"
       ),
       keywords = c("stat", "tvalue", "tval"),
@@ -176,66 +189,78 @@ string_similarity <- function(str1, str2) {
 }
 
 
+#' Normalize a raw column name for matching.
+#' @keywords internal
+clean_column_name <- function(col_name) {
+  col_name_clean <- tolower(trimws(col_name))
+  gsub("[^a-z0-9_]", "_", col_name_clean)
+}
+
+
+#' @title Score a cleaned column name against one role's pattern definition
+#' @description The name-matching signal for a single standard column: 1.0 for
+#'   a regex match, up to 0.95 for keyword similarity, 0 when an exclude
+#'   pattern fires or nothing matches.
+#' @param col_name_clean *\[character\]* Cleaned column name (see
+#'   `clean_column_name`).
+#' @param pattern_def *\[list\]* One entry of `get_column_patterns()`.
+#' @return *\[list\]* With 'score' (0-1) and 'method' ("regex", "keyword", NA).
+score_name_for_role <- function(col_name_clean, pattern_def) {
+  # Regex patterns are authoritative and skip the exclusion check
+  for (pattern in pattern_def$patterns) {
+    if (grepl(pattern, col_name_clean, ignore.case = TRUE)) {
+      return(list(score = 1.0, method = "regex"))
+    }
+  }
+
+  keywords <- pattern_def$keywords
+  exclude_keywords <- if (is.null(pattern_def$exclude_keywords)) character(0) else pattern_def$exclude_keywords
+
+  has_exclude <- any(vapply(exclude_keywords, function(kw) {
+    grepl(kw, col_name_clean, ignore.case = TRUE)
+  }, logical(1)))
+
+  if (has_exclude) {
+    return(list(score = 0, method = NA_character_))
+  }
+
+  keyword_matches <- vapply(keywords, function(kw) {
+    string_similarity(col_name_clean, kw)
+  }, numeric(1))
+  max_keyword_score <- max(keyword_matches, 0)
+
+  n_keywords_found <- sum(vapply(keywords, function(kw) {
+    grepl(kw, col_name_clean, ignore.case = TRUE)
+  }, logical(1)))
+
+  if (n_keywords_found > 0) {
+    keyword_score <- max_keyword_score + (n_keywords_found - 1) * 0.1
+    keyword_score <- min(keyword_score, 0.95) # Cap below regex matches
+    return(list(score = keyword_score, method = "keyword"))
+  }
+
+  list(score = 0, method = NA_character_)
+}
+
+
 #' @title Match column name to standard column
 #' @description Attempts to match a data frame column name to a standard column
 #' @param col_name *\[character\]* Column name from the data frame
 #' @param patterns *\[list\]* Patterns for recognition (from get_column_patterns)
 #' @return *\[list\]* Match result with 'match' (column name or NA), 'score' (0-1), 'method' (how it matched)
 match_column_name <- function(col_name, patterns) {
-  col_name_clean <- tolower(trimws(col_name))
-  col_name_clean <- gsub("[^a-z0-9_]", "_", col_name_clean)
+  col_name_clean <- clean_column_name(col_name)
 
   best_score <- 0
   best_match <- NA_character_
   best_method <- NA_character_
 
   for (std_col in names(patterns)) {
-    pattern_def <- patterns[[std_col]]
-
-    # Check regex patterns (highest priority)
-    for (pattern in pattern_def$patterns) {
-      if (grepl(pattern, col_name_clean, ignore.case = TRUE)) {
-        score <- 1.0
-        if (score > best_score) {
-          best_score <- score
-          best_match <- std_col
-          best_method <- "regex"
-        }
-      }
-    }
-
-    # Check keyword matching
-    keywords <- pattern_def$keywords
-    exclude_keywords <- if (is.null(pattern_def$exclude_keywords)) character(0) else pattern_def$exclude_keywords
-
-    # Check if any exclude keywords are present
-    has_exclude <- any(vapply(exclude_keywords, function(kw) {
-      grepl(kw, col_name_clean, ignore.case = TRUE)
-    }, logical(1)))
-
-    if (has_exclude) next
-
-    # Calculate keyword match score
-    keyword_matches <- vapply(keywords, function(kw) {
-      string_similarity(col_name_clean, kw)
-    }, numeric(1))
-
-    max_keyword_score <- max(keyword_matches, 0)
-
-    # For multi-keyword matches, boost score
-    n_keywords_found <- sum(vapply(keywords, function(kw) {
-      grepl(kw, col_name_clean, ignore.case = TRUE)
-    }, logical(1)))
-
-    if (n_keywords_found > 0) {
-      keyword_score <- max_keyword_score + (n_keywords_found - 1) * 0.1
-      keyword_score <- min(keyword_score, 0.95) # Cap below regex matches
-
-      if (keyword_score > best_score) {
-        best_score <- keyword_score
-        best_match <- std_col
-        best_method <- "keyword"
-      }
+    result <- score_name_for_role(col_name_clean, patterns[[std_col]])
+    if (result$score > best_score) {
+      best_score <- result$score
+      best_match <- std_col
+      best_method <- result$method
     }
   }
 
@@ -376,6 +401,13 @@ is_likely_study_key <- function(values) {
 score_candidate_values <- function(df, candidate_col, std_col, name_score) {
   analysis <- analyze_column_values(df[[candidate_col]])
 
+  # Identifier-pattern flags from the shared role-evidence profiler: per-group
+  # counters (an idcoeff-style coefficient index) and year columns are strong
+  # negative signals for every data role.
+  role_profile <- profile_role_values(df[[candidate_col]])
+  counter_like <- !is.null(role_profile) && role_profile$is_within_group_counter
+  year_like <- !is.null(role_profile) && role_profile$is_year_like
+
   # Apply heuristics based on standard column type
   value_penalty <- 0
 
@@ -389,6 +421,14 @@ score_candidate_values <- function(df, candidate_col, std_col, name_score) {
     if (analysis$is_sequential) {
       # Strong penalty for sequential patterns
       value_penalty <- value_penalty + 0.3
+    }
+
+    if (counter_like) {
+      value_penalty <- value_penalty + 0.4
+    }
+
+    if (year_like) {
+      value_penalty <- value_penalty + 0.25
     }
 
     if (analysis$is_unique && analysis$uniqueness_ratio > 0.95) {
@@ -434,13 +474,26 @@ score_candidate_values <- function(df, candidate_col, std_col, name_score) {
       # Multiple observations per study is fine, but too many repetitions is suspicious
       value_penalty <- value_penalty + 0.1
     }
+
+    if (counter_like) {
+      # A per-study counter restarts within studies, so it cannot key them
+      value_penalty <- value_penalty + 0.3
+    }
   } else if (std_col %in% c("effect", "se", "t_stat")) {
     # Effect sizes, standard errors, t-stats should:
-    # - Not be sequential
+    # - Not be sequential or identifier-like
     # - Have reasonable variance
     # - Not be all unique (some repetition expected)
 
     if (analysis$is_sequential) {
+      value_penalty <- value_penalty + 0.3
+    }
+
+    if (counter_like) {
+      value_penalty <- value_penalty + 0.4
+    }
+
+    if (year_like) {
       value_penalty <- value_penalty + 0.3
     }
 
@@ -575,7 +628,13 @@ score_rename_candidate <- function(stored_name, candidate, std_name = NULL, df =
 }
 
 #' @title Recognize columns in data frame
-#' @description Automatically recognize which columns correspond to standard columns
+#' @description Automatically recognize which columns correspond to standard
+#'   columns. Column names act as a prior; when the data frame is large enough
+#'   to carry distributional information, the numeric core roles (effect, se,
+#'   t_stat) are resolved jointly from name and value evidence (see
+#'   `artma / data / role_evidence`), so an internally consistent
+#'   (effect, se, t) triple outranks any name-only match and identifier
+#'   columns are never auto-accepted as data roles.
 #' @param df *\[data.frame\]* The data frame
 #' @param min_confidence *\[numeric\]* Minimum confidence score (0-1) to accept a match
 #' @return *\[list\]* Named list mapping standard columns to data frame columns
@@ -601,6 +660,43 @@ recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_con
   mapping <- list()
   used_cols <- character(0)
 
+  # Joint, evidence-based assignment of the numeric core roles. Only runs when
+  # the data carries enough rows to judge distributions; tiny frames keep the
+  # name-based path below.
+  core_resolved <- FALSE
+  if (nrow(df) >= MIN_ROWS_FOR_EVIDENCE && length(col_names) > 0) {
+    name_scores <- vapply(col_names, function(col_name) {
+      col_name_clean <- clean_column_name(col_name)
+      vapply(CORE_EVIDENCE_ROLES, function(role) {
+        score_name_for_role(col_name_clean, patterns[[role]])$score
+      }, numeric(1))
+    }, numeric(length(CORE_EVIDENCE_ROLES)))
+    name_scores <- matrix(
+      name_scores,
+      nrow = length(CORE_EVIDENCE_ROLES),
+      dimnames = list(CORE_EVIDENCE_ROLES, col_names)
+    )
+
+    core_assignments <- assign_core_roles(
+      df,
+      name_scores = name_scores,
+      required_confidence = min_confidence,
+      optional_confidence = MATCH_THRESHOLDS$optional_confidence
+    )
+
+    for (role in names(core_assignments)) {
+      assignment <- core_assignments[[role]]
+      mapping[[role]] <- assignment$column
+      used_cols <- c(used_cols, assignment$column)
+      if (get_verbosity() >= 4) {
+        cli::cli_inform(
+          "Recognized {.field {assignment$column}} as {.field {role}} (joint evidence, score: {round(assignment$score, 2)})"
+        )
+      }
+    }
+    core_resolved <- TRUE
+  }
+
   # Sort patterns by priority
   pattern_priority <- vapply(patterns, function(p) as.integer(p$priority), integer(1))
   sorted_std_cols <- names(patterns)[order(pattern_priority)]
@@ -609,6 +705,8 @@ recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_con
   required_cols <- get_required_column_names()
 
   for (std_col in sorted_std_cols) {
+    # Core roles were already decided (possibly declined) by the joint pass
+    if (core_resolved && std_col %in% CORE_EVIDENCE_ROLES) next
     # Higher confidence threshold for optional columns to reduce false positives
     is_required <- std_col %in% required_cols
     confidence_threshold <- if (is_required) min_confidence else MATCH_THRESHOLDS$optional_confidence
@@ -704,6 +802,8 @@ box::export(
   MATCH_THRESHOLDS,
   get_column_patterns,
   looks_like_continuous_measure,
+  clean_column_name,
+  score_name_for_role,
   match_column_name,
   recognize_columns,
   get_required_column_names,
