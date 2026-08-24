@@ -322,3 +322,117 @@ test_that("year columns are not mistaken for numeric roles", {
   expect_equal(mapping$n_obs, "n_obs")
   expect_false("pub_year" %in% unlist(mapping))
 })
+
+
+# Regression scenarios from the meta-analysis.cz real-data benchmark (2026-08).
+
+test_that("an id-prefixed study key (idstudy) is recognized like the reversed form", {
+  withr::local_seed(54)
+  withr::local_options(list("artma.verbose" = 1))
+  core <- make_meta_core()
+
+  # "idstudy" (id-first, no separator) is as common in real exports as
+  # "studyid"/"study_id"; it must not rely on keyword substring matching.
+  df <- data.frame(
+    idstudy = core$study,
+    effect = core$effect,
+    se = core$se,
+    n_obs = core$n_obs
+  )
+
+  mapping <- recognize_columns(df)
+
+  expect_equal(mapping$study_id, "idstudy")
+})
+
+
+test_that("a compound t-stat name (tstat_premium) is still recognized", {
+  withr::local_seed(55)
+  withr::local_options(list("artma.verbose" = 1))
+  core <- make_meta_core()
+
+  # Datasets with several parallel estimate blocks often suffix the role name
+  # with the block label (tstat_premium, TSTAT_L); this must not depend on
+  # the bare keyword-substring path removed for the "es"/"se" false positives.
+  df <- data.frame(
+    study = core$labels,
+    premium = core$effect,
+    se_premium = core$se,
+    tstat_premium = core$t,
+    nobs = core$n_obs
+  )
+
+  mapping <- recognize_columns(df)
+
+  expect_equal(mapping$t_stat, "tstat_premium")
+})
+
+
+test_that("a study label with low uniqueness (many estimates per study) is preferred", {
+  withr::local_seed(56)
+  withr::local_options(list("artma.verbose" = 1))
+  # 40 studies, 3500 estimates: a uniqueness ratio (~0.011) well under the old
+  # 0.05 floor, but completely normal for a real meta-analysis.
+  n_studies <- 40
+  k <- 88
+  n <- n_studies * k
+  df <- data.frame(
+    idstudy = rep(seq_len(n_studies), each = k),
+    author = rep(sprintf("Author%02d (%d)", seq_len(n_studies), 1990 + seq_len(n_studies)), each = k),
+    effect = round(stats::rnorm(n, 0.2, 0.4), 3),
+    se = pmax(round(stats::runif(n, 0.02, 0.3), 3), 0.001),
+    n_obs = rep(sample(50:900, n_studies, replace = TRUE), each = k)
+  )
+
+  mapping <- recognize_columns(df)
+
+  expect_equal(mapping$study_id, "author")
+})
+
+
+test_that("a t_stat column preferring t_stat by name is not claimed as effect", {
+  withr::local_seed(57)
+  withr::local_options(list("artma.verbose" = 1))
+  core <- make_meta_core()
+  n <- core$n
+
+  # tstats = effect / se by construction, and 1/se is a plausible-looking
+  # "se" on its own; the joint pass must not let this decoy pair (tstats,
+  # invse) outscore the true (effect, se) pair just because tstats' name
+  # more strongly favors t_stat than effect.
+  df <- data.frame(
+    study = core$labels,
+    armel = core$effect,
+    se = core$se,
+    tstats = core$t,
+    invse = round(1 / core$se, 4),
+    nobs = core$n_obs
+  )
+
+  mapping <- recognize_columns(df)
+
+  expect_equal(mapping$effect, "armel")
+  expect_equal(mapping$se, "se")
+})
+
+
+test_that("Stata-style missing markers do not sink a well-named se column", {
+  withr::local_seed(58)
+  withr::local_options(list("artma.verbose" = 1))
+  core <- make_meta_core()
+  n <- core$n
+
+  se_text <- as.character(core$se)
+  se_text[sample(seq_len(n), floor(n * 0.15))] <- "."
+
+  df <- data.frame(
+    study = core$labels,
+    effect = core$effect,
+    se = se_text,
+    n_obs = core$n_obs
+  )
+
+  mapping <- recognize_columns(df)
+
+  expect_equal(mapping$se, "se")
+})

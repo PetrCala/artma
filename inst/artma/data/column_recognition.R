@@ -90,10 +90,14 @@ get_column_patterns <- function() {
     ),
     t_stat = list(
       patterns = c(
-        "^t[_\\.]?stat(istic)?$",
+        "^t[_\\.]?stat(istic)?s?$",
         "^t[_\\.]?value$",
         "^t$",
-        "^tval$"
+        "^tval$",
+        # Compound names where "tstat" is a token alongside a variable suffix
+        # (tstat_premium, TSTAT_L): token-boundary anchored so it cannot fire
+        # mid-word (test_stat, statutory) the way a bare keyword substring would.
+        "(^|[_\\.])t[_\\.]?stat(istic)?s?([_\\.]|$)"
       ),
       keywords = c("stat", "tvalue", "tval"),
       priority = 2
@@ -102,6 +106,7 @@ get_column_patterns <- function() {
       patterns = c(
         "^study[_\\.]?id$",
         "^studyid$",
+        "^id[_\\.]?study$",
         "^sid$",
         "^study[_\\.]?name$",
         "^study$",
@@ -197,10 +202,30 @@ clean_column_name <- function(col_name) {
 }
 
 
+#' @title Whether a keyword appears as a whole underscore-delimited token
+#' @description A plain `grepl(kw, name)` substring test lets short, generic
+#'   keywords ("es", "se") and even full-word ones ("effect") match mid-word
+#'   inside unrelated names: "es" inside "stakes", "se" inside "observations",
+#'   "effect" inside "government_effectiveness". Requiring a token boundary
+#'   (start/end of the cleaned name, or an underscore) keeps the keyword
+#'   signal for genuine matches ("se" in "std_se", "effect" in "effect_size")
+#'   while rejecting embedded coincidences.
+#' @param col_name_clean *\[character\]* Cleaned column name.
+#' @param kw *\[character\]* Keyword to look for.
+#' @return *\[logical\]* TRUE if `kw` is a whole token in `col_name_clean`.
+#' @keywords internal
+keyword_token_present <- function(col_name_clean, kw) {
+  grepl(paste0("(^|_)", kw, "(_|$)"), col_name_clean, ignore.case = TRUE)
+}
+
+
 #' @title Score a cleaned column name against one role's pattern definition
 #' @description The name-matching signal for a single standard column: 1.0 for
 #'   a regex match, up to 0.95 for keyword similarity, 0 when an exclude
-#'   pattern fires or nothing matches.
+#'   pattern fires or nothing matches. Keyword credit requires the keyword to
+#'   appear as a whole token (see `keyword_token_present()`), not merely as a
+#'   substring, so generic keywords cannot match mid-word inside an unrelated
+#'   name.
 #' @param col_name_clean *\[character\]* Cleaned column name (see
 #'   `clean_column_name`).
 #' @param pattern_def *\[list\]* One entry of `get_column_patterns()`.
@@ -224,16 +249,15 @@ score_name_for_role <- function(col_name_clean, pattern_def) {
     return(list(score = 0, method = NA_character_))
   }
 
-  keyword_matches <- vapply(keywords, function(kw) {
-    string_similarity(col_name_clean, kw)
-  }, numeric(1))
-  max_keyword_score <- max(keyword_matches, 0)
-
-  n_keywords_found <- sum(vapply(keywords, function(kw) {
-    grepl(kw, col_name_clean, ignore.case = TRUE)
-  }, logical(1)))
+  keyword_present <- vapply(keywords, function(kw) {
+    keyword_token_present(col_name_clean, kw)
+  }, logical(1))
+  n_keywords_found <- sum(keyword_present)
 
   if (n_keywords_found > 0) {
+    max_keyword_score <- max(vapply(keywords[keyword_present], function(kw) {
+      string_similarity(col_name_clean, kw)
+    }, numeric(1)))
     keyword_score <- max_keyword_score + (n_keywords_found - 1) * 0.1
     keyword_score <- min(keyword_score, 0.95) # Cap below regex matches
     return(list(score = keyword_score, method = "keyword"))
@@ -366,7 +390,12 @@ is_likely_study_key <- function(values) {
   }
 
   analysis <- analyze_column_values(values_clean)
-  if (analysis$uniqueness_ratio < 0.05) {
+  # A real meta-analysis routinely carries dozens or hundreds of estimates per
+  # study, so a legitimate study-label column can have a very low uniqueness
+  # ratio (42 authors across 3500+ rows is normal, not degenerate). Only
+  # reject the pathological case of a handful of unique values swamped by
+  # thousands of rows of one repeated value.
+  if (analysis$uniqueness_ratio < 0.005) {
     return(FALSE)
   }
 
@@ -445,6 +474,13 @@ score_candidate_values <- function(df, candidate_col, std_col, name_score) {
         # Extremely large values unlikely to be sample sizes
         value_penalty <- value_penalty + 0.1
       }
+    }
+
+    # A sample-size column is essentially always integer-valued. A column
+    # with a meaningful non-integer share (e.g. a log-transformed count) is
+    # not n_obs even when its name matches perfectly.
+    if (!is.null(role_profile) && role_profile$non_integer_share > 0.3) {
+      value_penalty <- value_penalty + 0.4
     }
   } else if (std_col == "obs_id") {
     # Observation ID columns should:
@@ -803,6 +839,7 @@ box::export(
   get_column_patterns,
   looks_like_continuous_measure,
   clean_column_name,
+  keyword_token_present,
   score_name_for_role,
   match_column_name,
   recognize_columns,

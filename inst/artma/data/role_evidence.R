@@ -26,10 +26,20 @@ CORE_EVIDENCE_ROLES <- c("effect", "se", "t_stat")
 
 clamp01 <- function(x) max(0, min(1, x))
 
+#' Stata-style missing-value markers that can survive into a raw text column:
+#' the bare "." and the extended ".a" through ".z" missing codes. These are
+#' recognized as missing before the numeric-coverage check runs, so a
+#' genuinely numeric column exported from Stata with real missingness is not
+#' mistaken for a non-numeric one just because its NA values are spelled ".".
+STATA_MISSING_PATTERN <- "^\\.[a-z]?$"
+
 #' @title Coerce a column to numeric when it plausibly holds numbers
 #' @description Returns a numeric vector when the input is numeric or when at
-#'   least 90 percent of its non-empty values parse as numbers (Excel files are
-#'   read as text). Returns NULL for genuinely non-numeric columns.
+#'   least 90 percent of its non-empty, non-missing-marker values parse as
+#'   numbers (Excel files are read as text). Stata-style missing markers
+#'   (`.`, `.a`-`.z`) are treated as missing rather than as failed parses, so
+#'   they do not drag a genuinely numeric column below the coverage floor.
+#'   Returns NULL for genuinely non-numeric columns.
 #' @param values *\[vector\]* Column values.
 #' @return *\[numeric|NULL\]* The coerced values, or NULL.
 coerce_numeric_column <- function(values) {
@@ -45,11 +55,14 @@ coerce_numeric_column <- function(values) {
   if (!is.character(values)) {
     return(NULL)
   }
-  non_empty <- !is.na(values) & nzchar(trimws(values))
+  trimmed <- trimws(values)
+  is_missing_marker <- grepl(STATA_MISSING_PATTERN, trimmed, ignore.case = TRUE)
+  non_empty <- !is.na(values) & nzchar(trimmed) & !is_missing_marker
   if (!any(non_empty)) {
     return(NULL)
   }
   converted <- suppressWarnings(as.numeric(values))
+  converted[is_missing_marker] <- NA_real_
   if (sum(!is.na(converted[non_empty])) / sum(non_empty) < 0.9) {
     return(NULL)
   }
@@ -372,6 +385,18 @@ assign_core_roles <- function(df,
   role_pool <- function(role) {
     in_pool <- name_scores[role, ] >= 0.4 |
       (!is.na(evidence[role, ]) & evidence[role, ] >= 0.55)
+
+    # A column whose name clearly favors a DIFFERENT core role must not
+    # compete for this one just because its raw values are superficially
+    # plausible. (effect, se) and the mathematically related (t_stat, 1/se)
+    # are easy to confuse on value evidence alone (t_stat = effect / se by
+    # construction); the name is decisive when it disagrees this strongly.
+    other_roles <- setdiff(CORE_EVIDENCE_ROLES, role)
+    prefers_other <- Reduce(`|`, lapply(other_roles, function(other) {
+      name_scores[other, ] >= 0.4 & name_scores[other, ] > name_scores[role, ]
+    }))
+    in_pool <- in_pool & !prefers_other
+
     pool <- cols[in_pool]
     pool <- pool[order(base[role, pool], decreasing = TRUE)]
     utils::head(pool, 8)
