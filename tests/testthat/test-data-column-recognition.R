@@ -19,6 +19,7 @@ box::use(
     analyze_column_values,
     is_likely_numeric_id,
     is_likely_study_key,
+    looks_like_continuous_measure,
     score_candidate_values,
     resolve_multiple_matches
   ]
@@ -415,4 +416,80 @@ test_that("column recognition handles case insensitivity", {
   expect_equal(mapping$se, "SE")
   expect_equal(mapping$study_id, "Study")
   expect_equal(mapping$n_obs, "N_OBS")
+})
+
+
+# --- Effect columns must not be identifiers ---------------------------------
+
+# The `determinants` dataset mapped `effect` to `idcoeff`, a within-study
+# coefficient number running 1..411, because "idcoeff" contains the "coef"
+# keyword while the real effect column, `e`, matched no pattern at all. Every
+# downstream method then ran on coefficient indices. Two independent guards
+# now stop that: the name is excluded, and the values are checked.
+test_that("match_column_name does not read an identifier as an effect", {
+  patterns <- get_column_patterns()
+
+  for (col_name in c("idcoeff", "id_effect", "effect_id", "idestimate")) {
+    result <- match_column_name(col_name, patterns)
+    expect_false(
+      isTRUE(result$match == "effect"),
+      info = paste(col_name, "should not match effect")
+    )
+  }
+})
+
+
+test_that("match_column_name recognizes a bare e as the effect column", {
+  result <- match_column_name("e", get_column_patterns())
+
+  expect_equal(result$match, "effect")
+  expect_equal(result$score, 1)
+})
+
+
+test_that("looks_like_continuous_measure rejects whole-number columns", {
+  expect_false(looks_like_continuous_measure(rep(1:40, 2)))
+  expect_true(looks_like_continuous_measure(rnorm(40)))
+})
+
+
+test_that("looks_like_continuous_measure spares small samples", {
+  # Too few values for whole numbers to mean anything.
+  expect_true(looks_like_continuous_measure(c(1, 2, 3)))
+})
+
+
+test_that("recognize_columns rejects an integer-valued effect candidate", {
+  n <- 60
+  df <- data.frame(
+    study = rep(c("Smith (2001)", "Jones (2004)"), each = n / 2),
+    coefficient_number = rep(seq_len(n / 2), 2),
+    se = runif(n, 0.1, 2),
+    nobs = sample(50:500, n, replace = TRUE)
+  )
+
+  withr::local_options(list("artma.verbose" = 1))
+  mapping <- recognize_columns(df)
+
+  expect_false("effect" %in% names(mapping))
+})
+
+
+test_that("recognize_columns maps the effect column past an identifier decoy", {
+  n <- 60
+  df <- data.frame(
+    study = rep(c("Smith (2001)", "Jones (2004)"), each = n / 2),
+    idcoeff = rep(seq_len(n / 2), 2),
+    e = rnorm(n),
+    se = runif(n, 0.1, 2),
+    nobs = sample(50:500, n, replace = TRUE)
+  )
+
+  withr::local_options(list("artma.verbose" = 1))
+  mapping <- recognize_columns(df)
+
+  expect_equal(mapping$effect, "e")
+  expect_equal(mapping$se, "se")
+  expect_equal(mapping$study_id, "study")
+  expect_equal(mapping$n_obs, "nobs")
 })

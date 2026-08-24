@@ -29,6 +29,7 @@ get_column_patterns <- function() {
         "^coeff?(icient)?$",
         "^beta$",
         "^b$",
+        "^e$",
         "^es$",
         "^d$",
         "^g$",
@@ -46,7 +47,10 @@ get_column_patterns <- function() {
       ),
       keywords = c("effect", "estimate", "coef", "beta", "es", "pcc", "pearson", "cohen", "hedges", "odds", "ratio", "risk", "hazard"),
       priority = 1,
-      exclude_keywords = c("standard", "error", "se")
+      # Exclude keywords are regexes. `(^|_)id` keeps identifier columns such
+      # as `idcoeff` or `effect_id` from matching the `coef`/`effect` keywords:
+      # they name the estimate they index, not the estimate itself.
+      exclude_keywords = c("standard", "error", "se", "(^|_)id")
     ),
     se = list(
       patterns = c(
@@ -284,6 +288,45 @@ is_likely_numeric_id <- function(values) {
 
   integer_like_ratio >= 0.95 && n_unique >= 2
 }
+
+
+#' @title Detect whether a column plausibly holds a continuous measurement
+#' @description
+#' Effects, standard errors and t-statistics are measured quantities: across a
+#' reasonably sized sample they vary continuously and are not whole numbers.
+#' A column that is entirely integer-valued is an index, a count or a code, no
+#' matter how promising its name looks. This is the value-level backstop behind
+#' the name patterns, and it is what keeps a column like `idcoeff` (a
+#' within-study coefficient number) from being accepted as the effect size.
+#'
+#' Small frames are exempt: with only a handful of rows, whole numbers carry no
+#' signal, and test fixtures and tiny datasets should not be rejected on it.
+#'
+#' @param values *\[vector\]* Column values to analyze
+#' @param min_n *\[integer\]* Minimum number of non-missing values before the
+#'   integer check is trusted. Defaults to 20.
+#' @return *\[logical\]* TRUE when the column could be a continuous measurement
+looks_like_continuous_measure <- function(values, min_n = 20L) {
+  numeric_values <- suppressWarnings(as.numeric(values))
+  numeric_values <- numeric_values[is.finite(numeric_values)]
+
+  if (length(numeric_values) < min_n) {
+    return(TRUE)
+  }
+
+  integer_like_ratio <- mean(abs(numeric_values - round(numeric_values)) < 1e-10)
+  if (integer_like_ratio >= 0.95) {
+    return(FALSE)
+  }
+
+  TRUE
+}
+
+
+#' @title Standard columns that must hold continuous measurements
+#' @description The roles `looks_like_continuous_measure()` gates. Kept next to
+#'   the check so the two never drift apart.
+CONTINUOUS_MEASURE_COLUMNS <- c("effect", "se", "t_stat", "precision")
 
 
 #' @title Detect if a column is likely a usable study key
@@ -538,6 +581,7 @@ score_rename_candidate <- function(stored_name, candidate, std_name = NULL, df =
 #' @return *\[list\]* Named list mapping standard columns to data frame columns
 recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_confidence) {
   box::use(
+    artma / libs / core / log[log_debug, log_warn],
     artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity]
   )
@@ -576,6 +620,29 @@ recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_con
 
     # Remove already used columns
     candidates <- setdiff(all_candidates, used_cols)
+
+    # Value-level veto. score_candidate_values() only runs when several columns
+    # compete for a role, so a single well-named but implausible candidate used
+    # to be accepted unchecked. Continuous-measure roles get checked always.
+    if (length(candidates) > 0 && std_col %in% CONTINUOUS_MEASURE_COLUMNS) {
+      implausible <- candidates[!vapply(
+        candidates,
+        function(cand) looks_like_continuous_measure(df[[cand]]),
+        logical(1)
+      )]
+
+      if (length(implausible) > 0) {
+        candidates <- setdiff(candidates, implausible)
+        reason <- "they hold only whole numbers, so they look like identifiers or counts rather than measured values"
+        if (length(candidates) == 0) {
+          # The veto left the role unmapped, so the user is about to be asked
+          # for it (or the run stops in a non-interactive session). Say why.
+          log_warn("No column matched {.field {std_col}}: {.field {implausible}} matched by name but {reason}.")
+        } else {
+          log_debug("Skipped {.field {implausible}} as {.field {std_col}}: {reason}.")
+        }
+      }
+    }
 
     if (length(candidates) > 0) {
       # If multiple candidates, use value analysis to resolve
@@ -633,8 +700,10 @@ check_mapping_completeness <- function(mapping) {
 
 
 box::export(
+  CONTINUOUS_MEASURE_COLUMNS,
   MATCH_THRESHOLDS,
   get_column_patterns,
+  looks_like_continuous_measure,
   match_column_name,
   recognize_columns,
   get_required_column_names,
