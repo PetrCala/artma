@@ -145,13 +145,20 @@ preview_plot <- function(plot) {
 #' @description
 #' Wrapper around ggplot2::ggsave with artma defaults.
 #'
+#' `scale` multiplies the resolution as well as the pixel dimensions. Scaling
+#' the dimensions alone enlarges the canvas while text stays a fixed physical
+#' size, so at the default `graph_scale` of 2 every exported figure came out
+#' with its labels at half their intended size relative to the plot. Scaling
+#' both keeps the layout identical and simply renders it at higher resolution.
+#'
 #' @param plot *\[ggplot\]* The plot to save
 #' @param path *\[character\]* Full file path (including filename)
 #' @param width *\[numeric\]* Plot width
 #' @param height *\[numeric\]* Plot height
-#' @param scale *\[numeric\]* Scale multiplier for dimensions. Defaults to 1.
+#' @param scale *\[numeric\]* Scale multiplier for dimensions and resolution.
+#'   Defaults to 1.
 #' @param units *\[character\]* Units for width/height. Defaults to "px".
-#' @param dpi *\[numeric\]* Resolution. Defaults to 150.
+#' @param dpi *\[numeric\]* Base resolution, before `scale`. Defaults to 150.
 #'
 #' @return *\[character\]* The path where the plot was saved (invisibly)
 save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units = "px", dpi = 150) {
@@ -191,7 +198,7 @@ save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units =
     width = width * scale,
     height = height * scale,
     units = units,
-    dpi = dpi,
+    dpi = dpi * scale,
     device = device
   )
 

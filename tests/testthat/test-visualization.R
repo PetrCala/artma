@@ -11,8 +11,11 @@ box::use(
   withr[local_options, local_tempdir],
   artma / visualization / colors[
     VALID_THEMES,
+    PALETTES,
     validate_theme,
     get_colors,
+    get_tokens,
+    get_neutral,
     get_background,
     get_vline_color
   ],
@@ -41,16 +44,16 @@ test_that("validate_theme accepts known themes and rejects unknown ones", {
 test_that("get_colors returns the exact box_plot palette", {
   expect_equal(
     get_colors("blue", "box_plot"),
-    list(outlier = "#005CAB", fill = "#e6f3ff", border = "#0d4ed1")
+    list(outlier = "#3B6EA5", fill = "#DCE6F2", border = "#1F4470")
   )
 })
 
 test_that("get_colors returns a single hex for the funnel palette", {
-  expect_equal(get_colors("red", "funnel_plot"), "#FF0000")
+  expect_equal(get_colors("red", "funnel_plot"), "#C0553C")
 })
 
 test_that("get_colors resolves submethods", {
-  expect_equal(get_colors("blue", "t_stat_histogram", "density"), "#013091")
+  expect_equal(get_colors("blue", "t_stat_histogram", "density"), "#1F4470")
 })
 
 test_that("get_colors aborts on unknown method or submethod", {
@@ -59,12 +62,51 @@ test_that("get_colors aborts on unknown method or submethod", {
 })
 
 test_that("get_background and get_vline_color return theme hex codes", {
-  expect_equal(get_background("yellow"), "#FFFFD1")
-  expect_equal(get_vline_color("blue"), "#D10D0D")
+  expect_equal(get_background("yellow"), "#FDFCF7")
+  expect_equal(get_vline_color("blue"), "#C4462B")
 })
 
 test_that("VALID_THEMES lists the five supported themes", {
   expect_equal(VALID_THEMES, c("blue", "yellow", "green", "red", "purple"))
+})
+
+test_that("get_tokens exposes the full accent family for every theme", {
+  required <- c("accent", "accent_dark", "accent_light", "contrast", "highlight")
+  for (theme_name in VALID_THEMES) {
+    tokens <- get_tokens(theme_name)
+    expect_true(all(required %in% names(tokens)))
+    expect_true(all(grepl("^#[0-9A-Fa-f]{6}$", unlist(tokens))))
+  }
+})
+
+test_that("get_neutral returns one neutral or the whole set", {
+  expect_equal(get_neutral("grid"), "#E5E5E9")
+  expect_true(is.list(get_neutral()))
+  expect_error(get_neutral("chartreuse"))
+})
+
+test_that("grouped plots use qualitative palettes, never sequential ones", {
+  # A sequential ramp implies an ordering that an unordered grouping variable
+  # does not have, and renders its lightest classes invisibly on a white panel.
+  sequential <- c(
+    "Reds", "Blues", "Greens", "Purples", "Oranges", "Greys",
+    "YlOrRd", "YlOrBr", "YlGnBu", "YlGn", "BuPu", "OrRd", "PuBu"
+  )
+  categorical <- c(
+    unlist(PALETTES$prima_facie$histogram),
+    unlist(PALETTES$prima_facie$density),
+    unlist(PALETTES$bpe$miracle),
+    unlist(PALETTES$bpe$density)
+  )
+  expect_false(any(categorical %in% sequential))
+})
+
+test_that("every theme keeps its accent, contrast and highlight distinct", {
+  for (theme_name in VALID_THEMES) {
+    tokens <- get_tokens(theme_name)
+    reference_hues <- c(tokens$accent, tokens$contrast, tokens$highlight)
+    expect_equal(length(unique(reference_hues)), 3L)
+  }
 })
 
 # theme ---------------------------------------------------------------------
@@ -77,6 +119,27 @@ test_that("get_theme returns a ggplot2 theme object", {
 
 test_that("get_theme rejects invalid themes", {
   expect_error(get_theme("mauve"))
+})
+
+test_that("get_theme returns a complete theme", {
+  # A partial theme() would be merged into ggplot2's default theme_grey(),
+  # leaving grey panels, facet strips and legend keys wherever an element is
+  # not named explicitly.
+  expect_true(attr(get_theme("blue"), "complete"))
+})
+
+test_that("get_theme paints the panel and the plot on one surface", {
+  th <- get_theme("blue")
+  expect_equal(th$panel.background$fill, th$plot.background$fill)
+  expect_equal(th$plot.background$fill, get_background("blue"))
+})
+
+test_that("get_theme scales every element from base_size", {
+  small <- get_theme("blue", base_size = 10)
+  large <- get_theme("blue", base_size = 20)
+  expect_equal(small$text$size, 10)
+  expect_equal(large$text$size, 20)
+  expect_error(get_theme("blue", base_size = -1))
 })
 
 # export --------------------------------------------------------------------
@@ -107,6 +170,30 @@ test_that("save_plot writes a ggplot to disk and returns the path", {
   expect_equal(returned, path)
   expect_true(file.exists(path))
   expect_true(file.info(path)$size > 0)
+})
+
+test_that("save_plot scales resolution alongside the dimensions", {
+  # Scaling the pixel dimensions alone enlarges the canvas while text keeps a
+  # fixed physical size, so at graph_scale 2 every label came out half its
+  # intended size relative to the plot.
+  captured <- NULL
+  testthat::local_mocked_bindings(
+    ggsave = function(...) {
+      captured <<- list(...)
+      invisible(NULL)
+    },
+    .package = "ggplot2"
+  )
+  local_options(artma.verbose = 1, artma.visualization.export_html = FALSE)
+  dir <- local_tempdir()
+  plot <- ggplot2::ggplot(mtcars, ggplot2::aes(x = mpg, y = hp)) +
+    ggplot2::geom_point()
+
+  save_plot(plot, file.path(dir, "plot.png"), width = 400, height = 300, scale = 2, dpi = 150)
+
+  expect_equal(captured$width, 800)
+  expect_equal(captured$height, 600)
+  expect_equal(captured$dpi, 300)
 })
 
 test_that("save_plot rejects non-ggplot input", {
