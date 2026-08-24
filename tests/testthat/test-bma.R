@@ -196,6 +196,35 @@ test_that("run_bma executes without errors", {
   expect_true(!is.null(result$topmod))
 })
 
+test_that("run_bma leaves the graphics device untouched", {
+  # `BMS::bms` defaults to `user.int = TRUE`, which plots the fitted model on
+  # the way out. In a forked method worker on macOS that plot opens quartz and
+  # kills the child, so `run_bma()` must never let it draw.
+  box::use(artma / econometric / bma[run_bma])
+
+  df <- make_demo_bma_data()
+  bma_data <- df[c("effect", "se", "moderator1", "moderator2")]
+
+  params <- list(
+    burn = 100L,
+    iter = 500L,
+    nmodel = 10L,
+    g = "UIP",
+    mprior = "uniform",
+    mcmc = "bd"
+  )
+
+  local_options("artma.verbose" = 1)
+
+  # Other tests in this file leave devices open, so start from a clean slate:
+  # otherwise a device `bms` opens is indistinguishable from one already there.
+  while (!is.null(grDevices::dev.list())) grDevices::dev.off()
+
+  run_bma(bma_data, params)
+
+  expect_null(grDevices::dev.list())
+})
+
 test_that("build_bma_model_labels labels only the varying parameters", {
   box::use(artma / econometric / bma[build_bma_model_labels])
 
