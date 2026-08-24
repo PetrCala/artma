@@ -426,6 +426,14 @@ deterministic_bms <- function() {
 #' session RNG state on entry: seed beforehand (or run under the
 #' orchestrator's per-method RNG streams) and the fit is reproducible.
 #'
+#' `user.int` is pinned to `FALSE`: `BMS::bms` defaults it to `TRUE`, which
+#' makes it print its results and call `plot.bma()` on the way out. That plot
+#' lands on the session's current device, and in a forked method worker on
+#' macOS that device is quartz, whose Objective-C runtime aborts the child
+#' outright (see `artma/visualization/fork_safety`). Wrapping the call in
+#' `capture.output()` hides the text but not the plot, so the flag has to be
+#' set at the source.
+#'
 #' @param bma_data *\[data.frame\]* The data for BMA. "effect" must be in the first column.
 #' @param bma_params *\[list\]* Parameters to be used inside the "bms" function. These are:
 #' burn, iter, g, mprior, nmodel, mcmc. For more info see the "bms" function documentation.
@@ -451,16 +459,8 @@ run_bma <- function(bma_data, bma_params, quiet = TRUE) {
 
   all_bma_params <- c(
     list(bma_data),
-    bma_params
-  )
-
-  tryCatch(
-    {
-      grDevices::dev.off()
-    },
-    error = function(e) {
-      # Ignore errors when closing graphics device
-    }
+    bma_params,
+    list(user.int = FALSE)
   )
 
   bms_fun <- deterministic_bms()
