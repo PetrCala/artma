@@ -1,6 +1,7 @@
 box::use(
   testthat[
     expect_equal,
+    expect_false,
     expect_identical,
     expect_named,
     expect_null,
@@ -199,4 +200,62 @@ test_that("funnel_plot returns empty result when all data filtered", {
 
   expect_null(result$plots$funnel_plot)
   expect_equal(result$meta$n_points, 0)
+})
+
+
+# The x-axis labels used to be HTML color spans rendered by ggtext. After
+# ggtext was dropped the markup was still emitted and printed literally, so the
+# axis read `<span style='color:black'>50</span>`. Assert on the built plot,
+# which is what the user actually sees.
+test_that("funnel_plot renders plain x-axis labels, not HTML markup", {
+  local_funnel_options()
+
+  df <- create_test_data()
+  plot <- funnel_plot(df)$plots$funnel_plot
+  labels <- ggplot2::ggplot_build(plot)$layout$panel_params[[1]]$x$get_labels()
+
+  expect_true(length(labels) > 0)
+  expect_false(any(grepl("<|span|style=", labels)))
+})
+
+
+test_that("funnel_plot colors the mean tick and leaves the rest black", {
+  local_funnel_options()
+
+  df <- create_test_data()
+  plot <- funnel_plot(df)$plots$funnel_plot
+  built <- ggplot2::ggplot_build(plot)
+  breaks <- built$layout$panel_params[[1]]$x$get_breaks()
+  breaks <- breaks[!is.na(breaks)]
+  tick_colors <- built$plot$theme$axis.text.x$colour
+
+  # One color per break, so ggplot2 does not recycle them onto the wrong ticks.
+  expect_equal(length(tick_colors), length(breaks))
+
+  mean_effect <- mean(df$effect)
+  mean_idx <- which.min(abs(breaks - mean_effect))
+  expect_equal(breaks[mean_idx], mean_effect)
+  expect_false(tick_colors[mean_idx] == "black")
+  expect_setequal(unique(tick_colors[-mean_idx]), "black")
+})
+
+
+# A wide range used to pin the exact data minimum, maximum and mean on top of a
+# fixed-interval grid, so labels such as 350 and 369.54 overlapped.
+test_that("funnel_plot keeps x-axis ticks far enough apart to be readable", {
+  local_funnel_options()
+
+  set.seed(7)
+  df <- data.frame(
+    effect = c(runif(200, 1, 369.54), 1, 369.54),
+    precision = runif(202, 5, 50)
+  )
+
+  plot <- funnel_plot(df)$plots$funnel_plot
+  breaks <- ggplot2::ggplot_build(plot)$layout$panel_params[[1]]$x$get_breaks()
+  breaks <- sort(breaks[!is.na(breaks)])
+
+  range_size <- max(df$effect) - min(df$effect)
+  expect_true(all(diff(breaks) >= range_size / 14))
+  expect_true(length(breaks) <= 14)
 })

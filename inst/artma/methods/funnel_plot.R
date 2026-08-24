@@ -232,8 +232,13 @@ aggregate_study_medians <- function(df) {
 #' Generate intelligent x-axis ticks for funnel plot
 #'
 #' @description
-#' Creates tick positions that include bounds, mean, and optionally zero.
-#' Adds intermediate ticks at sensible intervals while maintaining readability.
+#' Creates tick positions that include bounds, mean, and optionally zero, plus
+#' intermediate ticks at sensible intervals. Every candidate then goes through
+#' `thin_ticks()`, which drops whichever ticks would print on top of each other:
+#' the mean outranks zero, zero outranks the data bounds, and the regular grid
+#' gives way to all of them. Without that pass a data bound sitting just short
+#' of a grid tick (e.g. a maximum of 369.5 next to a tick at 350) produces
+#' overlapping labels.
 #'
 #' @param bounds *\[numeric(2)\]* Lower and upper bounds of effect values
 #' @param mean_effect *\[numeric\]* Mean effect value to highlight
@@ -245,47 +250,51 @@ aggregate_study_medians <- function(df) {
 generate_funnel_ticks <- function(bounds, mean_effect, add_zero, theme_name) {
   box::use(
     artma / visualization / colors[get_vline_color],
-    artma / visualization / ticks[resolve_tick_interval, generate_regular_ticks]
+    artma / visualization / ticks[
+      generate_regular_ticks,
+      resolve_tick_interval,
+      thin_ticks,
+      tick_min_separation
+    ]
   )
 
   lower_bound <- bounds[1]
   upper_bound <- bounds[2]
   range_size <- upper_bound - lower_bound
 
-  ticks <- c(lower_bound, upper_bound)
+  interval <- resolve_tick_interval(range_size)
+  min_distance <- tick_min_separation(range_size)
 
-  if (add_zero && !(0 %in% ticks) && lower_bound < 0 && upper_bound > 0) {
+  # Priorities feed thin_ticks(): the mean is the point of the plot, zero is
+  # the null effect, the bounds show the data extent, and the grid is filler.
+  ticks <- c(mean_effect, lower_bound, upper_bound)
+  priority <- c(4, 2, 2)
+
+  if (add_zero && lower_bound < 0 && upper_bound > 0) {
     ticks <- c(ticks, 0)
+    priority <- c(priority, 3)
   }
-
-  interval <- resolve_tick_interval(
-    range_size,
-    breakpoints = c(1, 5, 20, 50, 100),
-    intervals = c(0.2, 1, 5, 10, 20),
-    fallback = 50
-  )
-  min_distance <- interval / 5
 
   regular_ticks <- generate_regular_ticks(
     lower = lower_bound,
     upper = upper_bound,
     interval = interval,
     edge_distance = min_distance,
+    special_values = mean_effect,
+    special_distance = min_distance,
     upper_inclusive = FALSE
   )
   ticks <- c(ticks, regular_ticks)
-
-  ticks <- sort(unique(c(ticks, mean_effect)))
+  priority <- c(priority, rep(1, length(regular_ticks)))
 
   tick_colors <- rep("black", length(ticks))
-  mean_idx <- which(ticks == mean_effect)
-  if (length(mean_idx) > 0) {
-    tick_colors[mean_idx] <- get_vline_color(theme_name)
-  }
+  tick_colors[1] <- get_vline_color(theme_name)
+
+  kept <- thin_ticks(ticks, min_distance = min_distance, priority = priority)
 
   list(
-    ticks = ticks,
-    tick_colors = tick_colors,
+    ticks = ticks[kept],
+    tick_colors = tick_colors[kept],
     mean_effect = mean_effect
   )
 }
@@ -310,12 +319,12 @@ create_funnel_plot <- function(df, tick_info, theme_name, precision_to_log, use_
   box::use(
     artma / visualization / colors[get_colors, get_vline_color],
     artma / visualization / theme[get_theme],
-    artma / visualization / ticks[format_colored_tick_labels]
+    artma / visualization / ticks[format_tick_labels]
   )
 
   point_color <- get_colors(theme_name, "funnel_plot")
   vline_color <- get_vline_color(theme_name)
-  plot_theme <- get_theme(theme_name)
+  plot_theme <- get_theme(theme_name, tick_colors = tick_info$tick_colors)
 
   plot_df <- df
   if (precision_to_log) {
@@ -336,10 +345,7 @@ create_funnel_plot <- function(df, tick_info, theme_name, precision_to_log, use_
 
   mean_effect <- tick_info$mean_effect
 
-  tick_labels <- format_colored_tick_labels(
-    tick_info$ticks,
-    tick_info$tick_colors
-  )
+  tick_labels <- format_tick_labels(tick_info$ticks)
 
   p <- ggplot2::ggplot(
     data = plot_df,

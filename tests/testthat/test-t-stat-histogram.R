@@ -1,6 +1,7 @@
 box::use(
   testthat[
     expect_equal,
+    expect_false,
     expect_identical,
     expect_named,
     expect_null,
@@ -205,4 +206,33 @@ test_that("t_stat_histogram writes only the full-range PNG when close-up is disa
   t_stat_histogram(df)
 
   expect_setequal(list.files(dir), "t_stat_histogram_full_range.png")
+})
+
+
+# Same regression as the funnel plot: tick labels were HTML color spans that
+# nothing rendered, so the axis printed the markup verbatim.
+test_that("t_stat_histogram renders plain x-axis labels, not HTML markup", {
+  local_hist_options()
+
+  plot <- t_stat_histogram(create_test_data())$plots$plot_main
+  labels <- ggplot2::ggplot_build(plot)$layout$panel_params[[1]]$x$get_labels()
+
+  expect_true(length(labels) > 0)
+  expect_false(any(grepl("<|span|style=", labels)))
+})
+
+
+test_that("t_stat_histogram gives every tick its own color and keeps them apart", {
+  local_hist_options("artma.methods.t_stat_histogram.min_tick_distance" = 0.5)
+
+  plot <- t_stat_histogram(create_test_data())$plots$plot_main
+  built <- ggplot2::ggplot_build(plot)
+  breaks <- built$layout$panel_params[[1]]$x$get_breaks()
+  breaks <- sort(breaks[!is.na(breaks)])
+  tick_colors <- built$plot$theme$axis.text.x$colour
+
+  expect_equal(length(tick_colors), length(breaks))
+  expect_true(all(diff(breaks) >= 0.5))
+  # The critical values are why the plot exists; they must survive thinning.
+  expect_true(all(c(-1.96, 1.96) %in% round(breaks, 2)))
 })

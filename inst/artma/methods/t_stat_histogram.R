@@ -226,8 +226,12 @@ compute_data_bounds <- function(filtered_values,
 #' @description
 #' Creates tick positions that include bounds, mean, and critical t-stat
 #' values. Regular ticks maintain minimum distance from critical values
-#' and the mean to prevent overlap. Colors: critical values get a
-#' contrasting color, mean gets the vline accent color, others black.
+#' and the mean to prevent overlap, and a final `thin_ticks()` pass resolves
+#' the collisions the generator cannot see: a data bound landing next to a
+#' critical value or the mean. Critical values outrank the mean, which
+#' outranks the bounds, which outrank the regular grid. Colors: critical
+#' values get a contrasting color, mean gets the vline accent color, others
+#' black.
 #'
 #' @param bounds *\[numeric(2)\]* Lower and upper data bounds
 #' @param mean_value *\[numeric\]* Mean t-statistic
@@ -244,7 +248,12 @@ generate_histogram_ticks <- function(bounds,
                                      theme_name) {
   box::use(
     artma / visualization / colors[get_colors, get_vline_color],
-    artma / visualization / ticks[resolve_tick_interval, generate_regular_ticks]
+    artma / visualization / ticks[
+      generate_regular_ticks,
+      resolve_tick_interval,
+      thin_ticks,
+      tick_min_separation
+    ]
   )
 
   lower <- bounds[1]
@@ -259,12 +268,7 @@ generate_histogram_ticks <- function(bounds,
   special_ticks <- unique(c(crit_ticks, mean_value))
 
   # Determine interval for regular ticks
-  interval <- resolve_tick_interval(
-    range_size,
-    breakpoints = c(5, 20, 50, 100, 200),
-    intervals = c(1, 2, 5, 10, 20),
-    fallback = 50
-  )
+  interval <- resolve_tick_interval(range_size)
 
   # Generate regular ticks
   regular_ticks <- generate_regular_ticks(
@@ -277,12 +281,6 @@ generate_histogram_ticks <- function(bounds,
     upper_inclusive = TRUE
   )
 
-  # Combine all ticks
-  all_ticks <- sort(unique(c(
-    lower, upper, crit_ticks, mean_value, regular_ticks
-  )))
-
-  # Assign colors
   critical_color <- get_colors(
     theme_name, "t_stat_histogram", "critical"
   )
@@ -290,23 +288,29 @@ generate_histogram_ticks <- function(bounds,
     theme_name, "t_stat_histogram", "mean"
   )
 
-  tick_colors <- rep("black", length(all_ticks))
+  # Assembled in descending priority so thin_ticks() drops the filler first.
+  # The separation floor also respects the data range: a user-set
+  # min_tick_distance of 0.5 over a range of 240 would still overlap.
+  all_ticks <- c(crit_ticks, mean_value, lower, upper, regular_ticks)
+  priority <- c(
+    rep(4, length(crit_ticks)),
+    3,
+    2, 2,
+    rep(1, length(regular_ticks))
+  )
+  tick_colors <- c(
+    rep(critical_color, length(crit_ticks)),
+    mean_color,
+    "black", "black",
+    rep("black", length(regular_ticks))
+  )
 
-  for (cv in crit_ticks) {
-    idx <- which(abs(all_ticks - cv) < 1e-10)
-    if (length(idx) > 0) {
-      tick_colors[idx] <- critical_color
-    }
-  }
-
-  mean_idx <- which(abs(all_ticks - mean_value) < 1e-10)
-  if (length(mean_idx) > 0) {
-    tick_colors[mean_idx] <- mean_color
-  }
+  min_distance <- max(min_tick_distance, tick_min_separation(range_size))
+  kept <- thin_ticks(all_ticks, min_distance = min_distance, priority = priority)
 
   list(
-    ticks = all_ticks,
-    tick_colors = tick_colors,
+    ticks = all_ticks[kept],
+    tick_colors = tick_colors[kept],
     mean_value = mean_value,
     critical_ticks = crit_ticks
   )
@@ -341,7 +345,7 @@ build_histogram <- function(t_values,
     artma / libs / core / utils[get_verbosity],
     artma / visualization / colors[get_colors],
     artma / visualization / theme[get_theme],
-    artma / visualization / ticks[format_colored_tick_labels]
+    artma / visualization / ticks[format_tick_labels]
   )
 
   filter_result <- filter_by_cutoff(t_values, lower_cutoff, upper_cutoff)
@@ -377,11 +381,9 @@ build_histogram <- function(t_values,
     theme_name, "t_stat_histogram", "critical"
   )
   mean_color <- get_colors(theme_name, "t_stat_histogram", "mean")
-  plot_theme <- get_theme(theme_name)
+  plot_theme <- get_theme(theme_name, tick_colors = tick_info$tick_colors)
 
-  tick_labels <- format_colored_tick_labels(
-    tick_info$ticks, tick_info$tick_colors
-  )
+  tick_labels <- format_tick_labels(tick_info$ticks)
 
   plot_df <- data.frame(t_stat = filtered)
 
