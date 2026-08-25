@@ -5,11 +5,23 @@
 # inst script), which doubled the wall clock; the price of the merge is
 # that compiled src/ lines are no longer measured (covr's gcov pass needs
 # its own instrumented install).
+# The pull_request paths filter skips coverage on PRs that cannot change
+# it (docs-only or CI-only changes); the push trigger stays unfiltered so
+# every master commit uploads a complete codecov baseline.
 name: Test Coverage
 
 on:
   pull_request:
     branches: master
+    paths:
+      - "R/**"
+      - "inst/**"
+      - "src/**"
+      - "tests/**"
+      - "DESCRIPTION"
+      - "NAMESPACE"
+      - "scripts/R/inst_coverage.R"
+      - ".github/workflows/test-coverage.yaml"
   push:
     branches: master
 
