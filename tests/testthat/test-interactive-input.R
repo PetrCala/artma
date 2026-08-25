@@ -9,7 +9,7 @@ box::use(
   ]
 )
 
-box::use(artma / interactive / input[ask_select, ask_text, ask_yes_no])
+box::use(artma / interactive / input[ask_checkbox, ask_select, ask_text, ask_yes_no])
 
 test_that("ask_text returns the trimmed answer", {
   answer <- ask_text("Name", read_input = function(prompt) "  hello  ")
@@ -211,6 +211,78 @@ test_that("ask_select rejects a default that is not one of the choices", {
 
 test_that("ask_select aborts in non-interactive sessions with the default backend", {
   expect_error(ask_select("Q", choices = c("a", "b")), "interactive")
+})
+
+test_that("ask_checkbox maps selected labels back to their values", {
+  choices <- c("Bayesian model averaging" = "bma", "Linear tests" = "linear_tests", "MAIVE" = "maive")
+  seen <- NULL
+  answer <- ask_checkbox(
+    "Pick methods",
+    choices = choices,
+    checkbox_fn = function(choices, prompt, selected, allow_select_all) {
+      seen <<- list(choices = choices, prompt = prompt, selected = selected, allow_select_all = allow_select_all)
+      c("Bayesian model averaging", "MAIVE")
+    }
+  )
+  expect_equal(answer, c("bma", "maive"))
+  expect_equal(seen$choices, c("Bayesian model averaging", "Linear tests", "MAIVE"))
+  expect_equal(seen$prompt, "Pick methods")
+  expect_null(seen$selected)
+  expect_false(seen$allow_select_all)
+})
+
+test_that("ask_checkbox passes plain vectors through unchanged", {
+  answer <- ask_checkbox(
+    "Pick methods",
+    choices = c("bma", "maive"),
+    allow_select_all = TRUE,
+    checkbox_fn = function(choices, prompt, selected, allow_select_all) {
+      expect_true(allow_select_all)
+      choices
+    }
+  )
+  expect_equal(answer, c("bma", "maive"))
+})
+
+test_that("ask_checkbox preselects the defaults by value", {
+  seen_selected <- NULL
+  ask_checkbox(
+    "Pick methods",
+    choices = c("BMA" = "bma", "Linear tests" = "linear_tests", "MAIVE" = "maive"),
+    default = c("bma", "maive"),
+    checkbox_fn = function(choices, prompt, selected, allow_select_all) {
+      seen_selected <<- selected
+      character(0)
+    }
+  )
+  expect_equal(seen_selected, c(1, 3))
+})
+
+test_that("ask_checkbox returns character(0) on a cancelled or empty confirmation", {
+  for (empty in list(NULL, character(0))) {
+    answer <- ask_checkbox(
+      "Pick methods",
+      choices = c("BMA" = "bma", "MAIVE" = "maive"),
+      default = "bma",
+      checkbox_fn = function(choices, prompt, selected, allow_select_all) empty
+    )
+    expect_equal(answer, character(0))
+  }
+})
+
+test_that("ask_checkbox rejects defaults that are not among the choices", {
+  expect_error(
+    ask_checkbox(
+      "Pick methods",
+      choices = c("a", "b"),
+      default = c("a", "c"),
+      checkbox_fn = function(choices, prompt, selected, allow_select_all) "a"
+    )
+  )
+})
+
+test_that("ask_checkbox aborts in non-interactive sessions with the default backend", {
+  expect_error(ask_checkbox("Pick methods", choices = c("a", "b")), "interactive")
 })
 
 test_that("ask_yes_no returns a logical and honors the default", {

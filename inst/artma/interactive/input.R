@@ -168,6 +168,66 @@ ask_select <- function(
   selected_value
 }
 
+#' @title Ask to pick several items from a menu
+#' @description Render a multi-select checkbox menu with the shared prompt
+#'   layout: optional dim hint lines, then the question and the `climenu`
+#'   checkbox. When `choices` is a named vector, the names are the labels shown
+#'   in the menu and the values are what gets returned. A cancelled menu or an
+#'   empty confirmation returns `character(0)`, leaving the decision to the
+#'   caller; unlike `ask_select`, `default` only preselects items.
+#' @param question *\[character\]* A short question line shown directly above the menu.
+#' @param choices *\[character\]* Menu items. Names, when present, are the displayed labels; the corresponding values are returned.
+#' @param hints *\[character, optional\]* Hint lines rendered dim above the question. May contain `cli` inline markup. Defaults to `NULL`.
+#' @param default *\[character, optional\]* Values (not labels) preselected in the menu. Must all be among `choices`. Defaults to `NULL` (nothing preselected).
+#' @param allow_select_all *\[logical, optional\]* Whether the menu offers a "Select all" toggle. Defaults to `FALSE`.
+#' @param checkbox_fn *\[function, optional\]* Menu backend; receives `choices`, `prompt`, `selected`, and `allow_select_all` and returns the selected labels or an empty value. Defaults to `climenu::checkbox`. Exposed for testing.
+#' `character` The selected values in menu order, or `character(0)` when nothing was confirmed.
+ask_checkbox <- function(
+  question,
+  choices,
+  hints = NULL,
+  default = NULL,
+  allow_select_all = FALSE,
+  checkbox_fn = climenu::checkbox
+) {
+  box::use(artma / libs / core / validation[validate])
+
+  # An injected backend cannot hang a script, so only the real climenu menu
+  # requires an interactive session. This also keeps climenu's non-interactive
+  # fallback (warn and return the preselected items) from being reached.
+  if (!interactive() && identical(checkbox_fn, climenu::checkbox)) {
+    cli::cli_abort("Menu selections can only be collected in interactive R sessions.")
+  }
+
+  labels <- if (is.null(names(choices))) unname(choices) else names(choices)
+  values <- unname(choices)
+
+  validate(
+    is.character(question) && length(question) == 1,
+    is.character(choices) && length(choices) > 0,
+    all(nzchar(labels)),
+    is.null(hints) || is.character(hints),
+    is.null(default) || (is.character(default) && all(default %in% values)),
+    is.logical(allow_select_all) && length(allow_select_all) == 1 && !is.na(allow_select_all),
+    is.function(checkbox_fn)
+  )
+
+  render_hints(hints)
+
+  selected_labels <- checkbox_fn(
+    choices = labels,
+    prompt = question,
+    selected = if (is.null(default)) NULL else match(default, values),
+    allow_select_all = allow_select_all
+  )
+
+  if (rlang::is_empty(selected_labels)) {
+    return(character(0))
+  }
+
+  values[match(selected_labels, labels)]
+}
+
 #' @title Ask a yes/no question
 #' @description Render a Yes/No menu with the shared prompt layout and return
 #'   the answer as a logical. An empty selection falls back to `default`.
@@ -202,4 +262,4 @@ ask_yes_no <- function(
   identical(answer, "yes")
 }
 
-box::export(ask_text, ask_select, ask_yes_no)
+box::export(ask_text, ask_select, ask_checkbox, ask_yes_no)

@@ -1,14 +1,15 @@
 # Interactive prompts
 
 All interactive input in artma goes through the helpers in
-`inst/artma/interactive/input.R`. Do not call `readline()` or
-`climenu::select()` directly in new code; wrap the question in one of these
-instead:
+`inst/artma/interactive/input.R`. Do not call `readline()`,
+`climenu::select()`, or `climenu::checkbox()` directly in new code; wrap the
+question in one of these instead:
 
 | Helper | Use for | Returns |
 | --- | --- | --- |
 | `ask_text()` | free-text answers | `character` |
 | `ask_select()` | picking one item from a menu | the selected value, or `character(0)` |
+| `ask_checkbox()` | picking several items from a menu | the selected values, or `character(0)` |
 | `ask_yes_no()` | yes/no confirmations | `logical` |
 
 ## Layout contract
@@ -31,13 +32,17 @@ Question line (short; cli inline markup allowed)
 - The input row of `ask_text` is ANSI-free on purpose: styled readline prompts
   break line editing in some terminals.
 - For menus, hints render above the question because `climenu` prints the
-  question directly over the choices.
+  question directly over the choices. This holds for both `ask_select` and
+  `ask_checkbox`.
 
 ## Semantics
 
 - **Empty answer**: falls back to `default` when one is given. Without a
   default, `ask_text` re-asks (unless `allow_empty`) and `ask_select` returns
-  `character(0)`, leaving the decision to the caller.
+  `character(0)`, leaving the decision to the caller. `ask_checkbox` is the
+  exception: its `default` only preselects items, and a cancelled menu or an
+  empty confirmation always returns `character(0)`, because "the user
+  deselected everything" is a real answer.
 - **Retries**: `ask_text` re-asks on empty or invalid answers up to
   `max_retries` (default 3) and then gives up with `""`. Callers treat `""` as
   "no answer" and decide whether to warn, skip, or abort.
@@ -61,6 +66,7 @@ module namespaces are locked, so binding mocks do not work):
 ```r
 ask_text("Name", read_input = function(prompt) "typed answer")
 ask_select("Pick", choices = c("A" = "a"), select_fn = function(choices, prompt, selected) "A")
+ask_checkbox("Pick", choices = c("A" = "a"), checkbox_fn = function(choices, prompt, selected, allow_select_all) "A")
 ```
 
 Higher-level prompts thread these through: `prompt_user_for_option_value()`
@@ -81,10 +87,13 @@ with `prompt: "function"` in the template and live in
 
 ## Not yet migrated
 
-Multi-select (`climenu::checkbox`) sites and the bespoke menus in
+The existing multi-select sites (`inst/artma/options/ask.R`,
+`inst/artma/methods/best_practice_estimate.R`, `inst/artma/methods/bma.R`,
+`inst/artma/interactive/effect_summary_stats.R`,
+`inst/artma/interactive/prima_facie_graphs.R`,
+`inst/artma/data/interactive_mapping.R`, `R/artma.R`) still call
+`climenu::checkbox` directly, as do the bespoke menus in
 `inst/artma/data/schema_ui.R`, `inst/artma/data/interactive_mapping.R`
-(provisional-mapping menus), `inst/artma/interactive/welcome.R`,
-`inst/artma/interactive/box_plot.R`, `inst/artma/interactive/effect_summary_stats.R`
-(selection menus), and `inst/artma/methods/bma.R` still call `climenu`
-directly. New code should follow this contract; migrate those opportunistically
-(an `ask_checkbox` helper is the natural next step).
+(provisional-mapping menus), `inst/artma/interactive/welcome.R`, and
+`inst/artma/interactive/box_plot.R`. New code uses `ask_checkbox` and the rest
+of this contract; migrating the sites above is opportunistic.
