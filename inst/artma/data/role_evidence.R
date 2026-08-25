@@ -127,6 +127,7 @@ profile_role_values <- function(values) {
 
   list(
     n = n,
+    coverage = n / length(values),
     n_distinct = n_distinct,
     uniqueness_ratio = n_distinct / n,
     integer_share = integer_share,
@@ -170,6 +171,12 @@ score_effect_evidence <- function(p) {
 score_se_evidence <- function(p) {
   if (p$is_id_like || p$n_distinct <= 2) {
     return(0)
+  }
+  # With hundreds of rows, a standard-error column has many distinct values
+  # even under heavy rounding; a handful of levels is a flag, a category code
+  # or a bound indicator (values like 1/2), no matter how se-like its name is.
+  if (p$n >= 100 && p$n_distinct <= 10) {
+    return(0.1)
   }
   score <- 0.55
   if (p$negative_share > 0.005) {
@@ -236,13 +243,22 @@ score_role_evidence <- function(values, role) {
   if (p$n < MIN_ROWS_FOR_EVIDENCE) {
     return(NA_real_)
   }
-  switch(role,
+  score <- switch(role,
     effect = score_effect_evidence(p),
     se = score_se_evidence(p),
     t_stat = score_t_stat_evidence(p),
     n_obs = score_n_obs_evidence(p),
     NA_real_
   )
+  # A column populated on a small fraction of rows must not out-rank a full
+  # alternative on the strength of the few values it does have (a 98%-empty
+  # se column is a bad mapping even when those 2% look perfect). The discount
+  # is quadratic so moderate missingness is tolerated and severe sparsity is
+  # decisive.
+  if (!is.na(score) && p$coverage < 0.5) {
+    score <- score * (p$coverage / 0.5)^2
+  }
+  score
 }
 
 #' @title Score the internal consistency of a candidate (effect, se) pair
@@ -327,7 +343,9 @@ combine_name_and_evidence <- function(name_score, evidence_score) {
 #'   so that the mutually consistent set wins and no column is claimed twice.
 #'   Every candidate role score blends the name prior with value evidence;
 #'   consistent (effect, se) pairs earn a bonus and a third column reproducing
-#'   effect / se earns a larger one. Consistency bonuses are withheld from
+#'   effect / se earns a larger one, down-weighted when that witness column
+#'   has no t-statistic name support (derived columns reproduce the wrong
+#'   pair's ratio just as perfectly). Consistency bonuses are withheld from
 #'   columns whose own value evidence is very low, so an identifier column
 #'   cannot ride a coincidentally plausible ratio into an effect mapping.
 #' @param df *\[data.frame\]* The data frame.
@@ -399,7 +417,15 @@ assign_core_roles <- function(df,
 
     pool <- cols[in_pool]
     pool <- pool[order(base[role, pool], decreasing = TRUE)]
-    utils::head(pool, 8)
+    top <- utils::head(pool, 8)
+    # A wide dataset can carry more name-matched columns than the pool holds
+    # (eight X_se moderator columns), crowding out an anonymous column whose
+    # values are the real role. Keep the strongest pure-evidence candidates
+    # (no name support of their own) eligible alongside the name-ranked head.
+    has_evidence <- !is.na(evidence[role, pool]) & evidence[role, pool] >= 0.55
+    anonymous <- pool[name_scores[role, pool] < 0.4 & has_evidence]
+    anonymous <- anonymous[order(evidence[role, anonymous], decreasing = TRUE)]
+    union(top, utils::head(anonymous, 3))
   }
 
   effect_pool <- role_pool("effect")
@@ -427,8 +453,19 @@ assign_core_roles <- function(df,
         triple <- score_triple_consistency(
           df[[effect_col]], df[[se_col]], df[[t_candidate]]
         )
-        if (!is.na(triple) && triple > triple_score) {
-          triple_score <- triple
+        # A real t-statistic column reproduces effect / se on nearly every
+        # row (rounded published values still clear 0.9); a column matching
+        # on a minority of rows is coincidence, not corroboration.
+        if (is.na(triple) || triple < 0.5) next
+        # t = effect / se by construction, so any set of mutually derived
+        # columns (interval bounds, widths, rescaled duplicates) can reproduce
+        # the ratio of the WRONG pair perfectly. A witness whose own name
+        # carries no t-statistic signal is weak corroboration; only a column
+        # named like a t-statistic earns the full bonus.
+        weight <- if (name_scores["t_stat", t_candidate] >= 0.4) 1 else 0.4
+        weighted <- triple * weight
+        if (weighted > triple_score) {
+          triple_score <- weighted
           t_col <- t_candidate
         }
       }
