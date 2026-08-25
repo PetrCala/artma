@@ -6,6 +6,7 @@
 #' @return *\[logical\]* TRUE if overwrite is permitted, FALSE otherwise
 ask_for_overwrite_permission <- function(file_path, action_name = "the operation", should_overwrite = NULL) {
   box::use(
+    artma / interactive / input[ask_yes_no],
     artma / libs / core / autonomy[should_prompt_user],
     artma / libs / core / utils[get_verbosity]
   )
@@ -29,11 +30,10 @@ ask_for_overwrite_permission <- function(file_path, action_name = "the operation
       cli::cli_abort(sprintf("Aborting %s.", action_name))
     }
 
-    overwrite_permitted <- climenu::select(
-      choices = c("Yes", "No"),
-      prompt = cli::format_inline("A file already exists under the path {.path {file_path}}. Do you wish to overwrite the contents of this file?")
+    overwrite_permitted <- ask_yes_no(
+      cli::format_inline("A file already exists under the path {.path {file_path}}. Do you wish to overwrite the contents of this file?")
     )
-    if (overwrite_permitted != "Yes") {
+    if (!overwrite_permitted) {
       cli::cli_abort(sprintf("Aborting %s.", action_name))
     }
   }

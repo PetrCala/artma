@@ -17,6 +17,7 @@ utils::globalVariables(c(
   "ask_for_options_to_modify",
   "ask_for_overwrite_permission",
   "ask_select",
+  "ask_yes_no",
   "assert",
   "autonomy",
   "begin_output_file_capture",
