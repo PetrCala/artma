@@ -31,14 +31,20 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { os: macos-latest, r: "release" }
-          - { os: windows-latest, r: "release" }
-          - { os: ubuntu-latest, r: "release" }
+          # cpus matches the runner vCPU count: ubuntu/windows have 4,
+          # macos-latest (arm64) has 3.
+          - { os: macos-latest, r: "release", cpus: 3 }
+          - { os: windows-latest, r: "release", cpus: 4 }
+          - { os: ubuntu-latest, r: "release", cpus: 4 }
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
       _R_CHECK_CRAN_INCOMING_: false
+      # testthat's parallel worker count defaults to 2 regardless of the
+      # machine (default_num_cpus falls back to 2L); the test phase is the
+      # bulk of the check step, so use every runner core.
+      TESTTHAT_CPUS: ${{ matrix.config.cpus }}
 
     steps:
       - uses: actions/checkout@v7
