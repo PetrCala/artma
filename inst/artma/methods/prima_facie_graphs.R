@@ -40,7 +40,7 @@ prima_facie_graphs <- function(df) {
       constraint = function(x) x > 0,
       constraint_msg = "n_bins must be positive"
     ),
-    legend_font_size = opt_spec(default = 14, type = "numeric")
+    legend_font_size = opt_spec(default = 9, type = "numeric")
   ))
 
   graph_type <- resolved$graph_type
@@ -329,14 +329,20 @@ create_prima_facie_plot <- function(df, group_col, group_name, graph_type,
       data = plot_df,
       ggplot2::aes(x = .data$effect, y = ggplot2::after_stat(density), fill = .data$group)
     ) +
-      ggplot2::geom_histogram(binwidth = bin_width) +
+      # position = "identity", not the ggplot2 default of "stack". Stacking
+      # densities adds quantities that each integrate to one, so the bars climb
+      # to a total that means nothing and no group's own distribution can be
+      # read off the chart.
+      ggplot2::geom_histogram(
+        binwidth = bin_width, position = "identity", alpha = 0.45, colour = NA
+      ) +
       ggplot2::scale_fill_brewer(palette = palette, name = group_label)
   } else {
     p <- ggplot2::ggplot(
       data = plot_df,
       ggplot2::aes(x = .data$effect, y = ggplot2::after_stat(density), color = .data$group)
     ) +
-      ggplot2::geom_density(alpha = 0.2, linewidth = 1) +
+      ggplot2::geom_density(alpha = 0.2, linewidth = 0.8) +
       ggplot2::scale_color_brewer(palette = palette, name = group_label)
   }
 
@@ -344,11 +350,12 @@ create_prima_facie_plot <- function(df, group_col, group_name, graph_type,
     ggplot2::labs(x = "Effect", y = "Density") +
     plot_theme +
     ggplot2::theme(
-      legend.position = c(0.98, 0.98),
-      legend.justification = c(1, 1),
-      legend.direction = "vertical",
-      legend.text = ggplot2::element_text(size = legend_font_size),
-      legend.background = ggplot2::element_rect(fill = "white", color = "grey80")
+      # Below the panel rather than floating inside it: an inside legend covers
+      # data whenever the distribution's mode happens to fall under it, and the
+      # opaque box it needed to stay readable made that worse.
+      legend.position = "bottom",
+      legend.direction = "horizontal",
+      legend.text = ggplot2::element_text(size = legend_font_size)
     )
 
   p

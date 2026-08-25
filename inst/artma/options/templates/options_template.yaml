@@ -317,6 +317,16 @@ methods:
         If `TRUE`, always include zero in the x-axis ticks when it falls
         within the data range. Useful as a reference point.
 
+    show_contours:
+      type: "logical"
+      default: true
+      help: |
+        If `TRUE`, draw 95% pseudo-confidence contours around the mean effect.
+        These trace `mean +/- 1.96 * SE` and mark the region an unbiased
+        literature's estimates should fall inside, so funnel asymmetry can be
+        read against them. Ignored unless `calc.precision_type` is "1/SE",
+        since the contours are undefined for a precision that is not 1/SE.
+
   t_stat_histogram:
     lower_cutoff:
       type: "numeric"
@@ -431,9 +441,11 @@ methods:
 
     legend_font_size:
       type: "numeric"
-      default: 14
+      default: 9
       help: |
-        Font size for legend text in prima facie graphs.
+        Font size, in points, for legend text in prima facie graphs.
+        The shared theme sizes its own text from a base of 10pt, so values far
+        above that leave the legend dwarfing the axis labels.
 
   bma:
     burn:
