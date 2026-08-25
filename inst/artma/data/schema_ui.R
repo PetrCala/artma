@@ -108,7 +108,8 @@ auto_decisions <- function(drift, proposals_roles, proposals_moderators) {
       cli::cli_abort(c(
         "x" = "Cannot auto-resolve missing required column: {.val {stored}}",
         "i" = candidate_msg,
-        "i" = "Use {.code reconcile = \"ask\"} to resolve this interactively."
+        "i" = "Use {.code reconcile = \"ask\"} to resolve this interactively.",
+        "i" = "Or map it directly by setting {.code data.columns.{std}.source_name} in the options file."
       ))
     }
   }

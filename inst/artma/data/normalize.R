@@ -1,3 +1,100 @@
+#' @title Repair a character vector that is not valid UTF-8
+#' @description Datasets exported from Excel, Stata, or older statistical
+#'   software are routinely single-byte encoded (Windows-1252 or Latin-1) while
+#'   carrying no encoding declaration, so a name like \code{"Müller"} reaches R
+#'   as bytes that are not valid UTF-8. Base R's regex engine treats such
+#'   strings as a hard error rather than a warning whenever a pattern needs
+#'   character boundaries (any character class or anchor), which turns an
+#'   ordinary accented author name into a crash deep inside column detection.
+#'   Values that are already valid UTF-8 are never touched, so this only ever
+#'   repairs text that would otherwise be unusable.
+#' @param x *\[character\]* The vector to repair.
+#' @return *\[character\]* The vector with every element valid UTF-8.
+#' @keywords internal
+repair_utf8 <- function(x) {
+  if (!is.character(x) || length(x) == 0L) {
+    return(x)
+  }
+
+  bad <- which(!is.na(x) & !validUTF8(x))
+  if (length(bad) == 0L) {
+    return(x)
+  }
+
+  # Windows-1252 first: it is a superset of Latin-1 across the printable range
+  # and the encoding behind the overwhelming majority of undeclared exports.
+  # Latin-1 then catches the five byte values Windows-1252 leaves undefined.
+  for (from in c("windows-1252", "latin1")) {
+    converted <- iconv(x[bad], from = from, to = "UTF-8")
+    ok <- !is.na(converted) & validUTF8(converted)
+    if (any(ok)) {
+      x[bad[ok]] <- converted[ok]
+      bad <- bad[!ok]
+    }
+    if (length(bad) == 0L) {
+      return(x)
+    }
+  }
+
+  # Anything still unreadable is mixed or corrupt. Substitute the offending
+  # bytes rather than dropping the value: a study label with one mangled
+  # character still identifies its study, an NA does not. Whatever iconv cannot
+  # salvage it returns as NA, which keeps the guarantee that every element of
+  # the result is valid UTF-8.
+  x[bad] <- iconv(x[bad], from = "UTF-8", to = "UTF-8", sub = "?")
+  x
+}
+
+
+#' @title Ensure every column name and text value is valid UTF-8
+#' @description Applies \code{repair_utf8} to the column names, character
+#'   columns, and factor levels of a freshly read data frame. This is the single
+#'   place encoding is normalized: everything downstream (whitespace
+#'   normalization, column recognition, schema reconciliation) may then assume
+#'   it is matching against valid UTF-8.
+#' @param df *\[data.frame\]* The freshly read data frame.
+#' @return *\[data.frame\]* The data frame with all text valid UTF-8.
+#' @keywords internal
+ensure_utf8_columns <- function(df) {
+  box::use(artma / libs / core / log[log_info])
+
+  repaired_names <- repair_utf8(names(df))
+  n_repaired_names <- sum(repaired_names != names(df), na.rm = TRUE)
+  names(df) <- repaired_names
+
+  repaired_cols <- character(0)
+  for (col in seq_along(df)) {
+    x <- df[[col]]
+    if (is.character(x)) {
+      fixed <- repair_utf8(x)
+      if (!identical(fixed, x)) {
+        repaired_cols <- c(repaired_cols, names(df)[[col]])
+        df[[col]] <- fixed
+      }
+    } else if (is.factor(x)) {
+      fixed_levels <- repair_utf8(levels(x))
+      if (!identical(fixed_levels, levels(x))) {
+        repaired_cols <- c(repaired_cols, names(df)[[col]])
+        levels(x) <- fixed_levels
+        df[[col]] <- x
+      }
+    }
+  }
+
+  if (n_repaired_names > 0L || length(repaired_cols) > 0L) {
+    log_info(paste(
+      "The data source is not UTF-8 encoded. Repaired text in",
+      "{length(repaired_cols)} column{?s}{cli::qty(length(repaired_cols))}",
+      if (length(repaired_cols) > 0L) "({.field {repaired_cols}})" else "",
+      "so that accented characters read correctly.",
+      "Re-export the file as UTF-8 to silence this."
+    ))
+  }
+
+  df
+}
+
+
 #' @title Replace NA-strings with NA
 #' @description Replace values listed in \code{CONST$DATA$NA_STRINGS} with a real
 #'   \code{NA} across every character (and character-coercible factor) column.
@@ -52,10 +149,12 @@ coerce_df_columns <- function(df) {
 
 #' @title Normalize a freshly read data frame
 #' @description Shared post-read normalization applied to every input format:
-#'   replace NA-strings with NA, convert whitespace-only strings to NA, and
-#'   coerce character columns to their natural R type. Running this for all
-#'   formats guarantees that, for example, \code{"NA"} becomes \code{NA} whether
-#'   the file was CSV, Excel, JSON, Stata, or RDS.
+#'   repair non-UTF-8 text, replace NA-strings with NA, convert whitespace-only
+#'   strings to NA, and coerce character columns to their natural R type.
+#'   Running this for all formats guarantees that, for example, \code{"NA"}
+#'   becomes \code{NA} whether the file was CSV, Excel, JSON, Stata, or RDS.
+#'   Encoding repair runs first because every later step matches regexes against
+#'   these values and base R errors on invalid UTF-8.
 #' @param df *\[data.frame\]* The freshly read data frame
 #' @return *\[data.frame\]* The normalized data frame
 #' @keywords internal
@@ -63,6 +162,7 @@ normalize_read_df <- function(df) {
   box::use(artma / data / smart_detection[normalize_whitespace_to_na])
 
   df |>
+    ensure_utf8_columns() |>
     replace_na_strings() |>
     normalize_whitespace_to_na() |>
     coerce_df_columns()
@@ -70,6 +170,8 @@ normalize_read_df <- function(df) {
 
 
 box::export(
+  repair_utf8,
+  ensure_utf8_columns,
   replace_na_strings,
   coerce_df_columns,
   normalize_read_df
