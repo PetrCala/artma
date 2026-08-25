@@ -486,6 +486,11 @@ create_funnel_plot <- function(df, tick_info, theme_name, precision_to_log, use_
       breaks = tick_info$ticks,
       labels = tick_labels
     ) +
+    # The contours reach mean +/- 1.96/precision, which at the lowest observed
+    # precision lies far outside the estimates; without clipping they would
+    # drag the x-axis with them. Clip the panel to the data instead and let the
+    # contour lines run off its edges.
+    ggplot2::coord_cartesian(xlim = effect_range) +
     plot_theme +
     ggplot2::theme(legend.position = "bottom")
 
