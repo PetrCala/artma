@@ -57,9 +57,6 @@ calc:
     type: "enum: stop|warn|remove|ignore"
     default: .na
     allow_na: true
-    prompt: "function"
-    prompt_function: "prompt_se_zero_handling"
-    suppress_help_in_prompt: true
     help: |
       Having standard errors equal to zero can lead to division by zero errors, introducing infinite t-statistics.
       By default, rows with zero standard errors are removed with a warning; set this option to 'stop'
@@ -957,9 +954,6 @@ data:
     type: "enum: stop|remove|median|mean|interpolate|mice"
     default: .na
     allow_na: true
-    prompt: "function"
-    prompt_function: "prompt_na_handling"
-    suppress_help_in_prompt: true
     help: |
       How to handle missing values:
         {cli::symbol$bullet} {.strong stop}: Abort if required columns have missing values (safest, default). Optional columns with missing values are left as-is and reported instead of aborting the run.
