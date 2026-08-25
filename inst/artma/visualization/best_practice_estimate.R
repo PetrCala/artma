@@ -57,7 +57,7 @@ build_bpe_plots <- function(study_rows, author_estimate, predictors, config, bma
 #' @keywords internal
 create_bpe_scatter_plot <- function(study_estimates, author_estimate, theme_name) {
   box::use(
-    artma / visualization / colors[get_colors, get_vline_color],
+    artma / visualization / colors[get_tokens, get_vline_color, get_neutral],
     artma / visualization / theme[get_theme]
   )
 
@@ -73,30 +73,48 @@ create_bpe_scatter_plot <- function(study_estimates, author_estimate, theme_name
     ] <- "At or above author's BPE"
   }
 
-  palette <- get_colors(theme_name, "bpe", submethod = "miracle")
+  tokens <- get_tokens(theme_name)
   vline_color <- get_vline_color(theme_name)
+  neutral <- get_neutral()
   plot_theme <- get_theme(theme_name)
+
+  # A diverging pair, not two arbitrary neighbours out of a qualitative ramp:
+  # the split is "below the author's estimate" against "at or above it", so the
+  # two sides should read as opposites. The author's own reference line takes a
+  # third hue, since it is a reference rather than one of the categories.
+  point_colors <- c(
+    "Study" = tokens$accent,
+    "Below author's BPE" = tokens$highlight,
+    "At or above author's BPE" = tokens$accent
+  )
 
   p <- ggplot2::ggplot(
     data = plot_df,
     ggplot2::aes(x = .data$rank, y = .data$estimate, color = .data$relative_to_author)
   ) +
+    # Neutral, behind the points: the intervals give the estimates their spread
+    # but it is the estimates that carry the comparison.
     ggplot2::geom_errorbar(
       ggplot2::aes(ymin = .data$ci_lower, ymax = .data$ci_upper),
-      width = 0, alpha = 0.4
+      width = 0, alpha = 0.5, colour = neutral$axis, linewidth = 0.3
     ) +
-    ggplot2::geom_point(size = 2) +
-    ggplot2::scale_color_brewer(palette = palette, name = "Study vs. author's BPE") +
+    ggplot2::geom_point(size = 1.5) +
+    ggplot2::scale_color_manual(
+      values = point_colors,
+      name = NULL,
+      drop = TRUE
+    ) +
     ggplot2::labs(
       title = NULL,
       x = "Studies (sorted by best-practice estimate)",
       y = "Best-practice estimate"
     ) +
-    plot_theme
+    plot_theme +
+    ggplot2::theme(legend.position = "bottom")
 
   if (has_author_reference) {
     p <- p + ggplot2::geom_hline(
-      yintercept = author_estimate, linetype = "dashed", color = vline_color, linewidth = 0.85
+      yintercept = author_estimate, linetype = "dashed", color = vline_color, linewidth = 0.5
     )
   }
 
@@ -109,12 +127,15 @@ create_bpe_scatter_plot <- function(study_estimates, author_estimate, theme_name
     )
     if (!is.null(spline_fit)) {
       spline_df <- data.frame(rank = spline_fit$x, estimate = spline_fit$y)
+      # Neutral and thin. In the theme's contrast colour at linewidth 1 it was
+      # indistinguishable from the author's reference line, which means
+      # something entirely different.
       p <- p + ggplot2::geom_line(
         data = spline_df,
         mapping = ggplot2::aes(x = .data$rank, y = .data$estimate),
         inherit.aes = FALSE,
-        color = vline_color,
-        linewidth = 1
+        color = neutral$ink_soft,
+        linewidth = 0.6
       )
     }
   }
@@ -230,12 +251,14 @@ create_bpe_density_plot <- function(var_label, group_estimates, theme_name) {
 
   ggplot2::ggplot(
     data = group_estimates,
-    ggplot2::aes(x = .data$estimate, color = .data$group)
+    ggplot2::aes(x = .data$estimate, color = .data$group, fill = .data$group)
   ) +
-    ggplot2::geom_density(alpha = 0.2, linewidth = 1) +
+    ggplot2::geom_density(alpha = 0.12, linewidth = 0.8) +
     ggplot2::scale_color_brewer(palette = palette, name = var_label) +
+    ggplot2::scale_fill_brewer(palette = palette, name = var_label) +
     ggplot2::labs(x = "Best-practice estimate", y = "Density") +
-    plot_theme
+    plot_theme +
+    ggplot2::theme(legend.position = "bottom")
 }
 
 box::export(
