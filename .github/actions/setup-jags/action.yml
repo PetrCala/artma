@@ -2,7 +2,11 @@ name: Setup JAGS
 description: >
   Install the JAGS system library needed by RoBMA (Suggests). On Linux
   setup-r-dependencies installs it from the declared sysreqs; macOS and
-  Windows need it installed explicitly.
+  Windows need it installed explicitly. The Windows install directory is
+  cached: the SourceForge download usually takes seconds but sporadically
+  stalls for minutes (observed 225s), and every workflow that uses this
+  action also runs on master pushes, so the cache is seeded under
+  refs/heads/master where all PR branches can restore it.
 inputs:
   jags-version:
     description: JAGS version to install on Windows.
@@ -16,14 +20,28 @@ runs:
       shell: bash
       run: brew install jags
 
-    - name: Install JAGS (Windows)
+    - name: Cache JAGS (Windows)
       if: runner.os == 'Windows'
+      id: cache-jags
+      uses: actions/cache@v6
+      with:
+        path: C:/Program Files/JAGS
+        key: jags-${{ runner.os }}-${{ inputs.jags-version }}
+
+    - name: Install JAGS (Windows)
+      if: runner.os == 'Windows' && steps.cache-jags.outputs.cache-hit != 'true'
       shell: bash
       run: |
         version="${{ inputs.jags-version }}"
         installer="$RUNNER_TEMP/jags-installer.exe"
-        curl -L -o "$installer" \
+        curl -L --retry 3 -o "$installer" \
           "https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Windows/JAGS-${version}.exe/download"
         "$installer" //S
+
+    - name: Export JAGS environment (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        version="${{ inputs.jags-version }}"
         echo "JAGS_HOME=C:/Program Files/JAGS/JAGS-${version}" >> "$GITHUB_ENV"
         echo "C:/Program Files/JAGS/JAGS-${version}/x64/bin" >> "$GITHUB_PATH"
