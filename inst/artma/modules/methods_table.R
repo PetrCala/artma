@@ -130,6 +130,10 @@ methods_status <- function(df) {
   }, character(1))
 }
 
+#' @title Truncate cell values to a width, marking the cut with an ellipsis
+#' @param values *\[character\]* Cell values.
+#' @param width *\[numeric\]* Maximum width in characters.
+#' @return *\[character\]* The truncated values.
 truncate_cell <- function(values, width) {
   ellipsis <- cli::symbol$ellipsis
   keep <- width - nchar(ellipsis)
@@ -144,6 +148,10 @@ truncate_cell <- function(values, width) {
   }, character(1), USE.NAMES = FALSE)
 }
 
+#' @title Left-align cell values into a fixed width
+#' @param values *\[character\]* Cell values.
+#' @param width *\[numeric\]* Column width in characters.
+#' @return *\[character\]* The padded values.
 pad_cell <- function(values, width) {
   formatC(values, width = width, flag = "-")
 }
@@ -297,5 +305,7 @@ box::export(
   fit_column_widths,
   format_methods_table,
   methods_status,
-  print_methods_table
+  pad_cell,
+  print_methods_table,
+  truncate_cell
 )
