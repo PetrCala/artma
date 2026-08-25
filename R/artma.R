@@ -156,133 +156,25 @@ artma <- function(
 
   main <- function() {
     box::use(
-      artma / data / index[prepare_data],
-      artma / libs / core / utils[get_verbosity],
-      artma / libs / infrastructure / output_files[
-        begin_output_file_capture, end_output_file_capture
-      ],
-      artma / output / export[
-        resolve_output_dir, ensure_output_dirs, export_results
-      ],
-      artma / output / run_manifest[manifest_plot_index, write_run_manifest],
-      artma / output / run_summary[render_run_summary]
+      artma / libs / infrastructure / output_files[end_output_file_capture]
     )
 
-    # Ensure output directories exist before methods run (graphics export
-    # happens during method execution and needs the directories in place)
-    save_results <- getOption("artma.output.save_results", TRUE)
-    output_dir <- NULL
-    if (isTRUE(save_results)) {
-      output_dir <- resolve_output_dir()
-      ensure_output_dirs(output_dir)
-    }
+    # The three steps below are the pipeline the session hub re-runs from its
+    # menu loop; keep them individually callable rather than inlined here.
+    context <- prepare_run_context(data = data, methods = methods)
 
-    # Record every file this run writes, so the manifest describes the run
-    # rather than whatever has accumulated in the output directory.
-    run_capture <- begin_output_file_capture()
-    on.exit(end_output_file_capture(run_capture), add = TRUE)
+    # Safety net for the capture the prepare step opened: the run step closes
+    # it when it writes the manifest, and closing a closed frame is a no-op.
+    on.exit(end_output_file_capture(context$capture), add = TRUE)
 
-    # Prepare data: use provided data or load from options
-    if (is.null(data)) {
-      df <- prepare_data(methods = methods)
-    } else {
-      # User provided data directly - still need to preprocess and compute.
-      # Mirror prepare_data's phases: decide the NA strategy (configure), run
-      # the pure preprocess + compute, then persist the computed columns.
-      box::use(
-        artma / data / preprocess[clean_data, preprocess_data],
-        artma / data / configure[resolve_na_handling],
-        artma / data / compute[compute_optional_columns, update_config_with_computed_columns],
-        artma / data_config / resolve[prime_df_for_config_cache]
-      )
+    run <- execute_run(context, methods = methods, ...)
 
-      if (get_verbosity() >= 3) {
-        cli::cli_inform("Using provided data frame (skipping file read step).")
-      }
-
-      # Prime the data-config module cache with the frame we already have, so
-      # the repeated `get_data_config()` / `read_df_for_config()` calls inside
-      # `update_config_with_computed_columns()` below reuse it instead of
-      # re-reading and re-standardizing `artma.data.source_path` from disk
-      # (mirroring the priming step `prepare_data()` performs for the
-      # file-backed path).
-      prime_df_for_config_cache(data)
-
-      resolve_na_handling(clean_data(data))
-      df <- preprocess_data(data)
-      df <- compute_optional_columns(df)
-      update_config_with_computed_columns(df)
-    }
-
-    # Invoke methods
-    results <- invoke_runtime_methods(methods = methods, df = df, ...)
-
-    # Export tabular results
-    run_files <- character()
-    if (isTRUE(save_results)) {
-      export_results(results, output_dir)
-
-      # Optionally render a single self-contained HTML report of the whole run.
-      # A render failure must never abort a run that already produced results.
-      if (isTRUE(getOption("artma.output.report", FALSE))) {
-        tryCatch(
-          {
-            box::use(
-              artma / report / render[gather_report_meta, render_report]
-            )
-            render_report(
-              results = results,
-              output_file = file.path(output_dir, "report.html"),
-              plot_index = manifest_plot_index(attr(results, "run_info")$output_files),
-              report_meta = gather_report_meta(),
-              open = FALSE
-            )
-          },
-          error = function(e) {
-            if (get_verbosity() >= 2) {
-              cli::cli_alert_warning("Failed to render the HTML report: {e$message}")
-            }
-          }
-        )
-      }
-
-      # Close the capture last, so the manifest lists the exported tables and
-      # the report alongside the graphics the methods wrote.
-      run_files <- end_output_file_capture(run_capture)
-      write_run_manifest(
-        results,
-        output_dir = output_dir,
-        run_files = run_files
-      )
-    }
-
-    # What ran, what did not, and what it produced. Prints on every run; the
-    # console counterpart of the manifest written just above.
-    render_run_summary(results, output_dir = output_dir, run_files = run_files)
-
-    if (isTRUE(save_results) && isTRUE(open_results) && interactive()) {
-      tryCatch(
-        results_open(), # nolint: box_usage_linter. # Package function from R/results.R
-        error = function(e) {
-          if (get_verbosity() >= 2) {
-            cli::cli_alert_warning(
-              "Unable to open results directory: {e$message}"
-            )
-          }
-        }
-      )
-    }
-
-    if (get_verbosity() >= 3) {
-      cli::cli_alert_success("Analysis complete.")
-      if (isTRUE(save_results) && !isTRUE(open_results)) {
-        cli::cli_alert_info(
-          "Run {.code artma::results_open()} to open the results directory."
-        )
-      }
-    }
-
-    invisible(results)
+    summarize_run(
+      run$results,
+      context = context,
+      run_files = run$run_files,
+      open_results = open_results
+    )
   }
 
   runtime_setup( # nolint: box_usage_linter. # Imported on a package-level
@@ -290,6 +182,214 @@ artma <- function(
     options_dir = options_dir,
     FUN = main
   )
+}
+
+#' @title Prepare a run
+#' @description First step of the `artma()` pipeline: resolve the output
+#'   directory, open the run's output-file capture, and produce the prepared
+#'   data frame. Either loads the data through `prepare_data()` or, when a data
+#'   frame is supplied, mirrors that pipeline's preprocess and compute phases on
+#'   it.
+#'
+#' The returned context is what the run and summarize steps consume. The
+#' capture frame it opens stays open on success: the caller owns it and must
+#' close it (the run step does so when it writes the manifest, and `artma()`
+#' registers an `on.exit()` fallback). A failure inside this function closes the
+#' frame before propagating, so an aborted preparation leaves no dangling frame.
+#'
+#' Callable repeatedly within one `runtime_setup()` extent, which is what the
+#' session hub needs to re-prepare data from its menu loop.
+#'
+#' @param data *\[data.frame, optional\]* Data frame to analyze. When `NULL`, the
+#'   data is loaded from the options file.
+#' @param methods *\[character, optional\]* The methods the run will invoke, used
+#'   to decide which columns the data preparation must resolve.
+#' @return *\[list\]* The run context: `df` (the prepared data frame),
+#'   `output_dir` (`NULL` when results are not saved), `save_results` and
+#'   `capture` (the open output-file capture frame identifier).
+#' @keywords internal
+prepare_run_context <- function(data = NULL, methods = NULL) {
+  box::use(
+    artma / data / index[prepare_data],
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / infrastructure / output_files[
+      begin_output_file_capture, end_output_file_capture
+    ],
+    artma / output / export[resolve_output_dir, ensure_output_dirs]
+  )
+
+  # Ensure output directories exist before methods run (graphics export
+  # happens during method execution and needs the directories in place)
+  save_results <- getOption("artma.output.save_results", TRUE)
+  output_dir <- NULL
+  if (isTRUE(save_results)) {
+    output_dir <- resolve_output_dir()
+    ensure_output_dirs(output_dir)
+  }
+
+  # Record every file this run writes, so the manifest describes the run
+  # rather than whatever has accumulated in the output directory.
+  run_capture <- begin_output_file_capture()
+  handed_over <- FALSE
+  on.exit(if (!handed_over) end_output_file_capture(run_capture), add = TRUE)
+
+  # Prepare data: use provided data or load from options
+  if (is.null(data)) {
+    df <- prepare_data(methods = methods)
+  } else {
+    # User provided data directly - still need to preprocess and compute.
+    # Mirror prepare_data's phases: decide the NA strategy (configure), run
+    # the pure preprocess + compute, then persist the computed columns.
+    box::use(
+      artma / data / preprocess[clean_data, preprocess_data],
+      artma / data / configure[resolve_na_handling],
+      artma / data / compute[compute_optional_columns, update_config_with_computed_columns],
+      artma / data_config / resolve[prime_df_for_config_cache]
+    )
+
+    if (get_verbosity() >= 3) {
+      cli::cli_inform("Using provided data frame (skipping file read step).")
+    }
+
+    # Prime the data-config module cache with the frame we already have, so
+    # the repeated `get_data_config()` / `read_df_for_config()` calls inside
+    # `update_config_with_computed_columns()` below reuse it instead of
+    # re-reading and re-standardizing `artma.data.source_path` from disk
+    # (mirroring the priming step `prepare_data()` performs for the
+    # file-backed path).
+    prime_df_for_config_cache(data)
+
+    resolve_na_handling(clean_data(data))
+    df <- preprocess_data(data)
+    df <- compute_optional_columns(df)
+    update_config_with_computed_columns(df)
+  }
+
+  handed_over <- TRUE
+
+  list(
+    df = df,
+    output_dir = output_dir,
+    save_results = save_results,
+    capture = run_capture
+  )
+}
+
+#' @title Run the methods of a prepared run
+#' @description Second step of the `artma()` pipeline: invoke the runtime
+#'   methods on the prepared data frame and, when the run saves results, export
+#'   the tables, optionally render the HTML report, and write the run manifest.
+#'
+#' The output-file capture opened by `prepare_run_context()` is closed here,
+#' after the export and the report, so the manifest lists the exported tables
+#' and the report alongside the graphics the methods wrote.
+#'
+#' @param context *\[list\]* The run context returned by `prepare_run_context()`.
+#' @param methods *\[character, optional\]* A character vector of the methods to
+#'   invoke. `NULL` prompts for a selection.
+#' @param ... *\[any\]* Additional arguments passed to the runtime methods.
+#' @return *\[list\]* A list with `results` (the invocation results, carrying the
+#'   `run_info`, `failed_methods` and `skipped_methods` attributes) and
+#'   `run_files` (the files this run wrote; empty when results are not saved).
+#' @keywords internal
+execute_run <- function(context, methods = NULL, ...) {
+  box::use(
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / infrastructure / output_files[end_output_file_capture],
+    artma / output / export[export_results],
+    artma / output / run_manifest[manifest_plot_index, write_run_manifest]
+  )
+
+  # Invoke methods
+  results <- invoke_runtime_methods(methods = methods, df = context$df, ...)
+
+  # Export tabular results
+  run_files <- character()
+  if (isTRUE(context$save_results)) {
+    export_results(results, context$output_dir)
+
+    # Optionally render a single self-contained HTML report of the whole run.
+    # A render failure must never abort a run that already produced results.
+    if (isTRUE(getOption("artma.output.report", FALSE))) {
+      tryCatch(
+        {
+          box::use(
+            artma / report / render[gather_report_meta, render_report]
+          )
+          render_report(
+            results = results,
+            output_file = file.path(context$output_dir, "report.html"),
+            plot_index = manifest_plot_index(attr(results, "run_info")$output_files),
+            report_meta = gather_report_meta(),
+            open = FALSE
+          )
+        },
+        error = function(e) {
+          if (get_verbosity() >= 2) {
+            cli::cli_alert_warning("Failed to render the HTML report: {e$message}")
+          }
+        }
+      )
+    }
+
+    # Close the capture last, so the manifest lists the exported tables and
+    # the report alongside the graphics the methods wrote.
+    run_files <- end_output_file_capture(context$capture)
+    write_run_manifest(
+      results,
+      output_dir = context$output_dir,
+      run_files = run_files
+    )
+  }
+
+  list(results = results, run_files = run_files)
+}
+
+#' @title Summarize a finished run
+#' @description Third step of the `artma()` pipeline: print the run summary,
+#'   optionally open the results directory, and emit the closing messages.
+#' @param results *\[list\]* The results returned by `execute_run()`.
+#' @param context *\[list\]* The run context returned by `prepare_run_context()`.
+#' @param run_files *\[character, optional\]* The files the run wrote.
+#' @param open_results *\[logical, optional\]* Whether to open the results
+#'   directory. Only honoured in interactive sessions that saved results.
+#' @return *\[list\]* The `results`, invisibly.
+#' @keywords internal
+summarize_run <- function(results, context, run_files = character(), open_results = FALSE) {
+  box::use(
+    artma / libs / core / utils[get_verbosity],
+    artma / output / run_summary[render_run_summary]
+  )
+
+  save_results <- context$save_results
+
+  # What ran, what did not, and what it produced. Prints on every run; the
+  # console counterpart of the manifest written just above.
+  render_run_summary(results, output_dir = context$output_dir, run_files = run_files)
+
+  if (isTRUE(save_results) && isTRUE(open_results) && interactive()) {
+    tryCatch(
+      results_open(), # nolint: box_usage_linter. # Package function from R/results.R
+      error = function(e) {
+        if (get_verbosity() >= 2) {
+          cli::cli_alert_warning(
+            "Unable to open results directory: {e$message}"
+          )
+        }
+      }
+    )
+  }
+
+  if (get_verbosity() >= 3) {
+    cli::cli_alert_success("Analysis complete.")
+    if (isTRUE(save_results) && !isTRUE(open_results)) {
+      cli::cli_alert_info(
+        "Run {.code artma::results_open()} to open the results directory."
+      )
+    }
+  }
+
+  invisible(results)
 }
 
 #' @title Invoke methods
