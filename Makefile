@@ -161,7 +161,7 @@ clean:
 
 # Generate test coverage report (inst/artma, the primary metric)
 coverage:
-	@echo "Generating inst/artma test coverage report..."
+	@echo "Generating test coverage report (R/ and inst/artma)..."
 	@Rscript scripts/R/inst_coverage.R
 
 # Interactive coverage report

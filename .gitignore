@@ -65,6 +65,7 @@ MANIFEST
 
 # Unit test / coverage reports
 .artma-coverage.rds
+cobertura.xml
 cobertura-inst.xml
 htmlcov/
 .tox/
