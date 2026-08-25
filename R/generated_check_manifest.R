@@ -16,6 +16,7 @@ utils::globalVariables(c(
   "ask_for_options_file_name",
   "ask_for_options_to_modify",
   "ask_for_overwrite_permission",
+  "ask_runtime_methods",
   "ask_select",
   "ask_yes_no",
   "assert",
@@ -81,6 +82,7 @@ utils::globalVariables(c(
   "mark_welcome_as_shown",
   "materialize_mock_data_path",
   "method_execution",
+  "method_picker",
   "methods_table",
   "migrate",
   "migrate_legacy_options",
@@ -151,6 +153,7 @@ utils::globalVariables(c(
 #' @noRd
 .artma_check_manifest_keep_alive <- function() {
   invisible(list(
+    climenu::checkbox,
     ggplot2::aes,
     lmtest::coeftest,
     memoise::cache_filesystem,

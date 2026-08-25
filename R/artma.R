@@ -427,9 +427,11 @@ summarize_run <- function(results, context, run_files = character(), open_result
 invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
   box::use(
     artma / const[CONST],
+    artma / interactive / method_picker[ask_runtime_methods],
     artma / libs / core / string[pluralize],
     artma / libs / core / utils[get_verbosity],
     artma / libs / infrastructure / output_files[record_output_files],
+    artma / modules / methods_table[build_methods_table],
     artma / modules / method_execution[
       build_rng_streams,
       execute_method_layer,
@@ -461,14 +463,16 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
   )
 
   if (is.null(methods)) {
-    methods <- climenu::checkbox(
-      choices = supported_methods,
-      prompt = "No runtime methods were provided. Please select the methods you would like to run: ",
-      allow_select_all = TRUE
+    methods <- ask_runtime_methods(
+      build_methods_table(available_for = df, modules = RUNTIME_METHOD_MODULES),
+      default = getOption("artma.temp.last_methods", NULL)
     )
     if (rlang::is_empty(methods)) {
       cli::cli_abort("No runtime methods were selected. Aborting...")
     }
+    # Preselect this confirmed selection on the next interactive pick of the
+    # session.
+    options(artma.temp.last_methods = methods)
   }
 
   resolve_methods <- function(methods_input) {
