@@ -10,26 +10,29 @@ ask_for_options_file_name <- function(should_clean = TRUE, prompt = NULL) {
     cli::cli_abort("You must provide the options file name explicitly in non-interactive R sessions.")
   }
 
-  box::use(artma / options / utils[parse_options_file_name])
+  box::use(
+    artma / interactive / input[ask_text],
+    artma / options / utils[parse_options_file_name]
+  )
 
   if (is.null(prompt)) {
     cli::cli_h3("Create Options File")
-    cli::cli_text("Options files store configuration for your meta-analysis, including data paths, column mappings, method parameters, and analysis settings.")
-    cli::cat_line()
-    cli::cli_text("Sample names: {.emph my_analysis}, {.emph meta_analysis_2025}, {.emph project_config}, {.emph charity_effects}")
-    cli::cat_line()
-    cli::cli_text("For detailed information, see: {.code vignette('options-files', package='artma')}")
-    cli::cat_line()
-    prompt <- "Enter a name for your options file (the .yaml extension will be added automatically): "
+    options_file_name <- ask_text(
+      question = "Name for the new options file",
+      hints = c(
+        "e.g. {.emph charity_effects}, {.emph minimum_wage_2025}; the {.code .yaml} extension is added automatically",
+        "More details: {.code vignette('options-files', package='artma')}"
+      ),
+      default = "my_analysis"
+    )
+  } else {
+    options_file_name <- readline(prompt = prompt)
   }
-
-  options_file_name <- readline(prompt = prompt)
 
   if (should_clean) {
     options_file_name <- parse_options_file_name(options_file_name)
   }
 
-  # Print confirmation of the entered filename
   cli::cli_alert_success("Options file name: {.file {options_file_name}}")
   cli::cat_line()
 
@@ -101,22 +104,15 @@ ask_for_option_value <- function(
 ) {
   box::use(
     artma / const[CONST],
+    artma / interactive / input[ask_text],
     artma / options / utils[validate_option_value],
     artma / libs / core / string[trim_quotes]
   )
 
-  retries <- 0
-  option_value <- ""
-
-  while (option_value == "" && retries < max_retries) {
-    prompt_text <- if (retries == 0) {
-      cli::format_inline("Please provide the value for {CONST$STYLES$OPTIONS$NAME(option_name)}: ")
-    } else {
-      cli::format_inline("{cli::col_red(cli::symbol$cross)} Value cannot be empty. Please provide a value for {CONST$STYLES$OPTIONS$NAME(option_name)}:")
-    }
-    option_value <- readline(prompt_text)
-    retries <- retries + 1
-  }
+  option_value <- ask_text(
+    question = cli::format_inline("Value for {CONST$STYLES$OPTIONS$NAME(option_name)}"),
+    max_retries = max_retries
+  )
 
   if (option_value == "") {
     cli::cli_alert_danger("Failed to set the value for option {CONST$STYLES$OPTIONS$NAME(option_name)}.")
@@ -124,10 +120,7 @@ ask_for_option_value <- function(
     return(NULL)
   }
 
-  if (is.character(option_value)) {
-    option_value <- trimws(option_value, which = "both")
-    option_value <- trim_quotes(option_value)
-  }
+  option_value <- trim_quotes(option_value)
 
   if (!is.null(option_type)) {
     err_msg <- validate_option_value(option_value, option_type, option_name, allow_na)
@@ -145,7 +138,10 @@ ask_for_option_value <- function(
 #' @description Prompt the user to input the names and values of the options they wish to modify. Return a list of the modified options.
 #' `list` A list of the modified options.
 ask_for_options_to_modify <- function() {
-  box::use(artma / const[CONST])
+  box::use(
+    artma / const[CONST],
+    artma / interactive / input[ask_text]
+  )
 
   cli::cli_h1("Modify Options")
   cli::cli_text("Please provide the names and values of the options you wish to modify.")
@@ -162,7 +158,10 @@ ask_for_options_to_modify <- function() {
   options_list <- list()
 
   get_option_name <- function() {
-    readline(cli::format_inline("Please enter an option name (or press {.kbd Enter} to finish): "))
+    ask_text(
+      question = "Option name ({.kbd Enter} to finish)",
+      allow_empty = TRUE
+    )
   }
 
   print_options_to_apply <- function() {
