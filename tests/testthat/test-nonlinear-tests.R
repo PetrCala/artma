@@ -5,6 +5,7 @@ box::use(
     expect_false,
     expect_gt,
     expect_identical,
+    expect_length,
     expect_match,
     expect_named,
     expect_s3_class,
@@ -166,9 +167,9 @@ test_that("selection model runs with negative and zero cutoffs and restructured 
   expect_setequal(
     selection$term_label[grepl("^pub_prob_", selection$term)],
     c(
-      "Rel. Pub. Probability (-Inf, -1.96]",
-      "Rel. Pub. Probability (-1.96, 0]",
-      "Rel. Pub. Probability (0, 1.96]"
+      "Rel. Pub. Probability t < -1.96",
+      "Rel. Pub. Probability -1.96 <= t < 0",
+      "Rel. Pub. Probability 0 <= t < 1.96"
     )
   )
 
@@ -246,7 +247,7 @@ test_that("selection model runs with a single zero cutoff (sign selection)", {
   expect_false("selection" %in% names(res$meta$skipped_models))
   selection <- res$meta$coefficients[res$meta$coefficients$model == "selection", , drop = FALSE]
   expect_true("pub_prob_1" %in% selection$term)
-  expect_true("Rel. Pub. Probability (-Inf, 0]" %in% selection$term_label)
+  expect_true("Rel. Pub. Probability t < 0" %in% selection$term_label)
 })
 
 test_that("selection cutoffs must be strictly increasing without duplicates", {
@@ -271,6 +272,41 @@ make_degenerate_options <- function() {
     hierarchical_iterations = 10L
   )
 }
+
+# The publication-probability cells are normalised against the interval above
+# the highest cutoff, which never appears as a row of its own, and their
+# significance marks test a difference from 1 rather than from 0 like every
+# other row. Neither fact is recoverable from the table, so a note carries them.
+test_that("the results carry a note naming the publication-probability reference interval", {
+  df <- make_mixed_significance_data()
+  options <- list(
+    add_significance_marks = TRUE,
+    round_to = 3L,
+    stem_representative_sample = "medians",
+    selection_cutoffs = c(1.96, 2.58),
+    selection_symmetric = TRUE,
+    selection_model = "normal",
+    hierarchical_iterations = 50L
+  )
+
+  res <- suppressWarnings(suppressMessages(run_nonlinear_methods(df, options)))
+
+  expect_true(any(startsWith(res$coefficients$term, "pub_prob_")))
+  expect_length(res$notes, 1L)
+  expect_match(res$notes, "relative to |t| >= 2.58", fixed = TRUE)
+  expect_match(res$notes, "difference from 1, not from 0", fixed = TRUE)
+})
+
+test_that("the publication-probability note appears exactly when those rows do", {
+  res <- suppressWarnings(suppressMessages(
+    run_nonlinear_methods(make_demo_data(), make_degenerate_options())
+  ))
+
+  expect_identical(
+    length(res$notes) > 0L,
+    any(startsWith(res$coefficients$term, "pub_prob_"))
+  )
+})
 
 # Characterization test for B7 (formatting-helper consolidation): pins the
 # exact formatted cells produced by the deterministic estimators (WAAP, STEM),

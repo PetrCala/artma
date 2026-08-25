@@ -474,18 +474,35 @@ run_hierarchical <- function(df, total_n, options) {
 #' Label the t-statistic intervals of the selection model's publication
 #' probabilities
 #'
+#' Bin membership follows `compute_tpowers()`: each interval is closed on the
+#' left and open on the right, so the labels are written as inequalities rather
+#' than as bracket notation, which had the inclusivity the other way round.
+#'
 #' @param cutoffs *\[numeric\]* Cut-off thresholds, strictly increasing.
 #' @param symmetric *\[logical\]* Whether the model applies cutoffs to `|t|`.
 #' @return *\[character\]* One label per estimated publication-probability
 #'   parameter; the interval above the last cutoff is the reference category
-#'   with its probability normalised to 1.
+#'   with its probability normalised to 1, and so has no label.
 #' @keywords internal
 selection_interval_labels <- function(cutoffs, symmetric) {
-  bounds <- c(if (symmetric) "0" else "-Inf", as.character(cutoffs))
+  statistic <- selection_statistic_label(symmetric)
+  bounds <- as.character(cutoffs)
   vapply(seq_along(cutoffs), function(i) {
-    left <- if (i == 1 && symmetric) "[" else "("
-    paste0(left, bounds[i], ", ", bounds[i + 1], "]")
+    if (i == 1L) {
+      paste0(statistic, " < ", bounds[i])
+    } else {
+      paste0(bounds[i - 1], " <= ", statistic, " < ", bounds[i])
+    }
   }, character(1))
+}
+
+#' Name the statistic the selection model's cutoffs are applied to
+#'
+#' @param symmetric *\[logical\]* Whether the model applies cutoffs to `|t|`.
+#' @return *\[character\]* Either `"t"` or `"|t|"`.
+#' @keywords internal
+selection_statistic_label <- function(symmetric) {
+  if (isTRUE(symmetric)) "|t|" else "t"
 }
 
 run_selection <- function(df, total_n, options) {
@@ -644,6 +661,36 @@ build_summary_table <- function(coefficients, digits) {
   shared_build_summary_table(row_labels, columns, missing_value = "")
 }
 
+#' Footnote the selection model's publication-probability rows
+#'
+#' Two things about those rows are invisible in the table itself: they are
+#' normalised against the interval above the highest cutoff, which is never
+#' printed, and their significance marks test a difference from 1 rather than
+#' from 0 like every other row. Both are stated below the table instead.
+#'
+#' @param coefficients *\[data.frame\]* The assembled coefficient frame.
+#' @param options *\[list\]* The resolved method options.
+#' @return *\[character\]* A single note, or `character(0)` when no
+#'   publication-probability rows were estimated.
+#' @keywords internal
+selection_pub_prob_note <- function(coefficients, options) {
+  if (!any(startsWith(coefficients$term, "pub_prob_"))) {
+    return(character(0))
+  }
+  cutoffs <- options$selection_cutoffs %||% c(1.96)
+  reference <- paste0(
+    selection_statistic_label(options$selection_symmetric %||% FALSE),
+    " >= ", as.character(cutoffs[length(cutoffs)])
+  )
+  sprintf(
+    paste0(
+      "Rel. Pub. Probability is relative to %s, whose probability is fixed at 1; ",
+      "its significance marks test a difference from 1, not from 0."
+    ),
+    reference
+  )
+}
+
 run_nonlinear_methods <- function(df, options) {
   validate(is.data.frame(df))
   total_n <- nrow(df)
@@ -736,7 +783,7 @@ run_nonlinear_methods <- function(df, options) {
       n_obs_model = numeric(),
       stringsAsFactors = FALSE
     )
-    return(list(coefficients = empty, summary = empty, skipped = skipped, options = options, plots = plots))
+    return(list(coefficients = empty, summary = empty, skipped = skipped, options = options, plots = plots, notes = character(0)))
   }
   coefficients <- do.call(rbind, results)
   digits <- options$round_to %||% 3L
@@ -749,7 +796,8 @@ run_nonlinear_methods <- function(df, options) {
     summary = summary,
     skipped = skipped,
     options = options,
-    plots = plots
+    plots = plots,
+    notes = selection_pub_prob_note(coefficients, options)
   )
 }
 
