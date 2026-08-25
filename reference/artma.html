@@ -74,8 +74,10 @@ data will be used directly, bypassing the data reading step.</p></dd>
 
 <dt id="arg-methods">methods<a class="anchor" aria-label="anchor" href="#arg-methods"></a></dt>
 <dd><p><em>[character, optional]</em> A character vector of method names to run.
-Use <code>"all"</code> to run all available methods. If <code>NULL</code>, an interactive menu will
-prompt you to select methods. See <code><a href="methods_list.html">artma::methods_list()</a></code> for available methods.</p></dd>
+Use <code>"all"</code> to run all available methods. If <code>NULL</code> and running
+interactively, the session hub opens: a menu loop for picking and running
+methods, previewing data, and opening results across repeated runs. See
+<code><a href="methods_list.html">artma::methods_list()</a></code> for available methods.</p></dd>
 
 
 <dt id="arg-options">options<a class="anchor" aria-label="anchor" href="#arg-options"></a></dt>
@@ -105,7 +107,9 @@ method name. The structure of each result depends on the specific method.
 Methods that fail are omitted from the list; their names and error messages
 are attached as the <code>failed_methods</code> attribute. The <code>run_info</code> attribute
 carries the run's identity: the methods requested, the effective seed, and
-the files each method wrote.</p>
+the files each method wrote. A session hub call additionally attaches a
+<code>runs</code> attribute with one entry per run (methods, seed, timestamp) and
+keeps the latest result per method across the session's runs.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

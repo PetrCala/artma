@@ -177,6 +177,16 @@ proposal is verified against the data before it is used, and the hook is
 off unless the option is set. Payload and response schemas:
 [contributingGuides/COLUMN_MAPPING_HOOK.md](https://petrcala.github.io/artma/contributingGuides/COLUMN_MAPPING_HOOK.md).
 
+### Session Hub
+
+Interactive
+[`artma()`](https://petrcala.github.io/artma/reference/artma.md) calls
+without `methods` enter a menu loop (`inst/artma/interactive/hub.R`)
+that runs the pipeline steps repeatedly and returns the accumulated
+results; scripted paths stay linear. Entry conditions, items, return
+contract, and extension points:
+[contributingGuides/HUB.md](https://petrcala.github.io/artma/contributingGuides/HUB.md).
+
 ### Autonomy System
 
 Controls how much user interaction happens during analysis.

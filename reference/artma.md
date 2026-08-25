@@ -29,8 +29,10 @@ artma(
 - methods:
 
   *\[character, optional\]* A character vector of method names to run.
-  Use `"all"` to run all available methods. If `NULL`, an interactive
-  menu will prompt you to select methods. See
+  Use `"all"` to run all available methods. If `NULL` and running
+  interactively, the session hub opens: a menu loop for picking and
+  running methods, previewing data, and opening results across repeated
+  runs. See
   [`artma::methods_list()`](https://petrcala.github.io/artma/reference/methods_list.md)
   for available methods.
 
@@ -61,7 +63,10 @@ method name. The structure of each result depends on the specific
 method. Methods that fail are omitted from the list; their names and
 error messages are attached as the `failed_methods` attribute. The
 `run_info` attribute carries the run's identity: the methods requested,
-the effective seed, and the files each method wrote.
+the effective seed, and the files each method wrote. A session hub call
+additionally attaches a `runs` attribute with one entry per run
+(methods, seed, timestamp) and keeps the latest result per method across
+the session's runs.
 
 ## Details
 
