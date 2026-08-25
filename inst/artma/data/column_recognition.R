@@ -81,6 +81,10 @@ get_column_patterns <- function() {
         "^n[_\\.]?obs$",
         "^n$",
         "^sample[_\\.]?size$",
+        # Compressed sample-size names common in econ meta-analyses:
+        # samsize, sampsize, samplesize, TotalObs, total_observations.
+        "^sam(p|ple)?[_\\.]?size$",
+        "^total[_\\.]?obs(ervations)?$",
         "^observations?$",
         "^n[_\\.]?observations?$",
         "^obs[_\\.]?n$"
@@ -466,14 +470,24 @@ score_candidate_values <- function(df, candidate_col, std_col, name_score) {
     }
 
     if (analysis$is_numeric) {
-      # Check if values are in reasonable range for sample sizes
-      if (!is.na(analysis$min) && analysis$min < 1) {
-        value_penalty <- value_penalty + 0.1
+      # A sample size of 0 or 1 observation is implausible; a column whose
+      # minimum is 1 is typically an estimates-per-study count or another
+      # counter, not the underlying samples (which start around 5-10 even
+      # for tiny experiments).
+      if (!is.na(analysis$min) && analysis$min <= 1) {
+        value_penalty <- value_penalty + 0.3
       }
       if (!is.na(analysis$max) && analysis$max > 1e6) {
         # Extremely large values unlikely to be sample sizes
         value_penalty <- value_penalty + 0.1
       }
+    }
+
+    # With enough rows, a column with two distinct values is a dummy, never
+    # a sample size. Tiny frames are exempt: two rows always have at most
+    # two distinct values.
+    if (!is.null(role_profile) && role_profile$n >= 10 && role_profile$n_distinct <= 2) {
+      value_penalty <- value_penalty + 0.5
     }
 
     # A sample-size column is essentially always integer-valued. A column
@@ -771,6 +785,31 @@ recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_con
         if (length(candidates) == 0) {
           # The veto left the role unmapped, so the user is about to be asked
           # for it (or the run stops in a non-interactive session). Say why.
+          log_warn("No column matched {.field {std_col}}: {.field {implausible}} matched by name but {reason}.")
+        } else {
+          log_debug("Skipped {.field {implausible}} as {.field {std_col}}: {reason}.")
+        }
+      }
+    }
+
+    # Same value-level veto for n_obs: without it, score_candidate_values()
+    # only runs when several columns compete, so a lone name-matched dummy
+    # (rel_size), counter, or log-scale count would be accepted unchecked.
+    # The margin below the acceptance threshold keeps this a veto of clear
+    # value contradictions; merely weak candidates still compete on rank.
+    if (length(candidates) > 0 && std_col == "n_obs") {
+      implausible <- candidates[vapply(
+        candidates,
+        function(cand) {
+          score_candidate_values(df, cand, std_col, matches[[cand]]$score) < confidence_threshold - 0.1
+        },
+        logical(1)
+      )]
+
+      if (length(implausible) > 0) {
+        candidates <- setdiff(candidates, implausible)
+        reason <- "their values do not look like sample sizes (dummies, counters, or transformed counts)"
+        if (length(candidates) == 0) {
           log_warn("No column matched {.field {std_col}}: {.field {implausible}} matched by name but {reason}.")
         } else {
           log_debug("Skipped {.field {implausible}} as {.field {std_col}}: {reason}.")

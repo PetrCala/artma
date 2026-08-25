@@ -278,8 +278,10 @@ test_that("recognize_columns correctly resolves obs_n vs n_obs conflict", {
 })
 
 
-test_that("recognize_columns handles case with only sequential column", {
-  # Edge case: only obs_n exists, no n_obs
+test_that("recognize_columns declines n_obs when only a sequential counter matches", {
+  # Edge case: only obs_n exists, no n_obs. A row counter mapped as the
+  # sample size poisons every downstream method, so the value-level veto
+  # must decline the role even for a sole name-matched candidate.
   df <- data.frame(
     obs_n = 1:10,
     study_name = paste("Study", LETTERS[1:10]),
@@ -290,8 +292,7 @@ test_that("recognize_columns handles case with only sequential column", {
   withr::local_options(list("artma.verbose" = 1))
   mapping <- recognize_columns(df, min_confidence = 0.7)
 
-  # Should still map to n_obs despite being sequential (it's the only candidate)
-  expect_equal(mapping$n_obs, "obs_n")
+  expect_false("n_obs" %in% names(mapping))
 })
 
 

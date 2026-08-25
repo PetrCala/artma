@@ -416,6 +416,166 @@ test_that("a t_stat column preferring t_stat by name is not claimed as effect", 
 })
 
 
+test_that("a partially matching witness column cannot flip the se choice", {
+  withr::local_seed(59)
+  withr::local_options(list("artma.verbose" = 1))
+  n <- 200
+  effect <- round(stats::rnorm(n, 0.2, 0.5), 3)
+  se <- pmax(round(exp(stats::rnorm(n, log(0.15), 0.4)), 3), 0.001)
+  se_wide <- round(se * 1.3, 3)
+
+  # "wd" reproduces estimate / se_wide on a minority of rows (a derived
+  # interval-width statistic); corroboration that patchy is coincidence and
+  # must not outrank the equally-named, first-listed se_low.
+  wd <- round(stats::rnorm(n, 0, 3), 3)
+  partial <- seq_len(floor(n * 0.2))
+  wd[partial] <- round(effect[partial] / se_wide[partial], 4)
+
+  df <- data.frame(
+    study = rep(sprintf("Author%02d (2005)", 1:25), each = 8),
+    estimate = effect,
+    se_low = se,
+    se_wide = se_wide,
+    wd = wd
+  )
+
+  mapping <- recognize_columns(df)
+
+  expect_equal(mapping$effect, "estimate")
+  expect_equal(mapping$se, "se_low")
+})
+
+
+test_that("an anonymous se crowded out by moderator *_se columns still wins via its t witness", {
+  withr::local_seed(60)
+  withr::local_options(list("artma.verbose" = 1))
+  n <- 200
+  pcc <- round(stats::rnorm(n, 0.15, 0.2), 4)
+  sepcc <- round(stats::runif(n, 0.02, 0.3), 4)
+
+  # Eight se-suffixed moderator columns outrank the true, anonymously named
+  # sepcc on name score; only the file's own t-statistic column identifies
+  # the real pair arithmetically.
+  df <- data.frame(
+    study = rep(sprintf("Study%02d", 1:25), each = 8),
+    pcc = pcc,
+    sepcc = sepcc,
+    tstat = round(pcc / sepcc, 4),
+    nobs = rep(sample(80:2000, 25, replace = TRUE), each = 8)
+  )
+  for (i in 1:8) {
+    df[[paste0("mod", i, "_se")]] <- round(stats::runif(n, 10, 20), 3)
+  }
+
+  mapping <- recognize_columns(df)
+
+  expect_equal(mapping$effect, "pcc")
+  expect_equal(mapping$se, "sepcc")
+  expect_equal(mapping$t_stat, "tstat")
+})
+
+
+test_that("a name-matched se column with a handful of distinct values is declined", {
+  withr::local_seed(61)
+  withr::local_options(list("artma.verbose" = 1))
+  n <- 300
+  resp <- round(stats::rnorm(n, 0.1, 0.3), 3)
+  ci_se <- sample(c(1, 2, 4), n, replace = TRUE)
+  ci_se[sample(seq_len(n), floor(n * 0.4))] <- NA
+
+  df <- data.frame(
+    study = rep(sprintf("Study%02d", 1:30), each = 10),
+    resp = resp,
+    ci_se = ci_se,
+    nobs = rep(sample(30:544, 30, replace = TRUE), each = 10)
+  )
+
+  mapping <- recognize_columns(df)
+
+  expect_false("se" %in% names(mapping))
+  expect_false("effect" %in% names(mapping))
+  expect_equal(mapping$n_obs, "nobs")
+})
+
+
+test_that("a nearly empty se column is not mapped on the values it does have", {
+  withr::local_seed(62)
+  withr::local_options(list("artma.verbose" = 1))
+  n <- 1800
+  se_raw <- rep(NA_real_, n)
+  filled <- sample(seq_len(n), 40)
+  se_raw[filled] <- round(stats::runif(40, 0.19, 1.1), 3)
+
+  df <- data.frame(
+    study = rep(sprintf("Author%02d (2010)", 1:60), each = 30),
+    effect = round(stats::rnorm(n, 0.2, 0.4), 3),
+    se_raw = se_raw
+  )
+
+  mapping <- recognize_columns(df)
+
+  expect_equal(mapping$effect, "effect")
+  expect_false("se" %in% names(mapping))
+})
+
+
+test_that("an estimates-per-study count loses n_obs to the true sample-size column", {
+  withr::local_seed(63)
+  withr::local_options(list("artma.verbose" = 1))
+  core <- make_meta_core()
+
+  # "n" matches the n_obs regex exactly but counts estimates per study
+  # (minimum 1); "samsize" holds the real, larger-scale sample sizes.
+  df <- data.frame(
+    study = core$labels,
+    effect = core$effect,
+    se = core$se,
+    n = sample(1:40, core$n, replace = TRUE),
+    samsize = rep(sample(14:2982, 25, replace = TRUE), each = 6)
+  )
+
+  mapping <- recognize_columns(df)
+
+  expect_equal(mapping$n_obs, "samsize")
+})
+
+
+test_that("a totalobs column is recognized as n_obs", {
+  withr::local_seed(64)
+  withr::local_options(list("artma.verbose" = 1))
+  core <- make_meta_core()
+
+  df <- data.frame(
+    study = core$labels,
+    effect = core$effect,
+    se = core$se,
+    TotalObs = rep(sample(20:5000, 25, replace = TRUE), each = 6)
+  )
+
+  mapping <- recognize_columns(df)
+
+  expect_equal(mapping$n_obs, "TotalObs")
+})
+
+
+test_that("a dummy column matching n_obs by name is declined", {
+  withr::local_seed(65)
+  withr::local_options(list("artma.verbose" = 1))
+  core <- make_meta_core()
+
+  df <- data.frame(
+    study = core$labels,
+    effect = core$effect,
+    se = core$se,
+    rel_size = sample(0:1, core$n, replace = TRUE)
+  )
+
+  mapping <- recognize_columns(df)
+
+  expect_false("n_obs" %in% names(mapping))
+})
+
+
 test_that("Stata-style missing markers do not sink a well-named se column", {
   withr::local_seed(58)
   withr::local_options(list("artma.verbose" = 1))
