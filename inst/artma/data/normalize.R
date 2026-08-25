@@ -123,6 +123,39 @@ replace_na_strings <- function(df) {
 }
 
 
+#' @title Replace Stata missing markers with NA
+#' @description Stata writes missing values to CSV as a bare \code{"."}, and
+#'   its extended missing codes as \code{".a"} through \code{".z"}. Left in
+#'   place these are ordinary text, so a column that is numeric apart from its
+#'   missing values never coerces to numeric and ends up treated as a
+#'   categorical moderator. Matching is on the trimmed value against
+#'   \code{CONST$DATA$STATA_MISSING_PATTERN} and must run before
+#'   \code{coerce_df_columns}, which is what turns the now-uniform numeric text
+#'   into a real numeric column.
+#' @param df *\[data.frame\]* The data frame to normalize
+#' @return *\[data.frame\]* The data frame with Stata missing markers as NA
+#' @keywords internal
+replace_stata_missing <- function(df) {
+  box::use(artma / const[CONST])
+
+  pattern <- CONST$DATA$STATA_MISSING_PATTERN
+  for (col in colnames(df)) {
+    x <- df[[col]]
+    if (is.factor(x)) {
+      if (!any(grepl(pattern, trimws(levels(x))))) next
+      x <- as.character(x)
+    } else if (!is.character(x)) {
+      next
+    }
+    is_marker <- !is.na(x) & grepl(pattern, trimws(x))
+    if (!any(is_marker)) next
+    x[is_marker] <- NA_character_
+    df[[col]] <- x
+  }
+  df
+}
+
+
 #' @title Coerce character columns to their natural R type
 #' @description Convert text columns (as read from a file) to logical, integer,
 #'   or numeric when every non-NA value is consistent with that type. This uses
@@ -149,12 +182,15 @@ coerce_df_columns <- function(df) {
 
 #' @title Normalize a freshly read data frame
 #' @description Shared post-read normalization applied to every input format:
-#'   repair non-UTF-8 text, replace NA-strings with NA, convert whitespace-only
-#'   strings to NA, and coerce character columns to their natural R type.
-#'   Running this for all formats guarantees that, for example, \code{"NA"}
-#'   becomes \code{NA} whether the file was CSV, Excel, JSON, Stata, or RDS.
-#'   Encoding repair runs first because every later step matches regexes against
-#'   these values and base R errors on invalid UTF-8.
+#'   repair non-UTF-8 text, replace NA-strings and Stata missing markers with
+#'   NA, convert whitespace-only strings to NA, and coerce character columns to
+#'   their natural R type. Running this for all formats guarantees that, for
+#'   example, \code{"NA"} becomes \code{NA} whether the file was CSV, Excel,
+#'   JSON, Stata, or RDS. Order is load-bearing: encoding repair runs first
+#'   because every later step matches regexes against these values and base R
+#'   errors on invalid UTF-8, and all three missing-value steps run before
+#'   \code{coerce_df_columns}, which can only type a column once its blanks are
+#'   real NAs.
 #' @param df *\[data.frame\]* The freshly read data frame
 #' @return *\[data.frame\]* The normalized data frame
 #' @keywords internal
@@ -164,6 +200,7 @@ normalize_read_df <- function(df) {
   df |>
     ensure_utf8_columns() |>
     replace_na_strings() |>
+    replace_stata_missing() |>
     normalize_whitespace_to_na() |>
     coerce_df_columns()
 }
@@ -173,6 +210,7 @@ box::export(
   repair_utf8,
   ensure_utf8_columns,
   replace_na_strings,
+  replace_stata_missing,
   coerce_df_columns,
   normalize_read_df
 )

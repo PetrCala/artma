@@ -13,6 +13,8 @@
 #' identifier column can never be claimed as an effect size just because its
 #' name contains "coef".
 
+box::use(artma / const[CONST])
+
 #' Minimum non-missing rows before value-based evidence is trusted. Below this
 #' the caller falls back to name-based matching (tiny data frames carry too
 #' little distributional information).
@@ -43,12 +45,13 @@ PROVISIONAL_THRESHOLDS <- list(
 
 clamp01 <- function(x) max(0, min(1, x))
 
-#' Stata-style missing-value markers that can survive into a raw text column:
-#' the bare "." and the extended ".a" through ".z" missing codes. These are
-#' recognized as missing before the numeric-coverage check runs, so a
-#' genuinely numeric column exported from Stata with real missingness is not
-#' mistaken for a non-numeric one just because its NA values are spelled ".".
-STATA_MISSING_PATTERN <- "^\\.[a-z]?$"
+#' Stata-style missing-value markers that can survive into a raw text column.
+#' Read-time normalization already replaces these with `NA` for every input
+#' format (`replace_stata_missing`), so this is a backstop for callers that
+#' profile a frame which did not come through `normalize_read_df`: a genuinely
+#' numeric column exported from Stata with real missingness is not mistaken
+#' for a non-numeric one just because its NA values are spelled ".".
+STATA_MISSING_PATTERN <- CONST$DATA$STATA_MISSING_PATTERN
 
 #' @title Coerce a column to numeric when it plausibly holds numbers
 #' @description Returns a numeric vector when the input is numeric or when at
