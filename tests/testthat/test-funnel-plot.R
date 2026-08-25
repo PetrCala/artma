@@ -294,6 +294,25 @@ test_that("funnel_plot drops the contours when show_contours is off", {
 })
 
 
+# The contours reach mean +/- 1.96/precision, which at a low observed precision
+# lies far outside the estimates; they used to drag the x-axis with them.
+test_that("funnel_plot clips the x-axis to the estimates, not the contours", {
+  local_funnel_options("artma.calc.precision_type" = "1/SE")
+
+  df <- create_test_data()
+  df$precision[1] <- 0.05 # contour reaches mean +/- 39.2 at this precision
+
+  plot <- funnel_plot(df)$plots$funnel_plot
+  built <- ggplot2::ggplot_build(plot)
+  panel_range <- built$layout$panel_params[[1]]$x.range
+
+  effect_range <- range(df$effect)
+  margin <- 0.1 * diff(effect_range)
+  expect_true(panel_range[1] >= effect_range[1] - margin)
+  expect_true(panel_range[2] <= effect_range[2] + margin)
+})
+
+
 # A wide range used to pin the exact data minimum, maximum and mean on top of a
 # fixed-interval grid, so labels such as 350 and 369.54 overlapped.
 test_that("funnel_plot keeps x-axis ticks far enough apart to be readable", {
