@@ -1020,6 +1020,40 @@ data:
       them from it.
       For more details, read the 'data_config' vignette.
 
+  mapping:
+    external_command:
+      type: "character"
+      default: .na
+      allow_na: true
+      help: |
+        Opt-in hook that lets an external tool propose column mappings for the
+        required roles auto-detection declined. Unset (the default), nothing
+        runs and detection behaves exactly as it does today.
+        Set it to a command line ({.emph Rscript /path/to/mapper.R}, or a
+        character vector of the executable and its arguments) and artma runs
+        that command once per dataset when a required role stays unmapped. The
+        command reads a JSON request on stdin (column names, per-column summary
+        statistics, and the evidence behind each decline; never any raw values)
+        and writes a proposed mapping as JSON to stdout.
+        Every proposal is verified against the same value-plausibility and
+        pair-consistency checks an auto-detected candidate faces, and a
+        proposal that fails is rejected. In an interactive session verified
+        proposals are offered for confirmation; outside one, setting this
+        option counts as consent and they are applied directly. A command that
+        fails, times out, or returns unusable output logs a warning and leaves
+        the roles unmapped; it can never abort a run.
+        Reading the payload requires the {.pkg jsonlite} package.
+        See the {.file COLUMN_MAPPING_HOOK.md} contributing guide for the
+        payload and response schemas.
+
+    external_timeout:
+      type: "numeric"
+      default: 30
+      help: |
+        Seconds the command in {.strong data.mapping.external_command} may run
+        before it is killed and the run falls back to leaving the declined
+        roles unmapped.
+
   derive_pcc:
     type: "logical"
     default: false

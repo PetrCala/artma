@@ -54,6 +54,7 @@ preprocess_column_mapping <- function(user_input, options_def) {
         artma / data / read[read_file],
         artma / data / column_recognition[recognize_columns],
         artma / data / interactive_mapping[confirm_derivation, interactive_column_mapping],
+        artma / data / external_mapping[external_mapper_command],
         artma / libs / core / utils[get_verbosity]
       )
 
@@ -73,8 +74,11 @@ preprocess_column_mapping <- function(user_input, options_def) {
       derived_roles <- if (is.null(derivation)) character(0) else c("effect", "se")
 
       # Present detected columns to user for confirmation
-      # This will show detected columns and allow user to accept, modify, or skip optional
-      if (length(auto_mapping) > 0) {
+      # This will show detected columns and allow user to accept, modify, or skip optional.
+      # A configured external mapping hook is the one reason to enter the
+      # mapping flow with nothing detected: every required role is declined,
+      # which is exactly what the hook is there to answer.
+      if (length(auto_mapping) > 0 || !is.null(external_mapper_command())) {
         mapping <- interactive_column_mapping(
           df = df,
           auto_mapping = auto_mapping,

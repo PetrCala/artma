@@ -104,12 +104,17 @@ present_detected_mapping <- function(
 #'   values look like the role, how complete the column is, whether it agrees
 #'   with the column already mapped to its counterpart role, and how far ahead
 #'   of the runner-up it sits.
+#'   A candidate that came from the external mapping hook says so first (see
+#'   `artma / data / external_mapping`).
 #' @param entry *\[list\]* One provisional candidate.
 #' @return *\[character\]* Evidence lines, most telling first.
 format_provisional_evidence <- function(entry) {
   lines <- character(0)
   summary <- entry$summary
 
+  if (identical(entry$source, "external")) {
+    lines <- c(lines, "proposed by the external column mapper you configured, and verified against the data")
+  }
   if (!is.null(entry$evidence) && !is.na(entry$evidence)) {
     lines <- c(lines, sprintf(
       "its values look like %s values (evidence %.2f out of 1)", entry$role, entry$evidence
@@ -390,17 +395,24 @@ confirm_derivation <- function(
 #' @param derived_roles *\[character, optional\]* Required roles the pipeline
 #'   computes rather than reads, so they are neither prompted for nor reported
 #'   as missing (see `artma / data / derivation`). Defaults to none.
+#' @param declined *\[list, optional\]* The `declined` attribute of
+#'   `recognize_columns()`, handed to the external mapping hook as evidence.
+#' @param external_fn *\[function, optional\]* The external mapping hook,
+#'   receiving `(df, mapping, roles, declined)` and returning verified
+#'   proposals. Injectable for testing; defaults to the configured command,
+#'   which is off unless `data.mapping.external_command` is set.
 #' @return *\[list\]* User-confirmed column mapping
-interactive_column_mapping <- function(df, auto_mapping = list(), required_only = TRUE, show_detected_first = FALSE, is_interactive = interactive(), provisional = attr(auto_mapping, "provisional"), select_fn = NULL, derived_roles = character(0)) {
+interactive_column_mapping <- function(df, auto_mapping = list(), required_only = TRUE, show_detected_first = FALSE, is_interactive = interactive(), provisional = attr(auto_mapping, "provisional"), select_fn = NULL, derived_roles = character(0), declined = attr(auto_mapping, "declined"), external_fn = NULL) {
   box::use(
     artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / autonomy[should_prompt_user],
-    artma / libs / core / log[log_warn],
+    artma / libs / core / log[log_info, log_warn],
     artma / data / column_recognition[
       get_required_column_names,
       get_column_patterns
-    ]
+    ],
+    artma / data / external_mapping[external_mapping_proposals]
   )
 
   validate(is.data.frame(df), is.list(auto_mapping))
@@ -422,6 +434,39 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
 
   # Track missing required columns
   missing_required <- setdiff(required_cols, names(auto_mapping))
+
+  # The opt-in external mapping hook. Off unless the user configured a command,
+  # in which case it is asked about the roles recognition declined and its
+  # proposals are verified before they go anywhere. Interactive sessions
+  # confirm them through the same prompt as recognition's own sub-threshold
+  # candidates; outside one, configuring the command is the consent, so a
+  # verified proposal is applied directly.
+  if (length(missing_required) > 0) {
+    if (is.null(external_fn)) external_fn <- external_mapping_proposals
+    external <- external_fn(
+      df = df,
+      mapping = auto_mapping,
+      roles = missing_required,
+      declined = declined
+    )
+    if (is.list(external) && length(external) > 0) {
+      if (isTRUE(is_interactive)) {
+        provisional <- utils::modifyList(
+          if (is.list(provisional)) provisional else list(),
+          external
+        )
+      } else {
+        for (role in names(external)) {
+          auto_mapping[[role]] <- external[[role]]$column
+          log_info(paste(
+            "Mapped {.field {role}} to {.val {external[[role]]$column}} on the proposal of the external",
+            "column mapper configured in {.code data.mapping.external_command}."
+          ))
+        }
+        missing_required <- setdiff(required_cols, names(auto_mapping))
+      }
+    }
+  }
 
   if (!should_prompt_user(required_level = "autonomous", is_interactive = is_interactive)) {
     if (get_verbosity() >= 3) {
