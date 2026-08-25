@@ -15,6 +15,7 @@
 #' @export
 prompt_save_preference <- function(option_path, value, description = NULL, respect_autonomy = TRUE) {
   box::use(
+    artma / interactive / input[ask_select],
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[validate],
     artma / libs / core / autonomy[should_prompt_user]
@@ -51,16 +52,15 @@ prompt_save_preference <- function(option_path, value, description = NULL, respe
 
   cli::cat_line()
 
-  # Ask if they want to save
-  save_choices <- c(
-    "Yes, save to options file" = "yes",
-    "No, use only for this session" = "no"
-  )
-
-  selected <- climenu::select(
-    choices = names(save_choices),
-    prompt = sprintf("Do you want to save %s to your options file?", desc_text),
-    selected = 1 # Default to "yes"
+  # Ask if they want to save. No `default` on purpose: a cancelled menu must
+  # not save, even though the cursor starts on "yes" (the first choice).
+  selected <- ask_select(
+    question = sprintf("Do you want to save %s to your options file?", desc_text),
+    choices = c(
+      "Yes, save to options file" = "yes",
+      "No, use only for this session" = "no"
+    ),
+    confirm = FALSE
   )
 
   if (rlang::is_empty(selected)) {
@@ -70,9 +70,7 @@ prompt_save_preference <- function(option_path, value, description = NULL, respe
     return(FALSE)
   }
 
-  should_save <- save_choices[selected] == "yes"
-
-  if (!should_save) {
+  if (!identical(selected, "yes")) {
     if (get_verbosity() >= 3) {
       cli::cli_alert_info("Using for current session only.")
     }
@@ -163,6 +161,7 @@ save_to_options_file <- function(option_path, value) {
 #' @export
 prompt_save_variable_selection <- function(var_names, var_configs = NULL, description = NULL, respect_autonomy = TRUE) {
   box::use(
+    artma / interactive / input[ask_select],
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / validation[validate],
     artma / libs / core / autonomy[should_prompt_user]
@@ -205,16 +204,15 @@ prompt_save_variable_selection <- function(var_names, var_configs = NULL, descri
 
   cli::cat_line()
 
-  # Ask if they want to save
-  save_choices <- c(
-    "Yes, save to options file" = "yes",
-    "No, use only for this session" = "no"
-  )
-
-  selected <- climenu::select(
-    choices = names(save_choices),
-    prompt = sprintf("Do you want to save %s to your options file?", desc_text),
-    selected = 1 # Default to "yes"
+  # Ask if they want to save. No `default` on purpose: a cancelled menu must
+  # not save, even though the cursor starts on "yes" (the first choice).
+  selected <- ask_select(
+    question = sprintf("Do you want to save %s to your options file?", desc_text),
+    choices = c(
+      "Yes, save to options file" = "yes",
+      "No, use only for this session" = "no"
+    ),
+    confirm = FALSE
   )
 
   if (rlang::is_empty(selected)) {
@@ -224,9 +222,7 @@ prompt_save_variable_selection <- function(var_names, var_configs = NULL, descri
     return(FALSE)
   }
 
-  should_save <- save_choices[selected] == "yes"
-
-  if (!should_save) {
+  if (!identical(selected, "yes")) {
     if (get_verbosity() >= 3) {
       cli::cli_alert_info("Using for current session only.")
     }

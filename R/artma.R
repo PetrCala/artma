@@ -691,6 +691,7 @@ prompt_install_missing_packages <- function(pkgs, method_name,
                                             is_installed = NULL,
                                             install_packages = NULL) {
   box::use(
+    artma / interactive / input[ask_yes_no],
     artma / libs / core / autonomy[should_prompt_user]
   )
 
@@ -704,13 +705,12 @@ prompt_install_missing_packages <- function(pkgs, method_name,
     return(pkgs)
   }
 
-  choice <- climenu::select(
-    choices = c("Yes", "No"),
-    prompt = cli::format_inline(
+  should_install <- ask_yes_no(
+    cli::format_inline(
       "Method {.code {method_name}} needs {pkgs}, which {?is/are} not installed. Install now?"
     )
   )
-  if (!identical(choice, "Yes")) {
+  if (!should_install) {
     return(pkgs)
   }
 

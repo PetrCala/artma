@@ -80,11 +80,12 @@ offer_options_fix <- function(options_file_name, options_dir = NULL) {
       cli::cli_alert_warning(
         "Your options file {.file {options_file_name}} is outdated ({length(errors)} problem{?s})."
       )
-      choice <- climenu::select(
-        choices = c("Fix now (recommended)", "Continue with defaults"),
-        prompt = "How would you like to handle this?"
+      box::use(artma / interactive / input[ask_select])
+      choice <- ask_select(
+        question = "How would you like to handle this?",
+        choices = c("Fix now (recommended)" = "fix", "Continue with defaults" = "continue")
       )
-      if (choice == "Fix now (recommended)") {
+      if (identical(choice, "fix")) {
         options_fix(
           options_file_name = options_file_name,
           options_dir = options_dir,

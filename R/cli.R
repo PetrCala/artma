@@ -128,11 +128,8 @@ cli_install <- function(dir = "~/.local/bin", force = FALSE) {
   target <- file.path(dir, "artma")
 
   if (interactive()) {
-    choice <- climenu::select(
-      choices = c("Yes", "No"),
-      prompt = cli::format_inline("Install the artma CLI launcher to {.path {target}}?")
-    )
-    if (!identical(choice, "Yes")) {
+    box::use(artma / interactive / input[ask_yes_no])
+    if (!ask_yes_no(cli::format_inline("Install the artma CLI launcher to {.path {target}}?"))) {
       cli::cli_abort("Aborting CLI launcher installation.")
     }
   } else if (!isTRUE(force)) {
