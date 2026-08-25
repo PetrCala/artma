@@ -1,160 +1,91 @@
-# Each function in this module should take a single argument, `opt`, which is the option to prompt the user for.
-# These functions are imported into the `template.R` file, which is used to prompt the user for options.
+# Custom prompt functions dispatched from `template.R` (via `prompt: "function"`
+# template nodes) or called directly by the configure phase. Each takes the
+# option definition as `opt` (unused by most) and forwards `...` to
+# `ask_select`, which keeps the menu backend injectable in tests.
 
-prompt_winsorization_level <- function(opt, ...) {
-  box::use(artma / const[CONST])
+prompt_winsorization_level <- function(opt = NULL, ...) {
+  box::use(artma / interactive / input[ask_select])
 
-  choices <- c(
-    "None (0%)" = 0,
-    "1% (default)" = 0.01,
-    "5%" = 0.05,
-    "10%" = 0.10
+  answer <- ask_select(
+    question = "Winsorization level for effect and standard error variables",
+    choices = c(
+      "None (0%)" = "0",
+      "1% (default)" = "0.01",
+      "5%" = "0.05",
+      "10%" = "0.10"
+    ),
+    hints = "caps extreme values at the chosen quantile from both tails to reduce outlier influence",
+    default = "0.01",
+    ...
   )
 
-  cli::cli_h1("Winsorization Level")
-  cli::cli_text("Winsorization caps extreme values at specified quantiles to reduce outlier influence.")
-  cli::cat_line()
-
-  selected <- climenu::select(
-    choices = names(choices),
-    prompt = "Select winsorization level for effect and standard error variables",
-    selected = 2 # "1% (default)"
-  )
-
-  if (rlang::is_empty(selected)) {
-    cli::cli_alert_info("No selection made. Using default: {CONST$STYLES$OPTIONS$VALUE('0.01')}")
-    return(0.01)
-  }
-
-  selected_value <- choices[selected][[1]]
-  cli::cli_alert_success("Selected winsorization level: {CONST$STYLES$OPTIONS$VALUE(selected_value)}")
-  cli::cat_line()
-
-  selected_value
+  as.numeric(answer)
 }
 
-prompt_na_handling <- function(opt, ...) {
-  box::use(artma / const[CONST])
+prompt_na_handling <- function(opt = NULL, ...) {
+  box::use(artma / interactive / input[ask_select])
 
-  choices <- c(
-    "Stop (leave optional columns as-is; required columns must be complete)" = "stop",
-    "Remove rows (listwise deletion)" = "remove",
-    "Median imputation (replace with column median)" = "median",
-    "Mean imputation (replace with column mean)" = "mean",
-    "Linear interpolation (for sequential data)" = "interpolate",
-    "Multiple imputation (mice algorithm)" = "mice"
+  answer <- ask_select(
+    question = "How should missing values in optional columns be handled?",
+    choices = c(
+      "Stop: leave them as-is and report them (safest)" = "stop",
+      "Remove: drop entire rows with any missing values" = "remove",
+      "Median: impute with the column median" = "median",
+      "Mean: impute with the column mean" = "mean",
+      "Interpolate: linear interpolation from neighboring values" = "interpolate",
+      "Mice: multiple imputation by chained equations" = "mice"
+    ),
+    hints = "required columns (effect, se, study_id, n_obs) must always be complete",
+    default = "stop",
+    ...
   )
 
-  cli::cli_h1("Missing Value Handling")
-  cli::cli_text("Choose how to handle missing values in non-required columns during preprocessing.")
-  cli::cli_alert_info("Note: Required columns (effect, se, study_id, n_obs) must always be complete.")
-  cli::cat_line()
-
-  cli::cli_h3("Available strategies:")
-  cli::cli_ul(c(
-    "{.strong stop}: Leave missing values in these columns as-is and report them (safest, does not touch your data). Required columns must always be complete regardless of this setting.",
-    "{.strong remove}: Remove entire rows with any missing values (listwise deletion)",
-    "{.strong median}: Replace missing values with the variable's median (robust to outliers)",
-    "{.strong mean}: Replace missing values with the variable's mean (assumes normality)",
-    "{.strong interpolate}: Use linear interpolation based on neighboring values (best for sequential data)",
-    "{.strong mice}: Multiple Imputation by Chained Equations (advanced, most accurate but slower)"
-  ))
-  cli::cat_line()
-
-  selected <- climenu::select(
-    choices = names(choices),
-    prompt = "Select missing value handling strategy",
-    selected = 1 # "stop" as default
-  )
-
-  if (rlang::is_empty(selected)) {
-    cli::cli_alert_info("No selection made. Using default: {CONST$STYLES$OPTIONS$VALUE('stop')}")
-    return("stop")
-  }
-
-  selected_value <- choices[selected][[1]]
-
-  # Provide additional context for certain choices
-  if (selected_value == "mice") {
+  if (answer == "mice") {
     cli::cli_alert_warning("MICE imputation requires the {.pkg mice} package and may take significant time for large datasets.")
-  } else if (selected_value == "remove") {
+  } else if (answer == "remove") {
     cli::cli_alert_warning("Listwise deletion may significantly reduce sample size if many rows have missing values.")
   }
 
-  cli::cli_alert_success("Selected strategy: {CONST$STYLES$OPTIONS$VALUE(selected_value)}")
-  cli::cat_line()
-
-  selected_value
+  answer
 }
 
-prompt_se_zero_handling <- function(opt, ...) {
-  box::use(artma / const[CONST])
+prompt_se_zero_handling <- function(opt = NULL, ...) {
+  box::use(artma / interactive / input[ask_select])
 
-  choices <- c(
-    "Remove rows with zero SE, with a warning (default)" = "remove",
-    "Stop (abort if zero SE found)" = "stop",
-    "Warn but keep rows with zero SE" = "warn",
-    "Ignore silently" = "ignore"
+  answer <- ask_select(
+    question = "How should rows with a zero standard error be handled?",
+    choices = c(
+      "Remove them, with a warning (default)" = "remove",
+      "Stop: abort the analysis" = "stop",
+      "Warn but keep them" = "warn",
+      "Ignore silently" = "ignore"
+    ),
+    hints = "zero standard errors cause division-by-zero errors, e.g. infinite t-statistics",
+    default = "remove",
+    ...
   )
 
-  cli::cli_h1("Zero Standard Error Handling")
-  cli::cli_text("Standard errors equal to zero cause division-by-zero errors (e.g. infinite t-statistics).")
-  cli::cat_line()
-
-  cli::cli_h3("Available strategies:")
-  cli::cli_ul(c(
-    "{.strong remove}: Remove rows with zero standard errors, with a warning (recommended)",
-    "{.strong stop}: Abort analysis if any zero standard errors are found (strictest)",
-    "{.strong warn}: Warn but keep rows with zero standard errors",
-    "{.strong ignore}: Silently ignore zero standard errors"
-  ))
-  cli::cat_line()
-
-  selected <- climenu::select(
-    choices = names(choices),
-    prompt = "Select zero standard error handling strategy",
-    selected = 1 # "remove" as default
-  )
-
-  if (rlang::is_empty(selected)) {
-    cli::cli_alert_info("No selection made. Using default: {CONST$STYLES$OPTIONS$VALUE('remove')}")
-    return("remove")
-  }
-
-  selected_value <- choices[selected][[1]]
-
-  if (selected_value == "stop") {
+  if (answer == "stop") {
     cli::cli_alert_warning("Strict mode: analysis will abort if any zero standard errors are found.")
   }
 
-  cli::cli_alert_success("Selected strategy: {CONST$STYLES$OPTIONS$VALUE(selected_value)}")
-  cli::cat_line()
-
-  selected_value
+  answer
 }
 
-prompt_autonomy_level <- function(opt, ...) {
+prompt_autonomy_level <- function(opt = NULL, ...) {
   box::use(
     artma / const[CONST],
+    artma / interactive / input[ask_select],
     artma / libs / core / autonomy[get_default_autonomy_level]
   )
 
   descriptions <- c(
-    ask_more = "Prompt for most decisions, including non-critical ones.",
-    balanced = "Prompt for important decisions only.",
-    autonomous = "Minimal prompts; use defaults and auto-detection for most decisions."
+    ask_more = "prompt for most decisions, including non-critical ones",
+    balanced = "prompt for important decisions only",
+    autonomous = "minimal prompts; use defaults and auto-detection for most decisions"
   )
 
   levels <- CONST$AUTONOMY$LEVELS
-  default_level <- get_default_autonomy_level()
-  default_index <- match(default_level, levels)
-
-  cli::cli_h1("Autonomy Level")
-  cli::cli_text("Autonomy controls how much user interaction is required during analysis.")
-  cli::cli_text("{.code interactive()} is the hard gate: non-interactive sessions never prompt, regardless of this setting.")
-  cli::cat_line()
-
-  # Create a named vector where names are display text and values are the level names
   choices <- stats::setNames(
     levels,
     vapply(
@@ -164,23 +95,16 @@ prompt_autonomy_level <- function(opt, ...) {
     )
   )
 
-  selected <- climenu::select(
-    choices = names(choices), # Display the descriptive text
-    prompt = "Select your preferred autonomy level",
-    selected = default_index
+  ask_select(
+    question = "Preferred autonomy level",
+    choices = choices,
+    hints = c(
+      "controls how much user interaction is required during analysis",
+      "{.code interactive()} is the hard gate: non-interactive sessions never prompt"
+    ),
+    default = get_default_autonomy_level(),
+    ...
   )
-
-  if (rlang::is_empty(selected)) {
-    cli::cli_alert_info("No selection made. Using default: {CONST$STYLES$OPTIONS$VALUE(default_level)}")
-    return(default_level)
-  }
-
-  # Get the actual level value from the selected index
-  selected_value <- choices[selected][[1]]
-  cli::cli_alert_success("Selected autonomy level: {CONST$STYLES$OPTIONS$VALUE(selected_value)}")
-  cli::cat_line()
-
-  selected_value
 }
 
 box::export(
