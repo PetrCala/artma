@@ -170,6 +170,13 @@ debugging:
 
 The entry point is `prepare_data()` from `artma/data/index.R`.
 
+Column auto-detection declines a required role rather than guess it.
+`data.mapping.external_command` is an opt-in hook that lets an external
+command propose the missing mappings over JSON on stdin/stdout; every
+proposal is verified against the data before it is used, and the hook is
+off unless the option is set. Payload and response schemas:
+[contributingGuides/COLUMN_MAPPING_HOOK.md](https://petrcala.github.io/artma/contributingGuides/COLUMN_MAPPING_HOOK.md).
+
 ### Autonomy System
 
 Controls how much user interaction happens during analysis.

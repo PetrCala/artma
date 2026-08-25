@@ -145,6 +145,7 @@
 <li>Compute (<code>artma/data/compute.R</code>): derive columns (effect sizes, standard errors)</li>
 <li>Config (<code>artma/data_config/</code>): per-column configuration of which variables join which analyses</li>
 </ol><p>The entry point is <code>prepare_data()</code> from <code>artma/data/index.R</code>.</p>
+<p>Column auto-detection declines a required role rather than guess it. <code>data.mapping.external_command</code> is an opt-in hook that lets an external command propose the missing mappings over JSON on stdin/stdout; every proposal is verified against the data before it is used, and the hook is off unless the option is set. Payload and response schemas: <a href="contributingGuides/COLUMN_MAPPING_HOOK.html">contributingGuides/COLUMN_MAPPING_HOOK.md</a>.</p>
 </div>
 <div class="section level3">
 <h3 id="autonomy-system">Autonomy System<a class="anchor" aria-label="anchor" href="#autonomy-system"></a></h3>
