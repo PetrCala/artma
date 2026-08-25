@@ -44,12 +44,23 @@
 resolve_hard_required_colnames <- function(methods = NULL, modules_dir = NULL) {
   box::use(
     artma / const[CONST],
+    artma / data / derivation[pcc_derivation_active],
     artma / modules / runtime_methods[get_method_metadata, get_runtime_method_modules],
     artma / options / typed_accessors[get_precision_type]
   )
 
-  full_required <- CONST$DATA$REQUIRED_COLNAMES
-  base_required <- c("study_id", "effect", "se")
+  # With the (t, df) route configured, `effect` and `se` are produced by
+  # `derive_pcc_columns()` rather than read, so the raw file must carry the two
+  # inputs instead of the two outputs.
+  apply_derivation <- function(required) {
+    if (!pcc_derivation_active()) {
+      return(required)
+    }
+    union(setdiff(required, c("effect", "se")), c("t_stat", "reg_dof"))
+  }
+
+  full_required <- apply_derivation(CONST$DATA$REQUIRED_COLNAMES)
+  base_required <- apply_derivation(c("study_id", "effect", "se"))
 
   if (is.factor(methods)) {
     methods <- as.character(methods)

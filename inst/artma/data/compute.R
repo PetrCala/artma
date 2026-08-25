@@ -381,6 +381,7 @@ update_config_with_computed_columns <- function(df) {
   box::use(
     artma / data_config / read[get_data_config],
     artma / data_config / write[update_data_config],
+    artma / data / derivation[pcc_derivation_active],
     artma / data / utils[determine_vector_type],
     artma / const[CONST],
     artma / libs / core / string[make_verbose_name],
@@ -390,8 +391,13 @@ update_config_with_computed_columns <- function(df) {
   # Get current config
   config <- get_data_config()
 
-  # List of computed columns to add
+  # List of computed columns to add. Under the (t, df) route effect and se are
+  # derived rather than read, so they join the list and are recorded as
+  # computed instead of carrying a source_name.
   computed_columns <- c("obs_id", "study_id", "study_label", "t_stat", "study_size", "reg_dof", "precision")
+  if (pcc_derivation_active()) {
+    computed_columns <- c(computed_columns, "effect", "se")
+  }
 
   # Add each computed column to config if it exists in df and not in config
   changes <- list()

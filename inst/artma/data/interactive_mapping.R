@@ -279,6 +279,101 @@ confirm_provisional_mappings <- function(
 }
 
 
+#' @title Confirm the derived (t, df) route with the user
+#' @description Recognition proposes deriving `effect` and `se` as partial
+#'   correlations when it finds a t-statistic column, a degrees-of-freedom
+#'   companion, and no canonically named effect/standard-error pair (see
+#'   `artma / data / derivation[detect_tdf_derivation]`). The choice between
+#'   the derived quantity and the coefficient columns the file happens to carry
+#'   is the analyst's, not the detector's, so an interactive session asks.
+#'
+#'   Outside an interactive session the proposal stands: recognition already
+#'   declined the columns it displaced, and the pair it found was named in the
+#'   log.
+#' @param mapping *\[list\]* The mapping so far (std_col -> data_col).
+#' @param derivation *\[list, optional\]* The `derivation` attribute of
+#'   `recognize_columns()`. Defaults to that attribute.
+#' @param select_fn *\[function, optional\]* Menu function receiving
+#'   `(choices, prompt)` and returning the selected entry (or `NULL` when
+#'   cancelled). Injectable for testing; defaults to a climenu menu.
+#' @param is_interactive *\[logical, optional\]* Whether the session is
+#'   interactive. Injectable for testing; defaults to `interactive()`.
+#' @return *\[list\]* With `mapping` (the t-statistic and degrees-of-freedom
+#'   columns added when the route is taken, the displaced effect/se columns
+#'   restored when it is refused) and `derivation` (`NULL` when refused).
+confirm_derivation <- function(
+  mapping,
+  derivation = attr(mapping, "derivation"),
+  select_fn = NULL,
+  is_interactive = interactive()
+) {
+  box::use(
+    artma / libs / core / validation[validate],
+    artma / libs / core / utils[get_verbosity]
+  )
+
+  validate(is.list(mapping))
+
+  if (!is.list(derivation) || is.null(derivation$t_stat) || is.null(derivation$dof)) {
+    return(list(mapping = mapping, derivation = NULL))
+  }
+
+  take_route <- function() {
+    mapping[["t_stat"]] <- derivation$t_stat
+    mapping[["reg_dof"]] <- derivation$dof
+    list(mapping = mapping, derivation = derivation)
+  }
+
+  if (!isTRUE(is_interactive)) {
+    return(take_route())
+  }
+
+  if (is.null(select_fn)) select_fn <- provisional_menu
+
+  displaced <- unlist(derivation$replaces, use.names = FALSE)
+  derive_choice <- sprintf(
+    "Derive them from '%s' and '%s'", derivation$t_stat, derivation$dof
+  )
+  keep_choice <- if (length(displaced) > 0) {
+    sprintf("Read them from %s instead", paste(sprintf("'%s'", displaced), collapse = " and "))
+  } else {
+    NULL
+  }
+  leave_choice <- "--- Neither, leave effect and se unmapped ---"
+
+  if (get_verbosity() >= 3) {
+    cli::cli_h2("Confirm how {.field effect} and {.field se} are obtained")
+    cli::cli_inform("  {cli::symbol$bullet} {.field {derivation$t_stat}} holds t-statistics and {.field {derivation$dof}} holds degrees of freedom")
+    cli::cli_inform("  {cli::symbol$bullet} together they give the partial correlation r = t / sqrt(t^2 + df) and its standard error")
+    if (length(displaced) > 0) {
+      cli::cli_inform("  {cli::symbol$bullet} {.val {displaced}} match{?es/} by name only, without the canonical spelling of {?its/their} role")
+    }
+  }
+
+  selected <- select_fn(
+    c(derive_choice, keep_choice, leave_choice),
+    "How should 'effect' and 'se' be obtained?"
+  )
+
+  # Cancelling declines to answer: the proposal recognition made stands.
+  if (is.null(selected) || length(selected) != 1 || is.na(selected)) {
+    return(take_route())
+  }
+
+  if (identical(selected, derive_choice)) {
+    return(take_route())
+  }
+
+  if (!is.null(keep_choice) && identical(selected, keep_choice)) {
+    for (role in names(derivation$replaces)) {
+      mapping[[role]] <- derivation$replaces[[role]]
+    }
+  }
+
+  list(mapping = mapping, derivation = NULL)
+}
+
+
 #' @title Interactive column mapping with climenu
 #' @description Allow users to interactively map columns using climenu
 #' @param df *\[data.frame\]* The data frame
@@ -292,8 +387,11 @@ confirm_provisional_mappings <- function(
 #'   `provisional` attribute of `auto_mapping`.
 #' @param select_fn *\[function, optional\]* Menu function used for the
 #'   provisional confirmations. Injectable for testing.
+#' @param derived_roles *\[character, optional\]* Required roles the pipeline
+#'   computes rather than reads, so they are neither prompted for nor reported
+#'   as missing (see `artma / data / derivation`). Defaults to none.
 #' @return *\[list\]* User-confirmed column mapping
-interactive_column_mapping <- function(df, auto_mapping = list(), required_only = TRUE, show_detected_first = FALSE, is_interactive = interactive(), provisional = attr(auto_mapping, "provisional"), select_fn = NULL) {
+interactive_column_mapping <- function(df, auto_mapping = list(), required_only = TRUE, show_detected_first = FALSE, is_interactive = interactive(), provisional = attr(auto_mapping, "provisional"), select_fn = NULL, derived_roles = character(0)) {
   box::use(
     artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity],
@@ -317,6 +415,10 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
   } else {
     all_std_cols
   }
+
+  # Roles the pipeline derives are not missing, however unmapped they look.
+  required_cols <- setdiff(required_cols, derived_roles)
+  cols_to_map <- setdiff(cols_to_map, derived_roles)
 
   # Track missing required columns
   missing_required <- setdiff(required_cols, names(auto_mapping))
@@ -763,6 +865,7 @@ column_mapping_workflow <- function(
 
 
 box::export(
+  confirm_derivation,
   confirm_provisional_mappings,
   format_provisional_evidence,
   interactive_column_mapping,

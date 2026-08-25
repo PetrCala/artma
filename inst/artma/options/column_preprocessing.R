@@ -53,7 +53,7 @@ preprocess_column_mapping <- function(user_input, options_def) {
       box::use(
         artma / data / read[read_file],
         artma / data / column_recognition[recognize_columns],
-        artma / data / interactive_mapping[interactive_column_mapping],
+        artma / data / interactive_mapping[confirm_derivation, interactive_column_mapping],
         artma / libs / core / utils[get_verbosity]
       )
 
@@ -64,6 +64,14 @@ preprocess_column_mapping <- function(user_input, options_def) {
       # Recognize columns via the shared matching engine
       auto_mapping <- recognize_columns(df)
 
+      # Effect and se may be better derived from a (t, df) pair than read from
+      # any column. Settled before the mapping is presented, so the two roles
+      # are not then prompted for as missing.
+      confirmed <- confirm_derivation(auto_mapping)
+      auto_mapping <- confirmed$mapping
+      derivation <- confirmed$derivation
+      derived_roles <- if (is.null(derivation)) character(0) else c("effect", "se")
+
       # Present detected columns to user for confirmation
       # This will show detected columns and allow user to accept, modify, or skip optional
       if (length(auto_mapping) > 0) {
@@ -71,11 +79,20 @@ preprocess_column_mapping <- function(user_input, options_def) {
           df = df,
           auto_mapping = auto_mapping,
           required_only = TRUE,
-          show_detected_first = TRUE
+          show_detected_first = TRUE,
+          derived_roles = derived_roles
         )
       } else {
         # No columns detected, will prompt later during options creation
         mapping <- list()
+      }
+
+      # The derived route needs both inputs mapped, whatever the user did with
+      # the optional columns in the menus above.
+      if (!is.null(derivation)) {
+        mapping[["t_stat"]] <- derivation$t_stat
+        mapping[["reg_dof"]] <- derivation$dof
+        user_input[["data.derive_pcc"]] <- TRUE
       }
 
       # Convert the confirmed mapping into unified role records.

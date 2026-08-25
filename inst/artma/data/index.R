@@ -63,7 +63,8 @@ configure_data <- function(df_raw, methods = NULL) {
     artma / data / method_requirements[resolve_hard_required_colnames],
     artma / data / schema_reconcile[reconcile_schema],
     artma / data / preprocess[clean_data],
-    artma / data / configure[resolve_na_handling, resolve_se_zero_handling]
+    artma / data / configure[resolve_na_handling, resolve_se_zero_handling],
+    artma / data / derivation[derive_pcc_columns]
   )
 
   # This is the run's hard-required-column gate: it runs on every
@@ -85,6 +86,10 @@ configure_data <- function(df_raw, methods = NULL) {
   # quietly: this frame is a configure-phase intermediate, and the compute phase
   # standardizes the same raw frame again with messages on.
   df_std <- standardize_column_names(df_raw, quiet = TRUE, required_colnames = required_colnames)
+  # The derived effect/se have to exist before the zero-SE and missing-value
+  # strategies are decided, or both decisions would be taken on a frame missing
+  # the two columns they are about.
+  df_std <- suppressMessages(derive_pcc_columns(df_std))
   df_clean <- clean_data(df_std)
   resolve_na_handling(df_clean)
   resolve_se_zero_handling(df_clean)
@@ -105,7 +110,8 @@ compute_data_impl <- function() {
     artma / data / method_requirements[resolve_hard_required_colnames],
     artma / data_config / resolve[prime_df_for_config_cache],
     artma / data / preprocess[preprocess_data],
-    artma / data / compute[compute_optional_columns]
+    artma / data / compute[compute_optional_columns],
+    artma / data / derivation[derive_pcc_columns]
   )
 
   df_raw <- .raw_env$df_raw
@@ -117,6 +123,10 @@ compute_data_impl <- function() {
   # the same run-specific required set the configure phase used.
   required_colnames <- resolve_hard_required_colnames(.raw_env$methods)
   df <- standardize_column_names(df_raw, required_colnames = required_colnames)
+
+  # Derived before the config is primed, so `effect` and `se` are configured,
+  # cleaned, winsorized and validated exactly like columns read from the file.
+  df <- derive_pcc_columns(df)
 
   prime_df_for_config_cache(df)
   df <- preprocess_data(df)

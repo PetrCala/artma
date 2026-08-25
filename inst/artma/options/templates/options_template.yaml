@@ -1020,6 +1020,22 @@ data:
       them from it.
       For more details, read the 'data_config' vignette.
 
+  derive_pcc:
+    type: "logical"
+    default: false
+    help: |
+      If `TRUE`, the {.strong effect} and {.strong se} columns are not read from
+      the data file but derived as partial correlation coefficients from the
+      mapped {.strong t_stat} and {.strong reg_dof} columns:
+      {.emph r = t / sqrt(t^2 + df)} and {.emph se(r) = sqrt((1 - r^2) / df)}.
+      Meta-analyses whose primary studies report coefficients in incomparable
+      units are analysed this way, and their files often still carry a
+      coefficient/SE pair that is internally consistent but not the quantity to
+      analyse. Auto-detection proposes this route when it finds a t-statistic
+      column, a degrees-of-freedom companion, and no canonically named effect
+      and standard error. The two derived columns are computed by the pipeline
+      and recorded in the data config, not mapped to a source column.
+
   expected_schema_columns:
     type: "character"
     allow_na: true

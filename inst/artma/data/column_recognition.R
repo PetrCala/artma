@@ -788,9 +788,15 @@ score_rename_candidate <- function(stored_name, candidate, std_name = NULL, df =
 #'   above.
 recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_confidence) {
   box::use(
-    artma / libs / core / log[log_debug, log_warn],
+    artma / libs / core / log[log_debug, log_info, log_warn],
     artma / libs / core / validation[validate],
-    artma / libs / core / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity],
+    artma / data / derivation[
+      describe_wide_format,
+      detect_tdf_derivation,
+      detect_wide_format,
+      find_dof_column
+    ]
   )
 
   validate(is.data.frame(df))
@@ -955,6 +961,72 @@ recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_con
     }
   }
 
+  # Two layouts no single-column choice can map correctly: a sheet that stores
+  # one response column per horizon, and a dataset whose comparable effect is a
+  # partial correlation recomputed from (t, df). Both are recognized here so
+  # the decline says what it saw instead of merely running out of candidates.
+  wide_format <- detect_wide_format(df, mapping)
+  derivation <- detect_tdf_derivation(df, mapping)
+
+  if (!is.null(wide_format)) {
+    layout <- describe_wide_format(wide_format)
+    log_info("No {.field effect}/{.field se} pair to map: {layout}.")
+    log_info("Reshape the sheet to one row per (study, horizon), or map the columns yourself with {.code artma::config_set()}.")
+    for (role in intersect(c("effect", "se"), required_cols)) {
+      entry <- declined[[role]]
+      if (is.null(entry)) {
+        entry <- list(role = role, required_confidence = min_confidence, candidates = list())
+      }
+      entry$reason <- layout
+      entry$layout <- "wide_format"
+      declined[[role]] <- entry
+      # Offering one horizon column as "the" effect would misread the sheet.
+      provisional[[role]] <- NULL
+    }
+  }
+
+  if (!is.null(derivation)) {
+    route <- sprintf(
+      "effect and se are better derived as partial correlations from the t-statistic '%s' and the degrees of freedom '%s'",
+      derivation$t_stat, derivation$dof
+    )
+    displaced <- unlist(derivation$replaces, use.names = FALSE)
+    if (length(displaced) > 0) {
+      log_info(paste(
+        "Declining {.val {displaced}} for {.field effect}/{.field se}:",
+        "their names are not the canonical ones and a (t, df) pair is available."
+      ))
+    }
+    log_info("Found a (t, df) pair: {.field {derivation$t_stat}} and {.field {derivation$dof}}. {route}.")
+
+    for (role in intersect(c("effect", "se"), required_cols)) {
+      entry <- declined[[role]]
+      if (is.null(entry)) {
+        entry <- list(role = role, required_confidence = min_confidence, candidates = list())
+      }
+      entry$reason <- route
+      entry$derivation <- derivation
+      declined[[role]] <- entry
+      mapping[[role]] <- NULL
+      # The derived route answers this role; asking about it again would let
+      # the user confirm a column recognition just declined.
+      provisional[[role]] <- NULL
+    }
+  } else if (is.null(wide_format) && any(c("effect", "se") %in% names(declined))) {
+    # No mapped t-statistic to derive from, but the companion column is there:
+    # say so, so the user knows which single mapping unlocks the route.
+    dof_col <- find_dof_column(df, exclude = unlist(mapping, use.names = FALSE))
+    if (!is.null(dof_col)) {
+      log_info(paste(
+        "A degrees-of-freedom column ({.field {dof_col}}) is present:",
+        "mapping a t-statistic column lets artma derive {.field effect} and {.field se} as partial correlations."
+      ))
+      for (role in intersect(c("effect", "se"), names(declined))) {
+        declined[[role]]$dof_column <- dof_col
+      }
+    }
+  }
+
   # Evidence for every required role still unmapped that the joint pass did
   # not already account for (study_id, n_obs). Value evidence is attached where
   # the role predicts a distribution at all.
@@ -1009,6 +1081,8 @@ recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_con
   # mapping, so every caller that ignores it keeps its current behavior.
   attr(mapping, "provisional") <- provisional
   attr(mapping, "declined") <- declined
+  attr(mapping, "derivation") <- derivation
+  attr(mapping, "wide_format") <- wide_format
   mapping
 }
 
