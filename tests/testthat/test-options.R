@@ -1,7 +1,7 @@
 box::use(testthat[test_that, expect_equal, expect_true, expect_false, expect_null, expect_setequal, expect_length, expect_no_error, expect_error, expect_identical])
 
 test_that("options lifecycle helpers operate on user files", {
-  box::use(artma[options_create, options_copy, options_delete, options_fix, options_list, options_load, options_validate])
+  box::use(artma[options_create, options_copy, options_delete, options_fix, options_list, options_load, options_remove, options_validate])
 
   tmp_dir <- withr::local_tempdir()
   template_path <- file.path(tmp_dir, "template.yaml")
@@ -127,6 +127,14 @@ test_that("options lifecycle helpers operate on user files", {
     skip_confirmation = TRUE
   )
   expect_false(file.exists(file.path(tmp_dir, "copied.yaml")))
+
+  expect_identical(options_remove, options_delete)
+  options_remove(
+    options_file_name = "new.yaml",
+    options_dir = tmp_dir,
+    skip_confirmation = TRUE
+  )
+  expect_false(file.exists(file.path(tmp_dir, "new.yaml")))
 })
 
 test_that("options_load accepts a file name without the .yaml suffix", {
