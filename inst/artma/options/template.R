@@ -211,30 +211,54 @@ sanitize_prompt_input <- function(input_val, prompt_type) {
   input_val
 }
 
-#' @title Prompt user for a required value with no default
-#' @description Prompt the user for a value, displaying the option name, type, and help.
-#' @param opt [list] Option definition.
+#' @title First sentence of an option help text
+#' @description Reduce a template `help:` block to its first sentence so it fits
+#'   on a single dim hint line. The result is pre-rendered with
+#'   `cli::format_inline()`; cutting mid-markup falls back to the raw text.
+#' @param help [character] The help text, or `NULL`.
+#' @return [character] A single formatted sentence, or `character(0)`.
 #' @keywords internal
-prompt_user_for_option_value <- function(opt) {
+first_help_sentence <- function(help) {
+  if (is.null(help) || !is.character(help) || !nzchar(trimws(help))) {
+    return(character(0))
+  }
+  first_line <- trimws(strsplit(help, "\n", fixed = TRUE)[[1]][1])
+  sentence <- sub("^(.*?[.:])\\s.*$", "\\1", first_line)
+  sentence <- sub("[:]$", ".", sentence)
+  if (!nzchar(sentence)) {
+    return(character(0))
+  }
+  tryCatch(cli::format_inline(sentence), error = function(e) sentence)
+}
+
+#' @title Prompt user for a required value with no default
+#' @description Prompt the user for a value with a compact layout: a short
+#'   question line, dim hints (type, a one-line help summary with a pointer to
+#'   the full help, picker instructions), and a bare input row.
+#' @param opt [list] Option definition.
+#' @param read_input [function] Reader passed through to `ask_text()`; defaults to `readline`. Exposed for testing.
+#' @param choose_path [function or NULL] Path picker used for file/directory prompts; receives `type` and `caption` and returns a path or `""` on cancel. Defaults to `choose_path_interactively`. Exposed for testing.
+#' @keywords internal
+prompt_user_for_option_value <- function(opt, read_input = readline, choose_path = NULL) {
   box::use(
     artma / const[CONST],
+    artma / interactive / input[ask_text],
     artma / libs / core / file_picker[choose_path_interactively, path_picker_available],
-    artma / libs / core / validation[assert],
-    artma / options / utils[print_options_help_text]
+    artma / libs / core / validation[assert]
   )
 
-  assert(interactive(), "Running in a non-interactive mode. Cannot prompt for required option.")
-
-  cli::cli_h1("Provide Option Value")
-  cli::cli_text("{.strong Option name}: {CONST$STYLES$OPTIONS$NAME(opt$name)}")
-  cli::cli_text("{.strong Type}: {CONST$STYLES$OPTIONS$TYPE(opt$type)}")
-  if (!is.null(opt$default)) {
-    cli::cli_text("{.strong Default}: {CONST$STYLES$OPTIONS$DEFAULT(opt$default)}")
+  # An injected picker is by definition available; only the real one needs a
+  # graphical backend.
+  picker_injected <- !is.null(choose_path)
+  if (is.null(choose_path)) {
+    choose_path <- choose_path_interactively
   }
 
-  if (!is.null(opt$help) && !isTRUE(opt$suppress_help_in_prompt)) {
-    print_options_help_text(opt$help)
-  }
+  # An injected reader keeps the prompt testable outside interactive sessions.
+  assert(
+    interactive() || !identical(read_input, readline),
+    "Running in a non-interactive mode. Cannot prompt for required option."
+  )
 
   prompt_type <- if (is.null(opt$prompt)) CONST$OPTIONS$DEFAULT_PROMPT_TYPE else opt$prompt
 
@@ -259,17 +283,17 @@ prompt_user_for_option_value <- function(opt) {
   # A picker window is offered only where one can actually be opened. Where it
   # cannot, the hint never mentions it, so the user is not invited to press
   # <Enter> for a dialog that will not appear.
-  picker_available <- is_path_prompt && path_picker_available()
+  picker_available <- is_path_prompt && (picker_injected || path_picker_available())
   picker_on_enter <- picker_available && is.null(opt$default)
 
-  hints <- switch(prompt_type,
+  picker_hints <- switch(prompt_type,
     "file" = ,
     "directory" = {
       noun <- if (identical(prompt_type, "file")) "a file" else "a directory"
       if (picker_on_enter) {
-        cli::format_inline("type in {.emph {'choose'}} or press {.code <Enter>} to select {noun} interactively")
+        cli::format_inline("type {.emph {'choose'}} or press {.code <Enter>} to select {noun} interactively")
       } else if (picker_available) {
-        cli::format_inline("type in {.emph {'choose'}} to select {noun} interactively")
+        cli::format_inline("type {.emph {'choose'}} to select {noun} interactively")
       } else {
         character(0)
       }
@@ -277,21 +301,41 @@ prompt_user_for_option_value <- function(opt) {
     "readline" = character(0),
     cli::cli_abort(cli::format_inline("Invalid prompt type {.emph {prompt_type}}."))
   )
+
+  hints <- cli::format_inline("type: {CONST$STYLES$OPTIONS$TYPE(opt$type)}")
   if (!is.null(opt$prompt_hint)) {
     hints <- c(hints, cli::format_inline(opt$prompt_hint))
   }
-  if (!is.null(opt$default)) {
-    hints <- c(hints, cli::format_inline("press {.code <Enter>} to accept default: {.strong {opt$default}}"))
+  if (!is.null(opt$help) && !isTRUE(opt$suppress_help_in_prompt)) {
+    if (is.null(opt$prompt_hint)) {
+      hints <- c(hints, first_help_sentence(opt$help))
+    }
+    hints <- c(
+      hints,
+      cli::format_inline(sprintf("full help: {.code artma::options_help(\"%s\")}", opt$name))
+    )
   }
+  hints <- c(hints, picker_hints)
 
-  hint_msg <- if (length(hints)) paste0(" (or ", paste(hints, collapse = ", "), ")") else ""
-  prompt_msg <- cli::format_inline("Enter a value for {.strong {opt$name}}{hint_msg}: ")
+  cli::cli_h3("Set Option")
+  question <- cli::format_inline("Value for {CONST$STYLES$OPTIONS$NAME(opt$name)}")
+  default_display <- if (is.null(opt$default)) NULL else paste(as.character(opt$default), collapse = ", ")
 
   input_val <- ""
+  first_attempt <- TRUE
   attempts_left <- CONST$OPTIONS$MAX_PROMPT_ATTEMPTS
   while (attempts_left > 0L) {
     attempts_left <- attempts_left - 1L
-    input_val <- sanitize_prompt_input(readline(prompt = prompt_msg), prompt_type)
+    input_val <- ask_text(
+      question = question,
+      hints = if (first_attempt) hints else NULL,
+      default = default_display,
+      allow_empty = TRUE,
+      max_retries = 1,
+      sanitize = function(x) sanitize_prompt_input(x, prompt_type),
+      read_input = read_input
+    )
+    first_attempt <- FALSE
     if (length(input_val) != 1 || is.na(input_val)) {
       input_val <- ""
     }
@@ -305,7 +349,7 @@ prompt_user_for_option_value <- function(opt) {
       next
     }
     caption <- if (identical(prompt_type, "file")) "Select file" else "Select directory"
-    input_val <- choose_path_interactively(type = prompt_type, caption = caption)
+    input_val <- choose_path(type = prompt_type, caption = caption)
     if (nzchar(input_val)) {
       break
     }
@@ -322,6 +366,12 @@ prompt_user_for_option_value <- function(opt) {
   if (input_val == "mock" && prompt_type == "file") {
     box::use(artma / data / mock[materialize_mock_data_path])
     input_val <- materialize_mock_data_path()
+  }
+
+  # ask_text substitutes the display default on an empty answer; hand back the
+  # original (possibly non-character) default object in that case.
+  if (!is.null(opt$default) && identical(input_val, default_display)) {
+    return(opt$default)
   }
 
   val_is_empty <- (!nzchar(input_val) || rlang::is_empty(input_val))
@@ -494,6 +544,7 @@ parse_options_from_template <- function(
 
 box::export(
   coerce_option_value,
+  prompt_user_for_option_value,
   sanitize_prompt_input,
   collect_leaf_paths,
   flatten_template_options,
