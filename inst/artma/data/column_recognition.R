@@ -4,7 +4,8 @@ box::use(
     MIN_ROWS_FOR_EVIDENCE,
     CORE_EVIDENCE_ROLES,
     assign_core_roles,
-    profile_role_values
+    profile_role_values,
+    score_role_evidence
   ]
 )
 
@@ -22,6 +23,95 @@ MATCH_THRESHOLDS <- list(
   rename_suggest = 0.5,
   rename_auto = 0.75
 )
+
+#' Roles whose values can be judged against the role itself (see
+#' `artma / data / role_evidence`). Used both for the evidence attached to a
+#' declined role and for the plausibility check a user-supplied mapping runs
+#' through.
+PLAUSIBILITY_ROLES <- c("effect", "se", "t_stat", "n_obs")
+
+#' Value evidence at or below which a column is taken to contradict a role
+#' outright, rather than merely to support it weakly.
+CONTRADICTORY_EVIDENCE <- 0.2
+
+#' @title Check a column against the values a role predicts
+#' @description The value-plausibility check behind a mapping that did not come
+#'   from auto-detection (a stored config, `artma::config_set()`, a manual
+#'   answer at a prompt). It never rejects the mapping; it reports whether the
+#'   column's values contradict the role so the caller can warn.
+#' @param df *\[data.frame\]* The data frame holding the column.
+#' @param std_col *\[character\]* The standard column (role) being mapped.
+#' @param column *\[character\]* The data column mapped to that role.
+#' @return *\[list\]* With `ok` (logical) and `reason` (character, `NA` when
+#'   `ok`). `ok` is TRUE whenever the check does not apply: an unknown column,
+#'   a role with no value predictions, or too little data to judge.
+check_mapping_plausibility <- function(df, std_col, column) {
+  passed <- list(ok = TRUE, reason = NA_character_)
+
+  if (!is.data.frame(df) || !is.character(column) || length(column) != 1 || is.na(column)) {
+    return(passed)
+  }
+  if (!column %in% names(df)) {
+    return(passed)
+  }
+
+  values <- df[[column]]
+
+  if (std_col %in% CONTINUOUS_MEASURE_COLUMNS && !looks_like_continuous_measure(values)) {
+    return(list(
+      ok = FALSE,
+      reason = "it holds only whole numbers, so it looks like an identifier or a count rather than a measured value"
+    ))
+  }
+
+  if (std_col %in% PLAUSIBILITY_ROLES) {
+    ev <- score_role_evidence(values, std_col)
+    if (!is.na(ev) && ev <= CONTRADICTORY_EVIDENCE) {
+      return(list(
+        ok = FALSE,
+        reason = sprintf("its values do not look like %s values (value evidence %.2f)", std_col, ev)
+      ))
+    }
+  }
+
+  passed
+}
+
+#' @title Render declined-role evidence as one line per role
+#' @description Flattens the `declined` attribute of `recognize_columns()` into
+#'   plain lines: the reason a required role stayed unmapped and the ranked
+#'   candidates behind it. Used for the debug log; the attribute itself stays
+#'   the machine-readable form.
+#' @param declined *\[list\]* The `declined` attribute of a mapping.
+#' @return *\[character\]* One line per declined role.
+format_declined_evidence <- function(declined) {
+  if (!is.list(declined) || length(declined) == 0) {
+    return(character(0))
+  }
+
+  vapply(names(declined), function(role) {
+    entry <- declined[[role]]
+    candidates <- vapply(entry$candidates, function(cand) {
+      fields <- c(
+        sprintf("score=%.2f", cand$score),
+        sprintf("name=%.2f", cand$name_score),
+        if (!is.null(cand$evidence) && !is.na(cand$evidence)) sprintf("evidence=%.2f", cand$evidence),
+        if (!is.null(cand$pair_consistency) && !is.na(cand$pair_consistency)) {
+          sprintf("pair=%.2f", cand$pair_consistency)
+        },
+        if (!is.null(cand$coverage) && !is.na(cand$coverage)) sprintf("coverage=%.2f", cand$coverage)
+      )
+      sprintf("%s (%s)", cand$column, paste(fields, collapse = ", "))
+    }, character(1))
+
+    sprintf(
+      "%s: %s%s",
+      role,
+      entry$reason,
+      if (length(candidates) == 0) "" else paste0(" | candidates: ", paste(candidates, collapse = "; "))
+    )
+  }, character(1), USE.NAMES = FALSE)
+}
 
 #' @title Define column patterns for recognition
 #' @description Returns a list of patterns for recognizing standard columns
@@ -685,9 +775,17 @@ score_rename_candidate <- function(stored_name, candidate, std_name = NULL, df =
 #'   `artma / data / role_evidence`), so an internally consistent
 #'   (effect, se, t) triple outranks any name-only match and identifier
 #'   columns are never auto-accepted as data roles.
+#'
+#'   Recognition itself stays non-interactive. Alongside the mapping it reports
+#'   what it declined: the `provisional` attribute holds candidates a caller may
+#'   confirm with the user (see `artma / data / interactive_mapping`), and the
+#'   `declined` attribute holds the ranked evidence behind every required role
+#'   left unmapped, in machine-readable form.
 #' @param df *\[data.frame\]* The data frame
 #' @param min_confidence *\[numeric\]* Minimum confidence score (0-1) to accept a match
-#' @return *\[list\]* Named list mapping standard columns to data frame columns
+#' @return *\[list\]* Named list mapping standard columns to data frame
+#'   columns, carrying the `provisional` and `declined` attributes described
+#'   above.
 recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_confidence) {
   box::use(
     artma / libs / core / log[log_debug, log_warn],
@@ -714,6 +812,12 @@ recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_con
   # the data carries enough rows to judge distributions; tiny frames keep the
   # name-based path below.
   core_resolved <- FALSE
+  provisional <- list()
+  declined <- list()
+  # What each role's name matching considered, and what a value-level veto
+  # threw out: the raw material for the evidence attached to a declined role.
+  considered <- list()
+  vetoed <- list()
   if (nrow(df) >= MIN_ROWS_FOR_EVIDENCE && length(col_names) > 0) {
     name_scores <- vapply(col_names, function(col_name) {
       col_name_clean <- clean_column_name(col_name)
@@ -745,6 +849,8 @@ recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_con
       }
     }
     core_resolved <- TRUE
+    provisional <- attr(core_assignments, "provisional")
+    declined <- attr(core_assignments, "declined")
   }
 
   # Sort patterns by priority
@@ -769,6 +875,14 @@ recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_con
     # Remove already used columns
     candidates <- setdiff(all_candidates, used_cols)
 
+    if (length(all_candidates) > 0) {
+      considered[[std_col]] <- vapply(
+        all_candidates,
+        function(cand) matches[[cand]]$score,
+        numeric(1)
+      )
+    }
+
     # Value-level veto. score_candidate_values() only runs when several columns
     # compete for a role, so a single well-named but implausible candidate used
     # to be accepted unchecked. Continuous-measure roles get checked always.
@@ -782,6 +896,7 @@ recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_con
       if (length(implausible) > 0) {
         candidates <- setdiff(candidates, implausible)
         reason <- "they hold only whole numbers, so they look like identifiers or counts rather than measured values"
+        vetoed[[std_col]] <- list(columns = implausible, reason = reason)
         if (length(candidates) == 0) {
           # The veto left the role unmapped, so the user is about to be asked
           # for it (or the run stops in a non-interactive session). Say why.
@@ -809,6 +924,7 @@ recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_con
       if (length(implausible) > 0) {
         candidates <- setdiff(candidates, implausible)
         reason <- "their values do not look like sample sizes (dummies, counters, or transformed counts)"
+        vetoed[[std_col]] <- list(columns = implausible, reason = reason)
         if (length(candidates) == 0) {
           log_warn("No column matched {.field {std_col}}: {.field {implausible}} matched by name but {reason}.")
         } else {
@@ -839,7 +955,60 @@ recognize_columns <- function(df, min_confidence = MATCH_THRESHOLDS$required_con
     }
   }
 
-  # Convert to format expected by artma (standard_name = data_name)
+  # Evidence for every required role still unmapped that the joint pass did
+  # not already account for (study_id, n_obs). Value evidence is attached where
+  # the role predicts a distribution at all.
+  for (std_col in setdiff(required_cols, names(mapping))) {
+    if (!is.null(declined[[std_col]])) next
+
+    scores <- considered[[std_col]]
+    ranked <- if (is.null(scores)) character(0) else names(sort(scores, decreasing = TRUE))
+    ranked <- utils::head(ranked, 3L)
+
+    candidates <- lapply(ranked, function(col) {
+      ev <- if (std_col %in% PLAUSIBILITY_ROLES) {
+        score_role_evidence(df[[col]], std_col)
+      } else {
+        NA_real_
+      }
+      list(
+        column = col,
+        score = unname(scores[[col]]),
+        name_score = unname(scores[[col]]),
+        evidence = ev,
+        method = matches[[col]]$method
+      )
+    })
+
+    reason <- if (!is.null(vetoed[[std_col]])) {
+      sprintf(
+        "%s matched by name but %s",
+        paste(vetoed[[std_col]]$columns, collapse = ", "),
+        vetoed[[std_col]]$reason
+      )
+    } else if (length(ranked) > 0) {
+      "no candidate reached the confidence required to accept it"
+    } else {
+      "no column matched this role by name"
+    }
+
+    declined[[std_col]] <- list(
+      role = std_col,
+      reason = reason,
+      required_confidence = min_confidence,
+      candidates = candidates
+    )
+  }
+
+  for (line in format_declined_evidence(declined)) {
+    log_debug("Declined column role - {line}")
+  }
+
+  # Convert to format expected by artma (standard_name = data_name).
+  # The confirm-me layer rides along as attributes: it never changes the
+  # mapping, so every caller that ignores it keeps its current behavior.
+  attr(mapping, "provisional") <- provisional
+  attr(mapping, "declined") <- declined
   mapping
 }
 
@@ -875,6 +1044,9 @@ check_mapping_completeness <- function(mapping) {
 box::export(
   CONTINUOUS_MEASURE_COLUMNS,
   MATCH_THRESHOLDS,
+  PLAUSIBILITY_ROLES,
+  check_mapping_plausibility,
+  format_declined_evidence,
   get_column_patterns,
   looks_like_continuous_measure,
   clean_column_name,

@@ -98,6 +98,187 @@ present_detected_mapping <- function(
 }
 
 
+#' @title Describe the evidence behind a provisional candidate
+#' @description Turns one entry of the `provisional` attribute produced by
+#'   `recognize_columns()` into plain lines a user can judge: how much the
+#'   values look like the role, how complete the column is, whether it agrees
+#'   with the column already mapped to its counterpart role, and how far ahead
+#'   of the runner-up it sits.
+#' @param entry *\[list\]* One provisional candidate.
+#' @return *\[character\]* Evidence lines, most telling first.
+format_provisional_evidence <- function(entry) {
+  lines <- character(0)
+  summary <- entry$summary
+
+  if (!is.null(entry$evidence) && !is.na(entry$evidence)) {
+    lines <- c(lines, sprintf(
+      "its values look like %s values (evidence %.2f out of 1)", entry$role, entry$evidence
+    ))
+  }
+  if (is.list(summary)) {
+    if (!is.null(summary$coverage) && !is.na(summary$coverage) &&
+      !is.null(summary$n_distinct) && !is.na(summary$n_distinct)) {
+      lines <- c(lines, sprintf(
+        "%.0f%% of rows populated, %d distinct values",
+        100 * summary$coverage, summary$n_distinct
+      ))
+    }
+    if (!is.null(summary$non_integer_share) && !is.na(summary$non_integer_share)) {
+      lines <- c(lines, sprintf(
+        "%.0f%% of the values are not whole numbers",
+        100 * summary$non_integer_share
+      ))
+    }
+  }
+  if (!is.null(entry$pair_consistency) && !is.na(entry$pair_consistency) &&
+    !is.null(entry$pair_with) && !is.na(entry$pair_with)) {
+    lines <- c(lines, sprintf(
+      "consistent with the mapped column %s on %.0f%% of rows",
+      entry$pair_with, 100 * entry$pair_consistency
+    ))
+  }
+  if (!is.null(entry$name_score) && !is.na(entry$name_score) && entry$name_score <= 0) {
+    lines <- c(lines, "its name carries no signal for this role, which is why it was not accepted on its own")
+  }
+  alternatives <- entry$alternative_summaries
+  if (is.list(alternatives) && length(alternatives) > 0) {
+    for (alt in alternatives) {
+      lines <- c(lines, sprintf(
+        "%s is just as plausible on the values (evidence %.2f%s)",
+        alt$column,
+        alt$evidence,
+        if (is.null(alt$pair_consistency) || is.na(alt$pair_consistency)) {
+          ""
+        } else {
+          sprintf(", pairs on %.0f%% of rows", 100 * alt$pair_consistency)
+        }
+      ))
+    }
+  } else {
+    has_runner_up <- !is.null(entry$runner_up) && !is.na(entry$runner_up) &&
+      !is.null(entry$margin) && is.finite(entry$margin)
+    if (has_runner_up) {
+      lines <- c(lines, sprintf(
+        "ahead of the next candidate (%s) by %.2f", entry$runner_up, entry$margin
+      ))
+    }
+  }
+
+  lines
+}
+
+
+#' @title Default menu used to confirm a provisional candidate
+#' @description Prints the question and asks it via climenu. Factored out so
+#'   `confirm_provisional_mappings()` can be driven without a terminal.
+#' @param choices *\[character\]* Menu entries.
+#' @param prompt *\[character\]* The question to print above the menu.
+#' @return *\[character or NULL\]* The selected entry, or `NULL` when the user
+#'   cancels.
+#' @keywords internal
+provisional_menu <- function(choices, prompt) {
+  cli::cli_inform(prompt)
+  climenu::menu(choices = choices)
+}
+
+
+#' @title Confirm sub-threshold column candidates with the user
+#' @description Recognition declines a candidate whose name carries no signal
+#'   even when its values and its agreement with the rest of the data say it is
+#'   the right column (a bare `eis` column holding the effect size). Accepting
+#'   such a column on its own is how identifier columns used to slip in, so the
+#'   automatic path must stay strict; this asks instead. Each candidate costs
+#'   one question, and confirming a rename persists through the per-column
+#'   store, so the question is asked once per dataset. Near-ties (two columns
+#'   equally plausible for one role) are asked the same way rather than
+#'   resolved silently; keeping the auto-detected column there stores nothing,
+#'   so that one question can come back on a later run.
+#'
+#'   `interactive()` is the hard gate: outside an interactive session the
+#'   mapping is returned untouched.
+#' @param mapping *\[list\]* The mapping so far (std_col -> data_col).
+#' @param provisional *\[list, optional\]* Candidates from the `provisional`
+#'   attribute of `recognize_columns()`. Defaults to that attribute.
+#' @param allow_ties *\[logical, optional\]* Whether to ask about near-ties as
+#'   well as unmapped roles. Defaults to TRUE.
+#' @param select_fn *\[function, optional\]* Menu function receiving
+#'   `(choices, prompt)` and returning the selected entry (or `NULL` when
+#'   cancelled). Injectable for testing; defaults to a climenu menu.
+#' @param is_interactive *\[logical, optional\]* Whether the session is
+#'   interactive. Injectable for testing; defaults to `interactive()`.
+#' @return *\[list\]* The mapping, with confirmed candidates added or swapped in.
+confirm_provisional_mappings <- function(
+  mapping,
+  provisional = attr(mapping, "provisional"),
+  allow_ties = TRUE,
+  select_fn = NULL,
+  is_interactive = interactive()
+) {
+  box::use(
+    artma / libs / core / validation[validate],
+    artma / libs / core / utils[get_verbosity]
+  )
+
+  validate(is.list(mapping))
+
+  if (!isTRUE(is_interactive) || !is.list(provisional) || length(provisional) == 0) {
+    return(mapping)
+  }
+
+  if (is.null(select_fn)) select_fn <- provisional_menu
+
+  for (role in names(provisional)) {
+    entry <- provisional[[role]]
+    if (!is.list(entry) || is.null(entry$column)) next
+
+    kind <- if (is.null(entry$kind)) "unmapped" else entry$kind
+    if (identical(kind, "tie") && !isTRUE(allow_ties)) next
+    if (identical(kind, "unmapped") && role %in% names(mapping)) next
+
+    # Never offer a column another role already holds.
+    taken <- setdiff(unlist(mapping, use.names = FALSE), mapping[[role]])
+    candidates <- setdiff(c(entry$column, entry$alternatives), taken)
+    if (length(candidates) == 0) next
+
+    if (get_verbosity() >= 3) {
+      cli::cli_h2("Confirm the {.field {role}} column")
+      for (line in format_provisional_evidence(entry)) {
+        cli::cli_inform("  {cli::symbol$bullet} {line}")
+      }
+    }
+
+    if (identical(kind, "tie")) {
+      prompt <- sprintf(
+        "Two columns are equally plausible as '%s'. Which one holds it?", role
+      )
+      choices <- candidates
+    } else if (length(candidates) == 1) {
+      prompt <- sprintf("Map '%s' to the column '%s'?", role, candidates[1])
+      choices <- c(candidates, sprintf("--- No, leave %s unmapped ---", role))
+    } else {
+      # Twins the recognizer cannot separate on the evidence (est / LB / UB,
+      # winsorized and raw copies of one column): the user picks.
+      prompt <- sprintf("Which column holds '%s'?", role)
+      choices <- c(candidates, sprintf("--- None of these, leave %s unmapped ---", role))
+    }
+
+    selected <- select_fn(choices, prompt)
+
+    # Cancelling declines the suggestion: the mapping keeps whatever the
+    # automatic path decided.
+    if (is.null(selected) || length(selected) != 1 || is.na(selected)) next
+    if (!selected %in% candidates) next
+
+    mapping[[role]] <- selected
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_success("Mapped {.field {role}} to {.val {selected}}")
+    }
+  }
+
+  mapping
+}
+
+
 #' @title Interactive column mapping with climenu
 #' @description Allow users to interactively map columns using climenu
 #' @param df *\[data.frame\]* The data frame
@@ -106,8 +287,13 @@ present_detected_mapping <- function(
 #' @param show_detected_first *\[logical\]* If TRUE, show detected columns first for confirmation
 #' @param is_interactive *\[logical, optional\]* Whether the session is
 #'   interactive. Injectable for testing; defaults to `interactive()`.
+#' @param provisional *\[list, optional\]* Sub-threshold candidates to confirm
+#'   with the user, as produced by `recognize_columns()`. Defaults to the
+#'   `provisional` attribute of `auto_mapping`.
+#' @param select_fn *\[function, optional\]* Menu function used for the
+#'   provisional confirmations. Injectable for testing.
 #' @return *\[list\]* User-confirmed column mapping
-interactive_column_mapping <- function(df, auto_mapping = list(), required_only = TRUE, show_detected_first = FALSE, is_interactive = interactive()) {
+interactive_column_mapping <- function(df, auto_mapping = list(), required_only = TRUE, show_detected_first = FALSE, is_interactive = interactive(), provisional = attr(auto_mapping, "provisional"), select_fn = NULL) {
   box::use(
     artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity],
@@ -158,6 +344,23 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
     }
     # Interactive session at autonomous level: fall through so the user can
     # resolve the missing required columns via the prompts below.
+  }
+
+  # Candidates recognition declined to accept on its own, plus near-ties it
+  # would otherwise resolve silently. One question each, before the mapping is
+  # presented, so a confirmed column shows up as a normal detected mapping.
+  # Near-ties are asked only where the autonomy level asks about non-critical
+  # choices at all; a declined required role is asked about whenever we are
+  # already prompting for it.
+  if (is.list(provisional) && length(provisional) > 0) {
+    auto_mapping <- confirm_provisional_mappings(
+      mapping = auto_mapping,
+      provisional = provisional,
+      allow_ties = should_prompt_user(required_level = "autonomous", is_interactive = is_interactive),
+      select_fn = select_fn,
+      is_interactive = is_interactive
+    )
+    missing_required <- setdiff(required_cols, names(auto_mapping))
   }
 
   # Track user's choice from the initial presentation
@@ -560,6 +763,8 @@ column_mapping_workflow <- function(
 
 
 box::export(
+  confirm_provisional_mappings,
+  format_provisional_evidence,
   interactive_column_mapping,
   confirm_column_mapping,
   column_mapping_workflow,
