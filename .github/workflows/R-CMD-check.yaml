@@ -5,15 +5,29 @@
 # cut-down E2E smoke test (tests/E2E/test-smoke.R) exercising a couple of
 # runtime methods on a tiny fixture dataset. The full matrix (plus R-devel and
 # oldrel, with vignettes) and the nightly E2E suite run separately; this job
-# is a fast, always-on companion to those.
+# is a fast companion to those.
 # The full matrix (plus R-devel and oldrel, with vignettes) runs after
 # merges in R-CMD-check-extended.yaml, which also saves the dependency
 # caches on master so every PR branch can restore them.
+# The paths filter skips this gate on PRs that cannot change check results
+# (docs-only or CI-only changes). Safe because the master ruleset has no
+# required status checks: a path-skipped workflow reports no check, and
+# gh pr checks treats absent checks as green.
 name: R CMD Check
 
 on:
   pull_request:
     types: [opened, synchronize]
+    paths:
+      - "R/**"
+      - "inst/**"
+      - "src/**"
+      - "tests/**"
+      - "man/**"
+      - "DESCRIPTION"
+      - "NAMESPACE"
+      - ".github/workflows/R-CMD-check.yaml"
+      - ".github/actions/setup-jags/**"
 
 permissions: read-all
 
@@ -40,7 +54,6 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-      _R_CHECK_CRAN_INCOMING_: false
       # testthat's parallel worker count defaults to 2 regardless of the
       # machine (default_num_cpus falls back to 2L); the test phase is the
       # bulk of the check step, so use every runner core.
@@ -67,7 +80,11 @@ jobs:
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
-          args: 'c("--no-manual", "--as-cran", "--ignore-vignettes")'
+          # No --as-cran on the PR gate: it costs 20-30s per matrix leg.
+          # R-CMD-check-extended.yaml keeps the check-r-package default args
+          # (which include --as-cran) on every master push and weekly, so
+          # CRAN-facing findings still surface within one merge.
+          args: 'c("--no-manual", "--ignore-vignettes")'
           build_args: 'c("--no-manual", "--no-build-vignettes")'
 
   e2e-smoke:
