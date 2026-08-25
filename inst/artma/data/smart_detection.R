@@ -8,7 +8,12 @@ detect_delimiter <- function(path, n_lines = 5) {
 
   validate(is.character(path), file.exists(path))
 
-  # Read first few lines
+  # Read first few lines. These are raw bytes straight off disk, before the
+  # post-read encoding repair in `normalize_read_df`, so a single-byte encoded
+  # file reaches the counting below as invalid UTF-8. Every candidate delimiter
+  # is ASCII and no ASCII byte can occur inside a multi-byte sequence in any
+  # encoding we read, so counting bytes is both correct here and immune to the
+  # locale warnings character-wise matching would raise.
   lines <- readLines(path, n = n_lines, warn = FALSE)
 
   if (length(lines) == 0) {
@@ -21,14 +26,14 @@ detect_delimiter <- function(path, n_lines = 5) {
   # Count occurrences of each delimiter in each line
   counts <- vapply(delimiters, function(delim) {
     mean(vapply(lines, function(line) {
-      length(gregexpr(delim, line, fixed = TRUE)[[1]])
+      length(gregexpr(delim, line, fixed = TRUE, useBytes = TRUE)[[1]])
     }, integer(1)))
   }, numeric(1))
 
   # Also check consistency (should appear same number of times per line)
   consistency <- vapply(delimiters, function(delim) {
     line_counts <- vapply(lines, function(line) {
-      length(gregexpr(delim, line, fixed = TRUE)[[1]])
+      length(gregexpr(delim, line, fixed = TRUE, useBytes = TRUE)[[1]])
     }, integer(1))
     if (max(line_counts) == 0) {
       return(0)

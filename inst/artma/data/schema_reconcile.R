@@ -45,10 +45,14 @@ emit_reconcile_complete <- function() {
 #'   `get_required_colnames()` set (the historical behavior). Passed through
 #'   to `detect_schema_drift()`; see `artma / data / method_requirements
 #'   [resolve_hard_required_colnames]` for the run-specific, method-aware set.
+#' @param is_interactive *\[logical\]* Whether the session is interactive.
+#'   Defaults to `interactive()`. Injectable so both branches of the prompt gate
+#'   are exercisable in headless tests; production callers should leave it at
+#'   the default.
 #' @return `NULL` invisibly. Side effects: updates options file and in-memory
 #'   state if drift is detected and resolved.
 #' @keywords internal
-reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL) {
+reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_interactive = interactive()) {
   box::use(
     artma / libs / core / autonomy[should_prompt_user],
     artma / libs / core / utils[get_verbosity],
@@ -72,11 +76,14 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL) {
   drift <- detect_schema_drift(raw_df, columns_store, required = required_colnames)
 
   if (first_run) {
-    # No baseline schema yet: missing/added comparisons are meaningless, so
-    # suppress them. Mapping conflicts are baseline-independent (an explicit
-    # mapping colliding with a raw column) and stay actionable even now;
-    # left unresolved they would abort the pipeline later anyway.
-    drift$missing_roles <- stats::setNames(character(0), character(0))
+    # No baseline schema yet, so moderator and "added" comparisons are
+    # meaningless and get suppressed. Missing required roles and mapping
+    # conflicts are baseline-independent, though: a required role with neither
+    # a mapping nor a matching raw column is just as broken on the first run as
+    # on the tenth. Suppressing it here only defers the failure to
+    # `standardize_column_names()`, which by design cannot offer a fix, so the
+    # user's first-ever run got a flat abort while every later run got the
+    # reconciliation UI. Let it through and resolve it here.
     drift$missing_moderators <- character(0)
     drift$added <- character(0)
   } else {
@@ -173,8 +180,27 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL) {
     show_drift_summary(drift, proposals_roles, proposals_moderators, role_sources)
   }
 
-  # Collect decisions
-  do_prompt <- (mode == "ask") && should_prompt_user(required_level = "autonomous")
+  # Collect decisions. A required role with no auto-acceptable candidate cannot
+  # be resolved without asking, and `auto_decisions()` would abort on it. In an
+  # interactive session that is worth a prompt regardless of autonomy level:
+  # the alternative is failing the run over a question the user is sitting
+  # right there to answer. This mirrors `interactive_column_mapping()`, which
+  # already falls through to its prompts for missing required columns at the
+  # autonomous level. Optional and moderator decisions stay gated as before.
+  box::use(artma / data / column_recognition[MATCH_THRESHOLDS])
+
+  unresolvable_roles <- Filter(
+    function(std) {
+      prop <- proposals_roles[[std]]
+      is.null(prop) || is.na(prop$candidate) || prop$score < MATCH_THRESHOLDS$rename_auto
+    },
+    names(drift$missing_roles)
+  )
+
+  do_prompt <- (mode == "ask") && isTRUE(is_interactive) && (
+    should_prompt_user(required_level = "autonomous", is_interactive = is_interactive) ||
+      length(unresolvable_roles) > 0
+  )
 
   if (mode == "auto" || !do_prompt) {
     decisions <- auto_decisions(drift, proposals_roles, proposals_moderators)

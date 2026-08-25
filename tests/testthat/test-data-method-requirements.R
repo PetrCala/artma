@@ -306,22 +306,26 @@ test_that("prepare_data succeeds a second time, once schema reconciliation has a
 })
 
 test_that("prepare_data errors when the sole requested method needs n_obs and it is absent", {
+  # Caught inside schema reconciliation, by auto_decisions(). A missing
+  # required role is baseline-independent, so this is the same error whether or
+  # not artma.data.expected_schema_columns holds a baseline yet;
+  # standardize_column_names()'s blunter "Missing mapping" abort is now only a
+  # backstop for callers that skip reconciliation entirely.
   local_options(shared_runtime_options)
 
   box::use(artma / data / index[prepare_data])
 
   expect_error(
     prepare_data(methods = "maive"),
-    "Missing mapping for required columns"
+    "Cannot auto-resolve missing required column"
   )
 })
 
 test_that("prepare_data errors for a method needing n_obs even once a schema baseline exists", {
-  # Same motivation as the "second time" test above, from the opposite
-  # direction: once reconcile_schema() has a baseline, a method that
-  # genuinely needs n_obs must still be caught (now inside schema
-  # reconciliation itself, via auto_decisions()'s "cannot auto-resolve"
-  # error, rather than standardize_column_names()'s "Missing mapping").
+  # The companion to the test above: having a baseline must not change which
+  # error surfaces. Before, a first run fell through reconciliation to
+  # standardize_column_names() while later runs stopped in auto_decisions();
+  # the two paths now agree.
   local_options(shared_runtime_options)
 
   box::use(artma / data / index[prepare_data])
@@ -341,7 +345,7 @@ test_that("prepare_data unions requirements: n_obs is required if any requested 
 
   expect_error(
     prepare_data(methods = c("effect_summary_stats", "maive")),
-    "Missing mapping for required columns"
+    "Cannot auto-resolve missing required column"
   )
 })
 
@@ -352,7 +356,7 @@ test_that("prepare_data with methods = 'all' keeps the historical strict require
 
   expect_error(
     prepare_data(methods = "all"),
-    "Missing mapping for required columns"
+    "Cannot auto-resolve missing required column"
   )
 })
 
@@ -363,6 +367,6 @@ test_that("prepare_data with methods = NULL keeps the historical strict requirem
 
   expect_error(
     prepare_data(),
-    "Missing mapping for required columns"
+    "Cannot auto-resolve missing required column"
   )
 })

@@ -47,88 +47,100 @@ preprocess_column_mapping <- function(user_input, options_def) {
     cli::cli_alert_info("Reading data from {.path {data_source_path}}")
   }
 
-  # Read and recognize columns with user confirmation
-  tryCatch(
+  box::use(
+    artma / data / read[read_file],
+    artma / data / column_recognition[recognize_columns],
+    artma / data / interactive_mapping[confirm_derivation, interactive_column_mapping],
+    artma / libs / core / log[log_warn]
+  )
+
+  # Reading is the one unrecoverable step here: with no data frame there is
+  # nothing to map against and nothing to prompt about.
+  # Read through the same dispatch and normalization as read_data, without
+  # standardizing column names yet.
+  df <- tryCatch(
+    read_file(data_source_path),
+    error = function(e) {
+      log_warn(c(
+        "Could not read {.path {data_source_path}}: {e$message}",
+        "i" = "Skipping column detection. Set {.code data.columns} in the options file to map columns manually."
+      ))
+      NULL
+    }
+  )
+  if (is.null(df)) {
+    return(user_input)
+  }
+
+  # Detection is recoverable. A crash here (an unreadable value, an unexpected
+  # column type) must not also cost the user the mapping prompt: falling
+  # through with an empty mapping asks about every required role instead of
+  # writing an options file that silently maps nothing.
+  detected <- tryCatch(
     {
-      box::use(
-        artma / data / read[read_file],
-        artma / data / column_recognition[recognize_columns],
-        artma / data / interactive_mapping[confirm_derivation, interactive_column_mapping],
-        artma / data / external_mapping[external_mapper_command],
-        artma / libs / core / utils[get_verbosity]
-      )
-
-      # Read through the same dispatch and normalization as read_data, without
-      # standardizing column names yet.
-      df <- read_file(data_source_path)
-
       # Recognize columns via the shared matching engine
       auto_mapping <- recognize_columns(df)
 
       # Effect and se may be better derived from a (t, df) pair than read from
       # any column. Settled before the mapping is presented, so the two roles
       # are not then prompted for as missing.
-      confirmed <- confirm_derivation(auto_mapping)
-      auto_mapping <- confirmed$mapping
-      derivation <- confirmed$derivation
-      derived_roles <- if (is.null(derivation)) character(0) else c("effect", "se")
-
-      # Present detected columns to user for confirmation
-      # This will show detected columns and allow user to accept, modify, or skip optional.
-      # A configured external mapping hook is the one reason to enter the
-      # mapping flow with nothing detected: every required role is declined,
-      # which is exactly what the hook is there to answer.
-      if (length(auto_mapping) > 0 || !is.null(external_mapper_command())) {
-        mapping <- interactive_column_mapping(
-          df = df,
-          auto_mapping = auto_mapping,
-          required_only = TRUE,
-          show_detected_first = TRUE,
-          derived_roles = derived_roles
-        )
-      } else {
-        # No columns detected, will prompt later during options creation
-        mapping <- list()
-      }
-
-      # The derived route needs both inputs mapped, whatever the user did with
-      # the optional columns in the menus above.
-      if (!is.null(derivation)) {
-        mapping[["t_stat"]] <- derivation$t_stat
-        mapping[["reg_dof"]] <- derivation$dof
-        user_input[["data.derive_pcc"]] <- TRUE
-      }
-
-      # Convert the confirmed mapping into unified role records.
-      # Skip any NULL, NA, or empty string values to prevent validation errors.
-      # Identity mappings (a column already carrying the standard name) are not
-      # stored: the sparse store only holds genuine renames.
-      records <- list()
-      for (std_col in names(mapping)) {
-        val <- mapping[[std_col]]
-        if (is.null(val) || (length(val) == 1 && is.na(val)) || !nzchar(trimws(val))) {
-          if (get_verbosity() >= 2) {
-            cli::cli_alert_warning(
-              "Skipping invalid mapping for {.field {std_col}}: value is NULL, NA, or empty"
-            )
-          }
-          next
-        }
-        if (identical(trimws(val), std_col)) next
-        records[[std_col]] <- list(source_name = trimws(val))
-      }
-
-      if (length(records) > 0) {
-        user_input[["data.columns"]] <- records
-      }
+      confirm_derivation(auto_mapping)
     },
     error = function(e) {
-      if (get_verbosity() >= 2) {
-        cli::cli_alert_warning("Failed to auto-detect columns: {e$message}")
-        cli::cli_alert_info("You will be prompted for column mappings")
-      }
+      log_warn(c(
+        "Failed to auto-detect columns: {e$message}",
+        "i" = "Falling back to mapping every required column by hand."
+      ))
+      NULL
     }
   )
+
+  auto_mapping <- if (is.null(detected)) list() else detected$mapping
+  derivation <- if (is.null(detected)) NULL else detected$derivation
+  derived_roles <- if (is.null(derivation)) character(0) else c("effect", "se")
+
+  # Present detected columns to the user for confirmation. This shows detected
+  # columns and allows the user to accept, modify, or skip optional ones.
+  # Entered even with nothing detected: `data.columns` has a non-NULL template
+  # default, so an unset mapping resolves silently rather than being prompted
+  # for later, and the required columns would surface only as a hard abort
+  # partway through the first analysis run. `interactive_column_mapping()`
+  # applies the autonomy and `interactive()` gates itself, and leaves roles
+  # unmapped rather than guessing when it cannot ask.
+  mapping <- interactive_column_mapping(
+    df = df,
+    auto_mapping = auto_mapping,
+    required_only = TRUE,
+    show_detected_first = TRUE,
+    derived_roles = derived_roles
+  )
+
+  # The derived route needs both inputs mapped, whatever the user did with
+  # the optional columns in the menus above.
+  if (!is.null(derivation)) {
+    mapping[["t_stat"]] <- derivation$t_stat
+    mapping[["reg_dof"]] <- derivation$dof
+    user_input[["data.derive_pcc"]] <- TRUE
+  }
+
+  # Convert the confirmed mapping into unified role records.
+  # Skip any NULL, NA, or empty string values to prevent validation errors.
+  # Identity mappings (a column already carrying the standard name) are not
+  # stored: the sparse store only holds genuine renames.
+  records <- list()
+  for (std_col in names(mapping)) {
+    val <- mapping[[std_col]]
+    if (is.null(val) || (length(val) == 1 && is.na(val)) || !nzchar(trimws(val))) {
+      log_warn("Skipping invalid mapping for {.field {std_col}}: value is NULL, NA, or empty")
+      next
+    }
+    if (identical(trimws(val), std_col)) next
+    records[[std_col]] <- list(source_name = trimws(val))
+  }
+
+  if (length(records) > 0) {
+    user_input[["data.columns"]] <- records
+  }
 
   user_input
 }
