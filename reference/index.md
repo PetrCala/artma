@@ -14,6 +14,7 @@
 - [`options_create()`](https://petrcala.github.io/artma/reference/options_create.md)
   : Create user options
 - [`options_delete()`](https://petrcala.github.io/artma/reference/options_delete.md)
+  [`options_remove()`](https://petrcala.github.io/artma/reference/options_delete.md)
   : Delete user options
 - [`options_diff()`](https://petrcala.github.io/artma/reference/options_diff.md)
   : Diff two user options files

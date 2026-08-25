@@ -1,11 +1,18 @@
 # Delete user options
 
 Provide a name of a user options file to delete, and delete that file.
+`options_remove()` is an alias.
 
 ## Usage
 
 ``` r
 options_delete(
+  options_file_name = NULL,
+  options_dir = NULL,
+  skip_confirmation = FALSE
+)
+
+options_remove(
   options_file_name = NULL,
   options_dir = NULL,
   skip_confirmation = FALSE
