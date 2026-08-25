@@ -1,16 +1,58 @@
 box::use(
+  testing / mocks / index[MOCKS],
   testthat[
+    capture_messages,
     capture_warnings,
     expect_equal,
     expect_error,
     expect_false,
     expect_match,
     expect_named,
+    expect_null,
     expect_setequal,
     expect_true,
     test_that
   ]
 )
+
+# Options backed by a real mock dataset, so the prepare step can run its full
+# provided-data branch (config lookups included). Built once at file scope:
+# options_load() is pure, so each test activates the returned list with
+# withr::local_options() and stays isolated.
+prepare_step_options <- local({
+  fixture_dir <- withr::local_tempdir(.local_envir = testthat::teardown_env())
+
+  df <- MOCKS$create_mock_df(seed = 42, nrow = 60, n_studies = 5)
+  source_path <- file.path(fixture_dir, "run-pipeline-data.csv")
+  utils::write.csv(df, source_path, row.names = FALSE)
+
+  options_dir <- file.path(fixture_dir, "options")
+  dir.create(options_dir)
+
+  artma::options_create(
+    options_file_name = "run-pipeline.yaml",
+    options_dir = options_dir,
+    user_input = list(
+      "data.source_path" = source_path,
+      "data.na_handling" = "remove",
+      "data.reconcile_mode" = "auto",
+      "calc.se_zero_handling" = "ignore",
+      "cache.use_cache" = FALSE,
+      "verbose" = 1L
+    ),
+    should_validate = TRUE,
+    should_overwrite = TRUE
+  )
+
+  artma::options_load(
+    options_file_name = "run-pipeline.yaml",
+    options_dir = options_dir,
+    load_with_prefix = TRUE,
+    should_validate = TRUE,
+    should_add_temp_options = TRUE,
+    should_return = TRUE
+  )
+})
 
 mock_methods <- function() {
   list(
@@ -569,4 +611,207 @@ test_that("invoke_runtime_methods restores the session RNG state it found", {
   # A sequential layer runs methods in this process; their stream state must
   # not leak into what the caller draws next.
   expect_equal(stats::rnorm(1), expected_next)
+})
+
+# Pipeline steps ------------------------------------------------------------
+#
+# artma()'s linear path is prepare_run_context() -> execute_run() ->
+# summarize_run(); the session hub calls the same three steps repeatedly. These
+# tests drive the steps directly, with the stub methods dir standing in for the
+# package methods.
+
+# Current depth of the output-file capture stack, measured by opening a probe
+# frame (its identifier is the new depth) and closing it again.
+capture_depth <- function() {
+  box::use(
+    artma / libs / infrastructure / output_files[
+      begin_output_file_capture, end_output_file_capture
+    ]
+  )
+  probe <- begin_output_file_capture()
+  end_output_file_capture(probe)
+  probe - 1L
+}
+
+# A context as prepare_run_context() returns one, without preparing any data.
+local_run_context <- function(df, save_results = TRUE, env = parent.frame()) {
+  box::use(
+    artma / libs / infrastructure / output_files[
+      begin_output_file_capture, end_output_file_capture
+    ],
+    artma / output / export[ensure_output_dirs]
+  )
+
+  output_dir <- NULL
+  if (isTRUE(save_results)) {
+    output_dir <- withr::local_tempdir(.local_envir = env)
+    ensure_output_dirs(output_dir)
+  }
+
+  capture <- begin_output_file_capture()
+  withr::defer(end_output_file_capture(capture), envir = env)
+
+  list(df = df, output_dir = output_dir, save_results = save_results, capture = capture)
+}
+
+test_that("execute_run invokes the methods and reports no files when results are not saved", {
+  fake_methods <- list(
+    method_a = list(run = function(df, ...) list(tables = list(summary = data.frame(estimate = 1))))
+  )
+  withr::local_options(list(artma.verbose = 0))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  context <- local_run_context(data.frame(x = 1:3), save_results = FALSE)
+  depth_before <- capture_depth()
+
+  run <- artma:::execute_run(context, methods = "method_a", modules_dir = methods_dir)
+
+  expect_named(run, c("results", "run_files"))
+  expect_named(run$results, "method_a")
+  expect_equal(run$run_files, character())
+  # Nothing was exported, so the capture is still the caller's to close.
+  expect_equal(capture_depth(), depth_before)
+})
+
+test_that("execute_run exports tables, writes the manifest, and closes the capture", {
+  box::use(artma / output / run_manifest[read_run_manifest])
+
+  fake_methods <- list(
+    method_a = list(run = function(df, ...) list(tables = list(summary = data.frame(estimate = 1)))),
+    method_b = list(run = function(df, ...) list(tables = list(summary = data.frame(estimate = 2))))
+  )
+  withr::local_options(list(artma.verbose = 0, artma.output.report = FALSE))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  context <- local_run_context(data.frame(x = 1:3))
+  depth_before <- capture_depth()
+
+  run <- artma:::execute_run(
+    context,
+    methods = c("method_a", "method_b"),
+    modules_dir = methods_dir
+  )
+
+  expect_setequal(names(run$results), c("method_a", "method_b"))
+  expect_true(file.exists(file.path(context$output_dir, "tables", "method_a.csv")))
+  expect_true(file.exists(file.path(context$output_dir, "run.json")))
+
+  # The exported tables were recorded before the capture closed, so the
+  # manifest describes this run rather than the directory's contents.
+  expect_true(any(basename(run$run_files) == "method_a.csv"))
+  manifest <- read_run_manifest(context$output_dir)
+  expect_setequal(as.character(manifest$methods_run), c("method_a", "method_b"))
+
+  # The run step owns closing the capture it was handed.
+  expect_equal(capture_depth(), depth_before - 1L)
+})
+
+test_that("execute_run keeps the run alive when the report fails to render", {
+  fake_methods <- list(
+    method_a = list(run = function(df, ...) list(tables = list(summary = data.frame(estimate = 1))))
+  )
+  withr::local_options(list(artma.verbose = 0, artma.output.report = TRUE))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  context <- local_run_context(data.frame(x = 1:3))
+  # An unwritable report path makes the render fail without touching anything
+  # else the run produces.
+  dir.create(file.path(context$output_dir, "report.html"))
+
+  run <- artma:::execute_run(context, methods = "method_a", modules_dir = methods_dir)
+
+  expect_named(run$results, "method_a")
+  expect_true(file.exists(file.path(context$output_dir, "run.json")))
+})
+
+test_that("prepare_run_context hands over an open capture with the prepared data", {
+  withr::local_options(prepare_step_options)
+  withr::local_options(list(artma.verbose = 0, artma.output.save_results = FALSE))
+  depth_before <- capture_depth()
+
+  context <- artma:::prepare_run_context(data = NULL, methods = "funnel_plot")
+  withr::defer({
+    box::use(artma / libs / infrastructure / output_files[end_output_file_capture])
+    end_output_file_capture(context$capture)
+  })
+
+  expect_null(context$output_dir)
+  expect_false(isTRUE(context$save_results))
+  expect_true(is.data.frame(context$df))
+  expect_true(all(c("effect", "se") %in% names(context$df)))
+  # The capture stays open: the run step (or artma()'s on.exit) closes it.
+  expect_equal(capture_depth(), depth_before + 1L)
+})
+
+test_that("prepare_run_context preprocesses a supplied data frame the same way", {
+  withr::local_options(prepare_step_options)
+  withr::local_options(list(artma.verbose = 0, artma.output.save_results = TRUE))
+  output_dir <- withr::local_tempdir()
+  withr::local_options(list(artma.output.dir = output_dir))
+
+  from_file <- artma:::prepare_run_context(data = NULL, methods = "funnel_plot")
+  box::use(
+    artma / data / read[read_data],
+    artma / libs / infrastructure / output_files[end_output_file_capture]
+  )
+  end_output_file_capture(from_file$capture)
+
+  from_data <- artma:::prepare_run_context(data = read_data(), methods = "funnel_plot")
+  withr::defer(end_output_file_capture(from_data$capture))
+
+  expect_true(is.data.frame(from_data$df))
+  expect_true(all(c("effect", "se") %in% names(from_data$df)))
+  expect_equal(names(from_data$df), names(from_file$df))
+  # The output directories are resolved and created before any data work.
+  expect_equal(from_data$output_dir, output_dir)
+  expect_true(dir.exists(file.path(output_dir, "tables")))
+})
+
+test_that("prepare_run_context closes its capture when preparation fails", {
+  withr::local_options(list(
+    artma.verbose = 0,
+    artma.output.save_results = FALSE,
+    artma.data.source_path = NULL
+  ))
+  depth_before <- capture_depth()
+
+  expect_error(artma:::prepare_run_context(data = NULL, methods = "funnel_plot"))
+
+  expect_equal(capture_depth(), depth_before)
+})
+
+test_that("summarize_run prints the closing messages and returns the results invisibly", {
+  context <- local_run_context(data.frame(x = 1:3))
+  results <- list(method_a = list(tables = list()))
+  attr(results, "run_info") <- list(
+    methods_requested = "method_a",
+    seed = 1L,
+    output_files = list()
+  )
+  withr::local_options(list(artma.verbose = 3))
+
+  messages <- capture_messages(
+    returned <- withVisible(artma:::summarize_run(results, context = context))
+  )
+
+  expect_false(returned$visible)
+  expect_equal(returned$value, results)
+  expect_true(any(grepl("Analysis complete", messages)))
+  expect_true(any(grepl("results_open", messages)))
+})
+
+test_that("summarize_run omits the results-directory hint when nothing was saved", {
+  context <- local_run_context(data.frame(x = 1:3), save_results = FALSE)
+  results <- list(method_a = list(tables = list()))
+  attr(results, "run_info") <- list(
+    methods_requested = "method_a",
+    seed = 1L,
+    output_files = list()
+  )
+  withr::local_options(list(artma.verbose = 3))
+
+  messages <- capture_messages(artma:::summarize_run(results, context = context))
+
+  expect_true(any(grepl("Analysis complete", messages)))
+  expect_false(any(grepl("results_open", messages)))
 })
