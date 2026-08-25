@@ -68,6 +68,7 @@ viz_set <- function(theme = NULL, export_graphics = NULL,
       set_visualization_option,
       get_valid_themes
     ],
+    artma / interactive / input[ask_select],
     artma / libs / core / utils[get_verbosity]
   )
 
@@ -75,12 +76,11 @@ viz_set <- function(theme = NULL, export_graphics = NULL,
     is.null(export_path) && is.null(graph_scale)
 
   if (no_args && interactive()) {
-    themes <- get_valid_themes()
-    theme <- climenu::select(
-      choices = themes,
-      prompt = "Select a theme:"
+    theme <- ask_select(
+      question = "Select a theme",
+      choices = get_valid_themes()
     )
-    if (is.null(theme)) {
+    if (rlang::is_empty(theme)) {
       cli::cli_alert_info("Theme selection cancelled.")
       return(invisible(NULL))
     }
