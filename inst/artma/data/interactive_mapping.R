@@ -408,6 +408,7 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
     artma / libs / core / utils[get_verbosity],
     artma / libs / core / autonomy[should_prompt_user],
     artma / libs / core / log[log_info, log_warn],
+    artma / interactive / input[ask_text, ask_yes_no],
     artma / data / column_recognition[
       get_required_column_names,
       get_column_patterns
@@ -718,17 +719,23 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
       }
       next
     } else if (grepl("^---.*None.*---$", selected)) {
-      # Ask user to type column name manually
-      typed_col <- readline(sprintf("Enter the exact column name for '%s': ", std_col))
-      typed_col <- trimws(typed_col)
+      # Ask user to type the column name manually; unknown names are re-asked,
+      # an empty answer skips the column.
+      typed_col <- ask_text(
+        question = cli::format_inline("Exact column name for {.field {std_col}}"),
+        hints = "press {.kbd Enter} to skip this column",
+        allow_empty = TRUE,
+        validate = function(x) {
+          if (x %in% available_cols) {
+            NULL
+          } else {
+            cli::format_inline("Column {.val {x}} not found in the data frame.")
+          }
+        }
+      )
 
-      if (nchar(typed_col) == 0) {
+      if (!nzchar(typed_col)) {
         cli::cli_alert_warning("No column name provided, skipping {.field {std_col}}")
-        next
-      }
-
-      if (!typed_col %in% available_cols) {
-        cli::cli_alert_danger("Column {.val {typed_col}} not found in data frame. Skipping.")
         next
       }
 
@@ -747,11 +754,8 @@ interactive_column_mapping <- function(df, auto_mapping = list(), required_only 
 
     if (length(optional_cols) > 0 && length(available_cols) > 0) {
       cli::cli_h2("Optional columns")
-      cli::cli_inform("Would you like to map optional columns? (y/n)")
 
-      response <- tolower(trimws(readline("Map optional columns? [y/N]: ")))
-
-      if (response %in% c("y", "yes")) {
+      if (ask_yes_no("Map optional columns?")) {
         for (std_col in optional_cols) {
           pattern_def <- patterns[[std_col]]
 

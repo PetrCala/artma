@@ -551,28 +551,26 @@ specify_variable_split <- function(var_name, df, config) {
 #'
 #' @keywords internal
 prompt_equal_value <- function(var_name, var_data, data_type) {
+  box::use(artma / interactive / input[ask_text])
+
   unique_vals <- sort(unique(var_data))
 
   if (data_type == "dummy") {
-    # For binary, default to 1
-    cli::cli_text("Typical choice: compare where {var_name} = 1 vs. {var_name} = 0")
+    hint <- cli::format_inline("typical choice: compare where {var_name} = 1 vs. {var_name} = 0")
     default_val <- "1"
   } else if (length(unique_vals) <= 10) {
-    # For categorical/few values, show options
-    cli::cli_text("Available values: {.val {unique_vals}}")
+    hint <- cli::format_inline("available values: {.val {unique_vals}}")
     default_val <- as.character(unique_vals[1])
   } else {
-    cli::cli_text("Variable has {length(unique_vals)} unique values")
+    hint <- cli::format_inline("variable has {length(unique_vals)} unique values")
     default_val <- as.character(stats::median(var_data))
   }
 
-  value <- readline(
-    prompt = paste0("Enter value for equality comparison [default: ", default_val, "]: ")
+  value <- ask_text(
+    question = cli::format_inline("Value for the equality comparison on {.field {var_name}}"),
+    hints = hint,
+    default = default_val
   )
-
-  if (nchar(trimws(value)) == 0) {
-    return(default_val)
-  }
 
   # Try to convert to numeric if possible
   numeric_value <- suppressWarnings(as.numeric(value))
@@ -598,48 +596,48 @@ prompt_equal_value <- function(var_name, var_data, data_type) {
 #'
 #' @keywords internal
 prompt_gltl_value <- function(var_name, var_data, data_type) {
+  box::use(artma / interactive / input[ask_text])
+
   var_mean <- mean(var_data, na.rm = TRUE)
   var_median <- stats::median(var_data, na.rm = TRUE)
 
   if (data_type == "perc") {
-    # For percentages, suggest 0.5
-    cli::cli_text("Typical choice: 0.5 (split at 50%)")
+    hints <- "typical choice: 0.5 (split at 50%)"
     default_val <- "0.5"
   } else {
-    # For numeric, suggest mean or median
-    cli::cli_text("You can enter:")
-    cli::cli_ul(c(
-      "{.val mean} - split at mean ({round(var_mean, 3)})",
-      "{.val median} - split at median ({round(var_median, 3)})",
-      "A specific numeric value"
-    ))
+    hints <- cli::format_inline(
+      "{.val mean} (splits at {round(var_mean, 3)}), {.val median} (splits at {round(var_median, 3)}), or a specific number"
+    )
     default_val <- "mean"
   }
 
-  value <- readline(
-    prompt = paste0("Enter threshold value [default: ", default_val, "]: ")
+  value <- ask_text(
+    question = cli::format_inline("Threshold value for the split on {.field {var_name}}"),
+    hints = hints,
+    default = default_val,
+    validate = function(x) {
+      x <- tolower(x)
+      if (x %in% c("mean", "median") || !is.na(suppressWarnings(as.numeric(x)))) {
+        NULL
+      } else {
+        cli::format_inline("Enter {.val mean}, {.val median}, or a number.")
+      }
+    }
   )
 
-  if (nchar(trimws(value)) == 0) {
+  if (!nzchar(value)) {
+    # All attempts were invalid; keep the previous fall-back-to-default behavior.
+    cli::cli_alert_warning("Invalid input. Using default: {default_val}")
     return(default_val)
   }
 
   value_trimmed <- trimws(tolower(value))
 
-  # Check if it's mean or median
   if (value_trimmed %in% c("mean", "median")) {
     return(value_trimmed)
   }
 
-  # Try to parse as numeric
-  numeric_value <- suppressWarnings(as.numeric(value_trimmed))
-  if (!is.na(numeric_value)) {
-    return(as.character(numeric_value))
-  }
-
-  # Invalid input, return default
-  cli::cli_alert_warning("Invalid input. Using default: {default_val}")
-  default_val
+  as.character(as.numeric(value_trimmed))
 }
 
 

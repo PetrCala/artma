@@ -26,7 +26,7 @@ ask_for_options_file_name <- function(should_clean = TRUE, prompt = NULL) {
       default = "my_analysis"
     )
   } else {
-    options_file_name <- readline(prompt = prompt)
+    options_file_name <- ask_text(question = prompt, allow_empty = TRUE)
   }
 
   if (should_clean) {
@@ -111,24 +111,19 @@ ask_for_option_value <- function(
 
   option_value <- ask_text(
     question = cli::format_inline("Value for {CONST$STYLES$OPTIONS$NAME(option_name)}"),
-    max_retries = max_retries
+    max_retries = max_retries,
+    sanitize = trim_quotes,
+    validate = if (is.null(option_type)) {
+      NULL
+    } else {
+      function(x) validate_option_value(x, option_type, option_name, allow_na)
+    }
   )
 
   if (option_value == "") {
     cli::cli_alert_danger("Failed to set the value for option {CONST$STYLES$OPTIONS$NAME(option_name)}.")
     cli::cat_line()
     return(NULL)
-  }
-
-  option_value <- trim_quotes(option_value)
-
-  if (!is.null(option_type)) {
-    err_msg <- validate_option_value(option_value, option_type, option_name, allow_na)
-    if (!is.null(err_msg)) {
-      cli::cli_alert_danger(err_msg)
-      cli::cat_line()
-      return(NULL)
-    }
   }
 
   option_value
