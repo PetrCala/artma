@@ -205,10 +205,14 @@ method selection, and column mapping. Public API:
   `artma / libs / core / validation`, not
   [`stopifnot()`](https://rdrr.io/r/base/stopifnot.html).
   `assert(cond, "message")` takes an explicit error message.
-- Interactive menus: use the `climenu` package (a sub-package of this
-  repository). Never
-  [`utils::menu()`](https://rdrr.io/r/utils/menu.html) or other menu
-  packages.
+- Interactive prompts: use `ask_text`/`ask_select`/`ask_yes_no` from
+  `artma / interactive / input`, never raw
+  [`readline()`](https://rdrr.io/r/base/readline.html) or direct
+  `climenu` calls (climenu, a sub-package of this repository, stays the
+  menu backend; never
+  [`utils::menu()`](https://rdrr.io/r/utils/menu.html)). Layout
+  contract, retry/default semantics, and the injection testing pattern:
+  [contributingGuides/PROMPTS.md](https://petrcala.github.io/artma/contributingGuides/PROMPTS.md).
 - Verbosity: `options(artma.verbose = <1..4>)` scales from
   errors-only (1) to debug (4); default 3. Call the leveled wrapper
   (`log_error`/`log_warn`/`log_info`/`log_debug`, or `is_*_enabled()` to
