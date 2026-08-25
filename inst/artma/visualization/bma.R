@@ -160,6 +160,7 @@ resolve_pip_order <- function(bma_model, reg_names) {
 #' @keywords internal
 create_bma_inclusion_plot <- function(bma_model, theme_name, max_models = 40L) {
   box::use(
+    artma / libs / core / log[log_info],
     artma / visualization / colors[get_tokens, get_neutral],
     artma / visualization / theme[get_theme]
   )
@@ -182,12 +183,16 @@ create_bma_inclusion_plot <- function(bma_model, theme_name, max_models = 40L) {
     "Excluded" = neutral$surface_alt
   )
 
-  caption <- sprintf(
-    "%d of %d retained models, carrying %.1f%% of their posterior mass. Column width is each model's posterior probability.",
-    plot_data$n_models_shown,
-    plot_data$n_models_total,
-    100 * plot_data$mass_shown
-  )
+  # Truncation is reported to the console rather than captioned on the figure.
+  # It still must not pass in silence: the grid shows a fraction of the
+  # retained models, and nothing in the image itself says so.
+  if (plot_data$n_models_shown < plot_data$n_models_total) {
+    log_info(paste0(
+      "BMA inclusion plot: showing ", plot_data$n_models_shown, " of ",
+      plot_data$n_models_total, " retained models, carrying ",
+      sprintf("%.1f%%", 100 * plot_data$mass_shown), " of their posterior mass."
+    ))
+  }
 
   ggplot2::ggplot(cells) +
     ggplot2::geom_rect(
@@ -215,8 +220,7 @@ create_bma_inclusion_plot <- function(bma_model, theme_name, max_models = 40L) {
     ) +
     ggplot2::labs(
       x = "Cumulative posterior model probability",
-      y = NULL,
-      caption = caption
+      y = NULL
     ) +
     get_theme(theme_name) +
     ggplot2::theme(
