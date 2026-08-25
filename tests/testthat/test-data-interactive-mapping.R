@@ -13,7 +13,9 @@ box::use(
 box::use(
   artma / data / interactive_mapping[
     confirm_column_mapping,
+    confirm_provisional_mappings,
     format_mapping_display,
+    format_provisional_evidence,
     interactive_column_mapping
   ],
   artma / data_config / column_mapping[save_column_mapping_to_options],
@@ -350,4 +352,239 @@ test_that("read_stored_columns falls back to the session store when absent", {
   store <- read_stored_columns("no-such-file-here.yaml")
 
   expect_equal(store$effect$source_name, "b")
+})
+
+
+# --- Confirming sub-threshold candidates ------------------------------------
+# `select_fn` and `is_interactive` make the confirm path drivable without a
+# terminal: the menu is the only part that needs one.
+
+#' One provisional candidate of the family the benchmark keeps missing: a
+#' column whose values and pair consistency say "effect" while its name says
+#' nothing at all.
+nameless_effect_candidate <- function(column = "eis", kind = "unmapped", alternatives = character(0)) {
+  list(
+    kind = kind,
+    role = "effect",
+    column = column,
+    score = 0.65,
+    evidence = 0.95,
+    name_score = 0,
+    pair_consistency = 0.98,
+    pair_with = "se",
+    runner_up = "idstudy",
+    margin = 0.3,
+    alternatives = alternatives,
+    summary = list(
+      column = column,
+      coverage = 1,
+      n_distinct = 140L,
+      non_integer_share = 1,
+      has_both_signs = TRUE,
+      median_abs = 0.3
+    )
+  )
+}
+
+pick_first <- function(choices, prompt) choices[1]
+pick_last <- function(choices, prompt) choices[length(choices)]
+
+
+test_that("confirming a provisional candidate maps the role", {
+  withr::local_options(list("artma.verbose" = 1))
+  mapping <- list(se = "se", study_id = "study", n_obs = "nobs")
+
+  result <- confirm_provisional_mappings(
+    mapping = mapping,
+    provisional = list(effect = nameless_effect_candidate()),
+    select_fn = pick_first,
+    is_interactive = TRUE
+  )
+
+  expect_equal(result$effect, "eis")
+})
+
+
+test_that("declining a provisional candidate leaves the role unmapped", {
+  withr::local_options(list("artma.verbose" = 1))
+  mapping <- list(se = "se")
+
+  result <- confirm_provisional_mappings(
+    mapping = mapping,
+    provisional = list(effect = nameless_effect_candidate()),
+    select_fn = pick_last,
+    is_interactive = TRUE
+  )
+
+  expect_equal(result, mapping)
+  expect_false("effect" %in% names(result))
+
+  # Cancelling the menu is a decline, not an error.
+  cancelled <- confirm_provisional_mappings(
+    mapping = mapping,
+    provisional = list(effect = nameless_effect_candidate()),
+    select_fn = function(choices, prompt) NULL,
+    is_interactive = TRUE
+  )
+  expect_equal(cancelled, mapping)
+})
+
+
+test_that("a non-interactive session is never asked", {
+  withr::local_options(list("artma.verbose" = 1))
+  mapping <- list(se = "se")
+
+  result <- confirm_provisional_mappings(
+    mapping = mapping,
+    provisional = list(effect = nameless_effect_candidate()),
+    select_fn = function(choices, prompt) stop("must not prompt"),
+    is_interactive = FALSE
+  )
+
+  expect_equal(result, mapping)
+})
+
+
+test_that("a near-tie asks which twin holds the role", {
+  withr::local_options(list("artma.verbose" = 1))
+  mapping <- list(effect = "effect", se = "se")
+  tie <- nameless_effect_candidate(column = "effect", kind = "tie", alternatives = "effect_M")
+
+  swapped <- confirm_provisional_mappings(
+    mapping = mapping,
+    provisional = list(effect = tie),
+    select_fn = function(choices, prompt) choices[2],
+    is_interactive = TRUE
+  )
+  expect_equal(swapped$effect, "effect_M")
+
+  kept <- confirm_provisional_mappings(
+    mapping = mapping,
+    provisional = list(effect = tie),
+    select_fn = pick_first,
+    is_interactive = TRUE
+  )
+  expect_equal(kept$effect, "effect")
+
+  # Ties are the non-critical half of this: they are skipped where the autonomy
+  # level does not ask about such choices.
+  ignored <- confirm_provisional_mappings(
+    mapping = mapping,
+    provisional = list(effect = tie),
+    allow_ties = FALSE,
+    select_fn = function(choices, prompt) stop("must not prompt"),
+    is_interactive = TRUE
+  )
+  expect_equal(ignored, mapping)
+})
+
+
+test_that("candidates too close to call are offered as one pick-one question", {
+  withr::local_options(list("artma.verbose" = 1))
+  mapping <- list(se = "se")
+  candidate <- nameless_effect_candidate(alternatives = c("eis_w", "realrate"))
+  candidate$alternative_summaries <- list(
+    list(column = "eis_w", evidence = 0.95, pair_consistency = 0.9),
+    list(column = "realrate", evidence = 0.9, pair_consistency = 0.75)
+  )
+
+  seen <- NULL
+  result <- confirm_provisional_mappings(
+    mapping = mapping,
+    provisional = list(effect = candidate),
+    select_fn = function(choices, prompt) {
+      seen <<- choices
+      choices[2]
+    },
+    is_interactive = TRUE
+  )
+
+  expect_equal(seen[seq_len(3)], c("eis", "eis_w", "realrate"))
+  expect_true(grepl("None of these", seen[length(seen)], fixed = TRUE))
+  expect_equal(result$effect, "eis_w")
+
+  # Picking the decline entry still leaves the role unmapped.
+  declined <- confirm_provisional_mappings(
+    mapping = mapping,
+    provisional = list(effect = candidate),
+    select_fn = pick_last,
+    is_interactive = TRUE
+  )
+  expect_false("effect" %in% names(declined))
+})
+
+
+test_that("a column another role already holds is not offered", {
+  withr::local_options(list("artma.verbose" = 1))
+  mapping <- list(se = "eis", study_id = "study")
+
+  result <- confirm_provisional_mappings(
+    mapping = mapping,
+    provisional = list(effect = nameless_effect_candidate()),
+    select_fn = function(choices, prompt) stop("must not prompt"),
+    is_interactive = TRUE
+  )
+
+  expect_equal(result, mapping)
+})
+
+
+test_that("interactive_column_mapping confirms provisional candidates before prompting", {
+  withr::local_options(list("artma.verbose" = 1))
+  df <- data.frame(
+    study = rep(c("A", "B"), each = 3),
+    eis = c(0.1, -0.2, 0.3, 0.15, -0.25, 0.35),
+    se = c(0.05, 0.08, 0.06, 0.04, 0.09, 0.07),
+    nobs = rep(c(120, 340), each = 3)
+  )
+  auto_mapping <- list(se = "se", study_id = "study", n_obs = "nobs")
+  attr(auto_mapping, "provisional") <- list(effect = nameless_effect_candidate())
+
+  result <- interactive_column_mapping(
+    df = df,
+    auto_mapping = auto_mapping,
+    required_only = TRUE,
+    show_detected_first = FALSE,
+    is_interactive = TRUE,
+    select_fn = pick_first
+  )
+
+  # The confirmed column fills the missing required role, so the column menus
+  # below it never run.
+  expect_equal(result$effect, "eis")
+})
+
+
+test_that("interactive_column_mapping leaves the mapping alone non-interactively", {
+  withr::local_options(list("artma.verbose" = 1))
+  df <- data.frame(
+    study = rep(c("A", "B"), each = 3),
+    eis = c(0.1, -0.2, 0.3, 0.15, -0.25, 0.35),
+    se = c(0.05, 0.08, 0.06, 0.04, 0.09, 0.07),
+    nobs = rep(c(120, 340), each = 3)
+  )
+  auto_mapping <- list(se = "se", study_id = "study", n_obs = "nobs")
+  attr(auto_mapping, "provisional") <- list(effect = nameless_effect_candidate())
+
+  result <- interactive_column_mapping(
+    df = df,
+    auto_mapping = auto_mapping,
+    required_only = TRUE,
+    show_detected_first = FALSE,
+    is_interactive = FALSE,
+    select_fn = function(choices, prompt) stop("must not prompt")
+  )
+
+  expect_false("effect" %in% names(result))
+})
+
+
+test_that("format_provisional_evidence explains why the candidate is plausible", {
+  lines <- format_provisional_evidence(nameless_effect_candidate())
+
+  expect_true(any(grepl("effect values", lines, fixed = TRUE)))
+  expect_true(any(grepl("rows populated", lines, fixed = TRUE)))
+  expect_true(any(grepl("consistent with the mapped column se", lines, fixed = TRUE)))
+  expect_true(any(grepl("name carries no signal", lines, fixed = TRUE)))
+  expect_true(any(grepl("idstudy", lines, fixed = TRUE)))
 })

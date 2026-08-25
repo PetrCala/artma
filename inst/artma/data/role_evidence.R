@@ -24,6 +24,23 @@ MIN_COMPLETE_PAIRS <- 15L
 #' The roles resolved jointly by `assign_core_roles()`.
 CORE_EVIDENCE_ROLES <- c("effect", "se", "t_stat")
 
+#' Thresholds for the confirm-me candidate set (see `assign_core_roles()`).
+#' A provisional candidate is never auto-accepted; it is only offered to the
+#' user for a single confirmation question in an interactive session, so these
+#' bars sit below the acceptance thresholds without loosening them.
+#' - min_evidence: value evidence the candidate must reach on its own
+#' - min_pair: consistency required with an already-accepted counterpart
+#' - min_margin: how close a competitor must sit to the best candidate before
+#'   it joins the same question instead of being dropped
+#' - tie_margin: how close a runner-up must sit to an accepted column before
+#'   the pick counts as a near-tie worth asking about
+PROVISIONAL_THRESHOLDS <- list(
+  min_evidence = 0.55,
+  min_pair = 0.5,
+  min_margin = 0.1,
+  tie_margin = 0.05
+)
+
 clamp01 <- function(x) max(0, min(1, x))
 
 #' Stata-style missing-value markers that can survive into a raw text column:
@@ -357,6 +374,12 @@ combine_name_and_evidence <- function(name_score, evidence_score) {
 #'   optional t_stat role.
 #' @return *\[list\]* Accepted assignments keyed by role, each a
 #'   `list(column, score)`. Roles without a confident candidate are absent.
+#'   Two attributes carry the confirm-me layer, which never changes what is
+#'   accepted: `provisional` holds one question per required role, if any is
+#'   worth asking (`kind = "unmapped"` for a declined role, `kind = "tie"` for
+#'   an accepted role with a near-tied runner-up), with `column` the leading
+#'   candidate and `alternatives` any competitor too close to separate from
+#'   it; `declined` holds the ranked evidence behind each decline.
 assign_core_roles <- function(df,
                               name_scores,
                               required_confidence,
@@ -537,11 +560,226 @@ assign_core_roles <- function(df,
     }
   }
 
-  assignments[intersect(CORE_EVIDENCE_ROLES, names(assignments))]
+  result <- assignments[intersect(CORE_EVIDENCE_ROLES, names(assignments))]
+
+  # The confirm-me layer. Nothing below changes what is accepted: it records
+  # why the required roles were decided the way they were. `provisional` holds
+  # at most one candidate per role that is worth a single confirmation
+  # question (a role the thresholds declined, or an accepted role with a
+  # near-tied runner-up); `declined` holds the ranked evidence behind a
+  # decline, for the log and for external tooling.
+  counterpart_of <- list(effect = "se", se = "effect")
+
+  pair_consistency_with <- function(role, col, counterpart) {
+    if (is.null(counterpart) || is.na(counterpart) || identical(col, counterpart)) {
+      return(NA_real_)
+    }
+    if (identical(role, "effect")) {
+      score_pair_consistency(df[[col]], df[[counterpart]])
+    } else {
+      score_pair_consistency(df[[counterpart]], df[[col]])
+    }
+  }
+
+  # Rank a role's candidates on the same scale the acceptance path uses: the
+  # blended name/value score plus the pair bonus the candidate would earn
+  # against the counterpart column that was accepted.
+  rank_candidates <- function(role, pool, counterpart) {
+    if (length(pool) == 0) {
+      return(NULL)
+    }
+    scores <- vapply(pool, function(col) {
+      score <- base[role, col]
+      pair <- pair_consistency_with(role, col, counterpart)
+      if (!is.na(pair)) score <- min(1, score + 0.15 * pair)
+      score
+    }, numeric(1))
+    ord <- order(scores, decreasing = TRUE)
+    list(columns = pool[ord], scores = unname(scores[ord]))
+  }
+
+  describe_candidate <- function(role, col, score, counterpart) {
+    p <- profile_role_values(df[[col]])
+    list(
+      column = col,
+      score = score,
+      name_score = unname(name_scores[role, col]),
+      evidence = unname(evidence[role, col]),
+      pair_consistency = pair_consistency_with(role, col, counterpart),
+      n = if (is.null(p)) NA_integer_ else p$n,
+      coverage = if (is.null(p)) NA_real_ else p$coverage,
+      n_distinct = if (is.null(p)) NA_integer_ else p$n_distinct,
+      non_integer_share = if (is.null(p)) NA_real_ else p$non_integer_share,
+      has_both_signs = if (is.null(p)) NA else p$has_both_signs,
+      median_abs = if (is.null(p)) NA_real_ else p$median_abs
+    )
+  }
+
+  # Effect and se are measured quantities: a column of nothing but whole
+  # numbers is a count or a code, however well it pairs with the rest. The
+  # automatic path vetoes such columns outright, and the confirm-me layer must
+  # not smuggle one back in as a question. Mirrors
+  # `column_recognition::looks_like_continuous_measure()`.
+  looks_measured <- function(col) {
+    p <- profile_role_values(df[[col]])
+    !is.null(p) && (p$n < 20 || p$integer_share < 0.95)
+  }
+
+  # Why a candidate is not even worth asking about. NULL means it is.
+  decline_reason <- function(role, cand, counterpart) {
+    thresholds <- PROVISIONAL_THRESHOLDS
+    if (is.na(cand$evidence)) {
+      return("too few usable values to judge the column")
+    }
+    if (!looks_measured(cand$column)) {
+      return(sprintf(
+        "%s holds only whole numbers, so it is a count or a code rather than a measured %s",
+        cand$column, role
+      ))
+    }
+    if (cand$evidence < thresholds$min_evidence) {
+      return(sprintf(
+        "the values of %s carry only weak %s evidence (%.2f)",
+        cand$column, role, cand$evidence
+      ))
+    }
+    # Value evidence alone is what the acceptance path already declined. What
+    # makes a candidate worth a question is corroboration from another column:
+    # the accepted counterpart role must exist, and the pair must behave like
+    # an (effect, se) pair. Without a counterpart there is nothing to check
+    # against, and the role is left for the ordinary mapping prompts.
+    if (is.null(counterpart)) {
+      return(sprintf(
+        "no %s column is mapped, so nothing corroborates the values of %s",
+        counterpart_of[[role]], cand$column
+      ))
+    }
+    if (is.na(cand$pair_consistency) || cand$pair_consistency < thresholds$min_pair) {
+      return(sprintf(
+        "%s does not form a consistent pair with the accepted %s column",
+        cand$column, counterpart
+      ))
+    }
+    NULL
+  }
+
+  qualifies <- function(role, col, score, counterpart) {
+    is.null(decline_reason(role, describe_candidate(role, col, score, counterpart), counterpart))
+  }
+
+  provisional <- list()
+  declined <- list()
+  claimed <- vapply(result, function(a) a$column, character(1))
+
+  for (role in c("effect", "se")) {
+    counterpart_role <- counterpart_of[[role]]
+    counterpart <- if (is.null(result[[counterpart_role]])) {
+      NULL
+    } else {
+      result[[counterpart_role]]$column
+    }
+    accepted <- if (is.null(result[[role]])) NA_character_ else result[[role]]$column
+    pool <- setdiff(role_pool(role), setdiff(claimed, accepted))
+    ranked <- rank_candidates(role, pool, counterpart)
+    if (is.null(ranked)) next
+
+    top <- lapply(seq_len(min(3L, length(ranked$columns))), function(i) {
+      describe_candidate(role, ranked$columns[i], ranked$scores[i], counterpart)
+    })
+
+    if (is.na(accepted)) {
+      cand <- top[[1]]
+      margin <- if (length(ranked$scores) > 1) {
+        ranked$scores[1] - ranked$scores[2]
+      } else {
+        Inf
+      }
+      reason <- decline_reason(role, cand, counterpart)
+      if (is.null(reason)) {
+        # Competitors sitting within the margin of the best candidate are not
+        # a reason to stay silent: they are the rest of the question. The user
+        # picks one instead of the recognizer guessing between twins
+        # (est / LB / UB, size / size_unwinsorized).
+        near <- setdiff(
+          which(ranked$scores >= ranked$scores[1] - PROVISIONAL_THRESHOLDS$min_margin),
+          1L
+        )
+        near <- Filter(
+          function(i) qualifies(role, ranked$columns[i], ranked$scores[i], counterpart),
+          near
+        )
+        near <- utils::head(near, 3L)
+
+        provisional[[role]] <- list(
+          kind = "unmapped",
+          role = role,
+          column = cand$column,
+          score = cand$score,
+          evidence = cand$evidence,
+          name_score = cand$name_score,
+          pair_consistency = cand$pair_consistency,
+          pair_with = if (is.null(counterpart)) NA_character_ else counterpart,
+          runner_up = if (length(ranked$columns) > 1) ranked$columns[2] else NA_character_,
+          margin = margin,
+          alternatives = ranked$columns[near],
+          summary = cand,
+          alternative_summaries = lapply(near, function(i) {
+            describe_candidate(role, ranked$columns[i], ranked$scores[i], counterpart)
+          })
+        )
+        reason <- "no candidate cleared the acceptance threshold; the best one is offered for confirmation"
+      }
+      declined[[role]] <- list(
+        role = role,
+        reason = reason,
+        required_confidence = required_confidence,
+        candidates = top
+      )
+      next
+    }
+
+    # An accepted role with a runner-up sitting within a whisker of it: the
+    # pick is kept (non-interactive behavior is unchanged) but recorded as a
+    # near-tie so an interactive session can ask instead of guessing.
+    accepted_at <- match(accepted, ranked$columns)
+    if (is.na(accepted_at)) next
+    tie_floor <- ranked$scores[accepted_at] - PROVISIONAL_THRESHOLDS$tie_margin
+    alt_idx <- which(
+      ranked$columns != accepted &
+        ranked$scores >= tie_floor &
+        !is.na(evidence[role, ranked$columns]) &
+        evidence[role, ranked$columns] >= PROVISIONAL_THRESHOLDS$min_evidence &
+        vapply(ranked$columns, looks_measured, logical(1))
+    )
+    if (length(alt_idx) == 0) next
+    alt_idx <- utils::head(alt_idx, 2L)
+    provisional[[role]] <- list(
+      kind = "tie",
+      role = role,
+      column = accepted,
+      score = ranked$scores[accepted_at],
+      evidence = unname(evidence[role, accepted]),
+      name_score = unname(name_scores[role, accepted]),
+      pair_consistency = pair_consistency_with(role, accepted, counterpart),
+      pair_with = if (is.null(counterpart)) NA_character_ else counterpart,
+      runner_up = ranked$columns[alt_idx[1]],
+      margin = ranked$scores[accepted_at] - ranked$scores[alt_idx[1]],
+      alternatives = ranked$columns[alt_idx],
+      summary = describe_candidate(role, accepted, ranked$scores[accepted_at], counterpart),
+      alternative_summaries = lapply(alt_idx, function(i) {
+        describe_candidate(role, ranked$columns[i], ranked$scores[i], counterpart)
+      })
+    )
+  }
+
+  attr(result, "provisional") <- provisional
+  attr(result, "declined") <- declined
+  result
 }
 
 box::export(
   MIN_ROWS_FOR_EVIDENCE,
+  PROVISIONAL_THRESHOLDS,
   MIN_COMPLETE_PAIRS,
   CORE_EVIDENCE_ROLES,
   coerce_numeric_column,

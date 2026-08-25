@@ -58,6 +58,49 @@ write_unified_columns <- function(store) {
   invisible(NULL)
 }
 
+#' @title Warn when a supplied mapping contradicts the column's values
+#' @description Mappings that bypass auto-detection (`artma::config_set()`, a
+#'   hand-edited options file, an external tool proposing a mapping) skip the
+#'   value checks recognition applies to everything it accepts. This runs the
+#'   same check and warns on a contradiction; the mapping is still saved, since
+#'   the user (or the tool) may know something the values do not show.
+#' @param df *\[data.frame\]* The dataframe the config describes.
+#' @param changes *\[list\]* The config changes about to be written.
+#' @return `NULL`, invisibly.
+#' @keywords internal
+warn_on_implausible_mapping <- function(df, changes) {
+  box::use(
+    artma / data / column_recognition[check_mapping_plausibility],
+    artma / data / utils[get_standardized_colnames]
+  )
+
+  if (!is.data.frame(df) || !is.list(changes)) {
+    return(invisible(NULL))
+  }
+
+  for (role in intersect(names(changes), get_standardized_colnames())) {
+    entry <- changes[[role]]
+    if (!is.list(entry)) next
+
+    source_name <- entry[["source_name"]]
+    if (is.null(source_name) || length(source_name) != 1 ||
+      is.na(source_name) || !nzchar(source_name)) {
+      next
+    }
+
+    column <- if (source_name %in% names(df)) source_name else make.names(source_name)
+    verdict <- check_mapping_plausibility(df, role, column)
+    if (isTRUE(verdict$ok)) next
+
+    cli::cli_warn(c(
+      "!" = "Mapping {.field {role}} to {.val {source_name}} contradicts that column: {verdict$reason}.",
+      "i" = "The mapping was saved. Check it with {.code artma::config_get(\"{role}\")} or point the role at another column."
+    ))
+  }
+
+  invisible(NULL)
+}
+
 #' @title Update Data Config
 #' @description Update the data config with new changes. Changes are applied to
 #'   the fully-resolved config, then diffed against the base defaults to produce
@@ -101,6 +144,8 @@ update_data_config <- function(changes) {
   )
 
   if (!is.null(df)) {
+    warn_on_implausible_mapping(df, changes)
+
     base_config <- build_base_config(df)
 
     # Compute sparse overrides: only non-default fields
@@ -216,6 +261,7 @@ reset_config_overrides <- function(var_name = NULL) {
 box::export(
   fix_data_config,
   update_data_config,
+  warn_on_implausible_mapping,
   reset_config_overrides,
   write_unified_columns
 )
