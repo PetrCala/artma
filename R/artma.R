@@ -8,8 +8,10 @@
 #'   be loaded from the options file (see `options` parameter). When provided, this
 #'   data will be used directly, bypassing the data reading step.
 #' @param methods *\[character, optional\]* A character vector of method names to run.
-#'   Use `"all"` to run all available methods. If `NULL`, an interactive menu will
-#'   prompt you to select methods. See `artma::methods_list()` for available methods.
+#'   Use `"all"` to run all available methods. If `NULL` and running
+#'   interactively, the session hub opens: a menu loop for picking and running
+#'   methods, previewing data, and opening results across repeated runs. See
+#'   `artma::methods_list()` for available methods.
 #' @param options *\[character, optional\]* Name of the options file (with or without
 #'   `.yaml` extension) to use. If `NULL` and running interactively, you will be
 #'   prompted to create or select an options file.
@@ -24,7 +26,9 @@
 #'   Methods that fail are omitted from the list; their names and error messages
 #'   are attached as the `failed_methods` attribute. The `run_info` attribute
 #'   carries the run's identity: the methods requested, the effective seed, and
-#'   the files each method wrote.
+#'   the files each method wrote. A session hub call additionally attaches a
+#'   `runs` attribute with one entry per run (methods, seed, timestamp) and
+#'   keeps the latest result per method across the session's runs.
 #'
 #' @details
 #' The `artma()` function is the primary way to interact with the artma package.
@@ -156,7 +160,9 @@ artma <- function(
 
   main <- function() {
     box::use(
-      artma / libs / infrastructure / output_files[end_output_file_capture]
+      artma / libs / infrastructure / output_files[
+        begin_output_file_capture, end_output_file_capture
+      ]
     )
 
     # The three steps below are the pipeline the session hub re-runs from its
@@ -166,6 +172,32 @@ artma <- function(
     # Safety net for the capture the prepare step opened: the run step closes
     # it when it writes the manifest, and closing a closed frame is a no-op.
     on.exit(end_output_file_capture(context$capture), add = TRUE)
+
+    # An interactive call without methods lands in the session hub: a menu
+    # loop that runs the same pipeline steps repeatedly and returns the
+    # accumulated results when the user exits. Scripted paths stay linear.
+    if (interactive() && is.null(methods)) {
+      box::use(artma / interactive / hub[run_session_hub])
+      return(run_session_hub(
+        df = context$df,
+        run_methods = function(selected) {
+          # Each hub run records its own files: a fresh capture frame per run,
+          # nested inside the session frame the prepare step opened.
+          run_context <- context
+          run_context$capture <- begin_output_file_capture()
+          run <- execute_run(run_context, methods = selected, ...)
+          # The run step closes the frame when it saves results; without
+          # saving, close it here (closing a closed frame is a no-op).
+          end_output_file_capture(run_context$capture)
+          summarize_run(
+            run$results,
+            context = run_context,
+            run_files = run$run_files,
+            open_results = open_results
+          )
+        }
+      ))
+    }
 
     run <- execute_run(context, methods = methods, ...)
 
