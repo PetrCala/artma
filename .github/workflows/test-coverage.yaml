@@ -1,5 +1,10 @@
-# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
-# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+# Coverage gate: a single traced test-suite run (scripts/R/inst_coverage.R)
+# produces both reports at once: cobertura.xml for the R/ surface and
+# cobertura-inst.xml for the box-managed inst/artma tree. This used to be
+# two sequential full suite runs (covr::package_coverage for R/, then the
+# inst script), which doubled the wall clock; the price of the merge is
+# that compiled src/ lines are no longer measured (covr's gcov pass needs
+# its own instrumented install).
 name: Test Coverage
 
 on:
@@ -29,21 +34,11 @@ jobs:
         with:
           needs: coverage
 
-      - name: Test coverage
-        run: |
-          cov <- covr::package_coverage(
-            quiet = FALSE,
-            clean = FALSE,
-            install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
-          )
-          print(cov)
-          covr::to_cobertura(cov)
-        shell: Rscript {0}
-
-      - name: inst/artma coverage
+      - name: Coverage (R/ and inst/artma, one traced test run)
         run: Rscript scripts/R/inst_coverage.R
         env:
           ARTMA_COVERAGE_COBERTURA: "true"
+          ARTMA_COVERAGE_STRICT: "true"
 
       - uses: codecov/codecov-action@v5
         with:
@@ -53,17 +48,3 @@ jobs:
           plugins: noop
           disable_search: true
           token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Show testthat output
-        if: always()
-        run: |
-          ## --------------------------------------------------------------------
-          find '${{ runner.temp }}/package' -name 'testthat.Rout*' -exec cat '{}' \; || true
-        shell: bash
-
-      - name: Upload test results
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-test-failures
-          path: ${{ runner.temp }}/package
