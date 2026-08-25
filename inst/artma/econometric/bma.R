@@ -535,7 +535,7 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
   box::use(
     artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity],
-    artma / visualization / colors[get_colors],
+    artma / visualization / colors[get_colors, get_neutral],
     artma / libs / formatting / results[capture_print_wide]
   )
 
@@ -574,11 +574,17 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
   if (any(print_results == "all", export_graphics)) {
     color_spectrum <- get_colors(theme, "bma")
 
-    main_plot_call <- bquote(
-      graphics::image(bma_model,
-        col = .(color_spectrum), yprop2pip = FALSE, order.by.pip = TRUE, # nolint: box_usage_linter. # bquote substitution
-        do.par = TRUE, do.grid = TRUE, do.axis = TRUE, xlab = "", main = ""
-      )
+    # The inclusion grid is a ggplot2 build rather than `BMS:::image.bma`. See
+    # `artma/visualization/bma` for why the upstream one cannot be used: it lays
+    # its columns out on the cumulative sum of unnormalised posterior weights,
+    # which saturates in double precision and aborts on ordinary models.
+    box::use(artma / visualization / bma[create_bma_inclusion_plot])
+    inclusion_plot <- tryCatch(
+      create_bma_inclusion_plot(bma_model, theme_name = theme),
+      error = function(e) {
+        cli::cli_warn("Could not build the BMA inclusion plot: {conditionMessage(e)}")
+        NULL
+      }
     )
 
     dist_color_spectrum <- color_spectrum[color_spectrum != "white"]
@@ -596,19 +602,16 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
       bma_matrix_names
     })
     bma_col <- grDevices::colorRampPalette(color_spectrum)
-    corrplot_mixed_call <- quote(
+    label_color <- get_neutral("ink")
+    # Variable labels at cex 0.55 were unreadable at any sensible figure width.
+    corrplot_mixed_call <- bquote(
       corrplot::corrplot.mixed(bma_matrix,
         lower = "number", upper = "circle",
         lower.col = bma_col(200), upper.col = bma_col(200), tl.pos = c("lt"),
-        diag = c("u"), tl.col = "black", tl.srt = 70, tl.cex = 0.55,
-        number.cex = 0.5, cl.cex = 0.8, cl.ratio = 0.1
+        diag = c("u"), tl.col = .(label_color), tl.srt = 70, tl.cex = 0.7, # nolint: box_usage_linter. # bquote substitution
+        number.cex = 0.6, cl.cex = 0.8, cl.ratio = 0.1
       )
     )
-
-    # BMS:::image.bma drops a matrix dimension for small models and errors for
-    # 2 to 3 regressors, so only attempt the image plot once there are >= 4.
-    n_regressors <- length(bma_model$reg.names)
-    image_supported <- n_regressors >= 4L
 
     plot_env <- environment()
     safe_render_plot <- function(plot_call, description) {
@@ -619,20 +622,12 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
         }
       )
     }
-    render_bma_image <- function() {
-      if (!image_supported) {
-        cli::cli_alert_info(
-          "Skipping the BMA image plot: it needs at least 4 regressors (model has {n_regressors})."
-        )
-        return(invisible(NULL))
-      }
-      safe_render_plot(main_plot_call, "image plot")
-    }
   }
 
   if (print_results == "all" && get_verbosity() >= 3) {
+    box::use(artma / visualization / export[preview_plot])
     cli::cli_alert_info("Printing BMA plots...")
-    render_bma_image()
+    preview_plot(inclusion_plot)
     safe_render_plot(bma_dist_call, "distribution plot")
     if (has_corrplot) {
       safe_render_plot(corrplot_mixed_call, "correlation plot")
@@ -640,7 +635,11 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
   }
 
   if (export_graphics) {
-    box::use(artma / visualization / export[ensure_export_dir, open_png_device])
+    box::use(
+      artma / visualization / export[
+        base_plot_device_size, ensure_export_dir, open_png_device, save_plot
+      ]
+    )
 
     gprior <- bma_model$gprior.info$gtype
     mprior <- bma_model$mprior.info$origargs$mpmode
@@ -657,30 +656,23 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
       }
     }
 
-    if (image_supported) {
-      open_png_device(main_path,
-        width = 933 * graph_scale, height = 894 * graph_scale, units = "px",
-        res = 70 * graph_scale
-      )
-      safe_render_plot(main_plot_call, "image plot")
-      grDevices::dev.off()
-    } else if (get_verbosity() >= 3) {
-      cli::cli_alert_info(
-        "Skipping the BMA image plot export: it needs at least 4 regressors (model has {n_regressors})."
-      )
+    if (!is.null(inclusion_plot)) {
+      save_plot(inclusion_plot, main_path, width = 900, height = 650, scale = graph_scale)
     }
 
+    dist_size <- base_plot_device_size(5.87, 5.62, graph_scale)
     open_png_device(dist_path,
-      width = 528 * graph_scale, height = 506 * graph_scale, units = "px",
-      res = 90 * graph_scale
+      width = dist_size$width, height = dist_size$height, units = "px",
+      res = dist_size$res
     )
     safe_render_plot(bma_dist_call, "distribution plot")
     grDevices::dev.off()
 
     if (has_corrplot) {
+      corrplot_size <- base_plot_device_size(7.78, 7.43, graph_scale)
       open_png_device(corrplot_path,
-        width = 700 * graph_scale, height = 669 * graph_scale, units = "px",
-        res = 90 * graph_scale
+        width = corrplot_size$width, height = corrplot_size$height, units = "px",
+        res = corrplot_size$res
       )
       safe_render_plot(corrplot_mixed_call, "correlation plot")
       grDevices::dev.off()
@@ -761,7 +753,7 @@ render_bma_comparison_plot <- function(bma_models, comp = "PIP", export_graphics
                                        print_plot = FALSE) {
   box::use(
     artma / libs / core / validation[validate],
-    artma / visualization / export[ensure_export_dir, open_png_device]
+    artma / visualization / export[base_plot_device_size, ensure_export_dir, open_png_device]
   )
 
   validate(
@@ -794,9 +786,10 @@ render_bma_comparison_plot <- function(bma_models, comp = "PIP", export_graphics
     if (file.exists(comparison_path)) {
       file.remove(comparison_path)
     }
+    comparison_size <- base_plot_device_size(8.89, 6.67, graph_scale)
     open_png_device(comparison_path,
-      width = 800 * graph_scale, height = 600 * graph_scale, units = "px",
-      res = 90 * graph_scale
+      width = comparison_size$width, height = comparison_size$height, units = "px",
+      res = comparison_size$res
     )
     safe_render()
     grDevices::dev.off()

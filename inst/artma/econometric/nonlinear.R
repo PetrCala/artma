@@ -356,7 +356,7 @@ build_stem_plots <- function(effects, ses, estimates, mse_matrix) {
       stem_estimates <- as.numeric(estimates[1, c("estimate", "se", "sd of total heterogeneity", "n_stem")])
 
       draw_funnel <- function() stem_funnel(effects, ses, stem_estimates, vis$theme)
-      draw_mse <- function() stem_MSE(mse_matrix)
+      draw_mse <- function() stem_MSE(mse_matrix, vis$theme)
 
       if (isTRUE(vis$export_graphics)) {
         export_named_plots(
