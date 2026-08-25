@@ -61,6 +61,50 @@ build_export_filename <- function(base_name, factor_by, index = NULL, extension 
 }
 
 
+#' Resolution shared by every base-graphics export
+#'
+#' @description
+#' Base-graphics devices previously opened at 70 or 90 dpi while `save_plot()`
+#' rendered ggplot figures at 150. Text is sized in points, which is a physical
+#' unit, so the same nominal font came out visibly smaller relative to the
+#' canvas on a base plot than on a ggplot one and the two read as different
+#' house styles inside a single report. Every base-graphics device now opens at
+#' this resolution, matching `save_plot()`'s default.
+BASE_PLOT_DPI <- 150
+
+
+#' Device dimensions for a base-graphics canvas given in inches
+#'
+#' @description
+#' Base plots size their margins, legends and labels in physical units, so the
+#' canvas is specified in inches and the pixel count follows from the shared
+#' resolution. Passing pixels directly makes the physical size an accident of
+#' whatever `res` happened to be in force.
+#'
+#' @param width_in *\[numeric\]* Canvas width, in inches
+#' @param height_in *\[numeric\]* Canvas height, in inches
+#' @param graph_scale *\[numeric\]* Scale multiplier for the resolution
+#'
+#' @return *\[list\]* With `width`, `height` (pixels) and `res`
+#' @keywords internal
+base_plot_device_size <- function(width_in, height_in, graph_scale = 1) {
+  box::use(artma / libs / core / validation[validate])
+
+  validate(
+    is.numeric(width_in), width_in > 0,
+    is.numeric(height_in), height_in > 0,
+    is.numeric(graph_scale), graph_scale > 0
+  )
+
+  res <- BASE_PLOT_DPI * graph_scale
+  list(
+    width = width_in * res,
+    height = height_in * res,
+    res = res
+  )
+}
+
+
 #' Open a raster graphics device for writing a PNG file
 #'
 #' @description
@@ -76,11 +120,12 @@ build_export_filename <- function(base_name, factor_by, index = NULL, extension 
 #' @param width *\[numeric\]* Device width, in `units`
 #' @param height *\[numeric\]* Device height, in `units`
 #' @param units *\[character\]* Units for width/height. Defaults to "px".
-#' @param res *\[numeric\]* Resolution in pixels per inch. Defaults to 90.
+#' @param res *\[numeric\]* Resolution in pixels per inch. Defaults to
+#'   `BASE_PLOT_DPI`.
 #'
 #' @return NULL (invisibly). Called for its side effect of opening a graphics device.
 #' @keywords internal
-open_png_device <- function(path, width, height, units = "px", res = 90) {
+open_png_device <- function(path, width, height, units = "px", res = BASE_PLOT_DPI) {
   box::use(
     artma / libs / core / validation[validate],
     artma / libs / infrastructure / output_files[record_output_file],
@@ -280,8 +325,8 @@ save_plot_html <- function(plot, path) {
 #'
 #' @param draw *\[function\]* Zero-argument function that draws the plot
 #' @param path *\[character\]* Full file path (including filename)
-#' @param width *\[numeric\]* Unscaled device width, in pixels
-#' @param height *\[numeric\]* Unscaled device height, in pixels
+#' @param width *\[numeric\]* Unscaled device width, in pixels at `BASE_PLOT_DPI`
+#' @param height *\[numeric\]* Unscaled device height, in pixels at `BASE_PLOT_DPI`
 #' @param graph_scale *\[numeric\]* Scale multiplier for dimensions and resolution
 #'
 #' @return NULL (invisibly)
@@ -301,12 +346,17 @@ export_base_plot <- function(draw, path, width, height, graph_scale) {
     file.remove(path)
   }
 
+  size <- base_plot_device_size(
+    width_in = width / BASE_PLOT_DPI,
+    height_in = height / BASE_PLOT_DPI,
+    graph_scale = graph_scale
+  )
   open_png_device(
     path,
-    width = width * graph_scale,
-    height = height * graph_scale,
+    width = size$width,
+    height = size$height,
     units = "px",
-    res = 90 * graph_scale
+    res = size$res
   )
   on.exit(grDevices::dev.off(), add = TRUE)
   draw()
@@ -409,6 +459,8 @@ export_named_plots <- function(plots,
 
 
 box::export(
+  BASE_PLOT_DPI,
+  base_plot_device_size,
   ensure_export_dir,
   build_export_filename,
   open_png_device,

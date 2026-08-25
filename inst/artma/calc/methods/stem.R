@@ -157,8 +157,10 @@ se_rescale <- function(se) {
 
 #' Funnel plot helper for the STEM estimates
 stem_funnel <- function(beta_input, se_input, stem_estimates, theme, legend_pos = "topleft") {
-  box::use(artma / visualization / colors[get_colors])
+  box::use(artma / visualization / colors[get_colors, get_background, get_neutral])
   palette <- get_colors(theme, "stem")
+  neutral <- get_neutral()
+  surface <- get_background(theme)
   b_stem <- stem_estimates[1]
   se_b_stem <- stem_estimates[2]
   sigma0 <- stem_estimates[3]
@@ -168,33 +170,59 @@ stem_funnel <- function(beta_input, se_input, stem_estimates, theme, legend_pos 
   se_sorted <- data_sorted[, 2]
   cumulative <- weighted_mean(beta_sorted, se_sorted, sigma0)
   se_axis <- se_rescale(se_sorted)
-  graphics::plot.new()
-  graphics::par(mar = c(4.1, 4.1, 1, 1), bg = grDevices::rgb(255, 255, 255, maxColorValue = 255)) # nolint: undesirable_function_linter.
+  # Matches the ggplot theme: same surface, same neutral axis furniture, and
+  # line weights that no longer read as three times heavier than every other
+  # figure in the report.
+  graphics::par( # nolint: undesirable_function_linter.
+    mar = c(4.1, 4.1, 1, 1),
+    bg = surface,
+    fg = neutral$axis,
+    col.axis = neutral$ink_soft,
+    col.lab = neutral$ink,
+    cex.axis = 0.9,
+    cex.lab = 0.95,
+    # L-shaped rather than a full box, so the frame matches the ggplot figures,
+    # which draw no panel border at all.
+    bty = "l",
+    family = "sans"
+  )
   graphics::plot(beta_sorted, se_axis,
-    col = palette[1], pch = 1, lwd = 2.5,
+    col = palette[1], pch = 1, lwd = 1.2, cex = 0.8,
     xlim = range(beta_input) + c(-1, 1) * diff(range(beta_input)) / 15,
     xlab = expression(paste("Coefficient ", beta)),
-    ylab = expression(paste("Precision ", -log(SE)))
+    ylab = expression(paste("Precision ", -log(SE))),
+    col.axis = neutral$ink_soft
   )
-  graphics::lines(cumulative, se_axis, col = grDevices::rgb(96, 96, 96, maxColorValue = 255), lwd = 2.5)
-  graphics::points(b_stem, se_axis[n_stem], pch = 18, col = palette[3], cex = 2)
-  graphics::segments(b_stem, se_axis[1], b_stem, min(se_axis), col = palette[3], lwd = 2.5)
-  graphics::points(b_stem, se_axis[1], pch = 18, col = palette[2], cex = 2)
-  graphics::segments(b_stem - 1.96 * se_b_stem, se_axis[1], b_stem + 1.96 * se_b_stem, se_axis[1], col = palette[2], lwd = 2.5)
-  graphics::abline(v = 0, col = grDevices::rgb(192, 192, 192, maxColorValue = 255), lty = 2, lwd = 2.5)
+  graphics::lines(cumulative, se_axis, col = neutral$ink_soft, lwd = 1.5)
+  graphics::points(b_stem, se_axis[n_stem], pch = 18, col = palette[3], cex = 1.6)
+  graphics::segments(b_stem, se_axis[1], b_stem, min(se_axis), col = palette[3], lwd = 1.5)
+  graphics::points(b_stem, se_axis[1], pch = 18, col = palette[2], cex = 1.6)
+  graphics::segments(b_stem - 1.96 * se_b_stem, se_axis[1], b_stem + 1.96 * se_b_stem, se_axis[1], col = palette[2], lwd = 1.5)
+  graphics::abline(v = 0, col = neutral$grid, lty = 2, lwd = 1.2)
   graphics::legend(legend_pos,
-    legend = c("stem-based estimate", "95 confidence interval", "cumulative estimate", "minimal precision", "study"),
-    col = c(palette[2], palette[2], grDevices::rgb(96, 96, 96, maxColorValue = 255), palette[3], palette[1]),
+    legend = c("stem-based estimate", "95% confidence interval", "cumulative estimate", "minimal precision", "study"),
+    col = c(palette[2], palette[2], neutral$ink_soft, palette[3], palette[1]),
     bty = "n",
-    lty = c(NA, 1, 1, NA, NA), lwd = c(NA, 2, 2, NA, 2.5),
+    text.col = neutral$ink_soft,
+    lty = c(NA, 1, 1, NA, NA), lwd = c(NA, 1.5, 1.5, NA, 1.2),
     pch = c(18, NA, NA, 18, 1),
-    pt.cex = 1.8, cex = 0.8, horiz = FALSE, inset = c(0, 0),
-    y.intersp = 1.5
+    pt.cex = 1.4, cex = 0.75, horiz = FALSE, inset = c(0, 0),
+    y.intersp = 1.3
   )
 }
 
 #' Plot MSE diagnostics for the STEM method
-stem_MSE <- function(MSE_matrix) { # nolint: object_name_linter.
+#'
+#' @param MSE_matrix *\[matrix\]* Columns: MSE, variance, squared bias
+#' @param theme *\[character\]* Color theme name. Defaults to "blue".
+stem_MSE <- function(MSE_matrix, theme = "blue") { # nolint: object_name_linter.
+  box::use(artma / visualization / colors[get_colors, get_background, get_neutral])
+  # Previously hardcoded "blue", so these three panels ignored the theme every
+  # other figure in the run respected.
+  palette <- get_colors(theme, "stem")
+  neutral <- get_neutral()
+  surface <- get_background(theme)
+
   mse <- MSE_matrix[, 1]
   bias_sq <- MSE_matrix[, 3]
   variance <- MSE_matrix[, 2]
@@ -204,9 +232,32 @@ stem_MSE <- function(MSE_matrix) { # nolint: object_name_linter.
   # the reported n_stem.
   num_study <- seq_len(n_study) + 2
   graphics::layout(matrix(c(1, 2, 3, 3), 2, 2, byrow = TRUE))
-  graphics::plot(num_study, bias_sq, type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(Bias^2 - b[0]^2))
-  graphics::plot(num_study, variance, type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(Variance))
-  graphics::plot(num_study, mse, type = "l", col = "blue", lwd = 2.5, xlab = "Num of included studies i", ylab = "", main = expression(MSE - b[0]^2))
+  graphics::par( # nolint: undesirable_function_linter.
+    mar = c(4.1, 4.1, 2.4, 1),
+    bg = surface,
+    fg = neutral$axis,
+    col.axis = neutral$ink_soft,
+    col.lab = neutral$ink,
+    col.main = neutral$ink,
+    cex.axis = 0.9,
+    cex.lab = 0.95,
+    cex.main = 1,
+    font.main = 1,
+    bty = "l",
+    family = "sans"
+  )
+
+  panels <- list(
+    list(values = bias_sq, main = expression(Bias^2 - b[0]^2)),
+    list(values = variance, main = expression(Variance)),
+    list(values = mse, main = expression(MSE - b[0]^2))
+  )
+  for (panel in panels) {
+    graphics::plot(num_study, panel$values,
+      type = "l", col = palette[1], lwd = 1.5,
+      xlab = "Number of included studies i", ylab = "", main = panel$main
+    )
+  }
 }
 
 #' Compute median data within clusters
