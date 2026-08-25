@@ -2,9 +2,16 @@
 % Please edit documentation in R/options.R
 \name{options_delete}
 \alias{options_delete}
+\alias{options_remove}
 \title{Delete user options}
 \usage{
 options_delete(
+  options_file_name = NULL,
+  options_dir = NULL,
+  skip_confirmation = FALSE
+)
+
+options_remove(
   options_file_name = NULL,
   options_dir = NULL,
   skip_confirmation = FALSE
@@ -21,5 +28,5 @@ options_delete(
 \code{NULL}
 }
 \description{
-Provide a name of a user options file to delete, and delete that file.
+Provide a name of a user options file to delete, and delete that file. \code{options_remove()} is an alias.
 }
