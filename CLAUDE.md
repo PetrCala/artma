@@ -114,6 +114,10 @@ The entry point is `prepare_data()` from `artma/data/index.R`.
 
 Column auto-detection declines a required role rather than guess it. `data.mapping.external_command` is an opt-in hook that lets an external command propose the missing mappings over JSON on stdin/stdout; every proposal is verified against the data before it is used, and the hook is off unless the option is set. Payload and response schemas: [contributingGuides/COLUMN_MAPPING_HOOK.md](contributingGuides/COLUMN_MAPPING_HOOK.md).
 
+### Session Hub
+
+Interactive `artma()` calls without `methods` enter a menu loop (`inst/artma/interactive/hub.R`) that runs the pipeline steps repeatedly and returns the accumulated results; scripted paths stay linear. Entry conditions, items, return contract, and extension points: [contributingGuides/HUB.md](contributingGuides/HUB.md).
+
 ### Autonomy System
 
 Controls how much user interaction happens during analysis. `interactive()` is the hard gate: non-interactive sessions never prompt. Within interactive sessions the level (stored in the options file under `autonomy.level`) is one of `ask_more`, `balanced`, or `autonomous` (the default), ordered from most to least talkative. Gate prompts with `should_prompt_user(required_level)` from `artma / libs / core / autonomy`: use `required_level = "balanced"` for non-critical options, preferences, and save/overwrite confirmations; `required_level = "autonomous"` (the default) for variable selection, method selection, and column mapping. Public API: `artma::autonomy_get()`, `artma::autonomy_set()`, `artma::autonomy_is_full()` (also TRUE in non-interactive sessions).

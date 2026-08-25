@@ -19,8 +19,10 @@ be loaded from the options file (see \code{options} parameter). When provided, t
 data will be used directly, bypassing the data reading step.}
 
 \item{methods}{\emph{[character, optional]} A character vector of method names to run.
-Use \code{"all"} to run all available methods. If \code{NULL}, an interactive menu will
-prompt you to select methods. See \code{artma::methods_list()} for available methods.}
+Use \code{"all"} to run all available methods. If \code{NULL} and running
+interactively, the session hub opens: a menu loop for picking and running
+methods, previewing data, and opening results across repeated runs. See
+\code{artma::methods_list()} for available methods.}
 
 \item{options}{\emph{[character, optional]} Name of the options file (with or without
 \code{.yaml} extension) to use. If \code{NULL} and running interactively, you will be
@@ -40,7 +42,9 @@ method name. The structure of each result depends on the specific method.
 Methods that fail are omitted from the list; their names and error messages
 are attached as the \code{failed_methods} attribute. The \code{run_info} attribute
 carries the run's identity: the methods requested, the effective seed, and
-the files each method wrote.
+the files each method wrote. A session hub call additionally attaches a
+\code{runs} attribute with one entry per run (methods, seed, timestamp) and
+keeps the latest result per method across the session's runs.
 }
 \description{
 Main entry point for the artma package. This function orchestrates the complete
