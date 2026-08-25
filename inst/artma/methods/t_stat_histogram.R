@@ -229,25 +229,20 @@ compute_data_bounds <- function(filtered_values,
 #' and the mean to prevent overlap, and a final `thin_ticks()` pass resolves
 #' the collisions the generator cannot see: a data bound landing next to a
 #' critical value or the mean. Critical values outrank the mean, which
-#' outranks the bounds, which outrank the regular grid. Colors: critical
-#' values get a contrasting color, mean gets the vline accent color, others
-#' black.
+#' outranks the bounds, which outrank the regular grid.
 #'
 #' @param bounds *\[numeric(2)\]* Lower and upper data bounds
 #' @param mean_value *\[numeric\]* Mean t-statistic
 #' @param critical_values *\[numeric\]* Positive critical values
 #' @param min_tick_distance *\[numeric\]* Min distance between ticks
-#' @param theme_name *\[character\]* Theme name for color resolution
 #'
-#' @return *\[list\]* With: ticks, tick_colors, mean_value, critical_ticks
+#' @return *\[list\]* With: ticks, mean_value, critical_ticks
 #' @keywords internal
 generate_histogram_ticks <- function(bounds,
                                      mean_value,
                                      critical_values,
-                                     min_tick_distance,
-                                     theme_name) {
+                                     min_tick_distance) {
   box::use(
-    artma / visualization / colors[get_colors, get_vline_color],
     artma / visualization / ticks[
       generate_regular_ticks,
       resolve_tick_interval,
@@ -281,13 +276,6 @@ generate_histogram_ticks <- function(bounds,
     upper_inclusive = TRUE
   )
 
-  critical_color <- get_colors(
-    theme_name, "t_stat_histogram", "critical"
-  )
-  mean_color <- get_colors(
-    theme_name, "t_stat_histogram", "mean"
-  )
-
   # Assembled in descending priority so thin_ticks() drops the filler first.
   # The separation floor also respects the data range: a user-set
   # min_tick_distance of 0.5 over a range of 240 would still overlap.
@@ -298,19 +286,12 @@ generate_histogram_ticks <- function(bounds,
     2, 2,
     rep(1, length(regular_ticks))
   )
-  tick_colors <- c(
-    rep(critical_color, length(crit_ticks)),
-    mean_color,
-    "black", "black",
-    rep("black", length(regular_ticks))
-  )
 
   min_distance <- max(min_tick_distance, tick_min_separation(range_size))
   kept <- thin_ticks(all_ticks, min_distance = min_distance, priority = priority)
 
   list(
     ticks = all_ticks[kept],
-    tick_colors = tick_colors[kept],
     mean_value = mean_value,
     critical_ticks = crit_ticks
   )
@@ -371,8 +352,7 @@ build_histogram <- function(t_values,
     bounds = bounds,
     mean_value = mean_t,
     critical_values = critical_values,
-    min_tick_distance = min_tick_distance,
-    theme_name = theme_name
+    min_tick_distance = min_tick_distance
   )
 
   fill_color <- get_colors(theme_name, "t_stat_histogram", "main")
@@ -381,23 +361,94 @@ build_histogram <- function(t_values,
     theme_name, "t_stat_histogram", "critical"
   )
   mean_color <- get_colors(theme_name, "t_stat_histogram", "mean")
-  plot_theme <- get_theme(theme_name, tick_colors = tick_info$tick_colors)
+  plot_theme <- get_theme(theme_name)
 
   tick_labels <- format_tick_labels(tick_info$ticks)
 
   plot_df <- data.frame(t_stat = filtered)
 
+  critical_ticks <- tick_info$critical_ticks
+  mean_label <- "Mean t-statistic"
+
   p <- ggplot2::ggplot(
     data = plot_df,
     ggplot2::aes(x = .data$t_stat)
-  ) +
+  )
+
+  # The region beyond the loosest critical value is where a t-statistic reads
+  # as significant, and it is the part of the distribution p-hacking distorts.
+  # Shading it states that directly; a pair of bare rules left the reader to
+  # work out which side of the line mattered.
+  if (length(critical_ticks) > 0) {
+    shade_from <- min(abs(critical_ticks))
+    shade_df <- data.frame(
+      xmin = c(-Inf, shade_from),
+      xmax = c(-shade_from, Inf),
+      band = "Significant"
+    )
+    p <- p + ggplot2::geom_rect(
+      data = shade_df,
+      mapping = ggplot2::aes(xmin = .data$xmin, xmax = .data$xmax, fill = .data$band),
+      ymin = -Inf, ymax = Inf,
+      inherit.aes = FALSE,
+      alpha = 0.08
+    ) +
+      ggplot2::scale_fill_manual(
+        values = stats::setNames(critical_color, "Significant"),
+        labels = paste0("Significant (|t| > ", format_tick_labels(shade_from), ")"),
+        name = NULL
+      )
+  }
+
+  p <- p +
     ggplot2::geom_histogram(
       ggplot2::aes(y = ggplot2::after_stat(density)),
       bins = n_bins,
       fill = fill_color,
-      color = "black",
-      linewidth = 0.1
-    ) +
+      colour = NA
+    )
+
+  # Add density curve
+  if (show_density_curve) {
+    p <- p + ggplot2::geom_density(
+      colour = density_color,
+      fill = density_color,
+      alpha = 0.12,
+      linewidth = 0.7
+    )
+  }
+
+  # The critical values are the visible edge of the shaded band, so they need
+  # no legend entry of their own; one that repeated the threshold would just
+  # duplicate the band's label.
+  if (length(critical_ticks) > 0) {
+    p <- p + ggplot2::geom_vline(
+      xintercept = critical_ticks,
+      colour = critical_color,
+      linetype = "dotted",
+      linewidth = 0.5
+    )
+  }
+
+  # The mean does carry a mapped label, so ggplot2 names it in a legend rather
+  # than tinting the matching axis tick and leaving the colour unexplained.
+  if (show_mean_line) {
+    p <- p +
+      ggplot2::geom_vline(
+        data = data.frame(xintercept = mean_t, label = mean_label, stringsAsFactors = FALSE),
+        mapping = ggplot2::aes(
+          xintercept = .data$xintercept,
+          colour = .data$label,
+          linetype = .data$label
+        ),
+        linewidth = 0.5,
+        key_glyph = "path"
+      ) +
+      ggplot2::scale_colour_manual(values = stats::setNames(mean_color, mean_label), name = NULL) +
+      ggplot2::scale_linetype_manual(values = stats::setNames("dashed", mean_label), name = NULL)
+  }
+
+  p <- p +
     ggplot2::labs(
       title = NULL,
       x = "T-statistic",
@@ -407,35 +458,8 @@ build_histogram <- function(t_values,
       breaks = tick_info$ticks,
       labels = tick_labels
     ) +
-    plot_theme
-
-  # Add critical value lines
-  for (cv in tick_info$critical_ticks) {
-    p <- p + ggplot2::geom_vline(
-      xintercept = cv,
-      color = critical_color,
-      linewidth = 0.5
-    )
-  }
-
-  # Add mean line (dashed)
-  if (show_mean_line) {
-    p <- p + ggplot2::geom_vline(
-      xintercept = mean_t,
-      color = mean_color,
-      linetype = "dashed",
-      linewidth = 0.7
-    )
-  }
-
-  # Add density curve
-  if (show_density_curve) {
-    p <- p + ggplot2::geom_density(
-      color = density_color,
-      alpha = 0.2,
-      linewidth = 1
-    )
-  }
+    plot_theme +
+    ggplot2::theme(legend.position = "bottom")
 
   list(
     plot = p,

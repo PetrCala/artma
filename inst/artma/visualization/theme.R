@@ -20,15 +20,7 @@
 #' chart from a publication one. The theme hue survives in the data itself, via
 #' `artma/visualization/colors`.
 #'
-#' Per-tick x-axis coloring (e.g. highlighting the mean or critical-value
-#' ticks) is done by passing `tick_colors`: ggplot2 recycles a vectorized
-#' `colour` across the axis labels, so no rich-text renderer is involved and
-#' tick labels stay plain text.
-#'
 #' @param theme_name *\[character\]* One of: blue, yellow, green, red, purple
-#' @param tick_colors *\[character, optional\]* One color per x-axis tick, in
-#'   break order. Must line up with the breaks passed to the scale. Defaults to
-#'   the standard axis-text color for every tick.
 #' @param base_size *\[numeric\]* Base font size in points. Every other size is
 #'   expressed relative to it, so a single value rescales the whole figure.
 #'   Defaults to 10, which suits the nominal export canvas of roughly five
@@ -43,7 +35,7 @@
 #'   geom_point() +
 #'   get_theme("blue")
 #' }
-get_theme <- function(theme_name, tick_colors = NULL, base_size = 10) {
+get_theme <- function(theme_name, base_size = 10) {
   box::use(
     artma / libs / core / validation[validate],
     artma / visualization / colors[validate_theme, get_background, get_neutral]
@@ -54,11 +46,6 @@ get_theme <- function(theme_name, tick_colors = NULL, base_size = 10) {
 
   surface <- get_background(theme_name)
   neutral <- get_neutral()
-
-  if (is.null(tick_colors) || length(tick_colors) == 0) {
-    tick_colors <- neutral$ink_soft
-  }
-  validate(is.character(tick_colors), !anyNA(tick_colors))
 
   rel <- ggplot2::rel
   margin <- ggplot2::margin
@@ -73,7 +60,7 @@ get_theme <- function(theme_name, tick_colors = NULL, base_size = 10) {
     ggplot2::theme(
       # Text ---------------------------------------------------------------
       axis.text.x = element_text(
-        colour = tick_colors, size = rel(0.9),
+        colour = neutral$ink_soft, size = rel(0.9),
         margin = margin(t = 0.4 * half)
       ),
       axis.text.y = element_text(

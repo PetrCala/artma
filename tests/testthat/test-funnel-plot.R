@@ -219,7 +219,16 @@ test_that("funnel_plot renders plain x-axis labels, not HTML markup", {
 })
 
 
-test_that("funnel_plot colors the mean tick and leaves the rest black", {
+# Collect the mapped reference-line labels from every layer that carries them.
+layer_labels <- function(plot) {
+  unlist(lapply(plot$layers, function(layer) {
+    data <- layer$data
+    if (is.data.frame(data) && "label" %in% names(data)) unique(data$label) else NULL
+  }))
+}
+
+
+test_that("funnel_plot names its reference lines in a legend", {
   local_funnel_options()
 
   df <- create_test_data()
@@ -227,16 +236,61 @@ test_that("funnel_plot colors the mean tick and leaves the rest black", {
   built <- ggplot2::ggplot_build(plot)
   breaks <- built$layout$panel_params[[1]]$x$get_breaks()
   breaks <- breaks[!is.na(breaks)]
-  tick_colors <- built$plot$theme$axis.text.x$colour
 
-  # One color per break, so ggplot2 does not recycle them onto the wrong ticks.
-  expect_equal(length(tick_colors), length(breaks))
-
+  # The mean still earns its own tick, it is just no longer tinted to say so.
   mean_effect <- mean(df$effect)
-  mean_idx <- which.min(abs(breaks - mean_effect))
-  expect_equal(breaks[mean_idx], mean_effect)
-  expect_false(tick_colors[mean_idx] == "black")
-  expect_setequal(unique(tick_colors[-mean_idx]), "black")
+  expect_equal(breaks[which.min(abs(breaks - mean_effect))], mean_effect)
+
+  expect_true("Mean effect" %in% layer_labels(plot))
+
+  # One colour for every tick label: the vectorised per-tick colouring is gone,
+  # and with it the "Vectorized input to element_text()" warning it raised.
+  expect_equal(length(built$plot$theme$axis.text.x$colour), 1L)
+})
+
+
+test_that("funnel_plot draws pseudo-confidence contours when precision is 1/SE", {
+  local_funnel_options("artma.calc.precision_type" = "1/SE")
+
+  plot <- funnel_plot(create_test_data())$plots$funnel_plot
+  contour_layers <- Filter(
+    function(layer) is.data.frame(layer$data) && "side" %in% names(layer$data),
+    plot$layers
+  )
+
+  expect_equal(length(contour_layers), 1L)
+  expect_setequal(unique(contour_layers[[1]]$data$side), c("lower", "upper"))
+})
+
+
+test_that("funnel_plot omits the contours when precision is not 1/SE", {
+  # Under the DoF precision type precision is sqrt(reg_dof), which carries no
+  # standard-error relationship, so mean +/- 1.96 * SE is undefined.
+  local_funnel_options("artma.calc.precision_type" = "DoF")
+
+  plot <- funnel_plot(create_test_data())$plots$funnel_plot
+  contour_layers <- Filter(
+    function(layer) is.data.frame(layer$data) && "side" %in% names(layer$data),
+    plot$layers
+  )
+
+  expect_equal(length(contour_layers), 0L)
+})
+
+
+test_that("funnel_plot drops the contours when show_contours is off", {
+  local_funnel_options(
+    "artma.calc.precision_type" = "1/SE",
+    "artma.methods.funnel_plot.show_contours" = FALSE
+  )
+
+  plot <- funnel_plot(create_test_data())$plots$funnel_plot
+  contour_layers <- Filter(
+    function(layer) is.data.frame(layer$data) && "side" %in% names(layer$data),
+    plot$layers
+  )
+
+  expect_equal(length(contour_layers), 0L)
 })
 
 
