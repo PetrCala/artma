@@ -36,6 +36,7 @@
 <url><loc>https://petrcala.github.io/artma/reference/data_preview.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/dot-onLoad.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/dot-onUnload.html</loc></url>
+<url><loc>https://petrcala.github.io/artma/reference/execute_run.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/get_valid_boxpath.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/index.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/invoke_runtime_methods.html</loc></url>
@@ -54,6 +55,7 @@
 <url><loc>https://petrcala.github.io/artma/reference/options_open.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/options_print_default_dir.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/options_validate.html</loc></url>
+<url><loc>https://petrcala.github.io/artma/reference/prepare_run_context.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/print.artma_box_plot.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/print.artma_funnel_plot.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/print.artma_t_stat_histogram.html</loc></url>
@@ -63,6 +65,7 @@
 <url><loc>https://petrcala.github.io/artma/reference/results_dir.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/results_open.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/runtime_setup.html</loc></url>
+<url><loc>https://petrcala.github.io/artma/reference/summarize_run.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/viz_get.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/viz_set.html</loc></url>
 <url><loc>https://petrcala.github.io/artma/reference/viz_themes.html</loc></url>
