@@ -2,12 +2,14 @@ box::use(
   testthat[
     expect_equal,
     expect_error,
+    expect_false,
+    expect_null,
     expect_true,
     test_that
   ]
 )
 
-box::use(artma / interactive / input[ask_text])
+box::use(artma / interactive / input[ask_select, ask_text, ask_yes_no])
 
 test_that("ask_text returns the trimmed answer", {
   answer <- ask_text("Name", read_input = function(prompt) "  hello  ")
@@ -148,4 +150,89 @@ test_that("ask_text does not validate the default or an allowed empty answer", {
   )
   expect_equal(answer, "")
   expect_equal(validate_calls, 0)
+})
+
+test_that("ask_select maps a selected label back to its value", {
+  choices <- c("1% (default)" = "0.01", "5%" = "0.05")
+  seen <- NULL
+  answer <- ask_select(
+    "Winsorization level",
+    choices = choices,
+    default = "0.01",
+    select_fn = function(choices, prompt, selected) {
+      seen <<- list(choices = choices, prompt = prompt, selected = selected)
+      "5%"
+    }
+  )
+  expect_equal(answer, "0.05")
+  expect_equal(seen$choices, c("1% (default)", "5%"))
+  expect_equal(seen$prompt, "Winsorization level")
+  expect_equal(seen$selected, 1)
+})
+
+test_that("ask_select passes plain vectors through unchanged", {
+  answer <- ask_select(
+    "Theme",
+    choices = c("light", "dark"),
+    select_fn = function(choices, prompt, selected) {
+      expect_null(selected)
+      "dark"
+    }
+  )
+  expect_equal(answer, "dark")
+})
+
+test_that("ask_select falls back to the default on an empty selection", {
+  for (empty in list(NULL, character(0))) {
+    answer <- ask_select(
+      "Strategy",
+      choices = c("Stop" = "stop", "Remove" = "remove"),
+      default = "stop",
+      select_fn = function(choices, prompt, selected) empty
+    )
+    expect_equal(answer, "stop")
+  }
+})
+
+test_that("ask_select returns character(0) on an empty selection without a default", {
+  answer <- ask_select(
+    "Strategy",
+    choices = c("stop", "remove"),
+    select_fn = function(choices, prompt, selected) NULL
+  )
+  expect_equal(answer, character(0))
+})
+
+test_that("ask_select rejects a default that is not one of the choices", {
+  expect_error(
+    ask_select("Q", choices = c("a", "b"), default = "c", select_fn = function(...) "a")
+  )
+})
+
+test_that("ask_select aborts in non-interactive sessions with the default backend", {
+  expect_error(ask_select("Q", choices = c("a", "b")), "interactive")
+})
+
+test_that("ask_yes_no returns a logical and honors the default", {
+  expect_true(ask_yes_no("Proceed?", select_fn = function(choices, prompt, selected) "Yes"))
+  expect_false(ask_yes_no("Proceed?", select_fn = function(choices, prompt, selected) "No"))
+
+  # Empty selection falls back to the default.
+  expect_false(ask_yes_no("Proceed?", select_fn = function(choices, prompt, selected) NULL))
+  expect_true(ask_yes_no("Proceed?", default = TRUE, select_fn = function(choices, prompt, selected) NULL))
+})
+
+test_that("ask_yes_no preselects the default choice", {
+  seen_selected <- NULL
+  ask_yes_no("Proceed?", default = TRUE, select_fn = function(choices, prompt, selected) {
+    seen_selected <<- selected
+    "No"
+  })
+  expect_equal(seen_selected, 1)
+
+  ask_yes_no("Proceed?", default = FALSE, select_fn = function(choices, prompt, selected) {
+    seen_selected <<- selected
+    "Yes"
+  })
+  expect_equal(seen_selected, 2)
 })
