@@ -10,7 +10,12 @@ box::use(
 )
 
 box::use(
-  artma / data / normalize[ensure_utf8_columns, normalize_read_df, repair_utf8],
+  artma / data / normalize[
+    ensure_utf8_columns,
+    normalize_read_df,
+    repair_utf8,
+    replace_stata_missing
+  ],
   artma / data / read[read_file]
 )
 
@@ -94,6 +99,59 @@ test_that("normalize_read_df repairs encoding before regex-based normalization",
 
   expect_equal(out$study, c("Müller et al. (2011)", NA, "Smith (2015)"))
   expect_equal(out$effect, c(0.5, 0.7, 0.9))
+})
+
+test_that("replace_stata_missing converts bare and extended missing markers", {
+  df <- data.frame(
+    male = c("0.75", ".", "0.5", ".a", " . ", ".z"),
+    keep = c("a", "b", "c", "d", "e", "f"),
+    stringsAsFactors = FALSE
+  )
+
+  out <- replace_stata_missing(df)
+
+  expect_equal(out$male, c("0.75", NA, "0.5", NA, NA, NA))
+  expect_equal(out$keep, df$keep)
+})
+
+test_that("replace_stata_missing leaves genuine values that merely contain a dot", {
+  df <- data.frame(
+    x = c("0.5", "..", ".ab", "a.", "N.A", "1.", "-.3"),
+    stringsAsFactors = FALSE
+  )
+
+  expect_equal(replace_stata_missing(df)$x, df$x)
+})
+
+test_that("replace_stata_missing handles factors and passes numeric columns through", {
+  df <- data.frame(
+    f = factor(c("1.5", ".", "2.5")),
+    n = c(1, 2, 3),
+    stringsAsFactors = FALSE
+  )
+
+  out <- replace_stata_missing(df)
+
+  expect_equal(out$f, c("1.5", NA, "2.5"))
+  expect_equal(out$n, c(1, 2, 3))
+})
+
+test_that("normalize_read_df types a Stata-exported column as numeric with NAs", {
+  # The regression: a column that is numeric apart from its "." missing values
+  # used to stay character, so it was treated as a categorical moderator
+  # rather than the continuous variable it is.
+  df <- data.frame(
+    male = c("0.75", ".", "0.5", ".", "1"),
+    effect = c("0.1", "0.2", "0.3", "0.4", "0.5"),
+    stringsAsFactors = FALSE
+  )
+
+  withr::local_options(list(artma.verbose = 0))
+  out <- normalize_read_df(df)
+
+  expect_true(is.numeric(out$male))
+  expect_equal(out$male, c(0.75, NA, 0.5, NA, 1))
+  expect_equal(sum(is.na(out$male)), 2)
 })
 
 test_that("read_file reads a Latin-1 encoded CSV without an encoding error", {

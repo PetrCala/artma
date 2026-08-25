@@ -25,6 +25,14 @@ CONST <- list(
     # missing (see #402). Empty strings and whitespace-only cells are always
     # treated as missing regardless of this list (normalize_whitespace_to_na).
     NA_STRINGS = c("", "NA", "N/A", "NULL", "null"),
+    # Stata-style missing-value markers that survive into a raw text column:
+    # the bare "." and the extended ".a" through ".z" codes. Matched as a
+    # pattern rather than listed in NA_STRINGS because the extended codes are
+    # a range, and because read.table's `na.strings` takes fixed strings.
+    # Unlike the ambiguous "na" dropped from NA_STRINGS above, a value that is
+    # nothing but a dot is a missing marker in every dataset we have seen, so
+    # matching it does not risk swallowing a genuine category.
+    STATA_MISSING_PATTERN = "^\\.[a-z]?$",
     # Standard column names the pipeline recognizes. These keys identify the
     # role records in the unified per-column store (`data.columns`); every
     # other record key is a moderator variable. Accessors live in
