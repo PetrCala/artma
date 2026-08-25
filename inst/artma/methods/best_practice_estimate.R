@@ -660,40 +660,55 @@ prompt_single_bpe_override <- function(var_name, current_value, recommended_valu
     ""
   }
 
-  cli::cli_text("Variable: {.field {var_name}}{recommendation_note}")
-  cli::cli_text("Enter one of: numeric, mean, median, min, max, default")
+  box::use(artma / interactive / input[ask_text])
 
-  for (attempt in seq_len(3)) {
-    raw_value <- readline(
-      prompt = sprintf("Override value [default: %s]: ", default_label)
-    )
-    input_value <- trimws(raw_value)
-
-    if (!nzchar(input_value)) {
-      return(default_value)
+  is_valid_override <- function(x) {
+    x_lower <- tolower(x)
+    if (x_lower %in% c("default", "none", "clear")) {
+      return(TRUE)
     }
-
-    if (tolower(input_value) %in% c("default", "none", "clear")) {
-      return(NA)
+    if (x_lower == "recommended" && show_recommendations) {
+      return(TRUE)
     }
-
-    if (tolower(input_value) == "recommended" && show_recommendations) {
-      return(recommended_value)
-    }
-
     parsed <- tryCatch(
-      parse_bpe_override(input_value, allow_na = TRUE, var_name = var_name),
+      parse_bpe_override(x, allow_na = TRUE, var_name = var_name),
       error = function(e) NULL
     )
-    if (!is.null(parsed)) {
-      return(parsed)
-    }
-
-    cli::cli_alert_warning("Invalid override for {.field {var_name}}. Please try again.")
+    !is.null(parsed)
   }
 
-  cli::cli_alert_warning("Too many invalid inputs. Keeping previous value for {.field {var_name}}.")
-  current_value
+  input_value <- ask_text(
+    question = cli::format_inline("Override value for {.field {var_name}}{recommendation_note}"),
+    hints = "one of: a number, {.val mean}, {.val median}, {.val min}, {.val max}, {.val default}",
+    default = default_label,
+    validate = function(x) {
+      if (identical(x, default_label) || is_valid_override(x)) {
+        NULL
+      } else {
+        cli::format_inline("Invalid override for {.field {var_name}}. Please try again.")
+      }
+    }
+  )
+
+  if (!nzchar(input_value)) {
+    cli::cli_alert_warning("Too many invalid inputs. Keeping previous value for {.field {var_name}}.")
+    return(current_value)
+  }
+
+  # The display label of the default is not a parseable token; map it back.
+  if (identical(input_value, default_label)) {
+    return(default_value)
+  }
+
+  if (tolower(input_value) %in% c("default", "none", "clear")) {
+    return(NA)
+  }
+
+  if (tolower(input_value) == "recommended" && show_recommendations) {
+    return(recommended_value)
+  }
+
+  parse_bpe_override(input_value, allow_na = TRUE, var_name = var_name)
 }
 
 save_bpe_overrides_to_config <- function(overrides, predictor_names, config) {
