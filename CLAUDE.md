@@ -122,7 +122,7 @@ Controls how much user interaction happens during analysis. `interactive()` is t
 
 - Exported API names: snake_case with the noun group first (`options_create`, `config_set`); never add new dotted exports. The dotted names are deprecated aliases; policy and shim pattern: [contributingGuides/API.md](contributingGuides/API.md).
 - Validation: use `validate()` and `assert()` from `artma / libs / core / validation`, not `stopifnot()`. `assert(cond, "message")` takes an explicit error message.
-- Interactive menus: use the `climenu` package (a sub-package of this repository). Never `utils::menu()` or other menu packages.
+- Interactive prompts: use `ask_text`/`ask_select`/`ask_yes_no` from `artma / interactive / input`, never raw `readline()` or direct `climenu` calls (climenu, a sub-package of this repository, stays the menu backend; never `utils::menu()`). Layout contract, retry/default semantics, and the injection testing pattern: [contributingGuides/PROMPTS.md](contributingGuides/PROMPTS.md).
 - Verbosity: `options(artma.verbose = <1..4>)` scales from errors-only (1) to debug (4); default 3. Call the leveled wrapper (`log_error`/`log_warn`/`log_info`/`log_debug`, or `is_*_enabled()` to gate non-message output) from `artma / libs / core / log`; never compare verbosity numbers outside `libs/core`.
 - Constants: `CONST` (`inst/artma/const.R`) and `PATHS` (`inst/artma/paths.R`), both globally declared; import with `box::use(artma / const[CONST])`.
 - Style: 2-space indentation; `snake_case` or `dotted.case` names (max 40 chars); prefer `cli::cli_*` over base messaging; custom linters live in `.lintr.R`.
