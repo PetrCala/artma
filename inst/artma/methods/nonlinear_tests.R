@@ -67,6 +67,9 @@ nonlinear_tests <- function(df) {
 
     if (nrow(results$summary) > 0) {
       print_summary_table(results$summary)
+      for (note in results$notes %||% character(0)) {
+        cli::cli_text("{note}")
+      }
     } else {
       cli::cli_alert_warning("No non-linear models were successfully estimated.")
     }
