@@ -172,6 +172,8 @@ artma <- function(
 
     # Safety net for the capture the prepare step opened: the run step closes
     # it when it writes the manifest, and closing a closed frame is a no-op.
+    # This frame is the session's outermost; closing it also pops any frames
+    # the hub's rebuilds or options-file switches opened after it.
     on.exit(end_output_file_capture(context$capture), add = TRUE)
 
     # An interactive call without methods lands in the session hub: a menu
@@ -179,9 +181,9 @@ artma <- function(
     # accumulated results when the user exits. Scripted paths stay linear.
     if (interactive() && is.null(methods)) {
       box::use(artma / interactive / hub[run_session_hub])
-      # The hub can invalidate the prepared frame by editing data options; the
-      # context lives in an environment so the rebuild below can swap it for
-      # the run closure as well.
+      # The hub can invalidate the prepared frame by editing data options or
+      # switching the options file; the context lives in an environment so the
+      # handlers below can swap it for the run closure as well.
       session_state <- new.env(parent = emptyenv())
       session_state$context <- context
       return(run_session_hub(
@@ -207,6 +209,28 @@ artma <- function(
           # nests inside the session frame the first prepare opened, which the
           # on.exit above closes together with everything above it.
           session_state$context <- prepare_run_context(data = data, methods = selected)
+          session_state$context$df
+        },
+        switch_options = function(file_name) {
+          box::use(artma / options / migrate[migrate_legacy_options])
+          migrate_legacy_options(
+            options_file_name = file_name,
+            options_dir = options_dir
+          )
+          loaded <- options_load( # nolint: box_usage_linter. # Package function from R/options.R
+            options_file_name = file_name,
+            options_dir = options_dir,
+            should_validate = TRUE,
+            should_add_temp_options = TRUE
+          )
+          # Applied with base options(), not withr::local_options(): the new
+          # values must outlive this call and govern the rest of the hub
+          # session. runtime_setup()'s own local_options frame still restores
+          # the caller's options when artma() returns.
+          options(loaded)
+          # The fresh prepare step's capture frame nests inside the session
+          # frame the first prepare opened, exactly as in rebuild_data above.
+          session_state$context <- prepare_run_context(data = data, methods = NULL)
           session_state$context$df
         }
       ))

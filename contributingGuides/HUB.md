@@ -58,8 +58,48 @@ dispatches on values only. A header rule above the menu names the options file
 - **Results**: submenu with "Open results folder" (`artma::results_open()`)
   and "Render HTML report" (`artma::report_render()` on the accumulated
   results). Both print a friendly message and do nothing before the first run.
+- **Settings**: submenu of session-level toggles, each showing its current
+  value. Visualization theme (`artma::viz_set(theme = ...)` over
+  `artma::viz_themes()`), verbosity (`artma.verbose`, 1-4), autonomy level
+  (`artma::autonomy_set()`), and result caching (`artma.cache.use_cache`,
+  which `cache_cli()` reads at call time). All of them take effect for the
+  session only; the options file on disk is untouched.
+- **Switch options file**: picker over `artma::options_list(details = TRUE)`
+  with decorated, value-keyed labels: file name, data source basename, last
+  run time, and the count of non-default options; the session's current file
+  is marked. See "Switching the options file" below for the semantics.
+- **Help**: submenu with the methods overview (`print_methods_table()` on the
+  same frame the picker uses), the options overview (`artma::options_help()`
+  plus a pointer to its single-option form), and the browser links that used
+  to live in the welcome flow: the Getting Started and Options Files
+  vignettes and the package website. The welcome message itself is now just a
+  first-run banner pointing at this submenu (`is_first_time_user` /
+  `mark_welcome_as_shown` semantics are unchanged).
 - **Exit**: leaves the loop. Cancelling the menu (Esc) behaves exactly like
   Exit; the accumulated results are the user's work and survive a cancel.
+
+## Switching the options file
+
+`runtime_setup()` applies the loaded options via `withr::local_options()`,
+which restores the caller's options when `artma()` returns. A mid-session
+switch therefore applies the new file's options with plain `options()`: the
+values survive until the hub exits, and `runtime_setup()`'s frame still
+restores the caller's state afterwards (the option keys are the same template
+keys, so the restore list covers them).
+
+The handler lives in `R/artma.R` (`switch_options` wired into
+`run_session_hub()`): it migrates legacy files, loads the new file
+(`options_load(should_add_temp_options = TRUE)`, so the header names the new
+file), applies the options, and re-runs `prepare_run_context()`. The current
+run context lives in the same mutable `session_state` environment
+`rebuild_data` uses, so subsequent hub runs see the latest context; the fresh
+prepare step's capture frame nests inside the session frame the first prepare
+opened, which the `on.exit` safety net closes together with everything above
+it. On success the hub swaps in the freshly prepared frame, clears any
+pending data staleness from earlier option edits, and drops its self-built
+methods table so availability is re-checked against the new data (an injected
+`methods_table` is kept as-is). A failed listing, load, or re-preparation
+reports and leaves the session on its current file.
 
 Each run goes through the full run step exactly as a linear run does: export,
 manifest, and run summary. `R/artma.R` opens a fresh output-file capture frame
@@ -92,6 +132,7 @@ Exiting before any run returns an empty list with an empty `runs` attribute.
   `checkbox_fn` (menu backends), `run_methods` (the pipeline), `rebuild_data`
   (the stale-data re-preparation), `edit_option` / `save_preference` (the
   adjust-options prompts), `view_data`, `open_results`, `render_report`,
-  `methods_table` (the picker frame), and `template_path`.
+  `methods_table` (the picker frame), `template_path`, `list_options` /
+  `switch_options` (the options-file switch), `set_theme` / `set_autonomy`
+  (settings), and `show_options_help` / `open_url` (help).
   `tests/testthat/test-session-hub.R` shows the scripted-backend pattern.
-- Planned growth (issue #496): settings, switch options file, and help items.

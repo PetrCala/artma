@@ -15,11 +15,14 @@ box::use(
     compose_hub_choices,
     count_studies,
     describe_option_state,
+    help_menu_items,
     hub_menu_items,
     merge_run_results,
     option_affects_data,
+    options_file_items,
     run_adjust_options,
-    run_session_hub
+    run_session_hub,
+    settings_menu_items
   ]
 )
 
@@ -34,11 +37,14 @@ hub_df <- function() {
 }
 
 # The columns of a build_methods_table(available_for = ...) frame the picker
-# reads.
+# and the Help submenu's methods overview read.
 hub_methods_frame <- function() {
   data.frame(
     method = c("bma", "funnel_plot"),
     description = c("Bayesian model averaging", "Funnel plot"),
+    required_columns = c("effect, se", "effect, se"),
+    depends_on = c("", ""),
+    suggests = c("BMS", ""),
     missing_packages = c("", ""),
     opt_in = c(FALSE, FALSE),
     missing_columns = c("", ""),
@@ -318,10 +324,25 @@ test_that("hub_menu_items hides Re-run until a run happened", {
   expect_equal(rerun$description, "bma, funnel_plot")
 })
 
+test_that("hub_menu_items hides the switch item without a handler", {
+  with_switch <- vapply(hub_menu_items(FALSE, character(0)), function(item) item$value, character(1))
+  expect_true(all(c("settings", "switch", "help") %in% with_switch))
+
+  without_switch <- vapply(
+    hub_menu_items(FALSE, character(0), can_switch = FALSE),
+    function(item) item$value, character(1)
+  )
+  expect_false("switch" %in% without_switch)
+  expect_true(all(c("settings", "help") %in% without_switch))
+})
+
 test_that("compose_hub_choices is value-keyed with decorated labels", {
   choices <- compose_hub_choices(hub_menu_items(FALSE, character(0)), width = 100)
 
-  expect_equal(unname(choices), c("run", "options", "preview", "results", "exit"))
+  expect_equal(
+    unname(choices),
+    c("run", "options", "preview", "results", "settings", "switch", "help", "exit")
+  )
   labels <- cli::ansi_strip(names(choices))
   expect_true(grepl("^Run methods +pick and run", labels[[1]]))
 })
@@ -331,6 +352,272 @@ test_that("the Re-run description names the options changed since the run", {
   values <- vapply(items, function(item) item$value, character(1))
   rerun <- items[[which(values == "rerun")]]
   expect_equal(rerun$description, "bma (changed: data.na_handling, general.seed)")
+})
+
+test_that("the settings and help submenus are value-keyed", {
+  settings <- vapply(settings_menu_items(), function(item) item$value, character(1))
+  expect_equal(settings, c("theme", "verbosity", "autonomy", "cache", "back"))
+
+  help <- vapply(help_menu_items(), function(item) item$value, character(1))
+  expect_equal(help, c(
+    "methods", "options", "vignette_getting_started",
+    "vignette_options_files", "website", "back"
+  ))
+})
+
+test_that("options_file_items decorates each file and marks the current one", {
+  details <- data.frame(
+    file = c("a.yaml", "b.yaml"),
+    data_source_path = c("/data/a.csv", NA_character_),
+    modified = as.POSIXct(c("2026-08-01 10:00:00", "2026-08-02 10:00:00")),
+    last_run = as.POSIXct(c("2026-08-20 09:30:00", NA)),
+    n_non_default = c(3L, 0L),
+    stringsAsFactors = FALSE
+  )
+
+  items <- options_file_items(details, current_file = "a.yaml")
+
+  expect_equal(vapply(items, function(item) item$value, character(1)), c("a.yaml", "b.yaml"))
+  expect_true(grepl("current", items[[1]]$description, fixed = TRUE))
+  expect_true(grepl("a.csv", items[[1]]$description, fixed = TRUE))
+  expect_true(grepl("last run 2026-08-20", items[[1]]$description, fixed = TRUE))
+  expect_true(grepl("3 non-default", items[[1]]$description, fixed = TRUE))
+  expect_false(grepl("current", items[[2]]$description, fixed = TRUE))
+  expect_true(grepl("no data source", items[[2]]$description, fixed = TRUE))
+  expect_true(grepl("never run", items[[2]]$description, fixed = TRUE))
+  expect_true(grepl("all defaults", items[[2]]$description, fixed = TRUE))
+})
+
+test_that("settings toggles take effect for the session", {
+  withr::local_options(list(
+    artma.temp.last_methods = NULL,
+    artma.verbose = 3,
+    artma.cache.use_cache = TRUE
+  ))
+  themes_set <- character(0)
+  autonomy_levels_set <- character(0)
+
+  suppressMessages(run_session_hub(
+    df = hub_df(),
+    run_methods = abort_if_called("run_methods"),
+    methods_table = hub_methods_frame(),
+    set_theme = function(theme) themes_set <<- c(themes_set, theme),
+    set_autonomy = function(level) autonomy_levels_set <<- c(autonomy_levels_set, level),
+    select_fn = make_select_fn(c(
+      "Settings", "Visualization theme", "red",
+      "Settings", "Verbosity", "4 - debug",
+      "Settings", "Autonomy level", "balanced",
+      "Settings", "Result caching", "No",
+      "Exit"
+    )),
+    checkbox_fn = abort_if_called("checkbox_fn"),
+    width = 100
+  ))
+
+  expect_equal(themes_set, "red")
+  expect_equal(autonomy_levels_set, "balanced")
+  expect_equal(getOption("artma.verbose"), 4L)
+  expect_false(getOption("artma.cache.use_cache"))
+})
+
+test_that("a cancelled settings submenu returns to the hub without changes", {
+  withr::local_options(list(artma.temp.last_methods = NULL, artma.verbose = 3))
+
+  suppressMessages(run_session_hub(
+    df = hub_df(),
+    run_methods = abort_if_called("run_methods"),
+    methods_table = hub_methods_frame(),
+    set_theme = abort_if_called("set_theme"),
+    set_autonomy = abort_if_called("set_autonomy"),
+    select_fn = make_select_fn(c("Settings", NA_character_, "Exit")),
+    checkbox_fn = abort_if_called("checkbox_fn"),
+    width = 100
+  ))
+
+  expect_equal(getOption("artma.verbose"), 3)
+})
+
+test_that("the help submenu prints overviews and opens the docs links", {
+  withr::local_options(list(artma.temp.last_methods = NULL))
+  urls <- character(0)
+  options_help_calls <- 0L
+
+  messages <- testthat::capture_messages(
+    run_session_hub(
+      df = hub_df(),
+      run_methods = abort_if_called("run_methods"),
+      methods_table = hub_methods_frame(),
+      show_options_help = function() options_help_calls <<- options_help_calls + 1L,
+      open_url = function(url, description) urls <<- c(urls, url),
+      select_fn = make_select_fn(c(
+        "Help", "Methods overview",
+        "Help", "Options overview",
+        "Help", "Getting Started vignette",
+        "Help", "Package website",
+        "Exit"
+      )),
+      checkbox_fn = abort_if_called("checkbox_fn"),
+      width = 100
+    )
+  )
+
+  # The methods overview prints the injected frame's rows.
+  expect_true(any(grepl("Bayesian model averaging", messages)))
+  expect_equal(options_help_calls, 1L)
+  expect_length(urls, 2L)
+  expect_true(grepl("getting-started", urls[[1]], fixed = TRUE))
+  expect_false(grepl("getting-started", urls[[2]], fixed = TRUE))
+})
+
+test_that("switching the options file reloads options and re-prepares data", {
+  withr::local_options(list(
+    artma.temp.last_methods = NULL,
+    artma.temp.file_name = "a.yaml",
+    artma.temp.dir_name = NULL,
+    artma.general.name = NULL,
+    artma.data.source_path = NULL,
+    artma.data.columns = NULL,
+    artma.methods.bma.iter = NULL,
+    artma.methods.bma.burn = NULL,
+    artma.methods.linear_tests.conf_level = NULL
+  ))
+
+  tmp_dir <- withr::local_tempdir()
+  template_path <- file.path(tmp_dir, "template.yaml")
+  yaml::write_yaml(
+    list(
+      general = list(name = list(type = "character", default = "Default Config", help = "Name")),
+      data = list(
+        source_path = list(type = "character", help = "Path to the data file"),
+        columns = list(type = "list", default = list(), help = "The unified column store")
+      ),
+      methods = list(
+        bma = list(
+          iter = list(type = "integer", default = 100L, help = "Iterations"),
+          burn = list(type = "integer", default = 10L, help = "Burn-in")
+        ),
+        linear_tests = list(
+          conf_level = list(type = "numeric", default = 0.95, help = "Confidence level")
+        )
+      )
+    ),
+    template_path
+  )
+  yaml::write_yaml(
+    list(general = list(name = "A"), data = list(source_path = "/data/a.csv", columns = list())),
+    file.path(tmp_dir, "a.yaml")
+  )
+  yaml::write_yaml(
+    list(
+      general = list(name = "B"),
+      data = list(source_path = "/data/b.csv", columns = list()),
+      methods = list(bma = list(iter = 500L))
+    ),
+    file.path(tmp_dir, "b.yaml")
+  )
+
+  # The re-prepared frame differs from the initial one, so the header proves
+  # which frame the hub holds.
+  fresh_df <- data.frame(
+    study_id = c("s9", "s9"),
+    effect = c(1.5, 1.6),
+    se = c(0.2, 0.3),
+    stringsAsFactors = FALSE
+  )
+
+  seen_iters <- integer(0)
+  run_methods <- function(methods) {
+    seen_iters <<- c(seen_iters, getOption("artma.methods.bma.iter"))
+    results <- stats::setNames(
+      lapply(methods, function(m) paste0(m, "-result")),
+      methods
+    )
+    attr(results, "run_info") <- list(
+      methods_requested = methods,
+      seed = 1L,
+      output_files = list()
+    )
+    results
+  }
+  checkbox <- make_checkbox_fn("bma")
+
+  messages <- testthat::capture_messages(
+    results <- run_session_hub(
+      df = hub_df(),
+      run_methods = run_methods,
+      methods_table = hub_methods_frame(),
+      list_options = function() {
+        artma::options_list(options_dir = tmp_dir, details = TRUE, template_path = template_path)
+      },
+      switch_options = function(file_name) {
+        loaded <- artma::options_load(
+          options_file_name = file_name,
+          options_dir = tmp_dir,
+          template_path = template_path,
+          should_validate = TRUE,
+          should_add_temp_options = TRUE
+        )
+        # Base options(), matching the artma() wiring: the values must
+        # survive this call for the rest of the hub session.
+        options(loaded)
+        fresh_df
+      },
+      select_fn = make_select_fn(c(
+        "Switch options file", "b.yaml",
+        "Run methods",
+        "Exit"
+      )),
+      checkbox_fn = checkbox$fn,
+      width = 100
+    )
+  )
+
+  # The run after the switch saw the new file's options.
+  expect_equal(seen_iters, 500L)
+  expect_equal(results$bma, "bma-result")
+  # The session now runs on the new file and the freshly prepared frame.
+  expect_equal(getOption("artma.temp.file_name"), "b.yaml")
+  expect_equal(getOption("artma.general.name"), "B")
+  expect_true(any(grepl("Switched to", messages)))
+  expect_true(any(grepl("2 rows", messages)))
+})
+
+test_that("a failed options switch keeps the session on the current file", {
+  withr::local_options(list(
+    artma.temp.last_methods = NULL,
+    artma.temp.file_name = "a.yaml"
+  ))
+
+  details <- data.frame(
+    file = c("a.yaml", "b.yaml"),
+    data_source_path = c("/data/a.csv", "/data/b.csv"),
+    modified = as.POSIXct(c("2026-08-01 10:00:00", "2026-08-02 10:00:00")),
+    last_run = as.POSIXct(c(NA, NA)),
+    n_non_default = c(0L, 0L),
+    stringsAsFactors = FALSE
+  )
+
+  messages <- testthat::capture_messages(
+    run_session_hub(
+      df = hub_df(),
+      run_methods = abort_if_called("run_methods"),
+      methods_table = hub_methods_frame(),
+      list_options = function() details,
+      switch_options = function(file_name) stop("no such file"),
+      select_fn = make_select_fn(c(
+        "Switch options file", "b.yaml",
+        "Preview data",
+        "Exit"
+      )),
+      checkbox_fn = abort_if_called("checkbox_fn"),
+      width = 100
+    )
+  )
+
+  expect_true(any(grepl("Could not switch", messages)))
+  expect_equal(getOption("artma.temp.file_name"), "a.yaml")
+  # The original frame is still the session's data.
+  expect_true(any(grepl("3 rows, 3 columns", messages)))
 })
 
 test_that("count_studies is NA without the study column", {
