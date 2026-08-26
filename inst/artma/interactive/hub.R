@@ -2,17 +2,21 @@
 #' @description
 #' The menu loop `artma()` enters when the session is interactive and no
 #' methods were requested: one session, many runs. The user picks and runs
-#' methods, previews the prepared data, opens results, and leaves only when
+#' methods, previews the prepared data, opens results, adjusts session
+#' settings, switches the options file, browses help, and leaves only when
 #' done. Entry conditions, item list, and the return contract:
 #' contributingGuides/HUB.md.
 NULL
 
 box::use(
+  artma / const[CONST],
   artma / interactive / input[ask_select, ask_yes_no],
   artma / interactive / method_picker[ask_runtime_methods],
+  artma / interactive / welcome[open_url_in_browser],
+  artma / libs / core / autonomy[get_autonomy_level, get_default_autonomy_level],
   artma / libs / core / utils[data_viewer_available],
   artma / libs / core / validation[validate],
-  artma / modules / methods_table[pad_cell, truncate_cell],
+  artma / modules / methods_table[pad_cell, print_methods_table, truncate_cell],
   artma / options / inspect[expand_option_tokens, format_option_value, values_equal],
   artma / options / template[flatten_template_options, read_template],
   artma / paths[PATHS]
@@ -361,13 +365,16 @@ run_adjust_options <- function(
 #' @description
 #' The Re-run item only appears once a run has happened in this hub session;
 #' its description names the selection it would repeat, plus the options
-#' changed since that run.
+#' changed since that run. The Switch item only appears when the caller wired
+#' a `switch_options` handler.
 #' @param has_run *\[logical\]* Whether a run happened in this session.
 #' @param last_methods *\[character\]* The previously confirmed selection.
 #' @param options_changed *\[character, optional\]* Options changed since the
 #'   previous run.
+#' @param can_switch *\[logical, optional\]* Whether an options-file switch
+#'   handler is available. Defaults to `TRUE`.
 #' @return *\[list\]* Items for `compose_hub_choices()`.
-hub_menu_items <- function(has_run, last_methods, options_changed = character(0)) {
+hub_menu_items <- function(has_run, last_methods, options_changed = character(0), can_switch = TRUE) {
   items <- list(
     list(
       value = "run",
@@ -389,7 +396,7 @@ hub_menu_items <- function(has_run, last_methods, options_changed = character(0)
       description = description
     )))
   }
-  c(items, list(
+  items <- c(items, list(
     list(
       value = "options",
       name = "Adjust options",
@@ -406,11 +413,336 @@ hub_menu_items <- function(has_run, last_methods, options_changed = character(0)
       description = "open results folder, render HTML report"
     ),
     list(
+      value = "settings",
+      name = "Settings",
+      description = "theme, verbosity, autonomy, caching"
+    )
+  ))
+  if (isTRUE(can_switch)) {
+    items <- c(items, list(list(
+      value = "switch",
+      name = "Switch options file",
+      description = "load another options file and re-prepare the data"
+    )))
+  }
+  c(items, list(
+    list(
+      value = "help",
+      name = "Help",
+      description = "methods overview, options help, vignettes"
+    ),
+    list(
       value = "exit",
       name = "Exit",
       description = "return results to the R session"
     )
   ))
+}
+
+#' @title The Settings submenu items, decorated with the current values
+#' @return *\[list\]* Items for `compose_hub_choices()`.
+settings_menu_items <- function() {
+  caching <- if (isTRUE(getOption("artma.cache.use_cache", TRUE))) "on" else "off"
+  list(
+    list(
+      value = "theme",
+      name = "Visualization theme",
+      description = sprintf("current: %s", getOption("artma.visualization.theme", "blue"))
+    ),
+    list(
+      value = "verbosity",
+      name = "Verbosity",
+      description = sprintf("current: %s", getOption("artma.verbose", 3))
+    ),
+    list(
+      value = "autonomy",
+      name = "Autonomy level",
+      description = sprintf("current: %s", get_autonomy_level() %||% get_default_autonomy_level())
+    ),
+    list(
+      value = "cache",
+      name = "Result caching",
+      description = sprintf("current: %s", caching)
+    ),
+    list(
+      value = "back",
+      name = "Back",
+      description = "return to the session menu"
+    )
+  )
+}
+
+#' @title The Help submenu items
+#' @return *\[list\]* Items for `compose_hub_choices()`.
+help_menu_items <- function() {
+  list(
+    list(
+      value = "methods",
+      name = "Methods overview",
+      description = "the runtime methods and their status for this data"
+    ),
+    list(
+      value = "options",
+      name = "Options overview",
+      description = "the full options tree with defaults and help texts"
+    ),
+    list(
+      value = "vignette_getting_started",
+      name = "Getting Started vignette",
+      description = "open in the browser"
+    ),
+    list(
+      value = "vignette_options_files",
+      name = "Options Files vignette",
+      description = "open in the browser"
+    ),
+    list(
+      value = "website",
+      name = "Package website",
+      description = "open in the browser"
+    ),
+    list(
+      value = "back",
+      name = "Back",
+      description = "return to the session menu"
+    )
+  )
+}
+
+#' @title Compose picker items for the available options files
+#' @description Decorate each file of an `options_list(details = TRUE)` frame
+#'   with its data source basename, last run time, and count of non-default
+#'   options; the session's current file is marked as such.
+#' @param details *\[data.frame\]* An `options_list(details = TRUE)` frame.
+#' @param current_file *\[character, optional\]* The options file behind the
+#'   session, marked "current" in its description.
+#' @return *\[list\]* Items for `compose_hub_choices()`, one per file, with the
+#'   file name as the value.
+options_file_items <- function(details, current_file = NULL) {
+  lapply(seq_len(nrow(details)), function(i) {
+    source_path <- details$data_source_path[[i]]
+    last_run <- details$last_run[[i]]
+    n_non_default <- details$n_non_default[[i]]
+
+    parts <- c(
+      if (is.character(source_path) && !is.na(source_path) && nzchar(source_path)) {
+        basename(source_path)
+      } else {
+        "no data source"
+      },
+      if (!is.na(last_run)) {
+        sprintf("last run %s", format(last_run, CONST$DATE_FORMAT))
+      } else {
+        "never run"
+      },
+      if (n_non_default > 0L) {
+        sprintf("%d non-default", n_non_default)
+      } else {
+        "all defaults"
+      }
+    )
+    if (!is.null(current_file) && identical(details$file[[i]], current_file)) {
+      parts <- c("current", parts)
+    }
+
+    list(
+      value = details$file[[i]],
+      name = details$file[[i]],
+      description = paste(parts, collapse = ", ")
+    )
+  })
+}
+
+#' @title Run the Settings submenu once
+#' @description One pick from the Settings submenu, applied for the session
+#'   only: none of the toggles touch the options file on disk.
+#' @param select_fn *\[function\]* Menu backend.
+#' @param width *\[numeric, optional\]* Console width for the menu labels.
+#' @param set_theme *\[function\]* Called with the chosen theme name.
+#' @param set_autonomy *\[function\]* Called with the chosen autonomy level.
+#' @return `NULL`, invisibly.
+run_settings_menu <- function(select_fn, width, set_theme, set_autonomy) {
+  action <- ask_select(
+    question = "Settings (session only; the options file is not changed)",
+    choices = compose_hub_choices(settings_menu_items(), width = width),
+    confirm = FALSE,
+    select_fn = select_fn
+  )
+  if (rlang::is_empty(action) || identical(action, "back")) {
+    return(invisible(NULL))
+  }
+
+  if (identical(action, "theme")) {
+    themes <- artma::viz_themes()
+    current <- getOption("artma.visualization.theme", "blue")
+    theme <- ask_select(
+      question = "Select a theme",
+      choices = themes,
+      default = if (current %in% themes) current else NULL,
+      confirm = FALSE,
+      select_fn = select_fn
+    )
+    if (rlang::is_empty(theme)) {
+      return(invisible(NULL))
+    }
+    set_theme(theme)
+  } else if (identical(action, "verbosity")) {
+    current <- as.character(getOption("artma.verbose", 3))
+    level <- ask_select(
+      question = "Select the verbosity level",
+      choices = c(
+        "1 - errors only" = "1",
+        "2 - errors and warnings" = "2",
+        "3 - standard output" = "3",
+        "4 - debug" = "4"
+      ),
+      default = if (current %in% as.character(1:4)) current else NULL,
+      confirm = FALSE,
+      select_fn = select_fn
+    )
+    if (rlang::is_empty(level)) {
+      return(invisible(NULL))
+    }
+    options(artma.verbose = as.integer(level))
+    cli::cli_alert_success("Verbosity set to {level} for this session.")
+  } else if (identical(action, "autonomy")) {
+    level <- ask_select(
+      question = "Select the autonomy level",
+      choices = c(
+        "ask_more - prompt for most decisions" = "ask_more",
+        "balanced - prompt for the important decisions" = "balanced",
+        "autonomous - prompt only when unavoidable" = "autonomous"
+      ),
+      default = get_autonomy_level() %||% get_default_autonomy_level(),
+      confirm = FALSE,
+      select_fn = select_fn
+    )
+    if (rlang::is_empty(level)) {
+      return(invisible(NULL))
+    }
+    set_autonomy(level)
+    cli::cli_alert_success("Autonomy level set to {level} for this session.")
+  } else if (identical(action, "cache")) {
+    use_cache <- ask_yes_no(
+      "Use cached results where available?",
+      default = isTRUE(getOption("artma.cache.use_cache", TRUE)),
+      select_fn = select_fn
+    )
+    options(artma.cache.use_cache = use_cache)
+    state_word <- if (use_cache) "enabled" else "disabled"
+    cli::cli_alert_success("Result caching {state_word} for this session.")
+  }
+
+  invisible(NULL)
+}
+
+#' @title Run the Help submenu once
+#' @param select_fn *\[function\]* Menu backend.
+#' @param width *\[numeric, optional\]* Console width for the menu labels.
+#' @param get_methods_frame *\[function\]* Returns the methods table frame for
+#'   the overview.
+#' @param show_options_help *\[function\]* Prints the options overview.
+#' @param open_url *\[function\]* Called with a URL and a description; opens it
+#'   in the browser.
+#' @return `NULL`, invisibly.
+run_help_menu <- function(select_fn, width, get_methods_frame, show_options_help, open_url) {
+  action <- ask_select(
+    question = "Help",
+    choices = compose_hub_choices(help_menu_items(), width = width),
+    confirm = FALSE,
+    select_fn = select_fn
+  )
+  if (rlang::is_empty(action) || identical(action, "back")) {
+    return(invisible(NULL))
+  }
+
+  if (identical(action, "methods")) {
+    print_methods_table(get_methods_frame())
+  } else if (identical(action, "options")) {
+    show_options_help()
+    cli::cli_alert_info(
+      "Run {.code artma::options_help(\"<option or group>\")} for details on a single option or group."
+    )
+  } else if (identical(action, "vignette_getting_started")) {
+    open_url(
+      paste0(CONST$URLS$VIGNETTE_BASE, "/getting-started.html"),
+      "'Getting Started' vignette"
+    )
+  } else if (identical(action, "vignette_options_files")) {
+    open_url(
+      paste0(CONST$URLS$VIGNETTE_BASE, "/options-files.html"),
+      "'Options Files' vignette"
+    )
+  } else if (identical(action, "website")) {
+    open_url(CONST$URLS$PACKAGE_BASE, "artma package website")
+  }
+
+  invisible(NULL)
+}
+
+# Sentinel for the Back entry of the options-file picker; a value no real
+# options file name can take.
+SWITCH_BACK_VALUE <- "__back__"
+
+#' @title Run the options-file switch menu once
+#' @description Offer the decorated options-file picker and hand the selection
+#'   to the switch handler. Any failure (listing, loading, re-preparing)
+#'   reports and returns `NULL`, leaving the session on its current file.
+#' @param select_fn *\[function\]* Menu backend.
+#' @param width *\[numeric, optional\]* Console width for the menu labels.
+#' @param list_options *\[function\]* Returns the `options_list(details = TRUE)`
+#'   frame of the available options files.
+#' @param switch_options *\[function\]* Called with the selected file name; loads
+#'   that file's options for the session and returns the freshly prepared data
+#'   frame.
+#' @return *\[data.frame | NULL\]* The freshly prepared data frame, or `NULL`
+#'   when the switch did not happen.
+run_switch_menu <- function(select_fn, width, list_options, switch_options) {
+  details <- tryCatch(
+    list_options(),
+    error = function(e) {
+      cli::cli_alert_warning("Could not list the options files: {conditionMessage(e)}")
+      NULL
+    }
+  )
+  if (!is.data.frame(details) || nrow(details) == 0L) {
+    if (!is.null(details)) {
+      cli::cli_alert_info("No options files found.")
+    }
+    return(NULL)
+  }
+
+  items <- c(
+    options_file_items(details, current_file = getOption("artma.temp.file_name", NULL)),
+    list(list(
+      value = SWITCH_BACK_VALUE,
+      name = "Back",
+      description = "keep the current options file"
+    ))
+  )
+  choice <- ask_select(
+    question = "Switch to which options file?",
+    choices = compose_hub_choices(items, width = width),
+    confirm = FALSE,
+    select_fn = select_fn
+  )
+  if (rlang::is_empty(choice) || identical(choice, SWITCH_BACK_VALUE)) {
+    return(NULL)
+  }
+
+  new_df <- tryCatch(
+    switch_options(choice),
+    error = function(e) {
+      cli::cli_alert_danger("Could not switch to {.file {choice}}: {conditionMessage(e)}")
+      NULL
+    }
+  )
+  if (!is.data.frame(new_df)) {
+    return(NULL)
+  }
+
+  cli::cli_alert_success("Switched to {.file {choice}}: options reloaded, data re-prepared.")
+  new_df
 }
 
 #' @title Count the studies of a prepared frame
@@ -572,6 +904,23 @@ merge_run_results <- function(accumulated, results) {
 #' @param render_report *\[function, optional\]* Renders the HTML report from
 #'   the accumulated results. Defaults to `artma::report_render()`. Injectable
 #'   for testing.
+#' @param list_options *\[function, optional\]* Returns the
+#'   `options_list(details = TRUE)` frame behind the options-file picker.
+#'   Defaults to `artma::options_list(details = TRUE)`. Injectable for testing.
+#' @param switch_options *\[function, optional\]* Called with the selected
+#'   options file name; must load that file's options for the rest of the
+#'   session and return the freshly prepared data frame. `NULL` (the default)
+#'   hides the "Switch options file" item; `artma()` wires the real handler.
+#' @param set_theme *\[function, optional\]* Applies a visualization theme for
+#'   the session. Defaults to `artma::viz_set(theme = ...)`. Injectable for
+#'   testing.
+#' @param set_autonomy *\[function, optional\]* Applies an autonomy level for
+#'   the session. Defaults to `artma::autonomy_set()`. Injectable for testing.
+#' @param show_options_help *\[function, optional\]* Prints the options
+#'   overview. Defaults to `artma::options_help()`. Injectable for testing.
+#' @param open_url *\[function, optional\]* Opens a URL in the browser; receives
+#'   the URL and a description. Defaults to the welcome module's
+#'   `open_url_in_browser()`. Injectable for testing.
 #' @param select_fn *\[function, optional\]* Menu backend for single-choice
 #'   menus. Defaults to `climenu::select`. Exposed for testing.
 #' @param checkbox_fn *\[function, optional\]* Menu backend for the method
@@ -590,6 +939,12 @@ run_session_hub <- function(
   view_data = NULL,
   open_results = NULL,
   render_report = NULL,
+  list_options = NULL,
+  switch_options = NULL,
+  set_theme = NULL,
+  set_autonomy = NULL,
+  show_options_help = NULL,
+  open_url = NULL,
   select_fn = climenu::select,
   checkbox_fn = climenu::checkbox,
   edit_option = NULL,
@@ -605,6 +960,12 @@ run_session_hub <- function(
     is.null(view_data) || is.function(view_data),
     is.null(open_results) || is.function(open_results),
     is.null(render_report) || is.function(render_report),
+    is.null(list_options) || is.function(list_options),
+    is.null(switch_options) || is.function(switch_options),
+    is.null(set_theme) || is.function(set_theme),
+    is.null(set_autonomy) || is.function(set_autonomy),
+    is.null(show_options_help) || is.function(show_options_help),
+    is.null(open_url) || is.function(open_url),
     is.function(select_fn),
     is.function(checkbox_fn)
   )
@@ -618,12 +979,31 @@ run_session_hub <- function(
   if (is.null(render_report)) {
     render_report <- function(results) artma::report_render(results)
   }
+  if (is.null(list_options)) {
+    list_options <- function() artma::options_list(details = TRUE)
+  }
+  if (is.null(set_theme)) {
+    set_theme <- function(theme) artma::viz_set(theme = theme)
+  }
+  if (is.null(set_autonomy)) {
+    set_autonomy <- function(level) artma::autonomy_set(level)
+  }
+  if (is.null(show_options_help)) {
+    show_options_help <- function() artma::options_help()
+  }
+  if (is.null(open_url)) {
+    open_url <- open_url_in_browser
+  }
 
   # Session state, kept in an environment so the loop's helpers can update it
-  # without non-local assignment.
+  # without non-local assignment. The prepared frame lives here too: an
+  # options-file switch replaces it mid-session.
   state <- new.env(parent = emptyenv())
   state$df <- df
   state$methods_frame <- methods_table
+  # An injected frame is kept as-is across an options-file switch; a self-built
+  # one is rebuilt for the new data on the next pass that needs it.
+  state$methods_frame_injected <- !is.null(methods_table)
   state$accumulated <- list()
   state$runs <- list()
   state$last_methods <- character(0)
@@ -703,7 +1083,12 @@ run_session_hub <- function(
     action <- ask_select(
       question = "What would you like to do?",
       choices = compose_hub_choices(
-        hub_menu_items(state$has_run, state$last_methods, state$changed_since_run),
+        hub_menu_items(
+          state$has_run,
+          state$last_methods,
+          options_changed = state$changed_since_run,
+          can_switch = !is.null(switch_options)
+        ),
         width = width
       ),
       confirm = FALSE,
@@ -771,6 +1156,37 @@ run_session_hub <- function(
           )
         }
       }
+    } else if (identical(action, "settings")) {
+      run_settings_menu(
+        select_fn = select_fn,
+        width = width,
+        set_theme = set_theme,
+        set_autonomy = set_autonomy
+      )
+    } else if (identical(action, "switch")) {
+      new_df <- run_switch_menu(
+        select_fn = select_fn,
+        width = width,
+        list_options = list_options,
+        switch_options = switch_options
+      )
+      if (!is.null(new_df)) {
+        state$df <- new_df
+        # The switch handler prepared the frame under the new file's options,
+        # so any pending staleness from earlier option edits is resolved.
+        state$data_stale <- FALSE
+        if (!state$methods_frame_injected) {
+          state$methods_frame <- NULL
+        }
+      }
+    } else if (identical(action, "help")) {
+      run_help_menu(
+        select_fn = select_fn,
+        width = width,
+        get_methods_frame = get_methods_frame,
+        show_options_help = show_options_help,
+        open_url = open_url
+      )
     } else if (identical(action, "results")) {
       results_action <- ask_select(
         question = "Results",
@@ -816,10 +1232,13 @@ box::export(
   compose_hub_choices,
   count_studies,
   describe_option_state,
+  help_menu_items,
   hub_menu_items,
   merge_run_results,
   option_affects_data,
+  options_file_items,
   render_data_summary,
   run_adjust_options,
-  run_session_hub
+  run_session_hub,
+  settings_menu_items
 )

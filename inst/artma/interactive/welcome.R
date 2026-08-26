@@ -19,18 +19,17 @@ open_url_in_browser <- function(url, description) {
 }
 
 #' @title Show welcome message for first-time users
-#' @description Displays an elegant welcome message introducing artma to new users.
+#' @description A first-run banner introducing artma. The vignettes, options
+#'   help, and package website moved to the session hub's Help submenu
+#'   (`inst/artma/interactive/hub.R`), so the banner only points there and
+#'   never prompts.
 #' @keywords internal
 show_welcome_message <- function() {
   box::use(artma / const[CONST])
 
-  # Decorative separator
   cli::cli_rule()
-
-  # Welcome title with styling
   cli::cli_h1(cli::col_blue(cli::style_bold("Welcome to {.pkg {CONST$PACKAGE_NAME}}")))
 
-  # Introduction text
   cli::cli_par()
   cli::cli_text(
     "{cli::symbol$star} {.strong artma} (Automatic Replication Tools for Meta-Analysis) helps you ",
@@ -42,88 +41,11 @@ show_welcome_message <- function() {
 
   cli::cli_text(
     "You'll be guided through a simple workflow: setting up your data, choosing analysis methods, ",
-    "and reviewing results. Everything is designed to be intuitive and reproducible."
+    "and reviewing results. The session menu's {.strong Help} entry links the vignettes, the ",
+    "options reference, and the package website ({.url {CONST$URLS$PACKAGE_BASE}})."
   )
   cli::cli_par()
 
-  # Prompt for readiness
-  cli::cli_text(cli::style_bold("Are you ready to get started?"))
-  cli::cli_par()
-
-  # Menu for user response
-  choices <- c(
-    "Yes, let's get started!",
-    "Show me more information"
-  )
-
-  choice <- climenu::menu(
-    choices = choices,
-    prompt = "Select an option:"
-  )
-
-  if (is.null(choice)) {
-    # User cancelled - return early (will still be marked as shown by caller)
-    return(invisible())
-  }
-
-  if (grepl("more information", choice, ignore.case = TRUE)) {
-    # Interactive menu loop for more information
-    repeat {
-      cli::cli_par()
-      cli::cli_h2("More Information")
-      cli::cli_par()
-
-      info_choices <- c(
-        "Open 'Getting Started' vignette",
-        "Open 'Options Files' vignette",
-        "View artma package help",
-        "Continue with analysis",
-        "Exit"
-      )
-
-      info_choice <- climenu::menu(
-        choices = info_choices,
-        prompt = "What would you like to do?"
-      )
-
-      if (is.null(info_choice)) {
-        # User cancelled - treat as exit
-        cli::cli_abort("Welcome cancelled by user.")
-      }
-
-      # Map menu choices to vignette names
-      vignette_map <- list(
-        "Getting Started" = "getting-started",
-        "Options Files" = "options-files"
-      )
-
-      # Check if it's a vignette choice
-      vignette_name <- NULL
-      for (key in names(vignette_map)) {
-        if (grepl(key, info_choice, fixed = TRUE)) {
-          vignette_name <- vignette_map[[key]]
-          break
-        }
-      }
-
-      if (!is.null(vignette_name)) {
-        vignette_url <- paste0(CONST$URLS$VIGNETTE_BASE, "/", vignette_name, ".html")
-        # Get the display name for the vignette
-        display_name <- names(vignette_map)[vignette_map == vignette_name]
-        open_url_in_browser(vignette_url, paste0("'", display_name, "' vignette"))
-      } else if (grepl("package help", info_choice, ignore.case = TRUE)) {
-        open_url_in_browser(CONST$URLS$PACKAGE_BASE, "artma package website")
-      } else if (grepl("Continue", info_choice, fixed = TRUE)) {
-        # Break out of loop and continue
-        break
-      } else if (grepl("Exit", info_choice, fixed = TRUE)) {
-        # Exit - abort the welcome
-        cli::cli_abort("Welcome cancelled by user.")
-      }
-    }
-  }
-
-  cli::cli_par()
   cli::cli_rule()
   cli::cli_par()
 
