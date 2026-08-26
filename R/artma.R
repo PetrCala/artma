@@ -27,8 +27,9 @@
 #'   are attached as the `failed_methods` attribute. The `run_info` attribute
 #'   carries the run's identity: the methods requested, the effective seed, and
 #'   the files each method wrote. A session hub call additionally attaches a
-#'   `runs` attribute with one entry per run (methods, seed, timestamp) and
-#'   keeps the latest result per method across the session's runs.
+#'   `runs` attribute with one entry per run (methods, seed, timestamp, and the
+#'   options changed since the previous run) and keeps the latest result per
+#'   method across the session's runs.
 #'
 #' @details
 #' The `artma()` function is the primary way to interact with the artma package.
@@ -178,12 +179,17 @@ artma <- function(
     # accumulated results when the user exits. Scripted paths stay linear.
     if (interactive() && is.null(methods)) {
       box::use(artma / interactive / hub[run_session_hub])
+      # The hub can invalidate the prepared frame by editing data options; the
+      # context lives in an environment so the rebuild below can swap it for
+      # the run closure as well.
+      session_state <- new.env(parent = emptyenv())
+      session_state$context <- context
       return(run_session_hub(
         df = context$df,
         run_methods = function(selected) {
           # Each hub run records its own files: a fresh capture frame per run,
           # nested inside the session frame the prepare step opened.
-          run_context <- context
+          run_context <- session_state$context
           run_context$capture <- begin_output_file_capture()
           run <- execute_run(run_context, methods = selected, ...)
           # The run step closes the frame when it saves results; without
@@ -195,6 +201,13 @@ artma <- function(
             run_files = run$run_files,
             open_results = open_results
           )
+        },
+        rebuild_data = function(selected) {
+          # A fresh prepare step under the changed options. Its capture frame
+          # nests inside the session frame the first prepare opened, which the
+          # on.exit above closes together with everything above it.
+          session_state$context <- prepare_run_context(data = data, methods = selected)
+          session_state$context$df
         }
       ))
     }

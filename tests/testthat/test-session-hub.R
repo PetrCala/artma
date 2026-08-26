@@ -11,10 +11,14 @@ box::use(
 
 box::use(
   artma / interactive / hub[
+    adjustable_option_defs,
     compose_hub_choices,
     count_studies,
+    describe_option_state,
     hub_menu_items,
     merge_run_results,
+    option_affects_data,
+    run_adjust_options,
     run_session_hub
   ]
 )
@@ -317,12 +321,204 @@ test_that("hub_menu_items hides Re-run until a run happened", {
 test_that("compose_hub_choices is value-keyed with decorated labels", {
   choices <- compose_hub_choices(hub_menu_items(FALSE, character(0)), width = 100)
 
-  expect_equal(unname(choices), c("run", "preview", "results", "exit"))
+  expect_equal(unname(choices), c("run", "options", "preview", "results", "exit"))
   labels <- cli::ansi_strip(names(choices))
   expect_true(grepl("^Run methods +pick and run", labels[[1]]))
+})
+
+test_that("the Re-run description names the options changed since the run", {
+  items <- hub_menu_items(TRUE, "bma", options_changed = c("data.na_handling", "general.seed"))
+  values <- vapply(items, function(item) item$value, character(1))
+  rerun <- items[[which(values == "rerun")]]
+  expect_equal(rerun$description, "bma (changed: data.na_handling, general.seed)")
 })
 
 test_that("count_studies is NA without the study column", {
   expect_equal(count_studies(hub_df()), 2L)
   expect_true(is.na(count_studies(data.frame(x = 1:3))))
+})
+
+test_that("adjustable_option_defs lists the curated knobs, then method groups", {
+  curated <- c(
+    "data.winsorization_level",
+    "data.na_handling",
+    "calc.precision_type",
+    "general.seed",
+    "output.number_of_decimals",
+    "output.report"
+  )
+
+  expect_equal(names(adjustable_option_defs(character(0))), curated)
+
+  with_method <- names(adjustable_option_defs("linear_tests"))
+  expect_equal(with_method[seq_along(curated)], curated)
+  expect_true("methods.linear_tests.bootstrap_replications" %in% with_method)
+  expect_true(all(startsWith(setdiff(with_method, curated), "methods.linear_tests.")))
+
+  # A method without template options contributes nothing.
+  expect_equal(names(adjustable_option_defs("no_such_method")), curated)
+})
+
+test_that("describe_option_state shows the current value and default deviation", {
+  defs <- adjustable_option_defs(character(0))
+
+  withr::local_options(list(
+    artma.data.winsorization_level = 0.05,
+    artma.output.number_of_decimals = 3,
+    artma.output.report = NULL
+  ))
+
+  expect_equal(
+    describe_option_state(defs[["data.winsorization_level"]]),
+    "current: 0.05 (default: 0.01)"
+  )
+  expect_equal(
+    describe_option_state(defs[["output.number_of_decimals"]]),
+    "current: 3 (default)"
+  )
+  expect_equal(
+    describe_option_state(defs[["output.report"]]),
+    "current: (unset) (default: false)"
+  )
+})
+
+test_that("option_affects_data tags exactly the data group", {
+  expect_true(option_affects_data("data.winsorization_level"))
+  expect_true(option_affects_data("data.na_handling"))
+  expect_false(option_affects_data("output.report"))
+  expect_false(option_affects_data("calc.precision_type"))
+})
+
+test_that("a declined save keeps a data edit session-only and flags staleness", {
+  withr::local_options(list(artma.data.winsorization_level = 0.01))
+  saves <- list()
+
+  outcome <- suppressMessages(run_adjust_options(
+    select_fn = make_select_fn(c("data.winsorization_level", "Back")),
+    edit_option = function(def) 0.05,
+    save_preference = function(name, value) {
+      saves[[name]] <<- value
+      FALSE
+    },
+    width = 100
+  ))
+
+  expect_equal(outcome$changed, "data.winsorization_level")
+  expect_true(outcome$data_changed)
+  expect_equal(getOption("artma.data.winsorization_level"), 0.05)
+  expect_equal(saves, list(data.winsorization_level = 0.05))
+})
+
+test_that("an accepted save still applies the edit session-wide, without staleness", {
+  withr::local_options(list(artma.output.number_of_decimals = 3))
+
+  outcome <- suppressMessages(run_adjust_options(
+    select_fn = make_select_fn(c("output.number_of_decimals", "Back")),
+    edit_option = function(def) 4L,
+    save_preference = function(name, value) TRUE,
+    width = 100
+  ))
+
+  expect_equal(outcome$changed, "output.number_of_decimals")
+  expect_false(outcome$data_changed)
+  expect_equal(getOption("artma.output.number_of_decimals"), 4L)
+})
+
+test_that("an unchanged value records nothing and never asks to persist", {
+  withr::local_options(list(artma.general.seed = 42))
+
+  outcome <- suppressMessages(run_adjust_options(
+    select_fn = make_select_fn(c("general.seed", "Back")),
+    edit_option = function(def) 42,
+    save_preference = abort_if_called("save_preference"),
+    width = 100
+  ))
+
+  expect_equal(outcome$changed, character(0))
+  expect_false(outcome$data_changed)
+})
+
+test_that("browse-all walks the template tree to any option", {
+  withr::local_options(list(artma.visualization.theme = "blue"))
+
+  outcome <- suppressMessages(run_adjust_options(
+    select_fn = make_select_fn(c(
+      "Browse all options", "visualization", "visualization.theme", "Back"
+    )),
+    edit_option = function(def) "red",
+    save_preference = function(name, value) FALSE,
+    width = 100
+  ))
+
+  expect_equal(outcome$changed, "visualization.theme")
+  expect_false(outcome$data_changed)
+  expect_equal(getOption("artma.visualization.theme"), "red")
+})
+
+test_that("a data edit re-prepares the data once, before the next run", {
+  withr::local_options(list(
+    artma.temp.last_methods = NULL,
+    artma.data.winsorization_level = 0.01
+  ))
+  checkbox <- make_checkbox_fn("bma")
+  run <- make_run_methods()
+  rebuilds <- list()
+
+  results <- suppressMessages(run_session_hub(
+    df = hub_df(),
+    run_methods = run$fn,
+    rebuild_data = function(selection) {
+      rebuilds <<- c(rebuilds, list(selection))
+      hub_df()[1:2, ]
+    },
+    methods_table = hub_methods_frame(),
+    select_fn = make_select_fn(c(
+      "Adjust options", "data.winsorization_level", "Back",
+      "Run methods",
+      "Re-run last selection",
+      "Exit"
+    )),
+    checkbox_fn = checkbox$fn,
+    edit_option = function(def) 0.05,
+    save_preference = function(name, value) FALSE,
+    width = 100
+  ))
+
+  # Rebuilt exactly once, lazily, with the run's selection; the re-run reuses
+  # the fresh frame.
+  expect_equal(rebuilds, list("bma"))
+
+  runs <- attr(results, "runs")
+  expect_length(runs, 2L)
+  expect_equal(runs[[1]]$options_changed, "data.winsorization_level")
+  expect_equal(runs[[2]]$options_changed, character(0))
+})
+
+test_that("a non-data edit never triggers a data rebuild", {
+  withr::local_options(list(
+    artma.temp.last_methods = NULL,
+    artma.output.number_of_decimals = 3
+  ))
+  checkbox <- make_checkbox_fn("bma")
+  run <- make_run_methods()
+
+  results <- suppressMessages(run_session_hub(
+    df = hub_df(),
+    run_methods = run$fn,
+    rebuild_data = abort_if_called("rebuild_data"),
+    methods_table = hub_methods_frame(),
+    select_fn = make_select_fn(c(
+      "Adjust options", "output.number_of_decimals", "Back",
+      "Run methods",
+      "Exit"
+    )),
+    checkbox_fn = checkbox$fn,
+    edit_option = function(def) 4L,
+    save_preference = function(name, value) FALSE,
+    width = 100
+  ))
+
+  runs <- attr(results, "runs")
+  expect_length(runs, 1L)
+  expect_equal(runs[[1]]$options_changed, "output.number_of_decimals")
 })
