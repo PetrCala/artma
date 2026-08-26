@@ -108,8 +108,9 @@ Methods that fail are omitted from the list; their names and error messages
 are attached as the <code>failed_methods</code> attribute. The <code>run_info</code> attribute
 carries the run's identity: the methods requested, the effective seed, and
 the files each method wrote. A session hub call additionally attaches a
-<code>runs</code> attribute with one entry per run (methods, seed, timestamp) and
-keeps the latest result per method across the session's runs.</p>
+<code>runs</code> attribute with one entry per run (methods, seed, timestamp, and the
+options changed since the previous run) and keeps the latest result per
+method across the session's runs.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

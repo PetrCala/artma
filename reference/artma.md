@@ -65,8 +65,8 @@ error messages are attached as the `failed_methods` attribute. The
 `run_info` attribute carries the run's identity: the methods requested,
 the effective seed, and the files each method wrote. A session hub call
 additionally attaches a `runs` attribute with one entry per run
-(methods, seed, timestamp) and keeps the latest result per method across
-the session's runs.
+(methods, seed, timestamp, and the options changed since the previous
+run) and keeps the latest result per method across the session's runs.
 
 ## Details
 
