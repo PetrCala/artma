@@ -35,7 +35,22 @@ dispatches on values only. A header rule above the menu names the options file
   the menu without running.
 - **Re-run last selection**: repeats the previous selection without the
   picker. Hidden until a first run happened; its description names the
-  selection it would repeat.
+  selection it would repeat, plus the options changed since that run.
+- **Adjust options** (`run_adjust_options()`): a picker over the curated
+  re-tuning knobs (`CURATED_OPTION_PATHS`: winsorization, NA handling,
+  precision measure, seed, decimals, report) plus the `methods.<name>` groups
+  of the last selection, each labeled with its current value and, when it
+  deviates, the template default. A "Browse all options" entry walks the whole
+  template (group menu, then leaf menu). Edits go through
+  `prompt_user_for_option_value()` (typed validation, current value as the
+  default) and apply session-wide via `options()` immediately;
+  `prompt_save_preference()` (with `respect_autonomy = FALSE`; the user
+  explicitly opened the flow) then decides session-only vs writing the options
+  YAML. Editing any `data.*` option marks the prepared frame stale: the hub
+  re-prepares it lazily, right before the next run (via the injected
+  `rebuild_data`, wired to `prepare_run_context()` in `R/artma.R` so the run
+  pipeline picks the fresh frame up too), and says so. Non-data edits never
+  trigger a rebuild.
 - **Preview data**: prints a textual summary of the prepared frame (rows,
   columns, study count when the config resolved `study_id`, missing-value
   counts, effect and SE ranges), then offers the spreadsheet viewer (via
@@ -62,8 +77,9 @@ The hub returns (invisibly) the accumulated results:
   method: re-requesting a method drops its previous entries before the new
   run's entries are appended.
 - `run_info` describes the latest run (unchanged shape).
-- A `runs` attribute lists every run: one entry with `methods`, `seed`, and
-  `timestamp`.
+- A `runs` attribute lists every run: one entry with `methods`, `seed`,
+  `timestamp`, and `options_changed` (the options edited since the previous
+  run).
 
 Exiting before any run returns an empty list with an empty `runs` attribute.
 
@@ -73,8 +89,9 @@ Exiting before any run returns an empty list with an empty `runs` attribute.
   branch in the `run_session_hub()` loop. Keep choices value-keyed; never
   match on labels.
 - Everything side-effectful is injectable for tests: `select_fn` /
-  `checkbox_fn` (menu backends), `run_methods` (the pipeline), `view_data`,
-  `open_results`, `render_report`, and `methods_table` (the picker frame).
+  `checkbox_fn` (menu backends), `run_methods` (the pipeline), `rebuild_data`
+  (the stale-data re-preparation), `edit_option` / `save_preference` (the
+  adjust-options prompts), `view_data`, `open_results`, `render_report`,
+  `methods_table` (the picker frame), and `template_path`.
   `tests/testthat/test-session-hub.R` shows the scripted-backend pattern.
-- Planned growth (issues #495/#496): adjust-options picker with data
-  staleness, settings, switch options file, and help items.
+- Planned growth (issue #496): settings, switch options file, and help items.

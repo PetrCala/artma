@@ -43,8 +43,9 @@ Methods that fail are omitted from the list; their names and error messages
 are attached as the \code{failed_methods} attribute. The \code{run_info} attribute
 carries the run's identity: the methods requested, the effective seed, and
 the files each method wrote. A session hub call additionally attaches a
-\code{runs} attribute with one entry per run (methods, seed, timestamp) and
-keeps the latest result per method across the session's runs.
+\code{runs} attribute with one entry per run (methods, seed, timestamp, and the
+options changed since the previous run) and keeps the latest result per
+method across the session's runs.
 }
 \description{
 Main entry point for the artma package. This function orchestrates the complete
