@@ -139,9 +139,12 @@ plots.
 
 The manifest is overwritten on every run into the same output directory:
 it always describes the latest run, never a history. Runs driven by
-different options files already get their own output directory, so keep
-a run by copying its directory or by pointing `output.dir` somewhere
-per-run.
+different options files already get their own output directory. To keep
+every run, set `output.run_subdirectories` to `TRUE`: each run then
+writes into `<output.dir>/runs/<timestamp>/`, with its own manifest,
+tables, graphics and report, and
+[`artma::results_open()`](https://petrcala.github.io/artma/reference/results_open.md)
+opens the latest one.
 
 ### Method Failures
 

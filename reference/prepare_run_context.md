@@ -41,5 +41,8 @@ prepare_run_context(data = NULL, methods = NULL)
 ## Value
 
 *\[list\]* The run context: `df` (the prepared data frame), `output_dir`
-(`NULL` when results are not saved), `save_results` and `capture` (the
-open output-file capture frame identifier).
+(the base output directory; `NULL` when results are not saved, and
+replaced by the run's own directory in
+[`execute_run()`](https://petrcala.github.io/artma/reference/execute_run.md)),
+`save_results` and `capture` (the open output-file capture frame
+identifier).

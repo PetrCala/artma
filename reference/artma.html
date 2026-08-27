@@ -182,8 +182,10 @@ this run rather than the accumulated contents of the directory, and it is
 what the HTML report uses to find each method's plots.</p>
 <p>The manifest is overwritten on every run into the same output directory: it
 always describes the latest run, never a history. Runs driven by different
-options files already get their own output directory, so keep a run by
-copying its directory or by pointing <code>output.dir</code> somewhere per-run.</p>
+options files already get their own output directory. To keep every run,
+set <code>output.run_subdirectories</code> to <code>TRUE</code>: each run then writes into
+<code>&lt;output.dir&gt;/runs/&lt;timestamp&gt;/</code>, with its own manifest, tables, graphics
+and report, and <code><a href="results_open.html">artma::results_open()</a></code> opens the latest one.</p>
 </div>
 
 <div class="section">

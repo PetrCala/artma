@@ -37,6 +37,7 @@ execute_run(context, methods = NULL, ...)
 ## Value
 
 *\[list\]* A list with `results` (the invocation results, carrying the
-`run_info`, `failed_methods` and `skipped_methods` attributes) and
-`run_files` (the files this run wrote; empty when results are not
-saved).
+`run_info`, `failed_methods` and `skipped_methods` attributes),
+`run_files` (the files this run wrote; empty when results are not saved)
+and `context` (the run context, with `output_dir` set to the directory
+this run used).

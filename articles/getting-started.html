@@ -336,8 +336,14 @@ what you saw scroll by never disagree.</p>
 <p><code>run.json</code> is overwritten by every run into the same
 output directory: it always describes the latest run, never a history.
 Runs driven by different options files already get their own output
-directory. To keep an older run, copy its directory, or point
-<code>output.dir</code> at a per-run location.</p>
+directory.</p>
+<p>To keep every run instead of overwriting it, set
+<code>output.run_subdirectories</code> to <code>TRUE</code>. Each run
+then writes into its own timestamped subdirectory
+(<code>&lt;output.dir&gt;/runs/2026-08-25_14-30-12/</code>), with its
+own <code>tables/</code>, <code>graphics/</code>, manifest and report,
+and <code><a href="../reference/results_dir.html">artma::results_dir()</a></code> /
+<code><a href="../reference/results_open.html">artma::results_open()</a></code> point at the latest one.</p>
 </div>
 </div>
 <div class="section level2">
