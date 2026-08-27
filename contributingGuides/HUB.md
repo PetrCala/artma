@@ -30,9 +30,10 @@ dispatches on values only. A header rule above the menu names the options file
 - **Run methods**: opens the metadata-decorated method picker
   (`interactive/method_picker.R`) fed by `build_methods_table(available_for =
   df)`, then runs the selection through the full run and summarize steps. The
-  confirmed selection is remembered for preselection (also mirrored into
-  `artma.temp.last_methods`) and for Re-run. An empty confirmation returns to
-  the menu without running.
+  picker always opens with nothing preselected; the confirmed selection is
+  remembered for Re-run only (also mirrored into `artma.temp.last_methods`,
+  which the linear path reads as its own default). An empty confirmation
+  returns to the menu without running.
 - **Re-run last selection**: repeats the previous selection without the
   picker. Hidden until a first run happened; its description names the
   selection it would repeat, plus the options changed since that run.
