@@ -281,6 +281,16 @@ test_that("ask_checkbox rejects defaults that are not among the choices", {
   )
 })
 
+test_that("ask_checkbox rejects choices with duplicate labels", {
+  expect_error(
+    ask_checkbox(
+      "Pick methods",
+      choices = c("Same" = "a", "Same" = "b"),
+      checkbox_fn = function(choices, prompt, selected, allow_select_all) "Same"
+    )
+  )
+})
+
 test_that("ask_checkbox aborts in non-interactive sessions with the default backend", {
   expect_error(ask_checkbox("Pick methods", choices = c("a", "b")), "interactive")
 })

@@ -181,7 +181,7 @@ ask_select <- function(
 #' @param default *\[character, optional\]* Values (not labels) preselected in the menu. Must all be among `choices`. Defaults to `NULL` (nothing preselected).
 #' @param allow_select_all *\[logical, optional\]* Whether the menu offers a "Select all" toggle. Defaults to `FALSE`.
 #' @param checkbox_fn *\[function, optional\]* Menu backend; receives `choices`, `prompt`, `selected`, and `allow_select_all` and returns the selected labels or an empty value. Defaults to `climenu::checkbox`. Exposed for testing.
-#' `character` The selected values in menu order, or `character(0)` when nothing was confirmed.
+#' @return `character` The selected values in menu order, or `character(0)` when nothing was confirmed.
 ask_checkbox <- function(
   question,
   choices,
@@ -206,6 +206,7 @@ ask_checkbox <- function(
     is.character(question) && length(question) == 1,
     is.character(choices) && length(choices) > 0,
     all(nzchar(labels)),
+    !anyDuplicated(labels),
     is.null(hints) || is.character(hints),
     is.null(default) || (is.character(default) && all(default %in% values)),
     is.logical(allow_select_all) && length(allow_select_all) == 1 && !is.na(allow_select_all),
