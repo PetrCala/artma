@@ -58,6 +58,11 @@ dispatches on values only. A header rule above the menu names the options file
 - **Results**: submenu with "Open results folder" (`artma::results_open()`)
   and "Render HTML report" (`artma::report_render()` on the accumulated
   results). Both print a friendly message and do nothing before the first run.
+  Every hub run overwrites the previous one's output in place, as scripted
+  runs always have; with `output.run_subdirectories` enabled each run instead
+  gets its own `<output.dir>/runs/<timestamp>/` (claimed in `execute_run()`,
+  so one prepared context still yields one directory per run) and both
+  submenu items act on the latest one.
 - **Settings**: submenu of session-level toggles, each showing its current
   value. Visualization theme (`artma::viz_set(theme = ...)` over
   `artma::viz_themes()`), verbosity (`artma.verbose`, 1-4), autonomy level

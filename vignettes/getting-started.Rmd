@@ -233,8 +233,13 @@ never disagree.
 
 `run.json` is overwritten by every run into the same output directory: it
 always describes the latest run, never a history. Runs driven by different
-options files already get their own output directory. To keep an older run,
-copy its directory, or point `output.dir` at a per-run location.
+options files already get their own output directory.
+
+To keep every run instead of overwriting it, set `output.run_subdirectories`
+to `TRUE`. Each run then writes into its own timestamped subdirectory
+(`<output.dir>/runs/2026-08-25_14-30-12/`), with its own `tables/`,
+`graphics/`, manifest and report, and `artma::results_dir()` /
+`artma::results_open()` point at the latest one.
 
 ## Choosing Methods
 

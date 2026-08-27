@@ -213,16 +213,27 @@ resolve_output_dir_for_file <- function(options_file_name, flat_options) {
 #' @title Read the time an options file was last run
 #' @description Until the per-run manifest lands, the most recent write to the
 #'   file's output directory is the best available record of when it last ran.
+#'   With `output.run_subdirectories` enabled the runs live in their own
+#'   subdirectories, so the latest of those is what carries the run's time.
 #'   Returns `NA` when the directory has never been written.
 #' @param options_file_name *\[character\]* Name of the options file.
 #' @param flat_options *\[list\]* The file's options, flattened to dotted paths.
 #' @return *\[POSIXct\]* The last run time, or `NA`.
 #' @keywords internal
 last_run_time <- function(options_file_name, flat_options) {
+  box::use(artma / output / export[latest_run_output_dir])
+
   output_dir <- resolve_output_dir_for_file(options_file_name, flat_options)
 
   if (!is.character(output_dir) || length(output_dir) != 1L || is.na(output_dir) || !dir.exists(output_dir)) {
     return(as.POSIXct(NA))
+  }
+
+  if (isTRUE(flat_options[["output.run_subdirectories"]])) {
+    latest_run <- latest_run_output_dir(output_dir)
+    if (!is.null(latest_run)) {
+      return(file.mtime(latest_run))
+    }
   }
 
   file.mtime(output_dir)

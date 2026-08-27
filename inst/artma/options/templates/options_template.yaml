@@ -1135,6 +1135,17 @@ output:
       options file and is resolved fresh on every run. Use `artma::results.dir()`
       to print the resolved directory.
 
+  run_subdirectories:
+    type: "logical"
+    default: false
+    help: |
+      If `TRUE`, every run writes its results into its own timestamped
+      subdirectory of the output directory ({.file runs/2026-08-25_14-30-12/}),
+      each with its own tables, graphics, manifest and report, so consecutive
+      runs no longer overwrite one another. `artma::results_dir()` and
+      `artma::results_open()` then point at the latest run. When `FALSE` (the
+      default), every run overwrites the previous one's output in place.
+
   save_results:
     type: "logical"
     default: true

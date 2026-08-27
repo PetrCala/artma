@@ -92,8 +92,10 @@
 #'
 #' The manifest is overwritten on every run into the same output directory: it
 #' always describes the latest run, never a history. Runs driven by different
-#' options files already get their own output directory, so keep a run by
-#' copying its directory or by pointing `output.dir` somewhere per-run.
+#' options files already get their own output directory. To keep every run,
+#' set `output.run_subdirectories` to `TRUE`: each run then writes into
+#' `<output.dir>/runs/<timestamp>/`, with its own manifest, tables, graphics
+#' and report, and `artma::results_open()` opens the latest one.
 #'
 #' ## Method Failures
 #'
@@ -199,7 +201,7 @@ artma <- function(
           end_output_file_capture(run_context$capture)
           summarize_run(
             run$results,
-            context = run_context,
+            context = run$context,
             run_files = run$run_files,
             open_results = open_results
           )
@@ -240,7 +242,7 @@ artma <- function(
 
     summarize_run(
       run$results,
-      context = context,
+      context = run$context,
       run_files = run$run_files,
       open_results = open_results
     )
@@ -274,8 +276,10 @@ artma <- function(
 #' @param methods *\[character, optional\]* The methods the run will invoke, used
 #'   to decide which columns the data preparation must resolve.
 #' @return *\[list\]* The run context: `df` (the prepared data frame),
-#'   `output_dir` (`NULL` when results are not saved), `save_results` and
-#'   `capture` (the open output-file capture frame identifier).
+#'   `output_dir` (the base output directory; `NULL` when results are not
+#'   saved, and replaced by the run's own directory in `execute_run()`),
+#'   `save_results` and `capture` (the open output-file capture frame
+#'   identifier).
 #' @keywords internal
 prepare_run_context <- function(data = NULL, methods = NULL) {
   box::use(
@@ -284,16 +288,27 @@ prepare_run_context <- function(data = NULL, methods = NULL) {
     artma / libs / infrastructure / output_files[
       begin_output_file_capture, end_output_file_capture
     ],
-    artma / output / export[resolve_output_dir, ensure_output_dirs]
+    artma / output / export[
+      clear_run_output_dir, ensure_output_dirs, resolve_base_output_dir,
+      use_run_subdirectories
+    ]
   )
 
+  # The run step picks the directory this run writes into, so any run directory
+  # left over from an earlier run stops governing path resolution here.
+  clear_run_output_dir()
+
   # Ensure output directories exist before methods run (graphics export
-  # happens during method execution and needs the directories in place)
+  # happens during method execution and needs the directories in place).
+  # With run subdirectories enabled the run's own directory is only known once
+  # the run starts, so `execute_run()` creates it instead.
   save_results <- getOption("artma.output.save_results", TRUE)
   output_dir <- NULL
   if (isTRUE(save_results)) {
-    output_dir <- resolve_output_dir()
-    ensure_output_dirs(output_dir)
+    output_dir <- resolve_base_output_dir()
+    if (!use_run_subdirectories()) {
+      ensure_output_dirs(output_dir)
+    }
   }
 
   # Record every file this run writes, so the manifest describes the run
@@ -358,16 +373,26 @@ prepare_run_context <- function(data = NULL, methods = NULL) {
 #'   invoke. `NULL` prompts for a selection.
 #' @param ... *\[any\]* Additional arguments passed to the runtime methods.
 #' @return *\[list\]* A list with `results` (the invocation results, carrying the
-#'   `run_info`, `failed_methods` and `skipped_methods` attributes) and
-#'   `run_files` (the files this run wrote; empty when results are not saved).
+#'   `run_info`, `failed_methods` and `skipped_methods` attributes), `run_files`
+#'   (the files this run wrote; empty when results are not saved) and `context`
+#'   (the run context, with `output_dir` set to the directory this run used).
 #' @keywords internal
 execute_run <- function(context, methods = NULL, ...) {
   box::use(
     artma / libs / core / utils[get_verbosity],
     artma / libs / infrastructure / output_files[end_output_file_capture],
-    artma / output / export[export_results],
+    artma / output / export[begin_run_output_dir, ensure_output_dirs, export_results],
     artma / output / run_manifest[manifest_plot_index, write_run_manifest]
   )
+
+  # Claim this run's output directory before any method writes a file. Without
+  # run subdirectories this is the directory the prepare step already resolved
+  # and created; with them every run (including every hub run against the same
+  # prepared context) gets its own timestamped one.
+  if (isTRUE(context$save_results)) {
+    context$output_dir <- begin_run_output_dir(context$output_dir)
+    ensure_output_dirs(context$output_dir)
+  }
 
   # Invoke methods
   results <- invoke_runtime_methods(methods = methods, df = context$df, ...)
@@ -411,7 +436,7 @@ execute_run <- function(context, methods = NULL, ...) {
     )
   }
 
-  list(results = results, run_files = run_files)
+  list(results = results, run_files = run_files, context = context)
 }
 
 #' @title Summarize a finished run

@@ -30,7 +30,7 @@ auto_output_subdir <- function(file_name = getOption("artma.temp.file_name", NUL
   if (!nzchar(stem)) "default" else stem
 }
 
-#' Resolve the output directory path
+#' Resolve the base output directory path
 #'
 #' @description
 #' Reads the `artma.output.dir` option. If set to `"auto"` (default) or `NA`,
@@ -40,8 +40,12 @@ auto_output_subdir <- function(file_name = getOption("artma.temp.file_name", NUL
 #' directory is resolved fresh on every call, so switching options files
 #' mid-session switches the output directory with it.
 #'
-#' @return *\[character\]* The resolved output directory path.
-resolve_output_dir <- function() {
+#' This is the directory the options file points at. With
+#' `output.run_subdirectories` enabled, a run writes into a timestamped
+#' subdirectory of it instead; see [resolve_output_dir()].
+#'
+#' @return *\[character\]* The resolved base output directory path.
+resolve_base_output_dir <- function() {
   output_dir <- getOption("artma.output.dir", "auto")
 
   if (is_auto_output_dir(output_dir)) {
@@ -49,6 +53,132 @@ resolve_output_dir <- function() {
   }
 
   output_dir
+}
+
+# The directory holding the per-run subdirectories, and the runtime option
+# recording the directory of the run currently executing.
+RUNS_DIR_NAME <- "runs"
+ACTIVE_RUN_DIR_OPTION <- "artma.temp.run_output_dir"
+
+#' Check whether runs write into timestamped subdirectories
+#'
+#' @return *\[logical\]* The `artma.output.run_subdirectories` option.
+#' @keywords internal
+use_run_subdirectories <- function() {
+  isTRUE(getOption("artma.output.run_subdirectories", FALSE))
+}
+
+#' Read the directory of the run currently executing
+#'
+#' @return *\[character or NULL\]* The active run directory, if any.
+#' @keywords internal
+active_run_output_dir <- function() {
+  dir <- getOption(ACTIVE_RUN_DIR_OPTION, NULL)
+  if (!is.character(dir) || length(dir) != 1L || is.na(dir) || !nzchar(dir)) {
+    return(NULL)
+  }
+  dir
+}
+
+#' Find the most recent run subdirectory of a base output directory
+#'
+#' @description
+#' Run directories are named after the run's timestamp, so their names sort
+#' chronologically. The sort is done in the C locale, which keeps a
+#' collision suffix (`..._14-30-12-2`) after the directory it disambiguates.
+#'
+#' @param base_dir *\[character\]* The base output directory.
+#' @return *\[character or NULL\]* The latest run directory, or `NULL` when the
+#'   base directory holds no run subdirectories.
+#' @keywords internal
+latest_run_output_dir <- function(base_dir) {
+  if (!is.character(base_dir) || length(base_dir) != 1L || is.na(base_dir)) {
+    return(NULL)
+  }
+  runs_dir <- file.path(base_dir, RUNS_DIR_NAME)
+  if (!dir.exists(runs_dir)) {
+    return(NULL)
+  }
+  entries <- list.dirs(runs_dir, full.names = FALSE, recursive = FALSE)
+  if (length(entries) == 0L) {
+    return(NULL)
+  }
+  entries <- sort(entries, method = "radix")
+  file.path(runs_dir, entries[[length(entries)]])
+}
+
+#' Start a new run directory
+#'
+#' @description
+#' Called once per run, before any method writes a file. With
+#' `output.run_subdirectories` off this is a no-op that returns the base output
+#' directory, which is what every run has always written into. With the option
+#' on it picks a fresh timestamped subdirectory and records it, so that every
+#' path resolved for the rest of the run (graphics, tables, manifest, report)
+#' lands in it. The directory itself is created by `ensure_output_dirs()`.
+#'
+#' @param base_dir *\[character, optional\]* The base output directory the run
+#'   subdirectory is created in. Defaults to the resolved base directory.
+#' @param time *\[POSIXct, optional\]* The run's timestamp.
+#' @return *\[character\]* The directory this run writes into.
+#' @keywords internal
+begin_run_output_dir <- function(base_dir = resolve_base_output_dir(), time = Sys.time()) {
+  if (!use_run_subdirectories()) {
+    clear_run_output_dir()
+    return(base_dir)
+  }
+
+  runs_dir <- file.path(base_dir, RUNS_DIR_NAME)
+  stem <- format(time, "%Y-%m-%d_%H-%M-%S")
+  run_dir <- file.path(runs_dir, stem)
+  # Two runs started within the same second must not share a directory.
+  suffix <- 1L
+  while (dir.exists(run_dir)) {
+    suffix <- suffix + 1L
+    run_dir <- file.path(runs_dir, paste0(stem, "-", suffix))
+  }
+
+  options(stats::setNames(list(run_dir), ACTIVE_RUN_DIR_OPTION))
+  run_dir
+}
+
+#' Forget the run directory of the run that just finished
+#'
+#' @return `NULL`, invisibly.
+#' @keywords internal
+clear_run_output_dir <- function() {
+  options(stats::setNames(list(NULL), ACTIVE_RUN_DIR_OPTION))
+  invisible(NULL)
+}
+
+#' Resolve the output directory path
+#'
+#' @description
+#' The directory results are written to and read back from. While a run is
+#' executing this is that run's own directory, so every path a method resolves
+#' lands with the rest of the run's output. Outside a run it is the base
+#' directory ([resolve_base_output_dir()]), except with
+#' `output.run_subdirectories` enabled, where it is the latest run's
+#' subdirectory so that `results_dir()` and `results_open()` land on the most
+#' recent results rather than on the directory holding every run.
+#'
+#' @return *\[character\]* The resolved output directory path.
+resolve_output_dir <- function() {
+  active <- active_run_output_dir()
+  if (!is.null(active)) {
+    return(active)
+  }
+
+  base_dir <- resolve_base_output_dir()
+
+  if (use_run_subdirectories()) {
+    latest <- latest_run_output_dir(base_dir)
+    if (!is.null(latest)) {
+      return(latest)
+    }
+  }
+
+  base_dir
 }
 
 #' Check whether a path is absolute
@@ -321,8 +451,13 @@ write_last_export_marker <- function(output_dir) {
 box::export(
   auto_output_subdir,
   is_auto_output_dir,
+  resolve_base_output_dir,
   resolve_output_dir,
   resolve_graphics_dir,
+  latest_run_output_dir,
+  use_run_subdirectories,
+  begin_run_output_dir,
+  clear_run_output_dir,
   ensure_output_dirs,
   export_results
 )
