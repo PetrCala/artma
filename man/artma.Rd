@@ -25,8 +25,9 @@ methods, previewing data, and opening results across repeated runs. See
 \code{artma::methods_list()} for available methods.}
 
 \item{options}{\emph{[character, optional]} Name of the options file (with or without
-\code{.yaml} extension) to use. If \code{NULL} and running interactively, you will be
-prompted to create or select an options file.}
+\code{.yaml} extension) to use. If \code{NULL} and running interactively, the session
+hub opens without one and its "Options file" item is where you select or
+create the file the session runs on.}
 
 \item{options_dir}{\emph{[character, optional]} Directory containing the options file.
 If \code{NULL}, uses the default options directory.}
@@ -56,8 +57,8 @@ analytical methods.
 The \code{artma()} function is the primary way to interact with the artma package.
 It handles the complete workflow:
 \enumerate{
-\item \strong{Options Loading}: Loads configuration from an options file (or prompts for
-creation in interactive mode)
+\item \strong{Options Loading}: Loads configuration from an options file (in the
+session hub, from the "Options file" menu item)
 \item \strong{Data Preparation}: Reads and prepares your data (unless \code{data} is provided)
 \item \strong{Method Execution}: Runs the specified analytical methods on your data
 \item \strong{Results}: Returns a structured list of results

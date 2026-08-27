@@ -20,12 +20,45 @@ experience the user asked for by calling `artma()` without methods. Autonomy
 keeps governing the prompts inside the flows the hub launches (column mapping,
 package installs, and so on).
 
-## Menu items (v1)
+## Bound and unbound sessions
+
+A hub session is **bound** when an options file is loaded and **unbound** when
+none is. `artma(options = "x.yaml")` enters bound, with its data already
+prepared; `artma()` with no options file enters unbound, with `df = NULL` and
+no options file behind it. Choosing the file is a menu item rather than a gate
+in front of the menu, so the user can create, repair, compare or delete files
+before committing to one.
+
+Unbound is not a stripped-down mode with its own rules; it is the ordinary
+state minus the items that need data:
+
+- `runtime_setup(allow_unbound = TRUE)` applies the template defaults through
+  `unbound_runtime_options()` (`R/aaa.R`), with `artma.temp.file_name`
+  explicitly `NULL`. Every `getOption("artma.<x>", <default>)` in the package
+  therefore reads what it would read under a fresh options file, and
+  `artma.temp.file_name` is the single marker of the unbound state.
+- `hub_menu_items()` offers only the options-file item (first, so the cursor
+  opens on it), Settings, Help and Exit. `Run methods`, `Re-run`, `Adjust
+  options`, `Preview data` and `Results` appear once a file is loaded. There is
+  no preselection call involved: `ask_select(default = ...)` also decides what
+  an empty selection returns, and the hub needs an empty selection to mean
+  Exit, so item order alone puts the cursor where it belongs.
+- Data is prepared lazily by `ensure_data()`, the same path an edited `data.*`
+  option takes: "no frame yet" and "the frame is stale" are one state machine.
+  A failed preparation reports and returns to the menu instead of aborting the
+  session, so a bad data source can be fixed and retried in place.
+
+## Menu items
 
 Rendered with `ask_select` over value-keyed choices: labels are the padded
 item name plus a dim description, values are stable action keys, and the loop
-dispatches on values only. A header rule above the menu names the options file
-(`artma.temp.file_name`) and the prepared data's dimensions.
+dispatches on values only (`compose_menu_choices()` in
+`interactive/menu.R`, shared with the submenus). A header rule above the menu
+names the options file and the prepared data's dimensions, or says "no options
+file loaded" / "data not prepared yet" when the session has neither.
+
+The items below are the bound session's. An unbound one shows only the
+options-file item, Settings, Help and Exit.
 
 - **Run methods**: opens the metadata-decorated method picker
   (`interactive/method_picker.R`) fed by `build_methods_table(available_for =
@@ -52,7 +85,8 @@ dispatches on values only. A header rule above the menu names the options file
   `rebuild_data`, wired to `prepare_run_context()` in `R/artma.R` so the run
   pipeline picks the fresh frame up too), and says so. Non-data edits never
   trigger a rebuild.
-- **Preview data**: prints a textual summary of the prepared frame (rows,
+- **Preview data**: prepares the data if the session has none yet, then prints
+  a textual summary of the frame (rows,
   columns, study count when the config resolved `study_id`, missing-value
   counts, effect and SE ranges), then offers the spreadsheet viewer (via
   `artma::data_preview()`) when one is available.
@@ -70,10 +104,10 @@ dispatches on values only. A header rule above the menu names the options file
   (`artma::autonomy_set()`), and result caching (`artma.cache.use_cache`,
   which `cache_cli()` reads at call time). All of them take effect for the
   session only; the options file on disk is untouched.
-- **Switch options file**: picker over `artma::options_list(details = TRUE)`
-  with decorated, value-keyed labels: file name, data source basename, last
-  run time, and the count of non-default options; the session's current file
-  is marked. See "Switching the options file" below for the semantics.
+- **Options file** (`interactive/options_file_menu.R`): the submenu behind
+  everything to do with options files. First in an unbound session ("select
+  one to work with, or create a new one"), after Settings in a bound one
+  (labelled with the loaded file). See "The options-file menu" below.
 - **Help**: submenu with the methods overview (`print_methods_table()` on the
   same frame the picker uses), the options overview (`artma::options_help()`
   plus a pointer to its single-option form), and the browser links that used
@@ -84,28 +118,59 @@ dispatches on values only. A header rule above the menu names the options file
 - **Exit**: leaves the loop. Cancelling the menu (Esc) behaves exactly like
   Exit; the accumulated results are the user's work and survive a cancel.
 
-## Switching the options file
+## The options-file menu
+
+`run_options_file_menu()` (`inst/artma/interactive/options_file_menu.R`) is a
+loop over the file actions. It returns as soon as the session's options file
+changes (the hub has a header to redraw and data to prepare) or the user backs
+out; the management actions keep it open, so a create can be followed by a
+select without leaving the submenu. Its return value is `list(file, changed)`:
+the session's file afterwards (`NULL` when it was deleted) and whether the
+loaded options changed.
+
+- **Select / Switch file**: the decorated picker over
+  `options_list(details = TRUE)` (file name, data source basename, last run
+  time, count of non-default options; the current file marked), plus a create
+  entry so an unbound session never dead-ends. Hidden when no files exist.
+- **Create, Duplicate, Edit, Repair, Compare, Open, Delete**: thin glue over
+  `options_create()`, `options_copy()`, `options_modify()`, `options_fix()`,
+  `options_diff()`, `options_open()` and `options_delete()`, bound to the
+  session's options directory by `default_file_actions()`. A failure is
+  reported and leaves the menu open.
+- A newly created file is loaded straight away when the session is unbound
+  (it is the thing the session was missing) and offered when it is bound.
+- Editing or repairing the file the session is running on **reloads** it, so
+  the session cannot keep values the file no longer holds.
+- Deleting the file the session is running on leaves the session unbound; the
+  hub also clears `artma.temp.file_name`, so nothing keeps deriving paths from
+  a file that no longer exists.
+
+### Loading a file mid-session
 
 `runtime_setup()` applies the loaded options via `withr::local_options()`,
-which restores the caller's options when `artma()` returns. A mid-session
-switch therefore applies the new file's options with plain `options()`: the
-values survive until the hub exits, and `runtime_setup()`'s frame still
-restores the caller's state afterwards (the option keys are the same template
-keys, so the restore list covers them).
+which restores the caller's options when `artma()` returns. A mid-session load
+therefore applies the new file's options with plain `options()`: the values
+survive until the hub exits, and `runtime_setup()`'s frame still restores the
+caller's state afterwards (the option keys are the same template keys, so the
+restore list covers them).
 
-The handler lives in `R/artma.R` (`switch_options` wired into
-`run_session_hub()`): it migrates legacy files, loads the new file
-(`options_load(should_add_temp_options = TRUE)`, so the header names the new
-file), applies the options, and re-runs `prepare_run_context()`. The current
-run context lives in the same mutable `session_state` environment
-`rebuild_data` uses, so subsequent hub runs see the latest context; the fresh
-prepare step's capture frame nests inside the session frame the first prepare
-opened, which the `on.exit` safety net closes together with everything above
-it. On success the hub swaps in the freshly prepared frame, clears any
-pending data staleness from earlier option edits, and drops its self-built
-methods table so availability is re-checked against the new data (an injected
-`methods_table` is kept as-is). A failed listing, load, or re-preparation
-reports and leaves the session on its current file.
+The handler lives in `R/artma.R` (`bind_options` wired into
+`run_session_hub()`): it migrates legacy files, offers the same outdated-file
+repair the linear path offers, loads the file
+(`options_load(should_add_temp_options = TRUE)`, so the header names it) and
+applies the options. It never prepares data. The hub invalidates the frame
+instead and calls `rebuild_data` (`prepare_run_context()` in `R/artma.R`),
+which keeps loading and preparing separable: a file that loads but whose data
+fails to prepare leaves the session on the new file with no frame, ready to
+retry after an option edit.
+
+The run context lives in a mutable `session_state` environment shared by
+`rebuild_data` and the run closure, so subsequent hub runs see the latest
+context. Each fresh prepare step's capture frame nests inside the first one the
+session opened, which the `on.exit` safety net closes together with everything
+above it. Every data change also drops the hub's self-built methods table so
+availability is re-checked against the new frame (an injected `methods_table`
+is kept as-is).
 
 Each run goes through the full run step exactly as a linear run does: export,
 manifest, and run summary. `R/artma.R` opens a fresh output-file capture frame
@@ -134,11 +199,16 @@ Exiting before any run returns an empty list with an empty `runs` attribute.
 - New menu items: add an entry in `hub_menu_items()` and a matching value
   branch in the `run_session_hub()` loop. Keep choices value-keyed; never
   match on labels.
+- New options-file actions: add an entry in `options_file_menu_items()`, a
+  branch in `run_options_file_menu()`, and the real implementation in
+  `default_file_actions()`.
 - Everything side-effectful is injectable for tests: `select_fn` /
   `checkbox_fn` (menu backends), `run_methods` (the pipeline), `rebuild_data`
-  (the stale-data re-preparation), `edit_option` / `save_preference` (the
+  (the lazy preparation), `edit_option` / `save_preference` (the
   adjust-options prompts), `view_data`, `open_results`, `render_report`,
-  `methods_table` (the picker frame), `template_path`, `list_options` /
-  `switch_options` (the options-file switch), `set_theme` / `set_autonomy`
-  (settings), and `show_options_help` / `open_url` (help).
-  `tests/testthat/test-session-hub.R` shows the scripted-backend pattern.
+  `methods_table` (the picker frame), `template_path`, `bind_options` /
+  `file_actions` / `options_file` (the options-file menu), `set_theme` /
+  `set_autonomy` (settings), and `show_options_help` / `open_url` (help).
+  `tests/testthat/test-session-hub.R` and
+  `tests/testthat/test-options-file-menu.R` show the scripted-backend
+  pattern.

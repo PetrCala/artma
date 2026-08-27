@@ -129,7 +129,7 @@ getOption("artma.verbose") # e.g. 3
 
 ## Creating and loading
 
-If you call a runtime method without an options file, artma prompts you to create one. You can also do it explicitly:
+If you call `artma()` without an options file, the session hub opens with none loaded and its **Options file** item selects or creates one. You can also do it explicitly:
 
 ```r
 artma::options_create()
