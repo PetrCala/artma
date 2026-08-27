@@ -117,8 +117,10 @@ what the HTML report uses to find each method's plots.
 
 The manifest is overwritten on every run into the same output directory: it
 always describes the latest run, never a history. Runs driven by different
-options files already get their own output directory, so keep a run by
-copying its directory or by pointing \code{output.dir} somewhere per-run.
+options files already get their own output directory. To keep every run,
+set \code{output.run_subdirectories} to \code{TRUE}: each run then writes into
+\verb{<output.dir>/runs/<timestamp>/}, with its own manifest, tables, graphics
+and report, and \code{artma::results_open()} opens the latest one.
 }
 
 \subsection{Method Failures}{

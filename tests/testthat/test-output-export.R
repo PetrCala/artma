@@ -3,17 +3,27 @@ box::use(
     expect_equal,
     expect_false,
     expect_match,
+    expect_null,
     expect_true,
     test_that
   ],
   withr[local_envvar, local_options, local_tempdir],
   artma / output / export[
+    begin_run_output_dir,
+    clear_run_output_dir,
+    latest_run_output_dir,
+    resolve_base_output_dir,
     resolve_output_dir,
     resolve_graphics_dir,
     ensure_output_dirs,
     export_results
   ]
 )
+
+# Keep the run directory a test starts out of the options of the next one.
+local_no_active_run <- function(.local_envir = parent.frame()) {
+  local_options(artma.temp.run_output_dir = NULL, .local_envir = .local_envir)
+}
 
 # resolve_output_dir --------------------------------------------------------
 
@@ -68,6 +78,94 @@ test_that("resolve_output_dir sanitizes the options file stem", {
 test_that("resolve_output_dir returns an explicit path unchanged", {
   local_options(artma.output.dir = "/some/explicit/path")
   expect_equal(resolve_output_dir(), "/some/explicit/path")
+})
+
+# run subdirectories --------------------------------------------------------
+
+test_that("begin_run_output_dir writes into the output dir itself by default", {
+  base <- local_tempdir()
+  local_no_active_run()
+  local_options(artma.output.dir = base)
+
+  expect_equal(begin_run_output_dir(base), base)
+  expect_equal(resolve_output_dir(), base)
+  expect_false(dir.exists(file.path(base, "runs")))
+})
+
+test_that("begin_run_output_dir picks a timestamped subdirectory when enabled", {
+  base <- local_tempdir()
+  local_no_active_run()
+  local_options(artma.output.dir = base, artma.output.run_subdirectories = TRUE)
+
+  run_dir <- begin_run_output_dir(base, time = as.POSIXct("2026-08-25 14:30:12", tz = "UTC"))
+
+  expect_equal(dirname(run_dir), file.path(base, "runs"))
+  expect_match(basename(run_dir), "^\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}$")
+  # The base output directory is untouched until the run writes into its own.
+  expect_false(dir.exists(file.path(base, "tables")))
+})
+
+test_that("begin_run_output_dir never hands two runs the same directory", {
+  base <- local_tempdir()
+  local_no_active_run()
+  local_options(artma.output.dir = base, artma.output.run_subdirectories = TRUE)
+  stamp <- as.POSIXct("2026-08-25 14:30:12", tz = "UTC")
+
+  first <- begin_run_output_dir(base, time = stamp)
+  ensure_output_dirs(first)
+  second <- begin_run_output_dir(base, time = stamp)
+
+  expect_false(identical(first, second))
+  expect_equal(basename(second), paste0(basename(first), "-2"))
+})
+
+test_that("resolve_output_dir returns the run directory while a run executes", {
+  base <- local_tempdir()
+  local_no_active_run()
+  local_options(artma.output.dir = base, artma.output.run_subdirectories = TRUE)
+
+  run_dir <- begin_run_output_dir(base)
+
+  expect_equal(resolve_output_dir(), run_dir)
+  # Plots therefore land with the rest of the run's output.
+  expect_equal(resolve_graphics_dir(resolve_output_dir()), file.path(run_dir, "graphics"))
+  expect_equal(resolve_base_output_dir(), base)
+
+  clear_run_output_dir()
+  expect_equal(resolve_output_dir(), base)
+})
+
+test_that("resolve_output_dir falls back to the latest run once no run is active", {
+  base <- local_tempdir()
+  local_no_active_run()
+  local_options(artma.output.dir = base, artma.output.run_subdirectories = TRUE)
+
+  older <- begin_run_output_dir(base, time = as.POSIXct("2026-08-25 14:30:12", tz = "UTC"))
+  ensure_output_dirs(older)
+  newer <- begin_run_output_dir(base, time = as.POSIXct("2026-08-25 15:02:00", tz = "UTC"))
+  ensure_output_dirs(newer)
+  clear_run_output_dir()
+
+  expect_equal(latest_run_output_dir(base), newer)
+  expect_equal(resolve_output_dir(), newer)
+})
+
+test_that("latest_run_output_dir is NULL when no run subdirectory exists", {
+  base <- local_tempdir()
+
+  expect_null(latest_run_output_dir(base))
+  expect_null(latest_run_output_dir(file.path(base, "missing")))
+})
+
+test_that("resolve_output_dir ignores run subdirectories left by an earlier opt-in", {
+  base <- local_tempdir()
+  local_no_active_run()
+  local_options(artma.output.dir = base, artma.output.run_subdirectories = TRUE)
+  ensure_output_dirs(begin_run_output_dir(base))
+  clear_run_output_dir()
+
+  local_options(artma.output.run_subdirectories = FALSE)
+  expect_equal(resolve_output_dir(), base)
 })
 
 # resolve_graphics_dir ------------------------------------------------------

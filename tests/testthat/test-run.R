@@ -666,7 +666,7 @@ test_that("execute_run invokes the methods and reports no files when results are
 
   run <- artma:::execute_run(context, methods = "method_a", modules_dir = methods_dir)
 
-  expect_named(run, c("results", "run_files"))
+  expect_named(run, c("results", "run_files", "context"))
   expect_named(run$results, "method_a")
   expect_equal(run$run_files, character())
   # Nothing was exported, so the capture is still the caller's to close.
@@ -704,6 +704,57 @@ test_that("execute_run exports tables, writes the manifest, and closes the captu
 
   # The run step owns closing the capture it was handed.
   expect_equal(capture_depth(), depth_before - 1L)
+})
+
+test_that("execute_run gives every run its own subdirectory when they are enabled", {
+  box::use(
+    artma / libs / infrastructure / output_files[begin_output_file_capture],
+    artma / output / export[latest_run_output_dir],
+    artma / output / run_manifest[read_run_manifest]
+  )
+
+  fake_methods <- list(
+    method_a = list(run = function(df, ...) list(tables = list(summary = data.frame(estimate = 1)))),
+    method_b = list(run = function(df, ...) list(tables = list(summary = data.frame(estimate = 2))))
+  )
+  withr::local_options(list(
+    artma.verbose = 0,
+    artma.output.report = FALSE,
+    artma.output.run_subdirectories = TRUE,
+    artma.temp.run_output_dir = NULL
+  ))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  # Both runs share one base directory, the way the hub's runs share one
+  # prepared context.
+  base <- withr::local_tempdir()
+  run_context <- function() {
+    list(
+      df = data.frame(x = 1:3),
+      output_dir = base,
+      save_results = TRUE,
+      capture = begin_output_file_capture()
+    )
+  }
+
+  first <- artma:::execute_run(run_context(), methods = "method_a", modules_dir = methods_dir)
+  second <- artma:::execute_run(run_context(), methods = "method_b", modules_dir = methods_dir)
+
+  first_dir <- first$context$output_dir
+  second_dir <- second$context$output_dir
+  expect_false(identical(first_dir, second_dir))
+  expect_equal(dirname(first_dir), file.path(base, "runs"))
+  expect_equal(dirname(second_dir), file.path(base, "runs"))
+
+  # Each run's outputs and manifest stay with that run.
+  expect_true(file.exists(file.path(first_dir, "tables", "method_a.csv")))
+  expect_true(file.exists(file.path(second_dir, "tables", "method_b.csv")))
+  expect_false(file.exists(file.path(first_dir, "tables", "method_b.csv")))
+  expect_equal(as.character(read_run_manifest(first_dir)$methods_run), "method_a")
+  expect_equal(as.character(read_run_manifest(second_dir)$methods_run), "method_b")
+
+  # What results_open() lands on.
+  expect_equal(latest_run_output_dir(base), second_dir)
 })
 
 test_that("execute_run keeps the run alive when the report fails to render", {

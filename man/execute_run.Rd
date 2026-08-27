@@ -16,8 +16,9 @@ invoke. \code{NULL} prompts for a selection.}
 }
 \value{
 \emph{[list]} A list with \code{results} (the invocation results, carrying the
-\code{run_info}, \code{failed_methods} and \code{skipped_methods} attributes) and
-\code{run_files} (the files this run wrote; empty when results are not saved).
+\code{run_info}, \code{failed_methods} and \code{skipped_methods} attributes), \code{run_files}
+(the files this run wrote; empty when results are not saved) and \code{context}
+(the run context, with \code{output_dir} set to the directory this run used).
 }
 \description{
 Second step of the \code{artma()} pipeline: invoke the runtime
