@@ -14,3 +14,21 @@ if (requireNamespace("lintr", quietly = TRUE)) {
     error = function(e) invisible(NULL)
   )
 }
+
+# Dev convenience: `artma_hub()` loads the package and opens the interactive
+# session hub in one call, instead of `devtools::load_all(); artma::artma()`.
+# Only defined interactively: `interactive()` must be TRUE for the hub to open
+# anyway, and this must run from a real `R` session (not `R -e`/`Rscript`,
+# which are non-interactive regardless of a live terminal) for that to hold.
+if (interactive() && requireNamespace("devtools", quietly = TRUE)) {
+  artma_hub <- function() { # nolint: object_name_linter.
+    devtools::load_all(quiet = TRUE)
+    artma::artma()
+  }
+
+  # Set ARTMA_DEV_HUB=1 (e.g. via the `artma-hub` shell function) to open the
+  # hub automatically on startup instead of calling `artma_hub()` yourself.
+  if (nzchar(Sys.getenv("ARTMA_DEV_HUB"))) {
+    artma_hub()
+  }
+}
