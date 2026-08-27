@@ -1104,11 +1104,6 @@ run_session_hub <- function(
     if (identical(action, "run")) {
       selection <- ask_runtime_methods(
         get_methods_frame(),
-        default = if (length(state$last_methods) > 0L) {
-          state$last_methods
-        } else {
-          getOption("artma.temp.last_methods", NULL)
-        },
         width = width,
         checkbox_fn = checkbox_fn
       )
@@ -1117,8 +1112,9 @@ run_session_hub <- function(
         next
       }
       state$last_methods <- selection
-      # Preselect this confirmed selection on the next interactive pick of the
-      # session, matching the linear path's behavior.
+      # Not fed back as the checkbox default: each "Run methods" pick starts
+      # blank. Still mirrored into artma.temp.last_methods for the linear
+      # path's own default (see R/artma.R).
       options(artma.temp.last_methods = selection)
       run_and_record(selection)
     } else if (identical(action, "rerun")) {

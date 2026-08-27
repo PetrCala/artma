@@ -70,11 +70,14 @@ make_select_fn <- function(script) {
 }
 
 # Checkbox backend selecting methods by name (the first token of each label);
-# counts its invocations so tests can assert the picker was not reopened.
+# counts its invocations and records each call's `selected` argument so tests
+# can assert the picker was not reopened and whether it was preselected.
 make_checkbox_fn <- function(methods, counter = new.env()) {
   counter$calls <- 0L
+  counter$selected <- list()
   fn <- function(choices, prompt, selected, allow_select_all) {
     counter$calls <- counter$calls + 1L
+    counter$selected <- c(counter$selected, list(selected))
     first_tokens <- sub(" .*", "", cli::ansi_strip(choices))
     choices[first_tokens %in% methods]
   }
@@ -161,8 +164,28 @@ test_that("run then exit returns the results with the runs attribute", {
   expect_equal(runs[[1]]$seed, 42L)
   expect_true(inherits(runs[[1]]$timestamp, "POSIXct"))
 
-  # The confirmed selection is remembered for the session's next pick.
+  # Mirrored into the option the linear path (R/artma.R) defaults from, but
+  # not fed back into this hub's own checkbox default.
   expect_equal(getOption("artma.temp.last_methods"), "bma")
+})
+
+test_that("a second Run methods pick opens the checkbox with nothing preselected", {
+  withr::local_options(list(artma.temp.last_methods = NULL))
+  checkbox <- make_checkbox_fn("bma")
+  run <- make_run_methods()
+
+  suppressMessages(run_session_hub(
+    df = hub_df(),
+    run_methods = run$fn,
+    methods_table = hub_methods_frame(),
+    select_fn = make_select_fn(c("Run methods", "Run methods", "Exit")),
+    checkbox_fn = checkbox$fn,
+    width = 100
+  ))
+
+  expect_equal(checkbox$counter$calls, 2L)
+  expect_null(checkbox$counter$selected[[1]])
+  expect_null(checkbox$counter$selected[[2]])
 })
 
 test_that("re-run reuses the last selection without reopening the picker", {
