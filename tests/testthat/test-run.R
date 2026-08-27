@@ -743,8 +743,9 @@ test_that("execute_run gives every run its own subdirectory when they are enable
   first_dir <- first$context$output_dir
   second_dir <- second$context$output_dir
   expect_false(identical(first_dir, second_dir))
-  expect_equal(dirname(first_dir), file.path(base, "runs"))
-  expect_equal(dirname(second_dir), file.path(base, "runs"))
+  runs_dir <- normalizePath(file.path(base, "runs"), winslash = "/", mustWork = FALSE)
+  expect_equal(normalizePath(dirname(first_dir), winslash = "/"), runs_dir)
+  expect_equal(normalizePath(dirname(second_dir), winslash = "/"), runs_dir)
 
   # Each run's outputs and manifest stay with that run.
   expect_true(file.exists(file.path(first_dir, "tables", "method_a.csv")))

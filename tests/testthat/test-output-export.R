@@ -20,6 +20,10 @@ box::use(
   ]
 )
 
+# Path separators differ between what file.path() builds from a Windows
+# tempdir and what dirname() hands back, so compare directories normalized.
+same_dir <- function(path) normalizePath(path, winslash = "/", mustWork = FALSE)
+
 # Keep the run directory a test starts out of the options of the next one.
 local_no_active_run <- function(.local_envir = parent.frame()) {
   local_options(artma.temp.run_output_dir = NULL, .local_envir = .local_envir)
@@ -99,7 +103,7 @@ test_that("begin_run_output_dir picks a timestamped subdirectory when enabled", 
 
   run_dir <- begin_run_output_dir(base, time = as.POSIXct("2026-08-25 14:30:12", tz = "UTC"))
 
-  expect_equal(dirname(run_dir), file.path(base, "runs"))
+  expect_equal(same_dir(dirname(run_dir)), same_dir(file.path(base, "runs")))
   expect_match(basename(run_dir), "^\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}$")
   # The base output directory is untouched until the run writes into its own.
   expect_false(dir.exists(file.path(base, "tables")))
