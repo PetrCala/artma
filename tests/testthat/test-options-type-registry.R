@@ -71,6 +71,11 @@ test_that("integer type: valid / invalid / NA / NULL through both paths", {
   # non-numeric is invalid on both paths
   expect_error(coerce_option_value("x", opt_def("integer")), "integer")
   expect_false(is.null(validate_option_value("x", "integer", "test.option")))
+  # numeric strings coerce, e.g. from an interactive prompt's raw text answer
+  expect_identical(coerce_option_value("1", opt_def("integer")), 1L)
+  expect_identical(coerce_option_value("0", opt_def("integer")), 0L)
+  expect_error(coerce_option_value("1.5", opt_def("integer")), "integer")
+  expect_error(coerce_option_value("true", opt_def("integer")), "integer")
   # NA
   expect_error(coerce_option_value(NA, opt_def("integer")), "does not allow NA")
   expect_equal(coerce_option_value(NA, opt_def("integer", allow_na = TRUE)), NA)

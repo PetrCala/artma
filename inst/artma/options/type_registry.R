@@ -60,10 +60,13 @@ option_type_registry <- list(
   integer = list(
     allows_na = TRUE,
     coerce = function(val, opt) {
-      if (!is.numeric(val)) abort_option_coercion(opt, "integer", val)
-      non_na <- val[!is.na(val)]
+      numeric_val <- if (is.character(val)) suppressWarnings(as.numeric(val)) else val
+      if (!is.numeric(numeric_val) || any(is.na(numeric_val) & !is.na(val))) {
+        abort_option_coercion(opt, "integer", val)
+      }
+      non_na <- numeric_val[!is.na(numeric_val)]
       if (any(non_na != as.integer(non_na))) abort_option_coercion(opt, "integer", val)
-      as.integer(val)
+      as.integer(numeric_val)
     },
     validate = function(val, opt_name, opt_type) {
       if (!is.numeric(val) || any(val != as.integer(val), na.rm = TRUE)) {
