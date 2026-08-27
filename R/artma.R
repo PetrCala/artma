@@ -13,8 +13,9 @@
 #'   methods, previewing data, and opening results across repeated runs. See
 #'   `artma::methods_list()` for available methods.
 #' @param options *\[character, optional\]* Name of the options file (with or without
-#'   `.yaml` extension) to use. If `NULL` and running interactively, you will be
-#'   prompted to create or select an options file.
+#'   `.yaml` extension) to use. If `NULL` and running interactively, the session
+#'   hub opens without one and its "Options file" item is where you select or
+#'   create the file the session runs on.
 #' @param options_dir *\[character, optional\]* Directory containing the options file.
 #'   If `NULL`, uses the default options directory.
 #' @param open_results *\[logical, optional\]* Whether to open the results directory
@@ -35,8 +36,8 @@
 #' The `artma()` function is the primary way to interact with the artma package.
 #' It handles the complete workflow:
 #'
-#' 1. **Options Loading**: Loads configuration from an options file (or prompts for
-#'    creation in interactive mode)
+#' 1. **Options Loading**: Loads configuration from an options file (in the
+#'    session hub, from the "Options file" menu item)
 #' 2. **Data Preparation**: Reads and prepares your data (unless `data` is provided)
 #' 3. **Method Execution**: Runs the specified analytical methods on your data
 #' 4. **Results**: Returns a structured list of results
@@ -168,28 +169,50 @@ artma <- function(
       ]
     )
 
-    # The three steps below are the pipeline the session hub re-runs from its
-    # menu loop; keep them individually callable rather than inlined here.
-    context <- prepare_run_context(data = data, methods = methods)
+    # The pipeline steps below are the ones the session hub re-runs from its
+    # menu loop; keep them individually callable rather than inlined here. The
+    # context lives in an environment so the hub's handlers can swap it for the
+    # run closure as well.
+    session_state <- new.env(parent = emptyenv())
+    session_state$context <- NULL
+    session_state$root_capture <- NULL
 
     # Safety net for the capture the prepare step opened: the run step closes
     # it when it writes the manifest, and closing a closed frame is a no-op.
-    # This frame is the session's outermost; closing it also pops any frames
-    # the hub's rebuilds or options-file switches opened after it.
-    on.exit(end_output_file_capture(context$capture), add = TRUE)
+    # The first prepare of the session opens the outermost frame; closing it
+    # also pops any frames the hub's later rebuilds opened.
+    on.exit(
+      if (!is.null(session_state$root_capture)) {
+        end_output_file_capture(session_state$root_capture)
+      },
+      add = TRUE
+    )
+
+    prepare_into_session <- function(selected) {
+      context <- prepare_run_context(data = data, methods = selected)
+      if (is.null(session_state$root_capture)) {
+        session_state$root_capture <- context$capture
+      }
+      session_state$context <- context
+      context$df
+    }
 
     # An interactive call without methods lands in the session hub: a menu
     # loop that runs the same pipeline steps repeatedly and returns the
     # accumulated results when the user exits. Scripted paths stay linear.
     if (interactive() && is.null(methods)) {
-      box::use(artma / interactive / hub[run_session_hub])
-      # The hub can invalidate the prepared frame by editing data options or
-      # switching the options file; the context lives in an environment so the
-      # handlers below can swap it for the run closure as well.
-      session_state <- new.env(parent = emptyenv())
-      session_state$context <- context
+      box::use(
+        artma / interactive / hub[run_session_hub],
+        artma / interactive / options_file_menu[default_file_actions]
+      )
+      # An unbound session (no options file chosen yet) enters the hub with no
+      # data: the hub prepares it once the user picks a file. A call that named
+      # its options file prepares up front, as the linear path does.
+      options_file <- getOption("artma.temp.file_name", NULL)
+      initial_df <- if (is.null(options_file)) NULL else prepare_into_session(NULL)
       return(run_session_hub(
-        df = context$df,
+        df = initial_df,
+        options_file = options_file,
         run_methods = function(selected) {
           # Each hub run records its own files: a fresh capture frame per run,
           # nested inside the session frame the prepare step opened.
@@ -206,16 +229,20 @@ artma <- function(
             open_results = open_results
           )
         },
-        rebuild_data = function(selected) {
-          # A fresh prepare step under the changed options. Its capture frame
-          # nests inside the session frame the first prepare opened, which the
-          # on.exit above closes together with everything above it.
-          session_state$context <- prepare_run_context(data = data, methods = selected)
-          session_state$context$df
-        },
-        switch_options = function(file_name) {
+        # A fresh prepare step under the current options, for a session that
+        # has no data yet or whose data options changed. Its capture frame
+        # nests inside the session frame the first prepare opened, which the
+        # on.exit above closes together with everything above it.
+        rebuild_data = prepare_into_session,
+        bind_options = function(file_name) {
           box::use(artma / options / migrate[migrate_legacy_options])
           migrate_legacy_options(
+            options_file_name = file_name,
+            options_dir = options_dir
+          )
+          # The same outdated-file repair offer the linear path makes before
+          # loading, now following the file the user picked.
+          offer_options_fix( # nolint: box_usage_linter. # Package function from R/aaa.R
             options_file_name = file_name,
             options_dir = options_dir
           )
@@ -230,15 +257,15 @@ artma <- function(
           # session. runtime_setup()'s own local_options frame still restores
           # the caller's options when artma() returns.
           options(loaded)
-          # The fresh prepare step's capture frame nests inside the session
-          # frame the first prepare opened, exactly as in rebuild_data above.
-          session_state$context <- prepare_run_context(data = data, methods = NULL)
-          session_state$context$df
-        }
+          invisible(TRUE)
+        },
+        file_actions = default_file_actions(options_dir = options_dir)
       ))
     }
 
-    run <- execute_run(context, methods = methods, ...)
+    prepare_into_session(methods)
+
+    run <- execute_run(session_state$context, methods = methods, ...)
 
     summarize_run(
       run$results,
@@ -251,6 +278,9 @@ artma <- function(
   runtime_setup( # nolint: box_usage_linter. # Imported on a package-level
     options_file_name = options,
     options_dir = options_dir,
+    # The hub asks for the options file from its own menu, so an interactive
+    # call without methods does not need one up front.
+    allow_unbound = interactive() && is.null(methods),
     FUN = main
   )
 }

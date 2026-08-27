@@ -12,19 +12,23 @@ box::use(
 box::use(
   artma / interactive / hub[
     adjustable_option_defs,
-    compose_hub_choices,
     count_studies,
     describe_option_state,
     help_menu_items,
     hub_menu_items,
     merge_run_results,
     option_affects_data,
-    options_file_items,
     run_adjust_options,
     run_session_hub,
     settings_menu_items
-  ]
+  ],
+  artma / interactive / menu[compose_menu_choices]
 )
+
+# The options file a bound hub session runs on; the tests never touch it, it
+# only keeps the session out of the unbound state.
+SESSION_FILE <- "session.yaml"
+
 
 # A prepared frame small enough to summarize in tests.
 hub_df <- function() {
@@ -108,11 +112,41 @@ abort_if_called <- function(what) {
   function(...) stop(what, " must not be called")
 }
 
+# An options_list(details = TRUE) frame for the options-file picker.
+hub_details <- function(files = c("a.yaml", "b.yaml")) {
+  data.frame(
+    file = files,
+    data_source_path = paste0("/data/", tools::file_path_sans_ext(files), ".csv"),
+    modified = as.POSIXct(rep("2026-08-01 10:00:00", length(files))),
+    last_run = as.POSIXct(rep(NA_character_, length(files))),
+    n_non_default = rep(0L, length(files)),
+    stringsAsFactors = FALSE
+  )
+}
+
+# File-management actions for the options-file menu: only the listing is real,
+# and every management action fails loudly if a test reaches one it did not
+# override.
+test_file_actions <- function(list_files = NULL, overrides = list()) {
+  defaults <- list(
+    list = list_files %||% function() hub_details(),
+    create = abort_if_called("create"),
+    duplicate = abort_if_called("duplicate"),
+    edit = abort_if_called("edit"),
+    repair = abort_if_called("repair"),
+    compare = abort_if_called("compare"),
+    open = abort_if_called("open"),
+    delete = abort_if_called("delete")
+  )
+  utils::modifyList(defaults, overrides)
+}
+
 test_that("exit before any run returns an empty result list cleanly", {
   withr::local_options(list(artma.temp.last_methods = NULL))
 
   returned <- withVisible(suppressMessages(run_session_hub(
     df = hub_df(),
+    options_file = SESSION_FILE,
     run_methods = abort_if_called("run_methods"),
     methods_table = hub_methods_frame(),
     select_fn = make_select_fn("Exit"),
@@ -130,6 +164,7 @@ test_that("a cancelled menu behaves like Exit", {
 
   results <- suppressMessages(run_session_hub(
     df = hub_df(),
+    options_file = SESSION_FILE,
     run_methods = abort_if_called("run_methods"),
     methods_table = hub_methods_frame(),
     select_fn = make_select_fn(NA_character_),
@@ -148,6 +183,7 @@ test_that("run then exit returns the results with the runs attribute", {
 
   results <- suppressMessages(run_session_hub(
     df = hub_df(),
+    options_file = SESSION_FILE,
     run_methods = run$fn,
     methods_table = hub_methods_frame(),
     select_fn = make_select_fn(c("Run methods", "Exit")),
@@ -176,6 +212,7 @@ test_that("a second Run methods pick opens the checkbox with nothing preselected
 
   suppressMessages(run_session_hub(
     df = hub_df(),
+    options_file = SESSION_FILE,
     run_methods = run$fn,
     methods_table = hub_methods_frame(),
     select_fn = make_select_fn(c("Run methods", "Run methods", "Exit")),
@@ -195,6 +232,7 @@ test_that("re-run reuses the last selection without reopening the picker", {
 
   results <- suppressMessages(run_session_hub(
     df = hub_df(),
+    options_file = SESSION_FILE,
     run_methods = run$fn,
     methods_table = hub_methods_frame(),
     select_fn = make_select_fn(c("Run methods", "Re-run last selection", "Exit")),
@@ -214,6 +252,7 @@ test_that("a failing run keeps the hub alive and the results empty", {
   messages <- testthat::capture_messages(
     results <- run_session_hub(
       df = hub_df(),
+      options_file = SESSION_FILE,
       run_methods = function(methods) stop("boom"),
       methods_table = hub_methods_frame(),
       select_fn = make_select_fn(c("Run methods", "Exit")),
@@ -234,6 +273,7 @@ test_that("an empty picker confirmation returns to the menu without running", {
   messages <- testthat::capture_messages(
     results <- run_session_hub(
       df = hub_df(),
+      options_file = SESSION_FILE,
       run_methods = abort_if_called("run_methods"),
       methods_table = hub_methods_frame(),
       select_fn = make_select_fn(c("Run methods", "Exit")),
@@ -252,6 +292,7 @@ test_that("the results submenu is a friendly no-op before the first run", {
   messages <- testthat::capture_messages(
     run_session_hub(
       df = hub_df(),
+      options_file = SESSION_FILE,
       run_methods = abort_if_called("run_methods"),
       methods_table = hub_methods_frame(),
       open_results = abort_if_called("open_results"),
@@ -274,6 +315,7 @@ test_that("the results submenu dispatches to the injected handlers after a run",
 
   suppressMessages(run_session_hub(
     df = hub_df(),
+    options_file = SESSION_FILE,
     run_methods = run$fn,
     methods_table = hub_methods_frame(),
     open_results = function() opened <<- TRUE,
@@ -298,6 +340,7 @@ test_that("preview prints the textual data summary", {
   messages <- testthat::capture_messages(
     run_session_hub(
       df = hub_df(),
+      options_file = SESSION_FILE,
       run_methods = abort_if_called("run_methods"),
       methods_table = hub_methods_frame(),
       view_data = abort_if_called("view_data"),
@@ -336,42 +379,77 @@ test_that("merge_run_results keeps the latest result and status per method", {
   expect_equal(attr(merged, "run_info")$seed, 7L)
 })
 
+# The item values of a hub menu, in display order.
+menu_values <- function(...) {
+  vapply(hub_menu_items(...), function(item) item$value, character(1))
+}
+
 test_that("hub_menu_items hides Re-run until a run happened", {
-  before <- vapply(hub_menu_items(FALSE, character(0)), function(item) item$value, character(1))
+  before <- menu_values(FALSE, character(0), options_file = SESSION_FILE)
   expect_false("rerun" %in% before)
 
-  after_items <- hub_menu_items(TRUE, c("bma", "funnel_plot"))
+  after_items <- hub_menu_items(TRUE, c("bma", "funnel_plot"), options_file = SESSION_FILE)
   after <- vapply(after_items, function(item) item$value, character(1))
   expect_true("rerun" %in% after)
   rerun <- after_items[[which(after == "rerun")]]
   expect_equal(rerun$description, "bma, funnel_plot")
 })
 
-test_that("hub_menu_items hides the switch item without a handler", {
-  with_switch <- vapply(hub_menu_items(FALSE, character(0)), function(item) item$value, character(1))
-  expect_true(all(c("settings", "switch", "help") %in% with_switch))
+test_that("hub_menu_items hides the options-file item without a handler", {
+  with_file <- menu_values(FALSE, character(0), options_file = SESSION_FILE)
+  expect_true(all(c("settings", "file", "help") %in% with_file))
 
-  without_switch <- vapply(
-    hub_menu_items(FALSE, character(0), can_switch = FALSE),
-    function(item) item$value, character(1)
+  without_file <- menu_values(
+    FALSE, character(0),
+    can_switch = FALSE, options_file = SESSION_FILE
   )
-  expect_false("switch" %in% without_switch)
-  expect_true(all(c("settings", "help") %in% without_switch))
+  expect_false("file" %in% without_file)
+  expect_true(all(c("settings", "help") %in% without_file))
 })
 
-test_that("compose_hub_choices is value-keyed with decorated labels", {
-  choices <- compose_hub_choices(hub_menu_items(FALSE, character(0)), width = 100)
+test_that("an unbound session is offered only the items that need no data", {
+  unbound <- menu_values(FALSE, character(0), options_file = NULL)
+
+  expect_equal(unbound, c("file", "settings", "help", "exit"))
+  # The one thing the session is missing leads the menu, so the cursor opens
+  # on it.
+  expect_equal(unbound[[1]], "file")
+
+  items <- hub_menu_items(FALSE, character(0), options_file = NULL)
+  expect_equal(items[[1]]$description, "select one to work with, or create a new one")
+
+  bound <- hub_menu_items(FALSE, character(0), options_file = SESSION_FILE)
+  file_item <- bound[[which(vapply(bound, function(i) i$value, character(1)) == "file")]]
+  expect_true(grepl(SESSION_FILE, file_item$description, fixed = TRUE))
+})
+
+test_that("an unbound session with no handler can only leave", {
+  expect_equal(
+    menu_values(FALSE, character(0), can_switch = FALSE, options_file = NULL),
+    c("settings", "help", "exit")
+  )
+})
+
+test_that("compose_menu_choices is value-keyed with decorated labels", {
+  choices <- compose_menu_choices(
+    hub_menu_items(FALSE, character(0), options_file = SESSION_FILE),
+    width = 100
+  )
 
   expect_equal(
     unname(choices),
-    c("run", "options", "preview", "results", "settings", "switch", "help", "exit")
+    c("run", "options", "preview", "results", "settings", "file", "help", "exit")
   )
   labels <- cli::ansi_strip(names(choices))
   expect_true(grepl("^Run methods +pick and run", labels[[1]]))
 })
 
 test_that("the Re-run description names the options changed since the run", {
-  items <- hub_menu_items(TRUE, "bma", options_changed = c("data.na_handling", "general.seed"))
+  items <- hub_menu_items(
+    TRUE, "bma",
+    options_changed = c("data.na_handling", "general.seed"),
+    options_file = SESSION_FILE
+  )
   values <- vapply(items, function(item) item$value, character(1))
   rerun <- items[[which(values == "rerun")]]
   expect_equal(rerun$description, "bma (changed: data.na_handling, general.seed)")
@@ -388,29 +466,6 @@ test_that("the settings and help submenus are value-keyed", {
   ))
 })
 
-test_that("options_file_items decorates each file and marks the current one", {
-  details <- data.frame(
-    file = c("a.yaml", "b.yaml"),
-    data_source_path = c("/data/a.csv", NA_character_),
-    modified = as.POSIXct(c("2026-08-01 10:00:00", "2026-08-02 10:00:00")),
-    last_run = as.POSIXct(c("2026-08-20 09:30:00", NA)),
-    n_non_default = c(3L, 0L),
-    stringsAsFactors = FALSE
-  )
-
-  items <- options_file_items(details, current_file = "a.yaml")
-
-  expect_equal(vapply(items, function(item) item$value, character(1)), c("a.yaml", "b.yaml"))
-  expect_true(grepl("current", items[[1]]$description, fixed = TRUE))
-  expect_true(grepl("a.csv", items[[1]]$description, fixed = TRUE))
-  expect_true(grepl("last run 2026-08-20", items[[1]]$description, fixed = TRUE))
-  expect_true(grepl("3 non-default", items[[1]]$description, fixed = TRUE))
-  expect_false(grepl("current", items[[2]]$description, fixed = TRUE))
-  expect_true(grepl("no data source", items[[2]]$description, fixed = TRUE))
-  expect_true(grepl("never run", items[[2]]$description, fixed = TRUE))
-  expect_true(grepl("all defaults", items[[2]]$description, fixed = TRUE))
-})
-
 test_that("settings toggles take effect for the session", {
   withr::local_options(list(
     artma.temp.last_methods = NULL,
@@ -422,6 +477,7 @@ test_that("settings toggles take effect for the session", {
 
   suppressMessages(run_session_hub(
     df = hub_df(),
+    options_file = SESSION_FILE,
     run_methods = abort_if_called("run_methods"),
     methods_table = hub_methods_frame(),
     set_theme = function(theme) themes_set <<- c(themes_set, theme),
@@ -448,6 +504,7 @@ test_that("a cancelled settings submenu returns to the hub without changes", {
 
   suppressMessages(run_session_hub(
     df = hub_df(),
+    options_file = SESSION_FILE,
     run_methods = abort_if_called("run_methods"),
     methods_table = hub_methods_frame(),
     set_theme = abort_if_called("set_theme"),
@@ -468,6 +525,7 @@ test_that("the help submenu prints overviews and opens the docs links", {
   messages <- testthat::capture_messages(
     run_session_hub(
       df = hub_df(),
+      options_file = SESSION_FILE,
       run_methods = abort_if_called("run_methods"),
       methods_table = hub_methods_frame(),
       show_options_help = function() options_help_calls <<- options_help_calls + 1L,
@@ -567,12 +625,14 @@ test_that("switching the options file reloads options and re-prepares data", {
   messages <- testthat::capture_messages(
     results <- run_session_hub(
       df = hub_df(),
+      options_file = "a.yaml",
       run_methods = run_methods,
       methods_table = hub_methods_frame(),
-      list_options = function() {
+      rebuild_data = function(methods) fresh_df,
+      file_actions = test_file_actions(list_files = function() {
         artma::options_list(options_dir = tmp_dir, details = TRUE, template_path = template_path)
-      },
-      switch_options = function(file_name) {
+      }),
+      bind_options = function(file_name) {
         loaded <- artma::options_load(
           options_file_name = file_name,
           options_dir = tmp_dir,
@@ -583,10 +643,10 @@ test_that("switching the options file reloads options and re-prepares data", {
         # Base options(), matching the artma() wiring: the values must
         # survive this call for the rest of the hub session.
         options(loaded)
-        fresh_df
+        invisible(TRUE)
       },
       select_fn = make_select_fn(c(
-        "Switch options file", "b.yaml",
+        "Options file", "Switch file", "b.yaml",
         "Run methods",
         "Exit"
       )),
@@ -601,7 +661,7 @@ test_that("switching the options file reloads options and re-prepares data", {
   # The session now runs on the new file and the freshly prepared frame.
   expect_equal(getOption("artma.temp.file_name"), "b.yaml")
   expect_equal(getOption("artma.general.name"), "B")
-  expect_true(any(grepl("Switched to", messages)))
+  expect_true(any(grepl("Now running on", messages)))
   expect_true(any(grepl("2 rows", messages)))
 })
 
@@ -611,24 +671,17 @@ test_that("a failed options switch keeps the session on the current file", {
     artma.temp.file_name = "a.yaml"
   ))
 
-  details <- data.frame(
-    file = c("a.yaml", "b.yaml"),
-    data_source_path = c("/data/a.csv", "/data/b.csv"),
-    modified = as.POSIXct(c("2026-08-01 10:00:00", "2026-08-02 10:00:00")),
-    last_run = as.POSIXct(c(NA, NA)),
-    n_non_default = c(0L, 0L),
-    stringsAsFactors = FALSE
-  )
-
   messages <- testthat::capture_messages(
     run_session_hub(
       df = hub_df(),
+      options_file = "a.yaml",
       run_methods = abort_if_called("run_methods"),
       methods_table = hub_methods_frame(),
-      list_options = function() details,
-      switch_options = function(file_name) stop("no such file"),
+      rebuild_data = abort_if_called("rebuild_data"),
+      file_actions = test_file_actions(),
+      bind_options = function(file_name) stop("no such file"),
       select_fn = make_select_fn(c(
-        "Switch options file", "b.yaml",
+        "Options file", "Switch file", "b.yaml", "Back",
         "Preview data",
         "Exit"
       )),
@@ -637,10 +690,144 @@ test_that("a failed options switch keeps the session on the current file", {
     )
   )
 
-  expect_true(any(grepl("Could not switch", messages)))
+  expect_true(any(grepl("Could not load", messages)))
   expect_equal(getOption("artma.temp.file_name"), "a.yaml")
   # The original frame is still the session's data.
   expect_true(any(grepl("3 rows, 3 columns", messages)))
+})
+
+test_that("an unbound session prepares its data once a file is loaded", {
+  withr::local_options(list(
+    artma.temp.last_methods = NULL,
+    artma.temp.file_name = NULL
+  ))
+  prepared <- data.frame(
+    study_id = c("s1", "s2"),
+    effect = c(0.4, 0.6),
+    se = c(0.1, 0.2),
+    stringsAsFactors = FALSE
+  )
+  bound <- character(0)
+  run <- make_run_methods()
+  checkbox <- make_checkbox_fn("bma")
+
+  messages <- testthat::capture_messages(
+    results <- run_session_hub(
+      df = NULL,
+      options_file = NULL,
+      run_methods = run$fn,
+      methods_table = hub_methods_frame(),
+      rebuild_data = function(methods) prepared,
+      file_actions = test_file_actions(),
+      bind_options = function(file_name) bound <<- c(bound, file_name),
+      select_fn = make_select_fn(c(
+        "Options file", "Select a file", "b.yaml",
+        "Run methods",
+        "Exit"
+      )),
+      checkbox_fn = checkbox$fn,
+      width = 100
+    )
+  )
+
+  expect_equal(bound, "b.yaml")
+  expect_equal(run$log$calls, list("bma"))
+  expect_equal(results$bma, "bma-result")
+  # The header knows what the session is missing, then what it holds.
+  expect_true(any(grepl("no options file loaded", messages)))
+  expect_true(any(grepl("2 rows, 2 studies", messages)))
+})
+
+test_that("a file whose data will not prepare keeps the session on it", {
+  withr::local_options(list(
+    artma.temp.last_methods = NULL,
+    artma.temp.file_name = NULL
+  ))
+  attempts <- 0L
+
+  messages <- testthat::capture_messages(
+    run_session_hub(
+      df = NULL,
+      options_file = NULL,
+      run_methods = abort_if_called("run_methods"),
+      methods_table = hub_methods_frame(),
+      rebuild_data = function(methods) {
+        attempts <<- attempts + 1L
+        stop("the data source is unreadable")
+      },
+      file_actions = test_file_actions(),
+      bind_options = function(file_name) invisible(TRUE),
+      select_fn = make_select_fn(c(
+        "Options file", "Select a file", "b.yaml",
+        "Preview data",
+        "Exit"
+      )),
+      checkbox_fn = abort_if_called("checkbox_fn"),
+      width = 100
+    )
+  )
+
+  # Once when the file was loaded, once when Preview data asked for the frame
+  # again: a failed preparation returns to the menu instead of ending the
+  # session, and the menu it returns to is the loaded file's.
+  expect_equal(attempts, 2L)
+  expect_equal(sum(grepl("Preparing the data failed", messages)), 2L)
+  expect_true(any(grepl("data not prepared yet", messages)))
+})
+
+test_that("deleting the session's options file unbinds the session", {
+  withr::local_options(list(
+    artma.temp.last_methods = NULL,
+    artma.temp.file_name = "a.yaml"
+  ))
+  remaining <- c("a.yaml", "b.yaml")
+
+  messages <- testthat::capture_messages(
+    run_session_hub(
+      df = hub_df(),
+      options_file = "a.yaml",
+      run_methods = abort_if_called("run_methods"),
+      methods_table = hub_methods_frame(),
+      rebuild_data = abort_if_called("rebuild_data"),
+      file_actions = test_file_actions(
+        list_files = function() hub_details(remaining),
+        overrides = list(delete = function() remaining <<- "b.yaml")
+      ),
+      bind_options = function(file_name) invisible(TRUE),
+      select_fn = make_select_fn(c("Options file", "Delete files", "Exit")),
+      checkbox_fn = abort_if_called("checkbox_fn"),
+      width = 100
+    )
+  )
+
+  # Nothing may keep deriving paths from a file that no longer exists, and the
+  # session falls back to the menu an unbound session gets.
+  expect_null(getOption("artma.temp.file_name"))
+  expect_true(any(grepl("no options file loaded", messages)))
+})
+
+test_that("an unbound session cannot run or preview anything", {
+  withr::local_options(list(
+    artma.temp.last_methods = NULL,
+    artma.temp.file_name = NULL
+  ))
+
+  results <- suppressMessages(run_session_hub(
+    df = NULL,
+    options_file = NULL,
+    run_methods = abort_if_called("run_methods"),
+    rebuild_data = abort_if_called("rebuild_data"),
+    methods_table = hub_methods_frame(),
+    file_actions = test_file_actions(),
+    bind_options = function(file_name) invisible(TRUE),
+    # "Run methods" and "Preview data" are not on the menu at all, so the
+    # scripted backend would fail to match them.
+    select_fn = make_select_fn("Exit"),
+    checkbox_fn = abort_if_called("checkbox_fn"),
+    width = 100
+  ))
+
+  expect_length(results, 0L)
 })
 
 test_that("count_studies is NA without the study column", {
@@ -776,6 +963,7 @@ test_that("a data edit re-prepares the data once, before the next run", {
 
   results <- suppressMessages(run_session_hub(
     df = hub_df(),
+    options_file = SESSION_FILE,
     run_methods = run$fn,
     rebuild_data = function(selection) {
       rebuilds <<- c(rebuilds, list(selection))
@@ -814,6 +1002,7 @@ test_that("a non-data edit never triggers a data rebuild", {
 
   results <- suppressMessages(run_session_hub(
     df = hub_df(),
+    options_file = SESSION_FILE,
     run_methods = run$fn,
     rebuild_data = abort_if_called("rebuild_data"),
     methods_table = hub_methods_frame(),

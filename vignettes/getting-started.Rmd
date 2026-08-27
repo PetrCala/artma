@@ -20,13 +20,17 @@ library(artma)
 results <- artma()
 ```
 
-When you run this in an interactive R session, artma will:
+In an interactive R session this opens the **session hub**, a menu you stay in
+for as long as you like. From it you:
 
-1. **Guide you through creating an options file** - This stores all your analysis settings
-2. **Help you load your data** - You'll specify where your dataset is located
-3. **Map your columns** - artma will recognize common column names or let you specify them
-4. **Let you choose methods** - Select which analyses you want to run
-5. **Run your analysis** - Execute everything and return results
+1. **Pick or create an options file** - "Options file" is the first item, and
+   the file stores all your analysis settings
+2. **Load your data** - the file says where your dataset lives, and artma
+   prepares it as soon as the file is loaded
+3. **Map your columns** - artma recognizes common column names, or asks you
+4. **Choose methods** - "Run methods" lists what your data supports
+5. **Run, adjust, run again** - results accumulate across runs and are returned
+   when you exit the hub
 
 If you want artma to open the results folder for you at the end of a run, set `open_results = TRUE`. You can always access your results later manually using `artma::results_open()`.
 
@@ -106,12 +110,13 @@ names(results)  # See which methods ran
 results$effect_summary_stats  # Access specific results
 ```
 
-During the interactive session, you'll be guided through:
+During the interactive session, the hub menu lets you:
 
-- Creating or selecting an options file
-- Specifying your data file path
-- Mapping column names (artma tries to auto-detect these)
-- Choosing which methods to run
+- Select or create an options file (and edit, duplicate or delete the ones you
+  have)
+- Specify your data file path
+- Map column names (artma tries to auto-detect these)
+- Choose which methods to run, as many times as you like
 
 ### Workflow 2: Using an Existing Options File
 
