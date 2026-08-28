@@ -14,7 +14,7 @@ t_stat_histogram <- function(df) {
     artma / options / index[get_option_group],
     artma / options / resolver[opt_spec, resolve_options],
     artma / visualization / options[get_visualization_options],
-    artma / visualization / export[export_named_plots, preview_plot]
+    artma / visualization / export[export_named_plots, preview_needs_file, preview_plot]
   )
 
   validate(is.data.frame(df))
@@ -98,20 +98,6 @@ t_stat_histogram <- function(df) {
     theme_name = theme_name
   )
 
-  verbosity <- get_verbosity()
-
-  if (verbosity >= 3) {
-    cli::cli_h3("T-Statistic Distribution")
-    if (main_result$n_outliers > 0) {
-      cli::cli_alert_info(paste0(
-        main_result$n_outliers,
-        " observation(s) outside [",
-        lower_cutoff, ", ", upper_cutoff, "] excluded"
-      ))
-    }
-    preview_plot(main_result$plot)
-  }
-
   # Build the close-up plot (if enabled)
   close_up_result <- NULL
 
@@ -127,29 +113,47 @@ t_stat_histogram <- function(df) {
       min_tick_distance = close_up_min_tick_distance,
       theme_name = theme_name
     )
-
-    if (verbosity >= 3 && !is.null(close_up_result$plot)) {
-      cli::cli_h3(paste0(
-        "T-Statistic Distribution (Close-up: [",
-        close_up_lower, ", ", close_up_upper, "])"
-      ))
-      preview_plot(close_up_result$plot)
-    }
   }
 
-  # Export if enabled
-  if (export_graphics) {
-    export_named_plots(
+  should_preview <- get_verbosity() >= 3
+  preview_via_file <- should_preview && preview_needs_file()
+
+  # Exports run before the previews: a file preview shows the exported PNG, and
+  # when exports are off it renders the plots to throwaway tempfiles instead.
+  exported <- NULL
+  if (export_graphics || preview_via_file) {
+    exported <- export_named_plots(
       plots = list(
         full_range = main_result$plot,
         close_up = if (!is.null(close_up_result)) close_up_result$plot
       ),
       base_name = "t_stat_histogram",
-      export_path = export_path,
+      export_path = if (export_graphics) export_path else tempfile("artma_preview_"),
       graph_scale = graph_scale,
       width = 800,
-      height = 600
+      height = 600,
+      record = export_graphics
     )
+  }
+
+  if (should_preview) {
+    cli::cli_h3("T-Statistic Distribution")
+    if (main_result$n_outliers > 0) {
+      cli::cli_alert_info(paste0(
+        main_result$n_outliers,
+        " observation(s) outside [",
+        lower_cutoff, ", ", upper_cutoff, "] excluded"
+      ))
+    }
+    preview_plot(main_result$plot, path = exported[1])
+
+    if (!is.null(close_up_result) && !is.null(close_up_result$plot)) {
+      cli::cli_h3(paste0(
+        "T-Statistic Distribution (Close-up: [",
+        close_up_lower, ", ", close_up_upper, "])"
+      ))
+      preview_plot(close_up_result$plot, path = exported[2])
+    }
   }
 
   close_up_plot <- if (!is.null(close_up_result)) {

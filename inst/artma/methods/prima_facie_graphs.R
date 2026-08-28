@@ -14,7 +14,7 @@ prima_facie_graphs <- function(df) {
     artma / options / resolver[opt_spec, resolve_options],
     artma / variable / detection[detect_variable_groups],
     artma / visualization / options[get_visualization_options],
-    artma / visualization / export[export_named_plots, preview_plot]
+    artma / visualization / export[export_named_plots, preview_needs_file, preview_plot]
   )
 
   validate(is.data.frame(df))
@@ -103,7 +103,26 @@ prima_facie_graphs <- function(df) {
     return(invisible(new_method_result(meta = list(groups = character(0)))))
   }
 
-  if (get_verbosity() >= 3) {
+  should_preview <- get_verbosity() >= 3
+  preview_via_file <- should_preview && preview_needs_file()
+
+  # Exports run before the previews: a file preview shows the exported PNG, and
+  # when exports are off it renders the plots to throwaway tempfiles instead.
+  exported <- NULL
+  if (export_graphics || preview_via_file) {
+    exported <- export_named_plots(
+      plots = plots,
+      base_name = "prima_facie",
+      export_path = if (export_graphics) export_path else tempfile("artma_preview_"),
+      graph_scale = graph_scale,
+      names = group_names,
+      width = 800,
+      height = 666,
+      record = export_graphics
+    )
+  }
+
+  if (should_preview) {
     cli::cli_h3("Prima Facie Graphs")
     for (i in seq_along(plots)) {
       if (length(plots) > 1) {
@@ -111,20 +130,8 @@ prima_facie_graphs <- function(df) {
           "Displaying plot {i}/{length(plots)}: {.field {names(plots)[i]}}"
         )
       }
-      preview_plot(plots[[i]])
+      preview_plot(plots[[i]], path = exported[i])
     }
-  }
-
-  if (export_graphics) {
-    export_named_plots(
-      plots = plots,
-      base_name = "prima_facie",
-      export_path = export_path,
-      graph_scale = graph_scale,
-      names = group_names,
-      width = 800,
-      height = 666
-    )
   }
 
   invisible(new_method_result(

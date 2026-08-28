@@ -11,7 +11,7 @@ funnel_plot <- function(df) {
     artma / options / index[get_option_group],
     artma / options / resolver[opt_spec, resolve_options],
     artma / visualization / options[get_visualization_options],
-    artma / visualization / export[export_named_plots, preview_plot]
+    artma / visualization / export[export_named_plots, preview_needs_file, preview_plot]
   )
 
   validate(is.data.frame(df))
@@ -117,20 +117,27 @@ funnel_plot <- function(df) {
     subtitle_text = subtitle_text
   )
 
-  if (get_verbosity() >= 3) {
-    cli::cli_h3("Funnel Plot: Effect vs Precision")
-    preview_plot(plot)
-  }
+  should_preview <- get_verbosity() >= 3
+  preview_via_file <- should_preview && preview_needs_file()
 
-  if (export_graphics) {
-    export_named_plots(
+  # Exports run before the preview: a file preview shows the exported PNG, and
+  # when exports are off it renders the plot to a throwaway tempfile instead.
+  exported <- NULL
+  if (export_graphics || preview_via_file) {
+    exported <- export_named_plots(
       plots = list(effect_precision = plot),
       base_name = "funnel_plot",
-      export_path = export_path,
+      export_path = if (export_graphics) export_path else tempfile("artma_preview_"),
       graph_scale = graph_scale,
       width = 800,
-      height = 736
+      height = 736,
+      record = export_graphics
     )
+  }
+
+  if (should_preview) {
+    cli::cli_h3("Funnel Plot: Effect vs Precision")
+    preview_plot(plot, path = exported[1])
   }
 
   invisible(new_method_result(
