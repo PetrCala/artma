@@ -415,11 +415,32 @@ test_that("an unbound session is offered only the items that need no data", {
   # on it.
   expect_equal(unbound[[1]], "file")
 
-  items <- hub_menu_items(FALSE, character(0), options_file = NULL)
-  expect_equal(items[[1]]$description, "select one to work with, or create a new one")
-
   bound <- hub_menu_items(FALSE, character(0), options_file = SESSION_FILE)
   file_item <- bound[[which(vapply(bound, function(i) i$value, character(1)) == "file")]]
+  expect_true(grepl(SESSION_FILE, file_item$description, fixed = TRUE))
+})
+
+test_that("the unbound options-file item wording follows the file count", {
+  # A first-timer is invited to get started by creating the file.
+  none <- hub_menu_items(FALSE, character(0), options_file = NULL, n_options_files = 0L)
+  expect_equal(none[[1]]$value, "file")
+  expect_equal(none[[1]]$name, "Get started")
+  expect_true(grepl("create your options file", none[[1]]$description, fixed = TRUE))
+
+  # With files on disk, the same item is about choosing one.
+  some <- hub_menu_items(FALSE, character(0), options_file = NULL, n_options_files = 2L)
+  expect_equal(some[[1]]$value, "file")
+  expect_equal(some[[1]]$name, "Choose options file")
+  expect_equal(some[[1]]$description, "select one to work with, or create a new one")
+
+  # A bound session keeps the item exactly as before, whatever the count.
+  bound <- hub_menu_items(
+    FALSE, character(0),
+    options_file = SESSION_FILE, n_options_files = 0L
+  )
+  values <- vapply(bound, function(i) i$value, character(1))
+  file_item <- bound[[which(values == "file")]]
+  expect_equal(file_item$name, "Options file")
   expect_true(grepl(SESSION_FILE, file_item$description, fixed = TRUE))
 })
 
@@ -720,8 +741,11 @@ test_that("an unbound session prepares its data once a file is loaded", {
       rebuild_data = function(methods) prepared,
       file_actions = test_file_actions(),
       bind_options = function(file_name) bound <<- c(bound, file_name),
+      # Backing out of the entry picker lands in the unbound menu, whose
+      # options-file item still binds a file the long way round.
       select_fn = make_select_fn(c(
-        "Options file", "Select a file", "b.yaml",
+        "Back",
+        "Choose options file", "Select a file", "b.yaml",
         "Run methods",
         "Exit"
       )),
@@ -736,6 +760,124 @@ test_that("an unbound session prepares its data once a file is loaded", {
   # The header knows what the session is missing, then what it holds.
   expect_true(any(grepl("no options file loaded", messages)))
   expect_true(any(grepl("2 rows, 2 studies", messages)))
+})
+
+test_that("the files-exist entry opens the picker before the first menu", {
+  withr::local_options(list(
+    artma.temp.last_methods = NULL,
+    artma.temp.file_name = NULL
+  ))
+  prepared <- data.frame(
+    study_id = c("s1", "s2"),
+    effect = c(0.4, 0.6),
+    se = c(0.1, 0.2),
+    stringsAsFactors = FALSE
+  )
+  bound <- character(0)
+  run <- make_run_methods()
+  checkbox <- make_checkbox_fn("bma")
+
+  messages <- testthat::capture_messages(
+    results <- run_session_hub(
+      df = NULL,
+      options_file = NULL,
+      run_methods = run$fn,
+      methods_table = hub_methods_frame(),
+      rebuild_data = function(methods) prepared,
+      file_actions = test_file_actions(),
+      bind_options = function(file_name) bound <<- c(bound, file_name),
+      # The first selection is already the entry picker's: no menu pass
+      # happens before it.
+      select_fn = make_select_fn(c("b.yaml", "Run methods", "Exit")),
+      checkbox_fn = checkbox$fn,
+      width = 100
+    )
+  )
+
+  expect_equal(bound, "b.yaml")
+  expect_equal(results$bma, "bma-result")
+  # The session never rendered the unbound header: it entered bound.
+  expect_false(any(grepl("no options file loaded", messages)))
+  expect_true(any(grepl("2 rows, 2 studies", messages)))
+})
+
+test_that("a first-timer is guided straight into creating an options file", {
+  withr::local_options(list(
+    artma.temp.last_methods = NULL,
+    artma.temp.file_name = NULL
+  ))
+  prepared <- data.frame(
+    study_id = c("s1", "s2"),
+    effect = c(0.4, 0.6),
+    se = c(0.1, 0.2),
+    stringsAsFactors = FALSE
+  )
+  bound <- character(0)
+  run <- make_run_methods()
+  checkbox <- make_checkbox_fn("bma")
+
+  messages <- testthat::capture_messages(
+    results <- run_session_hub(
+      df = NULL,
+      options_file = NULL,
+      run_methods = run$fn,
+      methods_table = hub_methods_frame(),
+      rebuild_data = function(methods) prepared,
+      file_actions = test_file_actions(
+        list_files = function() hub_details(character(0)),
+        overrides = list(create = function() "fresh.yaml")
+      ),
+      bind_options = function(file_name) bound <<- c(bound, file_name),
+      # No menu, no picker: the create flow runs, the file binds, and the
+      # first selection is already the bound menu's.
+      select_fn = make_select_fn(c("Run methods", "Exit")),
+      checkbox_fn = checkbox$fn,
+      width = 100
+    )
+  )
+
+  expect_equal(bound, "fresh.yaml")
+  expect_equal(results$bma, "bma-result")
+  expect_true(any(grepl("No options files exist yet", messages)))
+  expect_false(any(grepl("no options file loaded", messages)))
+  expect_true(any(grepl("fresh.yaml", messages)))
+})
+
+test_that("a cancelled first-time create lands in the unbound menu", {
+  withr::local_options(list(
+    artma.temp.last_methods = NULL,
+    artma.temp.file_name = NULL
+  ))
+  captured <- new.env()
+  captured$labels <- list()
+  base_fn <- make_select_fn("Exit")
+  capturing_select_fn <- function(choices, prompt, selected = NULL) {
+    captured$labels <- c(captured$labels, list(cli::ansi_strip(choices)))
+    base_fn(choices, prompt, selected)
+  }
+
+  messages <- testthat::capture_messages(
+    results <- run_session_hub(
+      df = NULL,
+      options_file = NULL,
+      run_methods = abort_if_called("run_methods"),
+      methods_table = hub_methods_frame(),
+      rebuild_data = abort_if_called("rebuild_data"),
+      file_actions = test_file_actions(
+        list_files = function() hub_details(character(0)),
+        overrides = list(create = function() NULL)
+      ),
+      bind_options = abort_if_called("bind_options"),
+      select_fn = capturing_select_fn,
+      checkbox_fn = abort_if_called("checkbox_fn"),
+      width = 100
+    )
+  )
+
+  expect_length(results, 0L)
+  expect_true(any(grepl("no options file loaded", messages)))
+  # The fallback menu invites the first-timer to try again.
+  expect_true(any(grepl("Get started", captured$labels[[1]])))
 })
 
 test_that("a file whose data will not prepare keeps the session on it", {
@@ -757,8 +899,10 @@ test_that("a file whose data will not prepare keeps the session on it", {
       },
       file_actions = test_file_actions(),
       bind_options = function(file_name) invisible(TRUE),
+      # The entry picker binds the file; its data preparation fails right
+      # away, and again when Preview data asks for the frame.
       select_fn = make_select_fn(c(
-        "Options file", "Select a file", "b.yaml",
+        "b.yaml",
         "Preview data",
         "Exit"
       )),
@@ -820,9 +964,10 @@ test_that("an unbound session cannot run or preview anything", {
     methods_table = hub_methods_frame(),
     file_actions = test_file_actions(),
     bind_options = function(file_name) invisible(TRUE),
-    # "Run methods" and "Preview data" are not on the menu at all, so the
-    # scripted backend would fail to match them.
-    select_fn = make_select_fn("Exit"),
+    # Back out of the entry picker first; "Run methods" and "Preview data"
+    # are then not on the menu at all, so the scripted backend would fail to
+    # match them.
+    select_fn = make_select_fn(c("Back", "Exit")),
     checkbox_fn = abort_if_called("checkbox_fn"),
     width = 100
   ))

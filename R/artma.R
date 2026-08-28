@@ -14,8 +14,10 @@
 #'   `artma::methods_list()` for available methods.
 #' @param options *\[character, optional\]* Name of the options file (with or without
 #'   `.yaml` extension) to use. If `NULL` and running interactively, the session
-#'   hub opens without one and its "Options file" item is where you select or
-#'   create the file the session runs on.
+#'   hub opens without one: with no options files yet you are guided straight
+#'   into creating your first, and otherwise a picker of the existing files
+#'   opens. Backing out of either lands in the hub menu, whose options-file
+#'   item selects or creates the file the session runs on.
 #' @param options_dir *\[character, optional\]* Directory containing the options file.
 #'   If `NULL`, uses the default options directory.
 #' @param open_results *\[logical, optional\]* Whether to open the results directory
@@ -37,7 +39,8 @@
 #' It handles the complete workflow:
 #'
 #' 1. **Options Loading**: Loads configuration from an options file (in the
-#'    session hub, from the "Options file" menu item)
+#'    session hub, from the entry create-or-pick flow or the options-file
+#'    menu item)
 #' 2. **Data Preparation**: Reads and prepares your data (unless `data` is provided)
 #' 3. **Method Execution**: Runs the specified analytical methods on your data
 #' 4. **Results**: Returns a structured list of results

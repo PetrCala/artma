@@ -29,9 +29,7 @@ A hub session is **bound** when an options file is loaded and **unbound** when
 none is. `artma(options = "x.yaml")` enters bound, with its data already
 prepared; `artma()` with no options file first tries to resume the last used
 one (see below) and enters unbound, with `df = NULL` and no options file
-behind it, when that yields nothing. Choosing the file is a menu item rather
-than a gate in front of the menu, so the user can create, repair, compare or
-delete files before committing to one.
+behind it, when that yields nothing.
 
 ### Resuming the last used file
 
@@ -58,6 +56,25 @@ marker.
 Deleting options files through the menu prunes the marker
 (`file_actions$prune_last_used`): a marker naming a deleted file is cleared,
 whether or not that file was the one the session ran on.
+
+### The unbound entry
+
+A session that does enter unbound (nothing was restored) does not open on the
+menu. Before the first menu pass, `run_session_hub()` runs
+`run_unbound_entry()` (`inst/artma/interactive/options_file_menu.R`):
+
+- **No options files exist** (a true first-timer): the guided create flow
+  (`options_create()` via `file_actions$create`) runs straight away, after the
+  welcome banner. On success the new file is bound immediately and the session
+  lands in the bound menu ready to run; a cancel or failure falls back to the
+  unbound menu.
+- **Files exist**: the file picker (`ask_for_file_to_load()`, which carries
+  its own create and back entries) opens directly. Picking a file binds it and
+  lands in the bound menu; backing out lands in the unbound menu.
+
+Either way the unbound menu remains reachable, so the user can still create,
+repair, compare or delete files from its options-file item before committing
+to one.
 
 Unbound is not a stripped-down mode with its own rules; it is the ordinary
 state minus the items that need data:
@@ -135,9 +152,14 @@ options-file item, Settings, Help and Exit.
   which `cache_cli()` reads at call time). All of them take effect for the
   session only; the options file on disk is untouched.
 - **Options file** (`interactive/options_file_menu.R`): the submenu behind
-  everything to do with options files. First in an unbound session ("select
-  one to work with, or create a new one"), after Settings in a bound one
-  (labelled with the loaded file). See "The options-file menu" below.
+  everything to do with options files. First in an unbound session, after
+  Settings in a bound one (labelled with the loaded file, "switch, create,
+  edit, delete"); a bound session always keeps the item, so an auto-restored
+  or entry-bound session is never trapped on its file. While unbound the
+  item's wording follows the file count (`hub_menu_items(n_options_files =
+  ...)`, fed by a `file_actions$list()` call per unbound menu pass): "Get
+  started" with a create-your-options-file description when no files exist,
+  "Choose options file" when some do. See "The options-file menu" below.
 - **Help**: submenu with the methods overview (`print_methods_table()` on the
   same frame the picker uses), the options overview (`artma::options_help()`
   plus a pointer to its single-option form), and the browser links that used
@@ -169,6 +191,10 @@ loaded options changed.
   reported and leaves the menu open.
 - A newly created file is loaded straight away when the session is unbound
   (it is the thing the session was missing) and offered when it is bound.
+- `run_unbound_entry()` lives in the same module and reuses the picker and
+  the bind-with-reporting behavior for the unbound session's entry shortcut
+  (see "Bound and unbound sessions" above). It returns the same
+  `list(file, changed)` contract as `run_options_file_menu()`.
 - Editing or repairing the file the session is running on **reloads** it, so
   the session cannot keep values the file no longer holds.
 - Deleting the file the session is running on leaves the session unbound; the

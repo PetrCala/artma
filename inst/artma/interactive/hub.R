@@ -13,7 +13,9 @@ box::use(
   artma / interactive / input[ask_select, ask_yes_no],
   artma / interactive / menu[compose_menu_choices, menu_item],
   artma / interactive / method_picker[ask_runtime_methods],
-  artma / interactive / options_file_menu[default_file_actions, run_options_file_menu],
+  artma / interactive / options_file_menu[
+    default_file_actions, run_options_file_menu, run_unbound_entry
+  ],
   artma / interactive / welcome[open_url_in_browser],
   artma / libs / core / autonomy[get_autonomy_level, get_default_autonomy_level],
   artma / libs / core / utils[data_viewer_available],
@@ -311,6 +313,17 @@ run_adjust_options <- function(
   list(changed = changed, data_changed = data_changed)
 }
 
+#' @title Count the options files the session could bind
+#' @description Feeds the unbound menu's options-file wording; a listing
+#'   failure counts as no files, which errs on the side of the guided start.
+#' @param file_actions *\[list\]* The options-file management actions.
+#' @return *\[integer\]* The number of options files.
+#' @keywords internal
+count_options_files <- function(file_actions) {
+  details <- tryCatch(file_actions$list(), error = function(e) NULL)
+  if (is.data.frame(details)) nrow(details) else 0L
+}
+
 #' @title The hub's menu items in display order
 #' @description
 #' An unbound session (no options file yet) offers only the items that work
@@ -330,24 +343,40 @@ run_adjust_options <- function(
 #'   available. Defaults to `TRUE`.
 #' @param options_file *\[character, optional\]* The session's options file;
 #'   `NULL` leaves the session unbound and hides the data-driven items.
+#' @param n_options_files *\[integer, optional\]* How many options files exist.
+#'   Only read while unbound, where it decides the options-file item's wording:
+#'   a first-timer (no files) is invited to get started by creating one, and a
+#'   session with files to pick from is invited to choose.
 #' @return *\[list\]* Items for `compose_menu_choices()`.
 hub_menu_items <- function(
   has_run,
   last_methods,
   options_changed = character(0),
   can_switch = TRUE,
-  options_file = NULL
+  options_file = NULL,
+  n_options_files = 0L
 ) {
   file_item <- if (isTRUE(can_switch)) {
-    list(menu_item(
-      value = "file",
-      name = "Options file",
-      description = if (is.null(options_file)) {
-        "select one to work with, or create a new one"
-      } else {
-        sprintf("%s - switch, create, edit, delete", options_file)
-      }
-    ))
+    item <- if (!is.null(options_file)) {
+      menu_item(
+        value = "file",
+        name = "Options file",
+        description = sprintf("%s - switch, create, edit, delete", options_file)
+      )
+    } else if (n_options_files > 0L) {
+      menu_item(
+        value = "file",
+        name = "Choose options file",
+        description = "select one to work with, or create a new one"
+      )
+    } else {
+      menu_item(
+        value = "file",
+        name = "Get started",
+        description = "create your options file: data source, columns, method options"
+      )
+    }
+    list(item)
   }
 
   help_and_exit <- list(
@@ -758,9 +787,12 @@ merge_run_results <- function(accumulated, results) {
 #'
 #' A session may start unbound: `df = NULL` and no options file loaded, which
 #' is what an interactive `artma()` call without an `options` argument does.
-#' The menu then offers only the items that work without data, and the
-#' options-file item comes first. Binding a file prepares the data lazily,
-#' through the same path an option edit uses to invalidate a stale frame.
+#' Such a session does not open on the menu: with no options files on disk the
+#' guided create flow runs first, and with files to choose from the picker
+#' opens (`run_unbound_entry()`); either way backing out lands in the unbound
+#' menu, which offers only the items that work without data and leads with the
+#' options-file item. Binding a file prepares the data lazily, through the
+#' same path an option edit uses to invalidate a stale frame.
 #'
 #' The hub itself is deliberately not gated by `should_prompt_user()`: it is
 #' the interactive experience the user asked for. Autonomy keeps governing the
@@ -1000,6 +1032,25 @@ run_session_hub <- function(
     invisible(NULL)
   }
 
+  # An unbound session with a bind handler does not open on the menu: a true
+  # first-timer (no options files exist) drops straight into the guided create
+  # flow, and a session with files to choose from opens the picker. Success
+  # binds the file and lands in the bound menu ready to run; backing out,
+  # cancelling, or a failure lands in the plain unbound menu.
+  if (is.null(state$options_file) && is.function(bind_options)) {
+    entry <- run_unbound_entry(
+      bind_options = bind_options,
+      select_fn = select_fn,
+      file_actions = file_actions,
+      width = width
+    )
+    if (isTRUE(entry$changed)) {
+      state$options_file <- entry$file
+      set_data(NULL)
+      ensure_data(state$last_methods)
+    }
+  }
+
   repeat {
     render_hub_header(state$df, options_file = state$options_file)
 
@@ -1011,7 +1062,12 @@ run_session_hub <- function(
           state$last_methods,
           options_changed = state$changed_since_run,
           can_switch = !is.null(bind_options),
-          options_file = state$options_file
+          options_file = state$options_file,
+          n_options_files = if (is.null(state$options_file) && !is.null(bind_options)) {
+            count_options_files(file_actions)
+          } else {
+            0L
+          }
         ),
         width = width
       ),

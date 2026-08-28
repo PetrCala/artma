@@ -12,7 +12,8 @@ box::use(
   artma / interactive / options_file_menu[
     options_file_items,
     options_file_menu_items,
-    run_options_file_menu
+    run_options_file_menu,
+    run_unbound_entry
   ]
 )
 
@@ -377,6 +378,116 @@ test_that("deleting unrelated files keeps the marker", {
   ))
 
   expect_equal(read_last_used_file(options_dir = dir), "a.yaml")
+})
+
+test_that("the unbound entry runs the create flow when no files exist", {
+  bound <- character(0)
+
+  messages <- testthat::capture_messages(
+    outcome <- run_unbound_entry(
+      bind_options = function(file_name) bound <<- c(bound, file_name),
+      select_fn = abort_if_called("select_fn"),
+      file_actions = file_actions(
+        overrides = list(create = function() "new.yaml"),
+        files = character(0)
+      ),
+      width = 100
+    )
+  )
+
+  expect_true(any(grepl("No options files exist yet", messages)))
+  expect_equal(bound, "new.yaml")
+  expect_equal(outcome$file, "new.yaml")
+  expect_true(outcome$changed)
+})
+
+test_that("a cancelled first-time create leaves the entry unbound", {
+  outcome <- suppressMessages(run_unbound_entry(
+    bind_options = abort_if_called("bind_options"),
+    select_fn = abort_if_called("select_fn"),
+    file_actions = file_actions(
+      overrides = list(create = function() NULL),
+      files = character(0)
+    ),
+    width = 100
+  ))
+
+  expect_null(outcome$file)
+  expect_false(outcome$changed)
+})
+
+test_that("a failing first-time create reports and leaves the entry unbound", {
+  messages <- testthat::capture_messages(
+    outcome <- run_unbound_entry(
+      bind_options = abort_if_called("bind_options"),
+      select_fn = abort_if_called("select_fn"),
+      file_actions = file_actions(
+        overrides = list(create = function() stop("nope")),
+        files = character(0)
+      ),
+      width = 100
+    )
+  )
+
+  expect_true(any(grepl("Creating an options file failed", messages)))
+  expect_false(outcome$changed)
+})
+
+test_that("the unbound entry opens the picker when files exist", {
+  bound <- character(0)
+
+  outcome <- suppressMessages(run_unbound_entry(
+    bind_options = function(file_name) bound <<- c(bound, file_name),
+    select_fn = make_select_fn("b.yaml"),
+    file_actions = file_actions(),
+    width = 100
+  ))
+
+  expect_equal(bound, "b.yaml")
+  expect_equal(outcome$file, "b.yaml")
+  expect_true(outcome$changed)
+})
+
+test_that("backing out of the entry picker leaves the session unbound", {
+  outcome <- suppressMessages(run_unbound_entry(
+    bind_options = abort_if_called("bind_options"),
+    select_fn = make_select_fn("Back"),
+    file_actions = file_actions(),
+    width = 100
+  ))
+
+  expect_null(outcome$file)
+  expect_false(outcome$changed)
+})
+
+test_that("the entry picker's create entry binds the new file", {
+  bound <- character(0)
+
+  outcome <- suppressMessages(run_unbound_entry(
+    bind_options = function(file_name) bound <<- c(bound, file_name),
+    select_fn = make_select_fn("Create a new file"),
+    file_actions = file_actions(overrides = list(create = function() "new.yaml")),
+    width = 100
+  ))
+
+  expect_equal(bound, "new.yaml")
+  expect_equal(outcome$file, "new.yaml")
+  expect_true(outcome$changed)
+})
+
+test_that("a failed bind at the entry leaves the session unbound", {
+  messages <- testthat::capture_messages(
+    outcome <- run_unbound_entry(
+      bind_options = function(file_name) stop("unreadable"),
+      select_fn = make_select_fn("b.yaml"),
+      file_actions = file_actions(),
+      width = 100
+    )
+  )
+
+  expect_true(any(grepl("Could not load", messages)))
+  expect_null(outcome$file)
+  expect_false(outcome$changed)
 })
 
 test_that("deleting other files keeps the session on its own", {
