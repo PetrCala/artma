@@ -30,6 +30,11 @@ stay in for as long as you like. From it you:
 5.  **Run, adjust, run again** - results accumulate across runs and are
     returned when you exit the hub
 
+artma remembers the options file you last ran on: the next plain
+[`artma()`](https://petrcala.github.io/artma/reference/artma.md) call
+resumes on it automatically (“Resuming on ”), and the “Options file”
+menu item is where you switch to a different one.
+
 If you want artma to open the results folder for you at the end of a
 run, set `open_results = TRUE`. You can always access your results later
 manually using
