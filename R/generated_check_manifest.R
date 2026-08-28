@@ -28,6 +28,7 @@ utils::globalVariables(c(
   "build_option_overlay",
   "build_rng_streams",
   "clean_data",
+  "clear_last_used_file",
   "clear_run_output_dir",
   "cli",
   "cli_help_text",
@@ -78,6 +79,7 @@ utils::globalVariables(c(
   "interactive",
   "is_autonomy_level_set",
   "is_first_time_user",
+  "last_used",
   "libs",
   "list_options_files",
   "ma_table",
@@ -114,6 +116,7 @@ utils::globalVariables(c(
   "print_options_diff",
   "read",
   "read_data",
+  "read_last_used_file",
   "read_options_file",
   "read_run_manifest",
   "read_template",
@@ -153,6 +156,7 @@ utils::globalVariables(c(
   "visualization",
   "welcome",
   "write",
+  "write_last_used_file",
   "write_options_file",
   "write_run_manifest"
 ))
