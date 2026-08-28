@@ -166,8 +166,17 @@ artma <- function(
     box::use(
       artma / libs / infrastructure / output_files[
         begin_output_file_capture, end_output_file_capture
-      ]
+      ],
+      artma / options / last_used[write_last_used_file]
     )
+
+    # Every successfully loaded options file is remembered, so a later bare
+    # interactive artma() call can resume on the file the user last ran on,
+    # whether it was named explicitly or picked from a prompt.
+    bound_file <- getOption("artma.temp.file_name", NULL)
+    if (!is.null(bound_file)) {
+      write_last_used_file(bound_file, options_dir = options_dir)
+    }
 
     # The pipeline steps below are the ones the session hub re-runs from its
     # menu loop; keep them individually callable rather than inlined here. The
@@ -205,11 +214,50 @@ artma <- function(
         artma / interactive / hub[run_session_hub],
         artma / interactive / options_file_menu[default_file_actions]
       )
+
+      bind_session_options <- function(file_name) {
+        box::use(artma / options / migrate[migrate_legacy_options])
+        migrate_legacy_options(
+          options_file_name = file_name,
+          options_dir = options_dir
+        )
+        # The same outdated-file repair offer the linear path makes before
+        # loading, now following the file the user picked.
+        offer_options_fix( # nolint: box_usage_linter. # Package function from R/aaa.R
+          options_file_name = file_name,
+          options_dir = options_dir
+        )
+        loaded <- options_load( # nolint: box_usage_linter. # Package function from R/options.R
+          options_file_name = file_name,
+          options_dir = options_dir,
+          should_validate = TRUE,
+          should_add_temp_options = TRUE
+        )
+        # Applied with base options(), not withr::local_options(): the new
+        # values must outlive this call and govern the rest of the hub
+        # session. runtime_setup()'s own local_options frame still restores
+        # the caller's options when artma() returns.
+        options(loaded)
+        invisible(TRUE)
+      }
+
       # An unbound session (no options file chosen yet) enters the hub with no
       # data: the hub prepares it once the user picks a file. A call that named
       # its options file prepares up front, as the linear path does.
       options_file <- getOption("artma.temp.file_name", NULL)
       initial_df <- if (is.null(options_file)) NULL else prepare_into_session(NULL)
+
+      if (is.null(options_file)) {
+        # A previous session's bind left a marker; resume on that file with
+        # its options loaded but its data unprepared (the hub's ensure_data()
+        # prepares lazily), so a moved data source cannot wreck session
+        # entry. Any failure enters the hub unbound, exactly as before.
+        options_file <- restore_last_options_file(
+          bind_session_options,
+          options_dir = options_dir
+        )
+      }
+
       return(run_session_hub(
         df = initial_df,
         options_file = options_file,
@@ -234,31 +282,7 @@ artma <- function(
         # nests inside the session frame the first prepare opened, which the
         # on.exit above closes together with everything above it.
         rebuild_data = prepare_into_session,
-        bind_options = function(file_name) {
-          box::use(artma / options / migrate[migrate_legacy_options])
-          migrate_legacy_options(
-            options_file_name = file_name,
-            options_dir = options_dir
-          )
-          # The same outdated-file repair offer the linear path makes before
-          # loading, now following the file the user picked.
-          offer_options_fix( # nolint: box_usage_linter. # Package function from R/aaa.R
-            options_file_name = file_name,
-            options_dir = options_dir
-          )
-          loaded <- options_load( # nolint: box_usage_linter. # Package function from R/options.R
-            options_file_name = file_name,
-            options_dir = options_dir,
-            should_validate = TRUE,
-            should_add_temp_options = TRUE
-          )
-          # Applied with base options(), not withr::local_options(): the new
-          # values must outlive this call and govern the rest of the hub
-          # session. runtime_setup()'s own local_options frame still restores
-          # the caller's options when artma() returns.
-          options(loaded)
-          invisible(TRUE)
-        },
+        bind_options = bind_session_options,
         file_actions = default_file_actions(options_dir = options_dir)
       ))
     }
@@ -283,6 +307,64 @@ artma <- function(
     allow_unbound = interactive() && is.null(methods),
     FUN = main
   )
+}
+
+#' @title Restore the last used options file for a hub session
+#' @description Entry step of an interactive `artma()` call that named no
+#'   options file: read the last-used marker and, when it names an options
+#'   file that still exists, bind the session to it through the same handler
+#'   the hub's options-file menu uses. Any failure (no marker, the file is
+#'   gone, the load errors) reports one info line and returns `NULL`, leaving
+#'   the session to enter unbound exactly as it would without the marker. A
+#'   marker naming a file that no longer exists is cleared; a load error keeps
+#'   it, since the file may load fine next time.
+#' @param bind_options *\[function\]* Called with the remembered file name;
+#'   must load that file's options for the session.
+#' @param options_dir *\[character, optional\]* Directory containing the
+#'   options files. If `NULL`, uses the default options directory.
+#' @return *\[character, optional\]* The restored options file name, or `NULL`
+#'   when the session should enter unbound.
+#' @keywords internal
+restore_last_options_file <- function(bind_options, options_dir = NULL) {
+  box::use(
+    artma / options / files[options_file_path, resolve_options_dir],
+    artma / options / last_used[clear_last_used_file, read_last_used_file]
+  )
+
+  remembered <- read_last_used_file(options_dir = options_dir)
+  if (is.null(remembered)) {
+    return(NULL)
+  }
+
+  resolved_dir <- resolve_options_dir(options_dir, must_exist = FALSE)
+  if (!file.exists(options_file_path(resolved_dir, remembered))) {
+    cli::cli_alert_info(
+      "The last used options file {.file {remembered}} no longer exists; starting without one."
+    )
+    clear_last_used_file(options_dir = options_dir)
+    return(NULL)
+  }
+
+  restored <- tryCatch(
+    {
+      bind_options(remembered)
+      TRUE
+    },
+    error = function(e) {
+      cli::cli_alert_info(
+        "Could not resume on {.file {remembered}} ({conditionMessage(e)}); starting without an options file."
+      )
+      FALSE
+    }
+  )
+  if (!isTRUE(restored)) {
+    return(NULL)
+  }
+
+  cli::cli_alert_success(
+    "Resuming on {.file {remembered}} (pick {.strong Options file} to switch)."
+  )
+  remembered
 }
 
 #' @title Prepare a run

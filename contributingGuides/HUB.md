@@ -15,6 +15,9 @@ stays linear and unchanged:
 - Non-interactive sessions never see the hub (nor any prompt).
 - The CLI is unaffected.
 
+A call that names no options file tries to resume the last used one before
+opening the menu; see "Resuming the last used file" below.
+
 The hub itself is not gated by `should_prompt_user()`: it is the interactive
 experience the user asked for by calling `artma()` without methods. Autonomy
 keeps governing the prompts inside the flows the hub launches (column mapping,
@@ -24,10 +27,37 @@ package installs, and so on).
 
 A hub session is **bound** when an options file is loaded and **unbound** when
 none is. `artma(options = "x.yaml")` enters bound, with its data already
-prepared; `artma()` with no options file enters unbound, with `df = NULL` and
-no options file behind it. Choosing the file is a menu item rather than a gate
-in front of the menu, so the user can create, repair, compare or delete files
-before committing to one.
+prepared; `artma()` with no options file first tries to resume the last used
+one (see below) and enters unbound, with `df = NULL` and no options file
+behind it, when that yields nothing. Choosing the file is a menu item rather
+than a gate in front of the menu, so the user can create, repair, compare or
+delete files before committing to one.
+
+### Resuming the last used file
+
+Every successful bind writes the options file's name into a
+`.last_options_file` marker inside the options directory (next to the
+`.welcome_shown` flag, so it is per-directory automatically): the menu's
+`bind()` helper writes it through `file_actions$remember_last_used`, and the
+linear path (`artma(options = "x.yaml")`, or a prompted pick) writes it at the
+top of `main()` in `R/artma.R`. The marker helpers live in
+`inst/artma/options/last_used.R` and tolerate a missing or unreadable marker.
+
+A bare interactive `artma()` call reads the marker back
+(`restore_last_options_file()` in `R/artma.R`, inside the `runtime_setup()`
+extent so the loaded options apply the way a mid-session bind does). When the
+marker names an existing file, the session enters bound to it with a one-line
+notice ("Resuming on <file>"); its options are loaded eagerly but its data is
+not prepared: `ensure_data()` prepares lazily on first need, so a moved data
+source cannot wreck session entry. On any failure (no marker, the file is
+gone, the load errors) one info line is printed and the session enters unbound
+exactly as before; a marker naming a file that no longer exists is cleared,
+while a load error keeps it. An explicit `options` argument never consults the
+marker.
+
+Deleting options files through the menu prunes the marker
+(`file_actions$prune_last_used`): a marker naming a deleted file is cleared,
+whether or not that file was the one the session ran on.
 
 Unbound is not a stripped-down mode with its own rules; it is the ordinary
 state minus the items that need data:
@@ -207,8 +237,10 @@ Exiting before any run returns an empty list with an empty `runs` attribute.
   (the lazy preparation), `edit_option` / `save_preference` (the
   adjust-options prompts), `view_data`, `open_results`, `render_report`,
   `methods_table` (the picker frame), `template_path`, `bind_options` /
-  `file_actions` / `options_file` (the options-file menu), `set_theme` /
-  `set_autonomy` (settings), and `show_options_help` / `open_url` (help).
+  `file_actions` / `options_file` (the options-file menu; `file_actions` also
+  carries `remember_last_used` / `prune_last_used`, the last-used-marker
+  maintenance), `set_theme` / `set_autonomy` (settings), and
+  `show_options_help` / `open_url` (help).
   `tests/testthat/test-session-hub.R` and
   `tests/testthat/test-options-file-menu.R` show the scripted-backend
   pattern.

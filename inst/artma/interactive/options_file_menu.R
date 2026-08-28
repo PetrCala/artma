@@ -14,7 +14,8 @@ box::use(
   artma / const[CONST],
   artma / interactive / input[ask_select, ask_yes_no],
   artma / interactive / menu[compose_menu_choices, menu_item],
-  artma / libs / core / validation[validate]
+  artma / libs / core / validation[validate],
+  artma / options / last_used[prune_last_used_file, write_last_used_file]
 )
 
 # Sentinels for the picker entries that are not options file names; no real
@@ -24,12 +25,20 @@ CREATE_VALUE <- "__create__"
 
 #' @title The file-management actions the menu delegates to
 #' @description The public options API, pre-bound to the session's options
-#'   directory. Injectable as a whole so tests never reach the real files.
+#'   directory, plus the last-used marker maintenance (`remember_last_used`,
+#'   `prune_last_used`). Injectable as a whole so tests never reach the real
+#'   files.
 #' @param options_dir *\[character, optional\]* Directory holding the options
 #'   files. `NULL` uses the package default.
 #' @return *\[list\]* One function per management action.
 default_file_actions <- function(options_dir = NULL) {
   list(
+    remember_last_used = function(file_name) {
+      write_last_used_file(file_name, options_dir = options_dir)
+    },
+    prune_last_used = function(existing_files) {
+      prune_last_used_file(existing_files, options_dir = options_dir)
+    },
     list = function() artma::options_list(options_dir = options_dir, details = TRUE),
     create = function() artma::options_create(options_dir = options_dir),
     duplicate = function() artma::options_copy(options_dir = options_dir),
@@ -279,6 +288,11 @@ run_options_file_menu <- function(
     }
     state$file <- file_name
     state$changed <- TRUE
+    # Every successful bind is remembered, so the next bare artma() call can
+    # resume on the file the user last ran.
+    if (is.function(actions$remember_last_used)) {
+      actions$remember_last_used(file_name)
+    }
     if (isTRUE(reloaded)) {
       cli::cli_alert_success("Reloaded {.file {file_name}}.")
     } else {
@@ -394,6 +408,12 @@ run_options_file_menu <- function(
     if (identical(action, "delete")) {
       attempt("Deleting options files", actions$delete)
       remaining <- list_files()
+      # A deleted file must not be resumed next session, whether or not it was
+      # the one this session ran on. Skipped when the listing itself failed:
+      # the files may all still exist.
+      if (!is.null(remaining) && is.function(actions$prune_last_used)) {
+        actions$prune_last_used(remaining$file)
+      }
       if (!is.null(state$file) && !is.null(remaining) && !(state$file %in% remaining$file)) {
         cli::cli_alert_info(
           "{.file {state$file}} is gone; select or create an options file before running anything."

@@ -271,6 +271,114 @@ test_that("deleting the loaded file leaves the session unbound", {
   expect_true(any(grepl("select or create an options file", messages)))
 })
 
+test_that("binding a file records it as the last used one", {
+  box::use(artma / options / last_used[read_last_used_file, write_last_used_file])
+  dir <- withr::local_tempdir()
+
+  suppressMessages(run_options_file_menu(
+    bind_options = function(file_name) invisible(TRUE),
+    current_file = NULL,
+    select_fn = make_select_fn(c("Select a file", "b.yaml")),
+    file_actions = file_actions(list(
+      remember_last_used = function(file_name) {
+        write_last_used_file(file_name, options_dir = dir)
+      }
+    )),
+    width = 100
+  ))
+
+  expect_equal(read_last_used_file(options_dir = dir), "b.yaml")
+})
+
+test_that("a failed bind leaves the last-used marker untouched", {
+  suppressMessages(run_options_file_menu(
+    bind_options = function(file_name) stop("unreadable"),
+    current_file = NULL,
+    select_fn = make_select_fn(c("Select a file", "b.yaml", "Back", "Back")),
+    file_actions = file_actions(list(
+      remember_last_used = abort_if_called("remember_last_used")
+    )),
+    width = 100
+  ))
+
+  testthat::succeed()
+})
+
+test_that("deleting the file the marker names clears the marker", {
+  box::use(artma / options / last_used[
+    prune_last_used_file, read_last_used_file, write_last_used_file
+  ])
+  dir <- withr::local_tempdir()
+  write_last_used_file("a.yaml", options_dir = dir)
+  remaining <- c("a.yaml", "b.yaml")
+
+  suppressMessages(run_options_file_menu(
+    bind_options = abort_if_called("bind_options"),
+    current_file = "a.yaml",
+    select_fn = make_select_fn("Delete files"),
+    file_actions = list(
+      list = function() details_frame(remaining),
+      delete = function() remaining <<- "b.yaml",
+      prune_last_used = function(existing_files) {
+        prune_last_used_file(existing_files, options_dir = dir)
+      }
+    ),
+    width = 100
+  ))
+
+  expect_null(read_last_used_file(options_dir = dir))
+})
+
+test_that("deleting a non-current file the marker names clears the marker too", {
+  box::use(artma / options / last_used[
+    prune_last_used_file, read_last_used_file, write_last_used_file
+  ])
+  dir <- withr::local_tempdir()
+  write_last_used_file("b.yaml", options_dir = dir)
+  remaining <- c("a.yaml", "b.yaml")
+
+  suppressMessages(run_options_file_menu(
+    bind_options = abort_if_called("bind_options"),
+    current_file = "a.yaml",
+    select_fn = make_select_fn(c("Delete files", "Back")),
+    file_actions = list(
+      list = function() details_frame(remaining),
+      delete = function() remaining <<- "a.yaml",
+      prune_last_used = function(existing_files) {
+        prune_last_used_file(existing_files, options_dir = dir)
+      }
+    ),
+    width = 100
+  ))
+
+  expect_null(read_last_used_file(options_dir = dir))
+})
+
+test_that("deleting unrelated files keeps the marker", {
+  box::use(artma / options / last_used[
+    prune_last_used_file, read_last_used_file, write_last_used_file
+  ])
+  dir <- withr::local_tempdir()
+  write_last_used_file("a.yaml", options_dir = dir)
+  remaining <- c("a.yaml", "b.yaml")
+
+  suppressMessages(run_options_file_menu(
+    bind_options = abort_if_called("bind_options"),
+    current_file = "a.yaml",
+    select_fn = make_select_fn(c("Delete files", "Back")),
+    file_actions = list(
+      list = function() details_frame(remaining),
+      delete = function() remaining <<- "a.yaml",
+      prune_last_used = function(existing_files) {
+        prune_last_used_file(existing_files, options_dir = dir)
+      }
+    ),
+    width = 100
+  ))
+
+  expect_equal(read_last_used_file(options_dir = dir), "a.yaml")
+})
+
 test_that("deleting other files keeps the session on its own", {
   remaining <- c("a.yaml", "b.yaml")
 
