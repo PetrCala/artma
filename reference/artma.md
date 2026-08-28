@@ -39,8 +39,9 @@ artma(
 - options:
 
   *\[character, optional\]* Name of the options file (with or without
-  `.yaml` extension) to use. If `NULL` and running interactively, you
-  will be prompted to create or select an options file.
+  `.yaml` extension) to use. If `NULL` and running interactively, the
+  session hub opens without one and its "Options file" item is where you
+  select or create the file the session runs on.
 
 - options_dir:
 
@@ -73,8 +74,8 @@ run) and keeps the latest result per method across the session's runs.
 The `artma()` function is the primary way to interact with the artma
 package. It handles the complete workflow:
 
-1.  **Options Loading**: Loads configuration from an options file (or
-    prompts for creation in interactive mode)
+1.  **Options Loading**: Loads configuration from an options file (in
+    the session hub, from the "Options file" menu item)
 
 2.  **Data Preparation**: Reads and prepares your data (unless `data` is
     provided)

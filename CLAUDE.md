@@ -183,8 +183,12 @@ Interactive
 [`artma()`](https://petrcala.github.io/artma/reference/artma.md) calls
 without `methods` enter a menu loop (`inst/artma/interactive/hub.R`)
 that runs the pipeline steps repeatedly and returns the accumulated
-results; scripted paths stay linear. Entry conditions, items, return
-contract, and extension points:
+results; scripted paths stay linear. A call that names no options file
+enters *unbound*: the hub runs on template defaults, offers picking or
+managing the options file as its first menu item
+(`inst/artma/interactive/options_file_menu.R`), and prepares data lazily
+once a file is loaded. Entry conditions, the bound/unbound state, items,
+return contract, and extension points:
 [contributingGuides/HUB.md](https://petrcala.github.io/artma/contributingGuides/HUB.md).
 
 ### Autonomy System

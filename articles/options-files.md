@@ -203,13 +203,14 @@ Temporary file settings (runtime only, not stored)
 
 ### Interactive Creation
 
-The easiest way to create an options file is interactively. When you run
-an artma function without specifying an options file, you’ll be prompted
-to create one:
+The easiest way to create an options file is interactively. Calling
+[`artma()`](https://petrcala.github.io/artma/reference/artma.md) without
+one opens the session hub with no options file loaded; its **Options
+file** item is where you select an existing file or create a new one:
 
 ``` r
 
-# This will prompt you to create an options file
+# Opens the session hub; pick "Options file" to select or create one
 artma::artma()
 ```
 

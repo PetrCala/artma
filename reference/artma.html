@@ -82,8 +82,9 @@ methods, previewing data, and opening results across repeated runs. See
 
 <dt id="arg-options">options<a class="anchor" aria-label="anchor" href="#arg-options"></a></dt>
 <dd><p><em>[character, optional]</em> Name of the options file (with or without
-<code>.yaml</code> extension) to use. If <code>NULL</code> and running interactively, you will be
-prompted to create or select an options file.</p></dd>
+<code>.yaml</code> extension) to use. If <code>NULL</code> and running interactively, the session
+hub opens without one and its "Options file" item is where you select or
+create the file the session runs on.</p></dd>
 
 
 <dt id="arg-options-dir">options_dir<a class="anchor" aria-label="anchor" href="#arg-options-dir"></a></dt>
@@ -115,8 +116,8 @@ method across the session's runs.</p>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The <code>artma()</code> function is the primary way to interact with the artma package.
-It handles the complete workflow:</p><ol><li><p><strong>Options Loading</strong>: Loads configuration from an options file (or prompts for
-creation in interactive mode)</p></li>
+It handles the complete workflow:</p><ol><li><p><strong>Options Loading</strong>: Loads configuration from an options file (in the
+session hub, from the "Options file" menu item)</p></li>
 <li><p><strong>Data Preparation</strong>: Reads and prepares your data (unless <code>data</code> is provided)</p></li>
 <li><p><strong>Method Execution</strong>: Runs the specified analytical methods on your data</p></li>
 <li><p><strong>Results</strong>: Returns a structured list of results</p></li>

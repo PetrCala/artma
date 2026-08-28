@@ -149,7 +149,7 @@
 </div>
 <div class="section level3">
 <h3 id="session-hub">Session Hub<a class="anchor" aria-label="anchor" href="#session-hub"></a></h3>
-<p>Interactive <code><a href="reference/artma.html">artma()</a></code> calls without <code>methods</code> enter a menu loop (<code>inst/artma/interactive/hub.R</code>) that runs the pipeline steps repeatedly and returns the accumulated results; scripted paths stay linear. Entry conditions, items, return contract, and extension points: <a href="contributingGuides/HUB.html">contributingGuides/HUB.md</a>.</p>
+<p>Interactive <code><a href="reference/artma.html">artma()</a></code> calls without <code>methods</code> enter a menu loop (<code>inst/artma/interactive/hub.R</code>) that runs the pipeline steps repeatedly and returns the accumulated results; scripted paths stay linear. A call that names no options file enters <em>unbound</em>: the hub runs on template defaults, offers picking or managing the options file as its first menu item (<code>inst/artma/interactive/options_file_menu.R</code>), and prepares data lazily once a file is loaded. Entry conditions, the bound/unbound state, items, return contract, and extension points: <a href="contributingGuides/HUB.html">contributingGuides/HUB.md</a>.</p>
 </div>
 <div class="section level3">
 <h3 id="autonomy-system">Autonomy System<a class="anchor" aria-label="anchor" href="#autonomy-system"></a></h3>

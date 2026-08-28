@@ -84,23 +84,25 @@ meta-analysis needs.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/PetrCala/artma" class="external-link">artma</a></span><span class="op">)</span></span>
 <span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/artma.html">artma</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>When you run this in an interactive R session, artma will:</p>
+<p>In an interactive R session this opens the <strong>session
+hub</strong>, a menu you stay in for as long as you like. From it
+you:</p>
 <ol style="list-style-type: decimal">
 <li>
-<strong>Guide you through creating an options file</strong> - This
-stores all your analysis settings</li>
+<strong>Pick or create an options file</strong> - “Options file” is
+the first item, and the file stores all your analysis settings</li>
 <li>
-<strong>Help you load your data</strong> - You’ll specify where your
-dataset is located</li>
+<strong>Load your data</strong> - the file says where your dataset
+lives, and artma prepares it as soon as the file is loaded</li>
 <li>
-<strong>Map your columns</strong> - artma will recognize common
-column names or let you specify them</li>
+<strong>Map your columns</strong> - artma recognizes common column
+names, or asks you</li>
 <li>
-<strong>Let you choose methods</strong> - Select which analyses you
-want to run</li>
+<strong>Choose methods</strong> - “Run methods” lists what your data
+supports</li>
 <li>
-<strong>Run your analysis</strong> - Execute everything and return
-results</li>
+<strong>Run, adjust, run again</strong> - results accumulate across
+runs and are returned when you exit the hub</li>
 </ol>
 <p>If you want artma to open the results folder for you at the end of a
 run, set <code>open_results = TRUE</code>. You can always access your
@@ -213,12 +215,13 @@ call. For a full description of every method, see the <a href="methods-overview.
 <span><span class="co"># Step 3: Explore results</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>  <span class="co"># See which methods ran</span></span>
 <span><span class="va">results</span><span class="op">$</span><span class="va">effect_summary_stats</span>  <span class="co"># Access specific results</span></span></code></pre></div>
-<p>During the interactive session, you’ll be guided through:</p>
+<p>During the interactive session, the hub menu lets you:</p>
 <ul>
-<li>Creating or selecting an options file</li>
-<li>Specifying your data file path</li>
-<li>Mapping column names (artma tries to auto-detect these)</li>
-<li>Choosing which methods to run</li>
+<li>Select or create an options file (and edit, duplicate or delete the
+ones you have)</li>
+<li>Specify your data file path</li>
+<li>Map column names (artma tries to auto-detect these)</li>
+<li>Choose which methods to run, as many times as you like</li>
 </ul>
 </div>
 <div class="section level3">

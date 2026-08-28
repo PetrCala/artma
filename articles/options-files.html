@@ -400,11 +400,12 @@ numeric output</li>
 <div class="section level3">
 <h3 id="interactive-creation">Interactive Creation<a class="anchor" aria-label="anchor" href="#interactive-creation"></a>
 </h3>
-<p>The easiest way to create an options file is interactively. When you
-run an artma function without specifying an options file, you’ll be
-prompted to create one:</p>
+<p>The easiest way to create an options file is interactively. Calling
+<code><a href="../reference/artma.html">artma()</a></code> without one opens the session hub with no options
+file loaded; its <strong>Options file</strong> item is where you select
+an existing file or create a new one:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># This will prompt you to create an options file</span></span>
+<code class="sourceCode R"><span><span class="co"># Opens the session hub; pick "Options file" to select or create one</span></span>
 <span><span class="fu">artma</span><span class="fu">::</span><span class="fu"><a href="../reference/artma.html">artma</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>You can also create one explicitly:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
