@@ -195,7 +195,7 @@ test_that("resolve_worker_count stays sequential when a fork cannot draw", {
     resolve_worker_count(
       4L,
       is_interactive = FALSE, os_type = "unix", n_cores = 8L,
-      max_workers = Inf, graphics_fork_safe = FALSE
+      max_workers = Inf, graphics_fork_safe = FALSE, blas_fork_safe = TRUE
     ),
     1L
   )
@@ -203,7 +203,7 @@ test_that("resolve_worker_count stays sequential when a fork cannot draw", {
     resolve_worker_count(
       4L,
       is_interactive = FALSE, os_type = "unix", n_cores = 8L,
-      max_workers = Inf, graphics_fork_safe = TRUE
+      max_workers = Inf, graphics_fork_safe = TRUE, blas_fork_safe = TRUE
     ),
     4L
   )
@@ -245,7 +245,7 @@ test_that("resolve_worker_count ignores fork-unsafe graphics when not exporting"
     resolve_worker_count(
       4L,
       is_interactive = FALSE, os_type = "unix", n_cores = 8L,
-      max_workers = Inf, graphics_fork_safe = FALSE
+      max_workers = Inf, graphics_fork_safe = FALSE, blas_fork_safe = TRUE
     ),
     4L
   )
@@ -312,4 +312,60 @@ test_that("a forked worker previewing a plot survives", {
     expect_null(outcome$error)
   }
   expect_equal(vapply(outcomes, function(o) o$value, character(1)), c("first", "second"))
+})
+
+test_that("blas_threading_fork_hostile flags an OpenMP-linked BLAS", {
+  box::use(artma / visualization / fork_safety[blas_threading_fork_hostile])
+
+  linked_to_gomp <- function(path) {
+    c("/fake/libopenblas.so:", "\tlibgomp.so.1 => /usr/lib/libgomp.so.1")
+  }
+  linked_to_pthread_only <- function(path) {
+    c("/fake/libopenblas.so:", "\tlibpthread.so.0 => /usr/lib/libpthread.so.0")
+  }
+
+  expect_true(blas_threading_fork_hostile(
+    blas = "/fake/libopenblas.so", lapack = "",
+    list_linked = linked_to_gomp, omp_threads_env = ""
+  ))
+  expect_false(blas_threading_fork_hostile(
+    blas = "/fake/libopenblas.so", lapack = "",
+    list_linked = linked_to_pthread_only, omp_threads_env = ""
+  ))
+})
+
+test_that("blas_threading_fork_hostile flags Accelerate and honours OMP_NUM_THREADS=1", {
+  box::use(artma / visualization / fork_safety[blas_threading_fork_hostile])
+
+  never_called <- function(path) stop("linkage must not be inspected")
+
+  # Accelerate/vecLib dispatches through GCD; the path alone settles it.
+  expect_true(blas_threading_fork_hostile(
+    blas = "/System/Library/Frameworks/Accelerate.framework/Versions/A/libBLAS.dylib",
+    lapack = "", list_linked = never_called, omp_threads_env = ""
+  ))
+
+  # A runtime capped to one thread from process start never spawns the pool.
+  expect_false(blas_threading_fork_hostile(
+    blas = "/fake/libopenblas.so", lapack = "",
+    list_linked = never_called, omp_threads_env = "1"
+  ))
+})
+
+test_that("blas_threading_fork_hostile treats the bundled reference BLAS as safe", {
+  box::use(artma / visualization / fork_safety[blas_threading_fork_hostile])
+
+  expect_false(blas_threading_fork_hostile(
+    blas = "", lapack = "",
+    list_linked = function(path) stop("linkage must not be inspected"),
+    omp_threads_env = ""
+  ))
+})
+
+test_that("blas_survives_fork caches a logical probe result", {
+  box::use(artma / visualization / fork_safety[blas_survives_fork])
+
+  first <- blas_survives_fork(refresh = TRUE)
+  expect_true(is.logical(first) && length(first) == 1L)
+  expect_equal(blas_survives_fork(), first)
 })

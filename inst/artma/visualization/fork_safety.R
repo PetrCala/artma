@@ -128,19 +128,125 @@ use_fork_safe_png_device <- function() {
   in_forked_worker() && graphics_fork_is_hostile() && fork_safe_png_available()
 }
 
+#' @title Cached result of the BLAS threading probe
+#' @keywords internal
+blas_probe <- new.env(parent = emptyenv())
+
+#' @title Shared libraries a binary links against
+#' @description
+#' Read the dynamic-link table of a shared object (`otool -L` on macOS, `ldd`
+#' elsewhere). Used to find out which threading runtime the BLAS in use drives
+#' its worker pool with. Any failure, including the tool being absent, returns
+#' an empty vector so callers degrade to "nothing detected".
+#' @param path *\[character\]* Path of the shared object to inspect.
+#' @param sysname *\[character, optional\]* Platform name. Injectable for
+#'   testing; defaults to `Sys.info()[["sysname"]]`.
+#' @return *\[character\]* The tool's output lines, or empty on failure.
+#' @keywords internal
+linked_shared_libraries <- function(path, sysname = NULL) {
+  sysname <- sysname %||% Sys.info()[["sysname"]]
+  tool <- if (identical(sysname, "Darwin")) "otool" else "ldd"
+  args <- if (identical(sysname, "Darwin")) c("-L", shQuote(path)) else shQuote(path)
+  tryCatch(
+    suppressWarnings(system2(tool, args, stdout = TRUE, stderr = TRUE)),
+    error = function(err) character()
+  )
+}
+
+#' @title Whether the BLAS in use makes forking unsafe
+#' @description
+#' `fork()` duplicates only the calling thread, so a BLAS that runs its worker
+#' pool on a threading runtime survives in the child with locks and barriers
+#' owned by threads that no longer exist. OpenMP runtimes (GNU libgomp above
+#' all) make no attempt to repair that state: the child's first threaded BLAS
+#' call waits forever on a barrier nobody will release. Apple's
+#' Accelerate/vecLib dispatches through GCD, which is equally fork-hostile.
+#' Neither can be reined in from R once initialised: `RhpcBLASctl` talks to
+#' whichever OpenMP runtime *it* was linked against, not necessarily the one
+#' the BLAS uses, so pinning threads via that route can silently do nothing.
+#'
+#' The pthread build of OpenBLAS is fine: it registers its own fork handler
+#' that parks the pool before every fork, and `with_single_threaded_blas()`
+#' genuinely pins it. R's bundled reference BLAS is single-threaded and safe.
+#'
+#' A runtime capped to one thread from process start (`OMP_NUM_THREADS=1` in
+#' the environment, e.g. via `~/.Renviron`) never spawns the pool, so the
+#' hazard never arises; that escape hatch is honoured first.
+#' @param blas *\[character, optional\]* Path of the BLAS in use. Injectable for
+#'   testing; defaults to `extSoftVersion()[["BLAS"]]`.
+#' @param lapack *\[character, optional\]* Path of the LAPACK in use. Injectable
+#'   for testing; defaults to `La_library()`.
+#' @param list_linked *\[function, optional\]* Linkage lister. Injectable for
+#'   testing; defaults to `linked_shared_libraries()`.
+#' @param omp_threads_env *\[character, optional\]* Value of `OMP_NUM_THREADS`.
+#'   Injectable for testing.
+#' @return *\[logical\]* `TRUE` when forking with this BLAS risks a deadlock.
+#' @keywords internal
+blas_threading_fork_hostile <- function(blas = NULL,
+                                        lapack = NULL,
+                                        list_linked = NULL,
+                                        omp_threads_env = NULL) {
+  omp_threads_env <- omp_threads_env %||% Sys.getenv("OMP_NUM_THREADS")
+  if (identical(trimws(omp_threads_env), "1")) {
+    return(FALSE)
+  }
+
+  blas <- blas %||% extSoftVersion()[["BLAS"]]
+  lapack <- lapack %||% tryCatch(La_library(), error = function(err) "")
+  paths <- unique(c(blas, lapack))
+  paths <- paths[!is.na(paths) & nzchar(paths)]
+  if (length(paths) == 0L) {
+    # R's bundled reference BLAS reports no external library; single-threaded.
+    return(FALSE)
+  }
+
+  if (any(grepl("veclib|accelerate", paths, ignore.case = TRUE))) {
+    return(TRUE)
+  }
+
+  list_linked <- list_linked %||% linked_shared_libraries
+  for (path in paths) {
+    linkage <- paste(list_linked(path), collapse = "\n")
+    if (grepl("libgomp|libomp|libiomp", linkage)) {
+      return(TRUE)
+    }
+  }
+
+  FALSE
+}
+
+#' @title Whether a forked worker can safely call into the BLAS
+#' @description
+#' Probes once per session and caches the answer; the probe shells out to the
+#' platform's linkage tool, so repeating it per layer would be wasteful.
+#' @param refresh *\[logical, optional\]* Re-run the probe instead of reusing the
+#'   cached answer. Injectable for testing.
+#' @return *\[logical\]* `TRUE` when the BLAS in use is fork-safe.
+#' @keywords internal
+blas_survives_fork <- function(refresh = FALSE) {
+  if (isTRUE(refresh) || is.null(blas_probe$ok)) {
+    blas_probe$ok <- !blas_threading_fork_hostile()
+  }
+  blas_probe$ok
+}
+
 #' @title Run an expression with BLAS/OpenMP pinned to one thread per process
 #' @description
-#' Forking while a multithreaded BLAS/OpenMP backend (OpenBLAS, Apple's
-#' Accelerate/vecLib) already has worker threads running is a well-known
-#' deadlock hazard: `fork()` duplicates only the calling thread, so a mutex
-#' another BLAS thread held at fork time is held forever in the child, which
-#' then hangs on its first BLAS call with no error. Even short of a deadlock,
-#' every forked worker would otherwise try to use every core for its own BLAS
-#' calls, oversubscribing the machine badly enough to look like a hang. Pins
-#' both to a single thread for the duration of `expr` and restores the
-#' previous count afterwards; a no-op when {RhpcBLASctl} is not installed,
-#' since without it there is no reliable way to reconfigure an
-#' already-initialised BLAS library from R.
+#' Forking while a multithreaded BLAS backend already has worker threads
+#' running is a well-known deadlock hazard: `fork()` duplicates only the
+#' calling thread, so a mutex another BLAS thread held at fork time is held
+#' forever in the child, which then hangs on its first BLAS call with no
+#' error. Even short of a deadlock, every forked worker would otherwise try
+#' to use every core for its own BLAS calls, oversubscribing the machine
+#' badly enough to look like a hang. Pins both to a single thread for the
+#' duration of `expr` and restores the previous count afterwards; a no-op
+#' when {RhpcBLASctl} is not installed, since without it there is no reliable
+#' way to reconfigure an already-initialised BLAS library from R.
+#'
+#' This only truly pins pthread-driven backends. An OpenMP-driven BLAS obeys
+#' whichever OpenMP runtime it was compiled against, which is not necessarily
+#' the one {RhpcBLASctl} reaches; that case is excluded from forking entirely
+#' by `blas_survives_fork()` rather than pinned here.
 #' @param expr *\[any\]* Expression to evaluate.
 #' @return The value of `expr`.
 #' @keywords internal
@@ -219,6 +325,8 @@ fork_safe_png_device <- function(filename, width, height, res = 150, ...) {
 
 box::export(
   FORKED_WORKER_OPTION,
+  blas_survives_fork,
+  blas_threading_fork_hostile,
   fork_safe_png_available,
   fork_safe_png_device,
   graphics_fork_is_hostile,

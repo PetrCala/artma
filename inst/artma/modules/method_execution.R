@@ -21,11 +21,13 @@ box::use(
   artma / libs / core / autonomy[get_autonomy_level, get_default_autonomy_level],
   artma / libs / core / utils[opt_or],
   artma / libs / core / validation[assert],
+  artma / libs / core / log[log_info],
   artma / libs / infrastructure / output_files[
     begin_output_file_capture, end_output_file_capture
   ],
   artma / visualization / fork_safety[
-    graphics_survive_fork, in_forked_worker, with_forked_worker_flag, with_single_threaded_blas
+    blas_survives_fork, graphics_survive_fork, in_forked_worker, with_forked_worker_flag,
+    with_single_threaded_blas
   ]
 )
 
@@ -97,14 +99,41 @@ max_parallel_workers <- function() {
   Inf
 }
 
+#' @title Tracks whether the BLAS sequential-fallback notice was shown
+#' @keywords internal
+blas_notice <- new.env(parent = emptyenv())
+
+#' @title Explain the BLAS sequential fallback, once per session
+#' @description
+#' A layer that would have forked but ran sequentially because of a
+#' fork-hostile BLAS looks like a silent slowdown; say why once, with the
+#' remedy. `OMP_NUM_THREADS=1` must be in place before the threading runtime
+#' initialises, hence the pointer at `~/.Renviron` rather than `Sys.setenv()`.
+#' @return `NULL`, invisibly.
+#' @keywords internal
+notify_blas_sequential_once <- function() {
+  if (isTRUE(blas_notice$shown)) {
+    return(invisible(NULL))
+  }
+  blas_notice$shown <- TRUE
+  log_info(paste0(
+    "Running methods sequentially: the BLAS library R is linked against ",
+    "drives its threads with a runtime that deadlocks forked workers. ",
+    "To run methods in parallel, put {.code OMP_NUM_THREADS=1} in ",
+    "{.file ~/.Renviron} and restart R."
+  ))
+  invisible(NULL)
+}
+
 #' @title Number of workers to use for a layer
 #' @description
 #' Decide how many forked workers a layer of `n_tasks` methods may use. Returns
 #' `1` (sequential execution) whenever forking is unavailable or unsafe:
 #' on Windows, on single-core machines, when the `artma.general.parallel`
 #' option is `FALSE`, when already running inside a forked worker (nested
-#' forking is unsafe), or in an interactive session whose autonomy level still
-#' allows methods to prompt (forked children cannot prompt).
+#' forking is unsafe), when the BLAS in use would deadlock a forked worker,
+#' or in an interactive session whose autonomy level still allows methods to
+#' prompt (forked children cannot prompt).
 #' @param n_tasks *\[integer\]* Number of methods in the layer.
 #' @param is_interactive *\[logical, optional\]* Whether the session is
 #'   interactive. Injectable for testing; defaults to `interactive()`.
@@ -117,13 +146,17 @@ max_parallel_workers <- function() {
 #' @param graphics_fork_safe *\[logical, optional\]* Whether a forked worker can
 #'   write a plot on this platform. Injectable for testing; defaults to
 #'   `graphics_survive_fork()`.
+#' @param blas_fork_safe *\[logical, optional\]* Whether the BLAS in use is safe
+#'   to call from a forked worker. Injectable for testing; defaults to
+#'   `blas_survives_fork()`.
 #' @return *\[integer\]* The number of workers, at least `1`.
 resolve_worker_count <- function(n_tasks,
                                  is_interactive = NULL,
                                  os_type = NULL,
                                  n_cores = NULL,
                                  max_workers = NULL,
-                                 graphics_fork_safe = NULL) {
+                                 graphics_fork_safe = NULL,
+                                 blas_fork_safe = NULL) {
   n_tasks <- as.integer(n_tasks)
   if (is.na(n_tasks) || n_tasks < 2L) {
     return(1L)
@@ -158,6 +191,16 @@ resolve_worker_count <- function(n_tasks,
   # rather than lose the methods that draw.
   graphics_fork_safe <- graphics_fork_safe %||% graphics_survive_fork()
   if (isTRUE(getOption("artma.visualization.export_graphics", TRUE)) && !isTRUE(graphics_fork_safe)) {
+    return(1L)
+  }
+
+  # A BLAS whose worker pool lives on a fork-hostile threading runtime (OpenMP
+  # builds of OpenBLAS, Accelerate) deadlocks a forked child on its first
+  # threaded call, and no R-level pin reliably prevents that. Run sequentially
+  # and say why, once.
+  blas_fork_safe <- blas_fork_safe %||% blas_survives_fork()
+  if (!isTRUE(blas_fork_safe)) {
+    notify_blas_sequential_once()
     return(1L)
   }
 

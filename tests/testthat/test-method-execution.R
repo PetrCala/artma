@@ -26,7 +26,8 @@ worker_count <- function(n_tasks, is_interactive = FALSE, os_type = "unix", n_co
     os_type = os_type,
     n_cores = n_cores,
     max_workers = Inf,
-    graphics_fork_safe = TRUE
+    graphics_fork_safe = TRUE,
+    blas_fork_safe = TRUE
   )
 }
 
@@ -131,6 +132,21 @@ test_that("resolve_worker_count stays sequential when methods may still prompt",
   expect_equal(worker_count(4L, is_interactive = TRUE, n_cores = 8L), 4L)
 })
 
+test_that("resolve_worker_count stays sequential when the BLAS is fork-hostile", {
+  box::use(artma / modules / method_execution[resolve_worker_count])
+
+  withr::local_options(list(artma.general.parallel = TRUE))
+
+  expect_equal(
+    resolve_worker_count(
+      4L,
+      is_interactive = FALSE, os_type = "unix", n_cores = 8L,
+      max_workers = Inf, graphics_fork_safe = TRUE, blas_fork_safe = FALSE
+    ),
+    1L
+  )
+})
+
 test_that("resolve_worker_count respects the environment's process ceiling", {
   box::use(artma / modules / method_execution[max_parallel_workers, resolve_worker_count])
 
@@ -142,7 +158,8 @@ test_that("resolve_worker_count respects the environment's process ceiling", {
   expect_equal(
     resolve_worker_count(
       8L,
-      is_interactive = FALSE, os_type = "unix", n_cores = 16L, graphics_fork_safe = TRUE
+      is_interactive = FALSE, os_type = "unix", n_cores = 16L,
+      graphics_fork_safe = TRUE, blas_fork_safe = TRUE
     ),
     2L
   )
@@ -154,7 +171,8 @@ test_that("resolve_worker_count respects the environment's process ceiling", {
   expect_equal(
     resolve_worker_count(
       8L,
-      is_interactive = FALSE, os_type = "unix", n_cores = 16L, graphics_fork_safe = TRUE
+      is_interactive = FALSE, os_type = "unix", n_cores = 16L,
+      graphics_fork_safe = TRUE, blas_fork_safe = TRUE
     ),
     3L
   )
