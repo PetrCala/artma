@@ -216,6 +216,100 @@ ask_for_file_to_load <- function(details, current_file, select_fn, width = NULL)
   if (rlang::is_empty(choice)) BACK_VALUE else choice
 }
 
+#' @title The unbound session's entry flow
+#' @description
+#' What an unbound hub session runs before its first menu pass, so a new user
+#' is not greeted by a menu whose only useful item is "pick a file". A true
+#' first-timer (no options files exist) drops straight into the guided create
+#' flow, and the freshly created file is bound immediately; when files exist
+#' the picker over them opens directly. Backing out of the picker, cancelling
+#' the create flow, or any failure falls back to the plain unbound menu.
+#' @param bind_options *\[function\]* Called with an options file name; must load
+#'   that file's options for the rest of the session.
+#' @param select_fn *\[function, optional\]* Menu backend.
+#' @param file_actions *\[list, optional\]* The management actions; see
+#'   `default_file_actions()`. Injectable for testing.
+#' @param width *\[numeric, optional\]* Console width for the menu labels.
+#' @return *\[list\]* `file` (the options file the session is bound to, `NULL`
+#'   when it stays unbound) and `changed` (whether a file was bound).
+run_unbound_entry <- function(
+  bind_options,
+  select_fn = climenu::select,
+  file_actions = NULL,
+  width = NULL
+) {
+  validate(
+    is.function(bind_options),
+    is.function(select_fn),
+    is.null(file_actions) || is.list(file_actions)
+  )
+  actions <- file_actions %||% default_file_actions()
+
+  unbound <- list(file = NULL, changed = FALSE)
+
+  details <- tryCatch(
+    actions$list(),
+    error = function(e) {
+      cli::cli_alert_warning("Could not list the options files: {conditionMessage(e)}")
+      NULL
+    }
+  )
+  n_files <- if (is.data.frame(details)) nrow(details) else 0L
+
+  bind <- function(file_name) {
+    ok <- tryCatch(
+      {
+        bind_options(file_name)
+        TRUE
+      },
+      error = function(e) {
+        cli::cli_alert_danger("Could not load {.file {file_name}}: {conditionMessage(e)}")
+        FALSE
+      }
+    )
+    if (!ok) {
+      return(unbound)
+    }
+    # An entry bind is remembered the way a menu bind is, so the next bare
+    # artma() call resumes on it.
+    if (is.function(actions$remember_last_used)) {
+      actions$remember_last_used(file_name)
+    }
+    cli::cli_alert_success("Now running on {.file {file_name}}.")
+    list(file = file_name, changed = TRUE)
+  }
+
+  create_and_bind <- function() {
+    file_name <- tryCatch(
+      actions$create(),
+      error = function(e) {
+        cli::cli_alert_warning("Creating an options file failed: {conditionMessage(e)}")
+        NULL
+      }
+    )
+    if (!is.character(file_name) || length(file_name) != 1L || is.na(file_name)) {
+      return(unbound)
+    }
+    bind(file_name)
+  }
+
+  # A true first-timer has nothing to pick from: creating the options file is
+  # the only way forward, so the guided create flow opens without a menu.
+  if (n_files == 0L) {
+    cli::cli_alert_info("No options files exist yet; let's create your first one.")
+    return(create_and_bind())
+  }
+
+  choice <- ask_for_file_to_load(details, current_file = NULL, select_fn = select_fn, width = width)
+  if (identical(choice, BACK_VALUE)) {
+    return(unbound)
+  }
+  if (identical(choice, CREATE_VALUE)) {
+    return(create_and_bind())
+  }
+  bind(choice)
+}
+
 #' @title Run the hub's options-file menu
 #' @description
 #' A loop over the file actions. It returns as soon as the session's options
@@ -431,5 +525,6 @@ box::export(
   default_file_actions,
   options_file_items,
   options_file_menu_items,
-  run_options_file_menu
+  run_options_file_menu,
+  run_unbound_entry
 )

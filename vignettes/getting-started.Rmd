@@ -23,8 +23,10 @@ results <- artma()
 In an interactive R session this opens the **session hub**, a menu you stay in
 for as long as you like. From it you:
 
-1. **Pick or create an options file** - "Options file" is the first item, and
-   the file stores all your analysis settings
+1. **Create or pick an options file** - on your very first run artma guides
+   you straight into creating one (the file stores all your analysis
+   settings); once files exist, a picker of them opens instead, and you can
+   always back out to the hub menu and decide later
 2. **Load your data** - the file says where your dataset lives, and artma
    prepares it as soon as the file is loaded
 3. **Map your columns** - artma recognizes common column names, or asks you
