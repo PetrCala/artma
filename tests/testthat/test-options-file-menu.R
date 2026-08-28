@@ -448,6 +448,21 @@ test_that("the unbound entry opens the picker when files exist", {
   expect_true(outcome$changed)
 })
 
+test_that("an entry bind records the file as the last used one", {
+  remembered <- character(0)
+
+  suppressMessages(run_unbound_entry(
+    bind_options = function(file_name) invisible(TRUE),
+    select_fn = make_select_fn("b.yaml"),
+    file_actions = file_actions(list(
+      remember_last_used = function(file_name) remembered <<- c(remembered, file_name)
+    )),
+    width = 100
+  ))
+
+  expect_equal(remembered, "b.yaml")
+})
+
 test_that("backing out of the entry picker leaves the session unbound", {
   outcome <- suppressMessages(run_unbound_entry(
     bind_options = abort_if_called("bind_options"),
