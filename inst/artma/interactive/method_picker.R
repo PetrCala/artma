@@ -9,20 +9,8 @@ NULL
 
 box::use(
   artma / interactive / input[ask_checkbox],
-  artma / libs / core / validation[assert, validate],
-  artma / modules / methods_table[pad_cell, truncate_cell]
+  artma / libs / core / validation[assert, validate]
 )
-
-# Width climenu spends in front of every entry: the cursor mark, the checkbox
-# mark, and the separating spaces.
-MENU_PREFIX_WIDTH <- 6L
-
-# Spaces between the name, description, and status columns of a label.
-COLUMN_GAP <- 2L
-
-# The description column never shrinks below this, even in a narrow console;
-# climenu truncates any overflowing line to the console width itself.
-MIN_DESCRIPTION_WIDTH <- 12L
 
 #' @title Preflight status markers for each method
 #' @description
@@ -50,50 +38,33 @@ method_status_markers <- function(methods_df) {
 
 #' @title Compose value-keyed picker choices from the method overview frame
 #' @description
-#' Build the named character vector `ask_checkbox()` consumes: names are the
-#' rendered labels (method name padded to a fixed column, description truncated
-#' to the remaining width, dim status markers appended), values are the plain
-#' method names, so the picker always returns names and never labels.
+#' Build the input `ask_checkbox()` consumes: the choices are the plain method
+#' names (labels and values alike, so the picker always returns names), and
+#' each description pairs the method description with its status markers.
+#' `climenu` owns the column alignment, truncation, and dim styling.
 #' @param methods_df *\[data.frame\]* A frame built by `build_methods_table()`.
-#' @param width *\[numeric, optional\]* Console width to fit the labels into.
-#'   Defaults to the detected console width.
-#' @return *\[character\]* Method names, named by their rendered labels.
-compose_method_choices <- function(methods_df, width = NULL) {
+#' @return *\[list\]* With `choices` (method names, named by themselves) and
+#'   `descriptions` (one entry per method).
+compose_method_choices <- function(methods_df) {
   assert(
     is.data.frame(methods_df) && nrow(methods_df) > 0L,
     "`methods_df` must be a data frame with at least one method."
   )
 
-  width <- width %||% cli::console_width()
-  available <- max(MIN_DESCRIPTION_WIDTH, width - MENU_PREFIX_WIDTH)
-
-  names <- methods_df$method
   descriptions <- methods_df$description
   descriptions[is.na(descriptions)] <- ""
   markers <- method_status_markers(methods_df)
-
-  name_width <- max(nchar(names))
-  marker_width <- max(nchar(markers))
-  description_width <- available - name_width - COLUMN_GAP
-  if (marker_width > 0L) {
-    description_width <- description_width - marker_width - COLUMN_GAP
-  }
-  description_width <- max(MIN_DESCRIPTION_WIDTH, description_width)
-
-  gap <- strrep(" ", COLUMN_GAP)
-  labels <- vapply(seq_along(names), function(i) {
-    label <- paste0(
-      pad_cell(names[[i]], name_width),
-      gap,
-      pad_cell(truncate_cell(descriptions[[i]], description_width), description_width)
-    )
-    if (nzchar(markers[[i]])) {
-      label <- paste0(label, gap, cli::col_grey(markers[[i]]))
+  described <- vapply(seq_along(markers), function(i) {
+    if (!nzchar(markers[[i]])) {
+      return(descriptions[[i]])
     }
-    trimws(label, which = "right")
+    trimws(paste(descriptions[[i]], paste0("[", markers[[i]], "]")))
   }, character(1))
 
-  stats::setNames(methods_df$method, labels)
+  list(
+    choices = stats::setNames(methods_df$method, methods_df$method),
+    descriptions = described
+  )
 }
 
 #' @title Ask which runtime methods to run
@@ -107,15 +78,12 @@ compose_method_choices <- function(methods_df, width = NULL) {
 #' @param default *\[character, optional\]* Method names to preselect, e.g. the
 #'   previous confirmed selection. Names not present in the frame are dropped.
 #'   Defaults to `NULL` (nothing preselected).
-#' @param width *\[numeric, optional\]* Console width to fit the labels into.
-#'   Defaults to the detected console width.
 #' @param checkbox_fn *\[function, optional\]* Menu backend passed through to
 #'   `ask_checkbox`. Defaults to `climenu::checkbox`. Exposed for testing.
 #' @return *\[character\]* The selected method names, or `character(0)`.
 ask_runtime_methods <- function(
   methods_df,
   default = NULL,
-  width = NULL,
   checkbox_fn = climenu::checkbox
 ) {
   validate(
@@ -123,7 +91,7 @@ ask_runtime_methods <- function(
     is.function(checkbox_fn)
   )
 
-  choices <- compose_method_choices(methods_df, width = width)
+  composed <- compose_method_choices(methods_df)
 
   default <- intersect(default, methods_df$method)
   if (length(default) == 0L) {
@@ -133,7 +101,8 @@ ask_runtime_methods <- function(
   ask_checkbox(
     question = "No runtime methods were provided. Select the methods to run:",
     hints = "Dim markers flag methods the run would skip: 'needs' lists absent data columns, 'install' lists absent packages; 'opt-in' methods are excluded from 'all'.",
-    choices = choices,
+    choices = composed$choices,
+    descriptions = composed$descriptions,
     default = default,
     allow_select_all = TRUE,
     checkbox_fn = checkbox_fn

@@ -105,22 +105,23 @@ ask_text <- function(
 #' @description Render a single-choice menu with the shared prompt layout:
 #'   optional dim hint lines, then the question and the `climenu` menu. When
 #'   `choices` is a named vector, the names are the labels shown in the menu and
-#'   the values are what gets returned. An empty selection (cancelled menu or
+#'   the values are what gets returned; `climenu` echoes the plain label and
+#'   hands the value back. An empty selection (cancelled menu or
 #'   non-interactive fallback of an injected `select_fn`) falls back to
 #'   `default` when one is given.
 #' @param question *\[character\]* A short question line shown directly above the menu.
-#' @param choices *\[character\]* Menu items. Names, when present, are the displayed labels; the corresponding values are returned.
+#' @param choices *\[character\]* Menu items. Names, when present, are the displayed labels; the corresponding values are returned. Labels stay plain: dim annotations belong in `descriptions`.
 #' @param hints *\[character, optional\]* Hint lines rendered dim above the question. May contain `cli` inline markup. Defaults to `NULL`.
 #' @param default *\[character, optional\]* Value (not label) returned on an empty selection and preselected in the menu. Must be one of `choices`. Defaults to `NULL`, in which case an empty selection returns `character(0)` and the caller decides what that means.
-#' @param confirm *\[logical, optional\]* Whether to confirm the mapped value after selection. The confirmation only prints when the value differs from the displayed label; `climenu` already echoes the label itself. Defaults to `TRUE`.
-#' @param select_fn *\[function, optional\]* Menu backend; receives `choices`, `prompt`, and `selected` and returns the selected label or an empty value. Defaults to `climenu::select`. Exposed for testing.
+#' @param descriptions *\[character, optional\]* One entry per choice, rendered dim after the label as an aligned column; display-only. Defaults to `NULL`.
+#' @param select_fn *\[function, optional\]* Menu backend; receives `choices` (the named vector), `prompt`, `selected`, and `descriptions` and returns the selected value or an empty value. Defaults to `climenu::select`. Exposed for testing.
 #' `character` The selected value, the default on an empty selection, or `character(0)` when there is no default to fall back to.
 ask_select <- function(
   question,
   choices,
   hints = NULL,
   default = NULL,
-  confirm = TRUE,
+  descriptions = NULL,
   select_fn = climenu::select
 ) {
   box::use(artma / libs / core / validation[validate])
@@ -141,19 +142,20 @@ ask_select <- function(
     all(nzchar(labels)),
     is.null(hints) || is.character(hints),
     is.null(default) || (length(default) == 1 && default %in% values),
-    is.logical(confirm),
+    is.null(descriptions) || (is.character(descriptions) && length(descriptions) == length(choices)),
     is.function(select_fn)
   )
 
   render_hints(hints)
 
-  selected_label <- select_fn(
-    choices = labels,
+  selected_value <- select_fn(
+    choices = choices,
     prompt = question,
-    selected = if (is.null(default)) NULL else match(default, values)
+    selected = if (is.null(default)) NULL else match(default, values),
+    descriptions = descriptions
   )
 
-  if (rlang::is_empty(selected_label)) {
+  if (rlang::is_empty(selected_value)) {
     if (is.null(default)) {
       return(character(0))
     }
@@ -161,11 +163,7 @@ ask_select <- function(
     return(default)
   }
 
-  selected_value <- values[[match(selected_label, labels)]]
-  if (confirm && !identical(selected_value, selected_label)) {
-    cli::cli_alert_success("Selected: {.strong {selected_value}}")
-  }
-  selected_value
+  unname(selected_value)
 }
 
 #' @title Ask to pick several items from a menu
@@ -176,11 +174,12 @@ ask_select <- function(
 #'   empty confirmation returns `character(0)`, leaving the decision to the
 #'   caller; unlike `ask_select`, `default` only preselects items.
 #' @param question *\[character\]* A short question line shown directly above the menu.
-#' @param choices *\[character\]* Menu items. Names, when present, are the displayed labels; the corresponding values are returned.
+#' @param choices *\[character\]* Menu items. Names, when present, are the displayed labels; the corresponding values are returned. Labels stay plain: dim annotations belong in `descriptions`.
 #' @param hints *\[character, optional\]* Hint lines rendered dim above the question. May contain `cli` inline markup. Defaults to `NULL`.
 #' @param default *\[character, optional\]* Values (not labels) preselected in the menu. Must all be among `choices`. Defaults to `NULL` (nothing preselected).
 #' @param allow_select_all *\[logical, optional\]* Whether the menu offers a "Select all" toggle. Defaults to `FALSE`.
-#' @param checkbox_fn *\[function, optional\]* Menu backend; receives `choices`, `prompt`, `selected`, and `allow_select_all` and returns the selected labels or an empty value. Defaults to `climenu::checkbox`. Exposed for testing.
+#' @param descriptions *\[character, optional\]* One entry per choice, rendered dim after the label as an aligned column; display-only. Defaults to `NULL`.
+#' @param checkbox_fn *\[function, optional\]* Menu backend; receives `choices` (the named vector), `prompt`, `selected`, `allow_select_all`, and `descriptions` and returns the selected values or an empty value. Defaults to `climenu::checkbox`. Exposed for testing.
 #' @return `character` The selected values in menu order, or `character(0)` when nothing was confirmed.
 ask_checkbox <- function(
   question,
@@ -188,6 +187,7 @@ ask_checkbox <- function(
   hints = NULL,
   default = NULL,
   allow_select_all = FALSE,
+  descriptions = NULL,
   checkbox_fn = climenu::checkbox
 ) {
   box::use(artma / libs / core / validation[validate])
@@ -210,23 +210,25 @@ ask_checkbox <- function(
     is.null(hints) || is.character(hints),
     is.null(default) || (is.character(default) && all(default %in% values)),
     is.logical(allow_select_all) && length(allow_select_all) == 1 && !is.na(allow_select_all),
+    is.null(descriptions) || (is.character(descriptions) && length(descriptions) == length(choices)),
     is.function(checkbox_fn)
   )
 
   render_hints(hints)
 
-  selected_labels <- checkbox_fn(
-    choices = labels,
+  selected_values <- checkbox_fn(
+    choices = choices,
     prompt = question,
     selected = if (is.null(default)) NULL else match(default, values),
-    allow_select_all = allow_select_all
+    allow_select_all = allow_select_all,
+    descriptions = descriptions
   )
 
-  if (rlang::is_empty(selected_labels)) {
+  if (rlang::is_empty(selected_values)) {
     return(character(0))
   }
 
-  values[match(selected_labels, labels)]
+  unname(selected_values)
 }
 
 #' @title Ask a yes/no question
@@ -256,7 +258,6 @@ ask_yes_no <- function(
     choices = c("Yes" = "yes", "No" = "no"),
     hints = hints,
     default = if (default) "yes" else "no",
-    confirm = FALSE,
     select_fn = select_fn
   )
 

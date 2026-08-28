@@ -181,9 +181,8 @@ options_file_menu_items <- function(current_file = NULL, n_files = 0L) {
 #' @param details *\[data.frame\]* An `options_list(details = TRUE)` frame.
 #' @param current_file *\[character, optional\]* The session's options file.
 #' @param select_fn *\[function\]* Menu backend.
-#' @param width *\[numeric, optional\]* Console width for the menu labels.
 #' @return *\[character\]* The chosen file name, `CREATE_VALUE`, or `BACK_VALUE`.
-ask_for_file_to_load <- function(details, current_file, select_fn, width = NULL) {
+ask_for_file_to_load <- function(details, current_file, select_fn) {
   items <- c(
     options_file_items(details, current_file = current_file),
     list(
@@ -203,14 +202,15 @@ ask_for_file_to_load <- function(details, current_file, select_fn, width = NULL)
       )
     )
   )
+  files_menu <- compose_menu_choices(items)
   choice <- ask_select(
     question = if (is.null(current_file)) {
       "Which options file should this session run on?"
     } else {
       "Switch to which options file?"
     },
-    choices = compose_menu_choices(items, width = width),
-    confirm = FALSE,
+    choices = files_menu$choices,
+    descriptions = files_menu$descriptions,
     select_fn = select_fn
   )
   if (rlang::is_empty(choice)) BACK_VALUE else choice
@@ -229,14 +229,12 @@ ask_for_file_to_load <- function(details, current_file, select_fn, width = NULL)
 #' @param select_fn *\[function, optional\]* Menu backend.
 #' @param file_actions *\[list, optional\]* The management actions; see
 #'   `default_file_actions()`. Injectable for testing.
-#' @param width *\[numeric, optional\]* Console width for the menu labels.
 #' @return *\[list\]* `file` (the options file the session is bound to, `NULL`
 #'   when it stays unbound) and `changed` (whether a file was bound).
 run_unbound_entry <- function(
   bind_options,
   select_fn = climenu::select,
-  file_actions = NULL,
-  width = NULL
+  file_actions = NULL
 ) {
   validate(
     is.function(bind_options),
@@ -300,7 +298,7 @@ run_unbound_entry <- function(
     return(create_and_bind())
   }
 
-  choice <- ask_for_file_to_load(details, current_file = NULL, select_fn = select_fn, width = width)
+  choice <- ask_for_file_to_load(details, current_file = NULL, select_fn = select_fn)
   if (identical(choice, BACK_VALUE)) {
     return(unbound)
   }
@@ -328,7 +326,6 @@ run_unbound_entry <- function(
 #' @param select_fn *\[function, optional\]* Menu backend.
 #' @param file_actions *\[list, optional\]* The management actions; see
 #'   `default_file_actions()`. Injectable for testing.
-#' @param width *\[numeric, optional\]* Console width for the menu labels.
 #' @return *\[list\]* `file` (the session's options file after the menu, `NULL`
 #'   when it is unbound) and `changed` (whether the loaded options changed, so
 #'   the prepared data must be rebuilt).
@@ -336,8 +333,7 @@ run_options_file_menu <- function(
   bind_options,
   current_file = NULL,
   select_fn = climenu::select,
-  file_actions = NULL,
-  width = NULL
+  file_actions = NULL
 ) {
   validate(
     is.null(current_file) || is.character(current_file),
@@ -430,13 +426,13 @@ run_options_file_menu <- function(
     details <- list_files()
     n_files <- if (is.null(details)) 0L else nrow(details)
 
+    actions_menu <- compose_menu_choices(
+      options_file_menu_items(current_file = state$file, n_files = n_files)
+    )
     action <- ask_select(
       question = "Options files",
-      choices = compose_menu_choices(
-        options_file_menu_items(current_file = state$file, n_files = n_files),
-        width = width
-      ),
-      confirm = FALSE,
+      choices = actions_menu$choices,
+      descriptions = actions_menu$descriptions,
       select_fn = select_fn
     )
     if (rlang::is_empty(action) || identical(action, BACK_VALUE)) {
@@ -444,7 +440,7 @@ run_options_file_menu <- function(
     }
 
     if (identical(action, "select")) {
-      choice <- ask_for_file_to_load(details, state$file, select_fn = select_fn, width = width)
+      choice <- ask_for_file_to_load(details, state$file, select_fn = select_fn)
       if (identical(choice, BACK_VALUE)) {
         next
       }

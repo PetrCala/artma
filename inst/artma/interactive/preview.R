@@ -390,7 +390,7 @@ preview_menu_items <- function(viewer_available) {
 #' @param df *\[data.frame\]* The prepared data frame.
 #' @param view_data *\[function\]* Opens the frame in a spreadsheet viewer.
 #' @param select_fn *\[function, optional\]* Menu backend. Exposed for testing.
-#' @param width *\[numeric, optional\]* Console width for the menus and tables.
+#' @param width *\[numeric, optional\]* Console width for the tables; the menu sizes itself.
 #' @param viewer_available *\[function, optional\]* Availability probe for the
 #'   spreadsheet viewer. Defaults to `data_viewer_available()`. Injectable for
 #'   testing.
@@ -412,13 +412,11 @@ run_preview_menu <- function(
   render_data_overview(df)
 
   repeat {
+    preview_menu <- compose_menu_choices(preview_menu_items(isTRUE(viewer_available())))
     action <- ask_select(
       question = "Preview data",
-      choices = compose_menu_choices(
-        preview_menu_items(isTRUE(viewer_available())),
-        width = width
-      ),
-      confirm = FALSE,
+      choices = preview_menu$choices,
+      descriptions = preview_menu$descriptions,
       select_fn = select_fn
     )
     if (rlang::is_empty(action) || identical(action, "back")) {

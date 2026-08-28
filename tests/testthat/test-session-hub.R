@@ -57,33 +57,35 @@ hub_methods_frame <- function() {
 }
 
 # Sequenced single-select backend: each call consumes the next entry of the
-# script and returns the first label containing it; NA cancels the menu.
+# script and returns the value of the first label containing it; NA cancels
+# the menu.
 make_select_fn <- function(script) {
   index <- 0L
-  function(choices, prompt, selected = NULL) {
+  function(choices, prompt, selected = NULL, descriptions = NULL) {
     index <<- index + 1L
     stopifnot(index <= length(script))
     pattern <- script[[index]]
     if (is.na(pattern)) {
       return(character(0))
     }
-    matches <- choices[grepl(pattern, cli::ansi_strip(choices), fixed = TRUE)]
+    labels <- names(choices) %||% choices
+    matches <- unname(choices[grepl(pattern, labels, fixed = TRUE)])
     stopifnot(length(matches) >= 1L)
     matches[[1]]
   }
 }
 
-# Checkbox backend selecting methods by name (the first token of each label);
-# counts its invocations and records each call's `selected` argument so tests
-# can assert the picker was not reopened and whether it was preselected.
+# Checkbox backend selecting methods by name (the values of the picker are the
+# method names); counts its invocations and records each call's `selected`
+# argument so tests can assert the picker was not reopened and whether it was
+# preselected.
 make_checkbox_fn <- function(methods, counter = new.env()) {
   counter$calls <- 0L
   counter$selected <- list()
-  fn <- function(choices, prompt, selected, allow_select_all) {
+  fn <- function(choices, prompt, selected, allow_select_all, descriptions = NULL) {
     counter$calls <- counter$calls + 1L
     counter$selected <- c(counter$selected, list(selected))
-    first_tokens <- sub(" .*", "", cli::ansi_strip(choices))
-    choices[first_tokens %in% methods]
+    unname(choices[choices %in% methods])
   }
   list(fn = fn, counter = counter)
 }
@@ -451,18 +453,20 @@ test_that("an unbound session with no handler can only leave", {
   )
 })
 
-test_that("compose_menu_choices is value-keyed with decorated labels", {
-  choices <- compose_menu_choices(
-    hub_menu_items(FALSE, character(0), options_file = SESSION_FILE),
-    width = 100
+test_that("compose_menu_choices is value-keyed with plain labels and descriptions", {
+  composed <- compose_menu_choices(
+    hub_menu_items(FALSE, character(0), options_file = SESSION_FILE)
   )
 
   expect_equal(
-    unname(choices),
+    unname(composed$choices),
     c("run", "options", "preview", "results", "settings", "file", "help", "exit")
   )
-  labels <- cli::ansi_strip(names(choices))
-  expect_true(grepl("^Run methods +pick and run", labels[[1]]))
+  expect_equal(names(composed$choices)[[1]], "Run methods")
+  expect_true(grepl("^pick and run", composed$descriptions[[1]]))
+  # The backend renders and echoes these; they must reach it unstyled.
+  rendered <- c(names(composed$choices), composed$descriptions)
+  expect_false(any(grepl("\033", rendered, fixed = TRUE)))
 })
 
 test_that("the Re-run description names the options changed since the run", {
@@ -851,8 +855,8 @@ test_that("a cancelled first-time create lands in the unbound menu", {
   captured <- new.env()
   captured$labels <- list()
   base_fn <- make_select_fn("Exit")
-  capturing_select_fn <- function(choices, prompt, selected = NULL) {
-    captured$labels <- c(captured$labels, list(cli::ansi_strip(choices)))
+  capturing_select_fn <- function(choices, prompt, selected = NULL, descriptions = NULL) {
+    captured$labels <- c(captured$labels, list(names(choices) %||% choices))
     base_fn(choices, prompt, selected)
   }
 
@@ -1041,8 +1045,7 @@ test_that("a declined save keeps a data edit session-only and flags staleness", 
     save_preference = function(name, value) {
       saves[[name]] <<- value
       FALSE
-    },
-    width = 100
+    }
   ))
 
   expect_equal(outcome$changed, "data.winsorization_level")
@@ -1057,8 +1060,7 @@ test_that("an accepted save still applies the edit session-wide, without stalene
   outcome <- suppressMessages(run_adjust_options(
     select_fn = make_select_fn(c("output.number_of_decimals", "Back")),
     edit_option = function(def) 4L,
-    save_preference = function(name, value) TRUE,
-    width = 100
+    save_preference = function(name, value) TRUE
   ))
 
   expect_equal(outcome$changed, "output.number_of_decimals")
@@ -1072,8 +1074,7 @@ test_that("an unchanged value records nothing and never asks to persist", {
   outcome <- suppressMessages(run_adjust_options(
     select_fn = make_select_fn(c("general.seed", "Back")),
     edit_option = function(def) 42,
-    save_preference = abort_if_called("save_preference"),
-    width = 100
+    save_preference = abort_if_called("save_preference")
   ))
 
   expect_equal(outcome$changed, character(0))
@@ -1088,8 +1089,7 @@ test_that("browse-all walks the template tree to any option", {
       "Browse all options", "visualization", "visualization.theme", "Back"
     )),
     edit_option = function(def) "red",
-    save_preference = function(name, value) FALSE,
-    width = 100
+    save_preference = function(name, value) FALSE
   ))
 
   expect_equal(outcome$changed, "visualization.theme")

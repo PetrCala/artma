@@ -32,17 +32,19 @@ preview_df <- function() {
 }
 
 # Sequenced single-select backend, as in test-session-hub.R: each call
-# consumes the next script entry and returns the first label containing it.
+# consumes the next script entry and returns the value of the first label
+# containing it.
 make_select_fn <- function(script) {
   index <- 0L
-  function(choices, prompt, selected = NULL) {
+  function(choices, prompt, selected = NULL, descriptions = NULL) {
     index <<- index + 1L
     stopifnot(index <= length(script))
     pattern <- script[[index]]
     if (is.na(pattern)) {
       return(character(0))
     }
-    matches <- choices[grepl(pattern, cli::ansi_strip(choices), fixed = TRUE)]
+    labels <- names(choices) %||% choices
+    matches <- unname(choices[grepl(pattern, labels, fixed = TRUE)])
     stopifnot(length(matches) >= 1L)
     matches[[1]]
   }
