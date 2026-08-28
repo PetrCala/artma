@@ -34,6 +34,11 @@ Question line (short; cli inline markup allowed)
 - For menus, hints render above the question because `climenu` prints the
   question directly over the choices. This holds for both `ask_select` and
   `ask_checkbox`.
+- Menu labels stay plain and short; per-item annotations go into the
+  `descriptions` argument, which `climenu` renders as an aligned dim column
+  (and never echoes or returns). Do not pad, truncate, or `cli::col_*` a
+  label yourself: `compose_menu_choices()` (`inst/artma/interactive/menu.R`)
+  turns menu-item lists into the `choices` + `descriptions` pair.
 
 ## Semantics
 
@@ -57,6 +62,12 @@ Question line (short; cli inline markup allowed)
 - **Non-interactive sessions**: the helpers abort. Callers gate prompting with
   `interactive()` and `should_prompt_user()` (see the autonomy system in
   `CLAUDE.md`); the helpers deliberately do not check autonomy themselves.
+- **Confirmation echo**: `climenu` echoes the plain label of the picked item
+  once; the helpers add nothing. Never route a styled or composed display
+  string through `{.val}`-class inlines (`{.val}`, `{.file}`, `{.path}`,
+  `{.url}`, `{.email}`): they `encodeString()` their input, so ANSI styling
+  surfaces as literal `\033[90m...` text wrapped in quotes. Use `{.strong}`
+  or plain interpolation for anything already styled or formatted.
 
 ## Testing
 
@@ -65,9 +76,13 @@ module namespaces are locked, so binding mocks do not work):
 
 ```r
 ask_text("Name", read_input = function(prompt) "typed answer")
-ask_select("Pick", choices = c("A" = "a"), select_fn = function(choices, prompt, selected) "A")
-ask_checkbox("Pick", choices = c("A" = "a"), checkbox_fn = function(choices, prompt, selected, allow_select_all) "A")
+ask_select("Pick", choices = c("A" = "a"), select_fn = function(choices, prompt, selected, descriptions) "a")
+ask_checkbox("Pick", choices = c("A" = "a"), checkbox_fn = function(choices, prompt, selected, allow_select_all, descriptions) "a")
 ```
+
+The backends receive the named `choices` vector as-is and return the selected
+value(s), not labels; `descriptions` arrives as a parallel character vector or
+`NULL`.
 
 Higher-level prompts thread these through: `prompt_user_for_option_value()`
 takes `read_input` and `choose_path`, and the `prompt_*` functions in

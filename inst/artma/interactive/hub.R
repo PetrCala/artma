@@ -152,10 +152,9 @@ option_menu_items <- function(defs, include_browse = TRUE) {
 #' @param all_defs *\[list\]* Every flattened template definition, named by
 #'   option.
 #' @param select_fn *\[function\]* Menu backend.
-#' @param width *\[numeric, optional\]* Console width for the option menu.
 #' @return *\[list\]* The chosen option definition, or `NULL`.
 #' @keywords internal
-browse_for_option <- function(all_defs, select_fn, width = NULL) {
+browse_for_option <- function(all_defs, select_fn) {
   all_names <- names(all_defs)
   sections <- unique(vapply(
     strsplit(all_names, ".", fixed = TRUE),
@@ -166,7 +165,6 @@ browse_for_option <- function(all_defs, select_fn, width = NULL) {
   section <- ask_select(
     question = "Which option group?",
     choices = stats::setNames(sections, sections),
-    confirm = FALSE,
     select_fn = select_fn
   )
   if (rlang::is_empty(section)) {
@@ -174,13 +172,11 @@ browse_for_option <- function(all_defs, select_fn, width = NULL) {
   }
 
   in_section <- all_defs[all_names == section | startsWith(all_names, paste0(section, "."))]
+  section_menu <- compose_menu_choices(option_menu_items(in_section, include_browse = FALSE))
   choice <- ask_select(
     question = sprintf("Which %s option?", section),
-    choices = compose_menu_choices(
-      option_menu_items(in_section, include_browse = FALSE),
-      width = width
-    ),
-    confirm = FALSE,
+    choices = section_menu$choices,
+    descriptions = section_menu$descriptions,
     select_fn = select_fn
   )
   if (rlang::is_empty(choice) || identical(choice, ".back")) {
@@ -207,7 +203,6 @@ browse_for_option <- function(all_defs, select_fn, width = NULL) {
 #' @param save_preference *\[function, optional\]* Called with the option name
 #'   and the new value; decides session-only vs write to the options YAML.
 #'   Defaults to `prompt_save_preference()`. Injectable for testing.
-#' @param width *\[numeric, optional\]* Console width for the menus.
 #' @param template_path *\[character, optional\]* Path to the options template.
 #' @return *\[list\]* `changed` (the dotted names of the options whose values
 #'   changed) and `data_changed` (whether any of them affects data
@@ -217,7 +212,6 @@ run_adjust_options <- function(
   select_fn = climenu::select,
   edit_option = NULL,
   save_preference = NULL,
-  width = NULL,
   template_path = NULL
 ) {
   validate(
@@ -261,10 +255,11 @@ run_adjust_options <- function(
 
   repeat {
     # Rebuilt every pass, so an edit shows up in the labels immediately.
+    curated_menu <- compose_menu_choices(option_menu_items(curated))
     action <- ask_select(
       question = "Adjust analysis options",
-      choices = compose_menu_choices(option_menu_items(curated), width = width),
-      confirm = FALSE,
+      choices = curated_menu$choices,
+      descriptions = curated_menu$descriptions,
       select_fn = select_fn
     )
     if (rlang::is_empty(action) || identical(action, ".back")) {
@@ -272,7 +267,7 @@ run_adjust_options <- function(
     }
 
     def <- if (identical(action, ".browse")) {
-      browse_for_option(all_defs, select_fn = select_fn, width = width)
+      browse_for_option(all_defs, select_fn = select_fn)
     } else {
       all_defs[[action]]
     }
@@ -520,15 +515,15 @@ help_menu_items <- function() {
 #' @description One pick from the Settings submenu, applied for the session
 #'   only: none of the toggles touch the options file on disk.
 #' @param select_fn *\[function\]* Menu backend.
-#' @param width *\[numeric, optional\]* Console width for the menu labels.
 #' @param set_theme *\[function\]* Called with the chosen theme name.
 #' @param set_autonomy *\[function\]* Called with the chosen autonomy level.
 #' @return `NULL`, invisibly.
-run_settings_menu <- function(select_fn, width, set_theme, set_autonomy) {
+run_settings_menu <- function(select_fn, set_theme, set_autonomy) {
+  settings_menu <- compose_menu_choices(settings_menu_items())
   action <- ask_select(
     question = "Settings (session only; the options file is not changed)",
-    choices = compose_menu_choices(settings_menu_items(), width = width),
-    confirm = FALSE,
+    choices = settings_menu$choices,
+    descriptions = settings_menu$descriptions,
     select_fn = select_fn
   )
   if (rlang::is_empty(action) || identical(action, "back")) {
@@ -542,7 +537,6 @@ run_settings_menu <- function(select_fn, width, set_theme, set_autonomy) {
       question = "Select a theme",
       choices = themes,
       default = if (current %in% themes) current else NULL,
-      confirm = FALSE,
       select_fn = select_fn
     )
     if (rlang::is_empty(theme)) {
@@ -560,7 +554,6 @@ run_settings_menu <- function(select_fn, width, set_theme, set_autonomy) {
         "4 - debug" = "4"
       ),
       default = if (current %in% as.character(1:4)) current else NULL,
-      confirm = FALSE,
       select_fn = select_fn
     )
     if (rlang::is_empty(level)) {
@@ -577,7 +570,6 @@ run_settings_menu <- function(select_fn, width, set_theme, set_autonomy) {
         "autonomous - prompt only when unavoidable" = "autonomous"
       ),
       default = get_autonomy_level() %||% get_default_autonomy_level(),
-      confirm = FALSE,
       select_fn = select_fn
     )
     if (rlang::is_empty(level)) {
@@ -601,18 +593,18 @@ run_settings_menu <- function(select_fn, width, set_theme, set_autonomy) {
 
 #' @title Run the Help submenu once
 #' @param select_fn *\[function\]* Menu backend.
-#' @param width *\[numeric, optional\]* Console width for the menu labels.
 #' @param get_methods_frame *\[function\]* Returns the methods table frame for
 #'   the overview.
 #' @param show_options_help *\[function\]* Prints the options overview.
 #' @param open_url *\[function\]* Called with a URL and a description; opens it
 #'   in the browser.
 #' @return `NULL`, invisibly.
-run_help_menu <- function(select_fn, width, get_methods_frame, show_options_help, open_url) {
+run_help_menu <- function(select_fn, get_methods_frame, show_options_help, open_url) {
+  help_menu <- compose_menu_choices(help_menu_items())
   action <- ask_select(
     question = "Help",
-    choices = compose_menu_choices(help_menu_items(), width = width),
-    confirm = FALSE,
+    choices = help_menu$choices,
+    descriptions = help_menu$descriptions,
     select_fn = select_fn
   )
   if (rlang::is_empty(action) || identical(action, "back")) {
@@ -786,8 +778,8 @@ merge_run_results <- function(accumulated, results) {
 #'   menus. Defaults to `climenu::select`. Exposed for testing.
 #' @param checkbox_fn *\[function, optional\]* Menu backend for the method
 #'   picker. Defaults to `climenu::checkbox`. Exposed for testing.
-#' @param width *\[numeric, optional\]* Console width to fit menu labels into.
-#'   Defaults to the detected console width.
+#' @param width *\[numeric, optional\]* Console width for the preview tables;
+#'   the menus size themselves. Defaults to the detected console width.
 #' @return *\[list\]* The accumulated results, invisibly: the latest result per
 #'   method, with a `runs` attribute holding one entry per run (`methods`,
 #'   `seed`, `timestamp`, and `options_changed`, the options edited since the
@@ -975,8 +967,7 @@ run_session_hub <- function(
     entry <- run_unbound_entry(
       bind_options = bind_options,
       select_fn = select_fn,
-      file_actions = file_actions,
-      width = width
+      file_actions = file_actions
     )
     if (isTRUE(entry$changed)) {
       state$options_file <- entry$file
@@ -988,24 +979,22 @@ run_session_hub <- function(
   repeat {
     render_hub_header(state$df, options_file = state$options_file)
 
+    hub_menu <- compose_menu_choices(hub_menu_items(
+      state$has_run,
+      state$last_methods,
+      options_changed = state$changed_since_run,
+      can_switch = !is.null(bind_options),
+      options_file = state$options_file,
+      n_options_files = if (is.null(state$options_file) && !is.null(bind_options)) {
+        count_options_files(file_actions)
+      } else {
+        0L
+      }
+    ))
     action <- ask_select(
       question = "What would you like to do?",
-      choices = compose_menu_choices(
-        hub_menu_items(
-          state$has_run,
-          state$last_methods,
-          options_changed = state$changed_since_run,
-          can_switch = !is.null(bind_options),
-          options_file = state$options_file,
-          n_options_files = if (is.null(state$options_file) && !is.null(bind_options)) {
-            count_options_files(file_actions)
-          } else {
-            0L
-          }
-        ),
-        width = width
-      ),
-      confirm = FALSE,
+      choices = hub_menu$choices,
+      descriptions = hub_menu$descriptions,
       select_fn = select_fn
     )
 
@@ -1018,7 +1007,6 @@ run_session_hub <- function(
     if (identical(action, "run")) {
       selection <- ask_runtime_methods(
         get_methods_frame(),
-        width = width,
         checkbox_fn = checkbox_fn
       )
       if (length(selection) == 0L) {
@@ -1039,7 +1027,6 @@ run_session_hub <- function(
         select_fn = select_fn,
         edit_option = edit_option,
         save_preference = save_preference,
-        width = width,
         template_path = template_path
       )
       if (length(outcome$changed) > 0L) {
@@ -1064,7 +1051,6 @@ run_session_hub <- function(
     } else if (identical(action, "settings")) {
       run_settings_menu(
         select_fn = select_fn,
-        width = width,
         set_theme = set_theme,
         set_autonomy = set_autonomy
       )
@@ -1073,8 +1059,7 @@ run_session_hub <- function(
         bind_options = bind_options,
         current_file = state$options_file,
         select_fn = select_fn,
-        file_actions = file_actions,
-        width = width
+        file_actions = file_actions
       )
       if (isTRUE(outcome$changed)) {
         state$options_file <- outcome$file
@@ -1098,23 +1083,20 @@ run_session_hub <- function(
     } else if (identical(action, "help")) {
       run_help_menu(
         select_fn = select_fn,
-        width = width,
         get_methods_frame = get_methods_frame,
         show_options_help = show_options_help,
         open_url = open_url
       )
     } else if (identical(action, "results")) {
+      results_menu <- compose_menu_choices(list(
+        list(value = "open", name = "Open results folder", description = "in the system file browser"),
+        list(value = "report", name = "Render HTML report", description = "one self-contained file from this session's results"),
+        list(value = "back", name = "Back", description = "return to the session menu")
+      ))
       results_action <- ask_select(
         question = "Results",
-        choices = compose_menu_choices(
-          list(
-            list(value = "open", name = "Open results folder", description = "in the system file browser"),
-            list(value = "report", name = "Render HTML report", description = "one self-contained file from this session's results"),
-            list(value = "back", name = "Back", description = "return to the session menu")
-          ),
-          width = width
-        ),
-        confirm = FALSE,
+        choices = results_menu$choices,
+        descriptions = results_menu$descriptions,
         select_fn = select_fn
       )
       if (rlang::is_empty(results_action) || identical(results_action, "back")) {

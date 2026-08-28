@@ -18,17 +18,19 @@ box::use(
 )
 
 # Sequenced single-select backend: each call consumes the next entry of the
-# script and returns the first label containing it; NA cancels the menu.
+# script and returns the value of the first label containing it; NA cancels
+# the menu.
 make_select_fn <- function(script) {
   index <- 0L
-  function(choices, prompt, selected = NULL) {
+  function(choices, prompt, selected = NULL, descriptions = NULL) {
     index <<- index + 1L
     stopifnot(index <= length(script))
     pattern <- script[[index]]
     if (is.na(pattern)) {
       return(character(0))
     }
-    matches <- choices[grepl(pattern, cli::ansi_strip(choices), fixed = TRUE)]
+    labels <- names(choices) %||% choices
+    matches <- unname(choices[grepl(pattern, labels, fixed = TRUE)])
     stopifnot(length(matches) >= 1L)
     matches[[1]]
   }
@@ -115,8 +117,7 @@ test_that("selecting a file binds it and leaves the menu", {
     bind_options = function(file_name) bound <<- c(bound, file_name),
     current_file = NULL,
     select_fn = make_select_fn(c("Select a file", "b.yaml")),
-    file_actions = file_actions(),
-    width = 100
+    file_actions = file_actions()
   ))
 
   expect_equal(bound, "b.yaml")
@@ -129,8 +130,7 @@ test_that("backing out leaves the session where it was", {
     bind_options = abort_if_called("bind_options"),
     current_file = "a.yaml",
     select_fn = make_select_fn(c("Switch file", "Back", "Back")),
-    file_actions = file_actions(),
-    width = 100
+    file_actions = file_actions()
   ))
 
   expect_equal(outcome$file, "a.yaml")
@@ -143,8 +143,7 @@ test_that("a failed bind keeps the current file and the menu open", {
       bind_options = function(file_name) stop("unreadable"),
       current_file = "a.yaml",
       select_fn = make_select_fn(c("Switch file", "b.yaml", "Back")),
-      file_actions = file_actions(),
-      width = 100
+      file_actions = file_actions()
     )
   )
 
@@ -159,8 +158,7 @@ test_that("selecting the file already loaded is a no-op", {
       bind_options = abort_if_called("bind_options"),
       current_file = "a.yaml",
       select_fn = make_select_fn(c("Switch file", "a.yaml", "Back")),
-      file_actions = file_actions(),
-      width = 100
+      file_actions = file_actions()
     )
   )
 
@@ -175,8 +173,7 @@ test_that("a new file is loaded straight away when the session has none", {
     bind_options = function(file_name) bound <<- c(bound, file_name),
     current_file = NULL,
     select_fn = make_select_fn("Create a new file"),
-    file_actions = file_actions(list(create = function() "new.yaml")),
-    width = 100
+    file_actions = file_actions(list(create = function() "new.yaml"))
   ))
 
   expect_equal(bound, "new.yaml")
@@ -190,8 +187,7 @@ test_that("a bound session is asked before a new file takes over", {
     bind_options = function(file_name) bound <<- c(bound, file_name),
     current_file = "a.yaml",
     select_fn = make_select_fn(c("Create a new file", "No", "Back")),
-    file_actions = file_actions(list(create = function() "new.yaml")),
-    width = 100
+    file_actions = file_actions(list(create = function() "new.yaml"))
   ))
 
   expect_equal(bound, character(0))
@@ -209,8 +205,7 @@ test_that("editing the loaded file reloads it", {
     select_fn = make_select_fn(c("Edit a file", "Back")),
     file_actions = file_actions(list(
       edit = function(file) edited <<- c(edited, file)
-    )),
-    width = 100
+    ))
   ))
 
   # The session's own file is the one edited, and the session picks up what
@@ -229,8 +224,7 @@ test_that("an unbound session lets the editor prompt for the file", {
     select_fn = make_select_fn(c("Edit a file", "Back")),
     file_actions = file_actions(list(
       edit = function(file) targets <<- c(targets, list(file))
-    )),
-    width = 100
+    ))
   ))
 
   expect_equal(targets, list(NULL))
@@ -242,8 +236,7 @@ test_that("a failing management action reports and keeps the menu open", {
       bind_options = abort_if_called("bind_options"),
       current_file = "a.yaml",
       select_fn = make_select_fn(c("Compare two files", "Back")),
-      file_actions = file_actions(list(compare = function() stop("nope"))),
-      width = 100
+      file_actions = file_actions(list(compare = function() stop("nope")))
     )
   )
 
@@ -262,8 +255,7 @@ test_that("deleting the loaded file leaves the session unbound", {
       file_actions = list(
         list = function() details_frame(remaining),
         delete = function() remaining <<- "b.yaml"
-      ),
-      width = 100
+      )
     )
   )
 
@@ -284,8 +276,7 @@ test_that("binding a file records it as the last used one", {
       remember_last_used = function(file_name) {
         write_last_used_file(file_name, options_dir = dir)
       }
-    )),
-    width = 100
+    ))
   ))
 
   expect_equal(read_last_used_file(options_dir = dir), "b.yaml")
@@ -298,8 +289,7 @@ test_that("a failed bind leaves the last-used marker untouched", {
     select_fn = make_select_fn(c("Select a file", "b.yaml", "Back", "Back")),
     file_actions = file_actions(list(
       remember_last_used = abort_if_called("remember_last_used")
-    )),
-    width = 100
+    ))
   ))
 
   testthat::succeed()
@@ -323,8 +313,7 @@ test_that("deleting the file the marker names clears the marker", {
       prune_last_used = function(existing_files) {
         prune_last_used_file(existing_files, options_dir = dir)
       }
-    ),
-    width = 100
+    )
   ))
 
   expect_null(read_last_used_file(options_dir = dir))
@@ -348,8 +337,7 @@ test_that("deleting a non-current file the marker names clears the marker too", 
       prune_last_used = function(existing_files) {
         prune_last_used_file(existing_files, options_dir = dir)
       }
-    ),
-    width = 100
+    )
   ))
 
   expect_null(read_last_used_file(options_dir = dir))
@@ -373,8 +361,7 @@ test_that("deleting unrelated files keeps the marker", {
       prune_last_used = function(existing_files) {
         prune_last_used_file(existing_files, options_dir = dir)
       }
-    ),
-    width = 100
+    )
   ))
 
   expect_equal(read_last_used_file(options_dir = dir), "a.yaml")
@@ -390,8 +377,7 @@ test_that("the unbound entry runs the create flow when no files exist", {
       file_actions = file_actions(
         overrides = list(create = function() "new.yaml"),
         files = character(0)
-      ),
-      width = 100
+      )
     )
   )
 
@@ -408,8 +394,7 @@ test_that("a cancelled first-time create leaves the entry unbound", {
     file_actions = file_actions(
       overrides = list(create = function() NULL),
       files = character(0)
-    ),
-    width = 100
+    )
   ))
 
   expect_null(outcome$file)
@@ -424,8 +409,7 @@ test_that("a failing first-time create reports and leaves the entry unbound", {
       file_actions = file_actions(
         overrides = list(create = function() stop("nope")),
         files = character(0)
-      ),
-      width = 100
+      )
     )
   )
 
@@ -439,8 +423,7 @@ test_that("the unbound entry opens the picker when files exist", {
   outcome <- suppressMessages(run_unbound_entry(
     bind_options = function(file_name) bound <<- c(bound, file_name),
     select_fn = make_select_fn("b.yaml"),
-    file_actions = file_actions(),
-    width = 100
+    file_actions = file_actions()
   ))
 
   expect_equal(bound, "b.yaml")
@@ -456,8 +439,7 @@ test_that("an entry bind records the file as the last used one", {
     select_fn = make_select_fn("b.yaml"),
     file_actions = file_actions(list(
       remember_last_used = function(file_name) remembered <<- c(remembered, file_name)
-    )),
-    width = 100
+    ))
   ))
 
   expect_equal(remembered, "b.yaml")
@@ -467,8 +449,7 @@ test_that("backing out of the entry picker leaves the session unbound", {
   outcome <- suppressMessages(run_unbound_entry(
     bind_options = abort_if_called("bind_options"),
     select_fn = make_select_fn("Back"),
-    file_actions = file_actions(),
-    width = 100
+    file_actions = file_actions()
   ))
 
   expect_null(outcome$file)
@@ -481,8 +462,7 @@ test_that("the entry picker's create entry binds the new file", {
   outcome <- suppressMessages(run_unbound_entry(
     bind_options = function(file_name) bound <<- c(bound, file_name),
     select_fn = make_select_fn("Create a new file"),
-    file_actions = file_actions(overrides = list(create = function() "new.yaml")),
-    width = 100
+    file_actions = file_actions(overrides = list(create = function() "new.yaml"))
   ))
 
   expect_equal(bound, "new.yaml")
@@ -495,8 +475,7 @@ test_that("a failed bind at the entry leaves the session unbound", {
     outcome <- run_unbound_entry(
       bind_options = function(file_name) stop("unreadable"),
       select_fn = make_select_fn("b.yaml"),
-      file_actions = file_actions(),
-      width = 100
+      file_actions = file_actions()
     )
   )
 
@@ -515,8 +494,7 @@ test_that("deleting other files keeps the session on its own", {
     file_actions = list(
       list = function() details_frame(remaining),
       delete = function() remaining <<- "a.yaml"
-    ),
-    width = 100
+    )
   ))
 
   expect_equal(outcome$file, "a.yaml")

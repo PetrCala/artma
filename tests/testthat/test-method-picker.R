@@ -34,8 +34,6 @@ picker_frame <- function() {
   )
 }
 
-plain_labels <- function(choices) cli::ansi_strip(names(choices))
-
 test_that("method_status_markers flags missing columns, missing packages, and opt-in", {
   markers <- method_status_markers(picker_frame())
   expect_equal(markers, c("", "", "needs: n_obs", "install RoBMA . opt-in"))
@@ -47,31 +45,27 @@ test_that("method_status_markers works without the availability columns", {
   expect_equal(method_status_markers(df), c("", "", "", "install RoBMA . opt-in"))
 })
 
-test_that("compose_method_choices is value-keyed with decorated labels", {
-  choices <- compose_method_choices(picker_frame(), width = 100)
+test_that("compose_method_choices pairs plain method names with marked descriptions", {
+  composed <- compose_method_choices(picker_frame())
 
-  expect_equal(unname(choices), c("bma", "funnel_plot", "pub_bias", "robma"))
+  expect_equal(unname(composed$choices), c("bma", "funnel_plot", "pub_bias", "robma"))
+  expect_equal(names(composed$choices), c("bma", "funnel_plot", "pub_bias", "robma"))
 
-  labels <- plain_labels(choices)
-  # Method names are padded to one fixed column, descriptions to the next.
-  expect_true(grepl("^bma          Bayesian model averaging", labels[[1]]))
-  expect_true(grepl("^funnel_plot  Funnel plot", labels[[2]]))
-  expect_true(grepl("needs: n_obs$", labels[[3]]))
-  expect_true(grepl("install RoBMA . opt-in", labels[[4]], fixed = TRUE))
+  descriptions <- composed$descriptions
+  expect_equal(descriptions[[1]], "Bayesian model averaging over moderators")
+  expect_true(grepl("[needs: n_obs]", descriptions[[3]], fixed = TRUE))
+  expect_true(grepl("[install RoBMA . opt-in]", descriptions[[4]], fixed = TRUE))
   # Clean methods carry no status marker.
-  expect_false(grepl("needs|install|opt-in", labels[[1]]))
+  expect_false(grepl("needs|install|opt-in", descriptions[[1]]))
+  # The backend renders and echoes these; they must reach it unstyled.
+  expect_false(any(grepl("\033", c(names(composed$choices), descriptions), fixed = TRUE)))
 })
 
-test_that("compose_method_choices truncates descriptions to the console width", {
+test_that("compose_method_choices keeps an NA description empty", {
   df <- picker_frame()
-  df$description <- strrep("x", 200)
-  choices <- compose_method_choices(df, width = 80)
-
-  labels <- plain_labels(choices)
-  expect_true(all(nchar(labels) <= 80))
-  expect_true(any(grepl(cli::symbol$ellipsis, labels, fixed = TRUE)))
-  # The status markers survive the truncation.
-  expect_true(grepl("needs: n_obs$", labels[[3]]))
+  df$description[[1]] <- NA_character_
+  composed <- compose_method_choices(df)
+  expect_equal(composed$descriptions[[1]], "")
 })
 
 test_that("compose_method_choices rejects an empty frame", {
@@ -81,15 +75,26 @@ test_that("compose_method_choices rejects an empty frame", {
   )
 })
 
-test_that("ask_runtime_methods returns method names, never labels", {
+test_that("ask_runtime_methods returns unnamed method names", {
   selected <- ask_runtime_methods(
     picker_frame(),
-    width = 100,
-    checkbox_fn = function(choices, prompt, selected, allow_select_all) {
+    checkbox_fn = function(choices, prompt, selected, allow_select_all, descriptions = NULL) {
       choices[c(1, 4)]
     }
   )
   expect_equal(selected, c("bma", "robma"))
+})
+
+test_that("ask_runtime_methods hands the descriptions to the backend", {
+  seen <- NULL
+  ask_runtime_methods(
+    picker_frame(),
+    checkbox_fn = function(choices, prompt, selected, allow_select_all, descriptions = NULL) {
+      seen <<- descriptions
+      character(0)
+    }
+  )
+  expect_true(grepl("[needs: n_obs]", seen[[3]], fixed = TRUE))
 })
 
 test_that("ask_runtime_methods preselects the previous selection by value", {
@@ -97,8 +102,7 @@ test_that("ask_runtime_methods preselects the previous selection by value", {
   ask_runtime_methods(
     picker_frame(),
     default = c("pub_bias", "bma", "not_a_method"),
-    width = 100,
-    checkbox_fn = function(choices, prompt, selected, allow_select_all) {
+    checkbox_fn = function(choices, prompt, selected, allow_select_all, descriptions = NULL) {
       seen <<- list(selected = selected, allow_select_all = allow_select_all)
       character(0)
     }
@@ -111,8 +115,7 @@ test_that("ask_runtime_methods preselects the previous selection by value", {
 test_that("ask_runtime_methods returns character(0) on an empty confirmation", {
   selected <- ask_runtime_methods(
     picker_frame(),
-    width = 100,
-    checkbox_fn = function(choices, prompt, selected, allow_select_all) NULL
+    checkbox_fn = function(choices, prompt, selected, allow_select_all, descriptions = NULL) NULL
   )
   expect_equal(selected, character(0))
 })

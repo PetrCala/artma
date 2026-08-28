@@ -97,10 +97,12 @@ state minus the items that need data:
 
 ## Menu items
 
-Rendered with `ask_select` over value-keyed choices: labels are the padded
-item name plus a dim description, values are stable action keys, and the loop
+Rendered with `ask_select` over value-keyed choices: labels are the plain item
+names, the dim description column travels separately (`climenu` pads, truncates,
+and styles the two columns), values are stable action keys, and the loop
 dispatches on values only (`compose_menu_choices()` in
-`interactive/menu.R`, shared with the submenus). A header rule above the menu
+`interactive/menu.R`, shared with the submenus, returns the
+`choices` + `descriptions` pair). A header rule above the menu
 names the options file and the prepared data's dimensions, or says "no options
 file loaded" / "data not prepared yet" when the session has neither.
 

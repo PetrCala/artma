@@ -59,8 +59,7 @@ prompt_save_preference <- function(option_path, value, description = NULL, respe
     choices = c(
       "Yes, save to options file" = "yes",
       "No, use only for this session" = "no"
-    ),
-    confirm = FALSE
+    )
   )
 
   if (rlang::is_empty(selected)) {
@@ -211,8 +210,7 @@ prompt_save_variable_selection <- function(var_names, var_configs = NULL, descri
     choices = c(
       "Yes, save to options file" = "yes",
       "No, use only for this session" = "no"
-    ),
-    confirm = FALSE
+    )
   )
 
   if (rlang::is_empty(selected)) {
