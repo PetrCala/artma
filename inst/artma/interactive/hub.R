@@ -16,9 +16,9 @@ box::use(
   artma / interactive / options_file_menu[
     default_file_actions, run_options_file_menu, run_unbound_entry
   ],
+  artma / interactive / preview[count_studies, run_preview_menu],
   artma / interactive / welcome[open_url_in_browser],
   artma / libs / core / autonomy[get_autonomy_level, get_default_autonomy_level],
-  artma / libs / core / utils[data_viewer_available],
   artma / libs / core / validation[validate],
   artma / modules / methods_table[print_methods_table],
   artma / options / inspect[expand_option_tokens, format_option_value, values_equal],
@@ -435,7 +435,7 @@ hub_menu_items <- function(
     menu_item(
       value = "preview",
       name = "Preview data",
-      description = "summary or spreadsheet view of the prepared data"
+      description = "overview, columns, studies, spreadsheet viewer"
     ),
     menu_item(
       value = "results",
@@ -643,20 +643,6 @@ run_help_menu <- function(select_fn, width, get_methods_frame, show_options_help
   invisible(NULL)
 }
 
-#' @title Count the studies of a prepared frame
-#' @description The prepared frame carries the standardized `study_id` column
-#'   when the data config resolved a study column; without it the count is
-#'   unknown.
-#' @param df *\[data.frame\]* The prepared data frame.
-#' @return *\[integer\]* The number of distinct studies, or `NA` when unknown.
-count_studies <- function(df) {
-  if (!("study_id" %in% names(df))) {
-    return(NA_integer_)
-  }
-  ids <- df[["study_id"]]
-  length(unique(ids[!is.na(ids)]))
-}
-
 #' @title Render the hub header line
 #' @description One rule line naming the options file behind the session and
 #'   the prepared data's dimensions (studies when the config knows the study
@@ -694,58 +680,6 @@ describe_dimensions <- function(df) {
     return(sprintf("%s, %s studies", dims, format(n_studies, big.mark = ",")))
   }
   sprintf("%s, %s columns", dims, format(ncol(df), big.mark = ","))
-}
-
-#' @title Print a textual summary of the prepared frame
-#' @description Rows and columns, the study count where the config knows the
-#'   study column, missing-value counts, and the effect and standard-error
-#'   ranges.
-#' @param df *\[data.frame\]* The prepared data frame.
-#' @return `NULL`, invisibly.
-render_data_summary <- function(df) {
-  lines <- c(
-    "*" = sprintf(
-      "%s rows, %s columns",
-      format(nrow(df), big.mark = ","), format(ncol(df), big.mark = ",")
-    )
-  )
-
-  n_studies <- count_studies(df)
-  if (!is.na(n_studies)) {
-    lines <- c(lines, "*" = sprintf("%s studies", format(n_studies, big.mark = ",")))
-  }
-
-  na_by_column <- vapply(df, function(column) sum(is.na(column)), integer(1))
-  na_total <- sum(na_by_column)
-  if (na_total == 0L) {
-    lines <- c(lines, "*" = "No missing values")
-  } else {
-    lines <- c(lines, "*" = sprintf(
-      "%s missing values across %d columns",
-      format(na_total, big.mark = ","), sum(na_by_column > 0L)
-    ))
-  }
-
-  numeric_range_line <- function(column, label) {
-    values <- df[[column]]
-    if (is.null(values) || !is.numeric(values) || all(is.na(values))) {
-      return(NULL)
-    }
-    bounds <- range(values, na.rm = TRUE)
-    sprintf("%s: %s to %s", label, signif(bounds[[1]], 4), signif(bounds[[2]], 4))
-  }
-
-  for (line in list(
-    numeric_range_line("effect", "Effect range"),
-    numeric_range_line("se", "SE range")
-  )) {
-    if (!is.null(line)) {
-      lines <- c(lines, "*" = line)
-    }
-  }
-
-  cli::cli_inform(lines)
-  invisible(NULL)
 }
 
 #' @title Fold one run's results into the accumulated session results
@@ -1121,20 +1055,12 @@ run_session_hub <- function(
       if (!ensure_data()) {
         next
       }
-      render_data_summary(state$df)
-      if (data_viewer_available()) {
-        should_view <- ask_yes_no(
-          "Open the data in a spreadsheet viewer?",
-          default = FALSE,
-          select_fn = select_fn
-        )
-        if (should_view) {
-          tryCatch(
-            view_data(state$df),
-            error = function(e) cli::cli_alert_warning("Could not open the viewer: {conditionMessage(e)}")
-          )
-        }
-      }
+      run_preview_menu(
+        state$df,
+        view_data = view_data,
+        select_fn = select_fn,
+        width = width
+      )
     } else if (identical(action, "settings")) {
       run_settings_menu(
         select_fn = select_fn,
@@ -1219,13 +1145,11 @@ run_session_hub <- function(
 
 box::export(
   adjustable_option_defs,
-  count_studies,
   describe_option_state,
   help_menu_items,
   hub_menu_items,
   merge_run_results,
   option_affects_data,
-  render_data_summary,
   run_adjust_options,
   run_session_hub,
   settings_menu_items

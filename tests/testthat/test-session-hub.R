@@ -12,7 +12,6 @@ box::use(
 box::use(
   artma / interactive / hub[
     adjustable_option_defs,
-    count_studies,
     describe_option_state,
     help_menu_items,
     hub_menu_items,
@@ -22,7 +21,8 @@ box::use(
     run_session_hub,
     settings_menu_items
   ],
-  artma / interactive / menu[compose_menu_choices]
+  artma / interactive / menu[compose_menu_choices],
+  artma / interactive / preview[count_studies]
 )
 
 # The options file a bound hub session runs on; the tests never touch it, it
@@ -334,7 +334,7 @@ test_that("the results submenu dispatches to the injected handlers after a run",
   expect_equal(reported$bma, "bma-result")
 })
 
-test_that("preview prints the textual data summary", {
+test_that("preview opens on the overview and returns through Back", {
   withr::local_options(list(artma.temp.last_methods = NULL))
 
   messages <- testthat::capture_messages(
@@ -344,7 +344,7 @@ test_that("preview prints the textual data summary", {
       run_methods = abort_if_called("run_methods"),
       methods_table = hub_methods_frame(),
       view_data = abort_if_called("view_data"),
-      select_fn = make_select_fn(c("Preview data", "Exit")),
+      select_fn = make_select_fn(c("Preview data", "Back", "Exit")),
       checkbox_fn = abort_if_called("checkbox_fn"),
       width = 100
     )
@@ -703,7 +703,7 @@ test_that("a failed options switch keeps the session on the current file", {
       bind_options = function(file_name) stop("no such file"),
       select_fn = make_select_fn(c(
         "Options file", "Switch file", "b.yaml", "Back",
-        "Preview data",
+        "Preview data", "Back",
         "Exit"
       )),
       checkbox_fn = abort_if_called("checkbox_fn"),
