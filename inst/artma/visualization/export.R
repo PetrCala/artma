@@ -122,10 +122,13 @@ base_plot_device_size <- function(width_in, height_in, graph_scale = 1) {
 #' @param units *\[character\]* Units for width/height. Defaults to "px".
 #' @param res *\[numeric\]* Resolution in pixels per inch. Defaults to
 #'   `BASE_PLOT_DPI`.
+#' @param record *\[logical\]* Register the file via `record_output_file()`.
+#'   Set to FALSE for throwaway preview renders (tempfiles), which must not
+#'   enter the cache's output-file capture. Defaults to TRUE.
 #'
 #' @return NULL (invisibly). Called for its side effect of opening a graphics device.
 #' @keywords internal
-open_png_device <- function(path, width, height, units = "px", res = BASE_PLOT_DPI) {
+open_png_device <- function(path, width, height, units = "px", res = BASE_PLOT_DPI, record = TRUE) {
   box::use(
     artma / libs / core / validation[validate],
     artma / libs / infrastructure / output_files[record_output_file],
@@ -137,7 +140,8 @@ open_png_device <- function(path, width, height, units = "px", res = BASE_PLOT_D
     is.numeric(width), width > 0,
     is.numeric(height), height > 0,
     is.character(units),
-    is.numeric(res), res > 0
+    is.numeric(res), res > 0,
+    is.logical(record)
   )
 
   if (use_fork_safe_png_device()) {
@@ -154,29 +158,129 @@ open_png_device <- function(path, width, height, units = "px", res = BASE_PLOT_D
   # Base-graphics plots (BMA correlation and model-size charts, the non-linear
   # diagnostics) never pass through `save_plot()`, so record them here instead.
   # Without this a cached rerun cannot tell that these files went missing.
-  record_output_file(path)
+  if (record) {
+    record_output_file(path)
+  }
 
   invisible(NULL)
 }
 
 
-#' Print a plot to the interactive device, unless inside a forked worker
+#' Whether previews should open exported files instead of printing
 #'
 #' @description
-#' Methods preview their plots at verbosity >= 3 by printing them, which opens
-#' the session's default interactive device. In a forked method worker that
-#' device must not be touched: on macOS it is quartz, whose Objective-C runtime
-#' aborts a forked child outright (killing the method before its file exports
-#' run), and on other platforms each child would pop its own on-screen device.
-#' Previews are therefore skipped inside forked workers; file exports are
-#' unaffected.
+#' In terminal R on macOS the interactive device is quartz, whose windows only
+#' process events while R idles at the prompt: they beachball for the whole
+#' method run, and successive previews draw into the same window so only the
+#' last plot survives a multi-method run. Previews there go through the
+#' exported PNG file opened in the system viewer instead, which has its own
+#' event loop and keeps each plot separately browsable. GUI front ends
+#' (RStudio, Positron, R.app) pump their device's events themselves, so they
+#' keep the plain `print()` preview.
 #'
-#' @param plot *\[any\]* A printable plot object. `NULL` is skipped.
-#' @return NULL (invisibly)
-preview_plot <- function(plot) {
+#' @param interactive_session *\[logical, optional\]* Injectable for testing;
+#'   defaults to `interactive()`.
+#' @param sysname *\[character, optional\]* Injectable for testing; defaults to
+#'   `Sys.info()[["sysname"]]`.
+#' @param gui *\[character, optional\]* Injectable for testing; defaults to
+#'   `.Platform$GUI`.
+#' @return *\[logical\]* `TRUE` when previews should open files.
+use_file_preview <- function(interactive_session = NULL, sysname = NULL, gui = NULL) {
+  interactive_session <- interactive_session %||% interactive()
+  sysname <- sysname %||% Sys.info()[["sysname"]]
+  gui <- gui %||% .Platform$GUI
+
+  # "X11" (or "unused" on builds without X11 support) is what plain terminal R
+  # reports on macOS; every GUI front end announces itself with its own value.
+  isTRUE(interactive_session) &&
+    identical(sysname, "Darwin") &&
+    gui %in% c("X11", "unused")
+}
+
+
+#' Whether the current preview must be rendered to a file first
+#'
+#' @description
+#' Call-site companion to `use_file_preview()`: methods use it to decide
+#' whether a preview needs an exported PNG even when `export_graphics` is off.
+#' A forked worker never previews, so it never needs the file either.
+#'
+#' @return *\[logical\]* `TRUE` when a preview requires an exported file.
+preview_needs_file <- function() {
   box::use(artma / visualization / fork_safety[in_forked_worker])
 
-  if (is.null(plot) || in_forked_worker()) {
+  !in_forked_worker() && use_file_preview()
+}
+
+
+#' Open an exported plot file in the system viewer without stealing focus
+#'
+#' @param path *\[character\]* Path of the file to open.
+#' @return NULL (invisibly)
+#' @keywords internal
+open_preview_file <- function(path) {
+  box::use(artma / libs / core / utils[get_verbosity])
+
+  status <- suppressWarnings(
+    system2("open", c("-g", shQuote(path)), stdout = FALSE, stderr = FALSE)
+  )
+
+  if (!identical(status, 0L) && get_verbosity() >= 2) {
+    cli::cli_alert_warning("Could not open the plot preview {.file {path}}")
+  }
+
+  invisible(NULL)
+}
+
+
+#' Preview a plot on the interactive device or via its exported file
+#'
+#' @description
+#' Methods preview their plots at verbosity >= 3. The default is to print
+#' them, which opens the session's default interactive device. Two situations
+#' divert from that:
+#'
+#' - In a forked method worker the device must not be touched: on macOS it is
+#'   quartz, whose Objective-C runtime aborts a forked child outright (killing
+#'   the method before its file exports run), and on other platforms each
+#'   child would pop its own on-screen device. Previews are skipped there.
+#' - When `use_file_preview()` says the interactive device would be a
+#'   beachballing terminal quartz window, the exported PNG at `path` is opened
+#'   in the system viewer instead; with no usable `path` the preview is
+#'   skipped rather than printed.
+#'
+#' @param plot *\[any\]* A printable plot object. `NULL` is skipped when
+#'   printing; a file preview only needs `path`.
+#' @param path *\[character, optional\]* Path of the exported PNG to open when
+#'   file previews are in effect. `NULL` or `NA` means no file is available.
+#' @param file_preview *\[logical, optional\]* Injectable for testing; defaults
+#'   to `use_file_preview()`.
+#' @param opener *\[function, optional\]* Injectable for testing; defaults to
+#'   `open_preview_file()`.
+#' @return NULL (invisibly)
+preview_plot <- function(plot, path = NULL, file_preview = NULL, opener = NULL) {
+  box::use(
+    artma / libs / core / validation[validate],
+    artma / visualization / fork_safety[in_forked_worker]
+  )
+
+  validate(is.null(path) || (is.character(path) && length(path) == 1))
+
+  if (in_forked_worker()) {
+    return(invisible(NULL))
+  }
+
+  file_preview <- file_preview %||% use_file_preview()
+
+  if (isTRUE(file_preview)) {
+    if (!is.null(path) && !is.na(path) && file.exists(path)) {
+      opener <- opener %||% open_preview_file
+      opener(path)
+    }
+    return(invisible(NULL))
+  }
+
+  if (is.null(plot)) {
     return(invisible(NULL))
   }
 
@@ -204,9 +308,13 @@ preview_plot <- function(plot) {
 #'   Defaults to 1.
 #' @param units *\[character\]* Units for width/height. Defaults to "px".
 #' @param dpi *\[numeric\]* Base resolution, before `scale`. Defaults to 150.
+#' @param record *\[logical\]* Register the file via `record_output_file()` and
+#'   allow the optional HTML companion export. Set to FALSE for throwaway
+#'   preview renders (tempfiles), which are not run outputs. Defaults to TRUE.
 #'
 #' @return *\[character\]* The path where the plot was saved (invisibly)
-save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units = "px", dpi = 150) {
+save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units = "px", dpi = 150,
+                      record = TRUE) {
   box::use(
     artma / libs / core / validation[validate],
     artma / libs / core / utils[get_verbosity],
@@ -219,7 +327,8 @@ save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units =
     is.character(path),
     is.numeric(width), width > 0,
     is.numeric(height), height > 0,
-    is.numeric(scale), scale > 0
+    is.numeric(scale), scale > 0,
+    is.logical(record)
   )
 
   dir_path <- dirname(path)
@@ -249,14 +358,17 @@ save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units =
 
   # Graphics are a side effect of the method run, not part of its return value,
   # so record them: a cache hit that replays the value must not leave the
-  # results directory without its plots.
-  record_output_file(path)
+  # results directory without its plots. A preview tempfile is not a run
+  # output, so it is neither recorded nor given an HTML companion.
+  if (record) {
+    record_output_file(path)
+  }
 
   if (get_verbosity() >= 4) {
     cli::cli_alert_success("Exported plot to {.file {path}}")
   }
 
-  if (isTRUE(getOption("artma.visualization.export_html", FALSE))) {
+  if (record && isTRUE(getOption("artma.visualization.export_html", FALSE))) {
     html_path <- sub("\\.[^.]*$", ".html", path)
     save_plot_html(plot, html_path)
   }
@@ -328,10 +440,12 @@ save_plot_html <- function(plot, path) {
 #' @param width *\[numeric\]* Unscaled device width, in pixels at `BASE_PLOT_DPI`
 #' @param height *\[numeric\]* Unscaled device height, in pixels at `BASE_PLOT_DPI`
 #' @param graph_scale *\[numeric\]* Scale multiplier for dimensions and resolution
+#' @param record *\[logical\]* Register the file via `record_output_file()`.
+#'   Defaults to TRUE.
 #'
 #' @return NULL (invisibly)
 #' @keywords internal
-export_base_plot <- function(draw, path, width, height, graph_scale) {
+export_base_plot <- function(draw, path, width, height, graph_scale, record = TRUE) {
   box::use(artma / libs / core / validation[validate])
 
   validate(
@@ -356,7 +470,8 @@ export_base_plot <- function(draw, path, width, height, graph_scale) {
     width = size$width,
     height = size$height,
     units = "px",
-    res = size$res
+    res = size$res,
+    record = record
   )
   on.exit(grDevices::dev.off(), add = TRUE)
   draw()
@@ -397,8 +512,12 @@ export_base_plot <- function(draw, path, width, height, graph_scale) {
 #' @param renderer *\[character\]* Either `"ggplot"` (default, uses
 #'   `save_plot()`) or `"base"` (uses `export_base_plot()` for base-graphics
 #'   draw functions).
+#' @param record *\[logical\]* Register the files via `record_output_file()`.
+#'   Set to FALSE for throwaway preview renders (tempfiles). Defaults to TRUE.
 #'
-#' @return NULL (invisibly)
+#' @return *\[character\]* One exported file path per entry in `plots`, with
+#'   `NA` for skipped `NULL` entries (invisibly). Callers previewing plots
+#'   pass these paths to `preview_plot()`.
 export_named_plots <- function(plots,
                                base_name,
                                export_path,
@@ -407,7 +526,8 @@ export_named_plots <- function(plots,
                                width = 800,
                                height = 600,
                                use_indexing = NULL,
-                               renderer = c("ggplot", "base")) {
+                               renderer = c("ggplot", "base"),
+                               record = TRUE) {
   box::use(artma / libs / core / validation[validate])
 
   renderer <- match.arg(renderer)
@@ -431,6 +551,8 @@ export_named_plots <- function(plots,
     use_indexing <- length(plots) > 1 && length(unique(plot_names)) == 1
   }
 
+  exported_paths <- rep(NA_character_, length(plots))
+
   for (i in seq_along(plots)) {
     plot <- plots[[i]]
     if (is.null(plot)) {
@@ -442,19 +564,25 @@ export_named_plots <- function(plots,
     full_path <- file.path(export_path, filename)
 
     if (renderer == "base") {
-      export_base_plot(plot, full_path, width = width, height = height, graph_scale = graph_scale)
+      export_base_plot(
+        plot, full_path,
+        width = width, height = height, graph_scale = graph_scale, record = record
+      )
     } else {
       save_plot(
         plot = plot,
         path = full_path,
         width = width,
         height = height,
-        scale = graph_scale
+        scale = graph_scale,
+        record = record
       )
     }
+
+    exported_paths[i] <- full_path
   }
 
-  invisible(NULL)
+  invisible(exported_paths)
 }
 
 
@@ -464,9 +592,11 @@ box::export(
   ensure_export_dir,
   build_export_filename,
   open_png_device,
+  preview_needs_file,
   preview_plot,
   save_plot,
   save_plot_html,
   export_base_plot,
-  export_named_plots
+  export_named_plots,
+  use_file_preview
 )

@@ -13,7 +13,7 @@ box_plot <- function(df) {
     artma / options / index[get_option_group],
     artma / options / resolver[opt_spec, resolve_options],
     artma / visualization / options[get_visualization_options],
-    artma / visualization / export[export_named_plots, preview_plot]
+    artma / visualization / export[export_named_plots, preview_needs_file, preview_plot]
   )
 
   validate(is.data.frame(df))
@@ -73,27 +73,34 @@ box_plot <- function(df) {
     effect_label = effect_label
   )
 
-  if (get_verbosity() >= 3) {
+  should_preview <- get_verbosity() >= 3
+  preview_via_file <- should_preview && preview_needs_file()
+
+  # Exports run before the preview: a file preview shows the exported PNG, and
+  # when exports are off it renders the plots to throwaway tempfiles instead.
+  exported <- NULL
+  if (export_graphics || preview_via_file) {
+    exported <- export_named_plots(
+      plots = result$plots,
+      base_name = "box_plot",
+      export_path = if (export_graphics) export_path else tempfile("artma_preview_"),
+      graph_scale = graph_scale,
+      names = factor_by,
+      width = 800,
+      height = 1100,
+      record = export_graphics
+    )
+  }
+
+  if (should_preview) {
     cli::cli_h3("Box Plot: Effect by {factor_by}")
     n_plots <- length(result$plots)
     for (i in seq_along(result$plots)) {
       if (n_plots > 1) {
         cli::cli_alert_info("Displaying plot {i}/{n_plots}")
       }
-      preview_plot(result$plots[[i]])
+      preview_plot(result$plots[[i]], path = exported[i])
     }
-  }
-
-  if (export_graphics) {
-    export_named_plots(
-      plots = result$plots,
-      base_name = "box_plot",
-      export_path = export_path,
-      graph_scale = graph_scale,
-      names = factor_by,
-      width = 800,
-      height = 1100
-    )
   }
 
   # Class attached for clean printing (print method defined in R/print.R)

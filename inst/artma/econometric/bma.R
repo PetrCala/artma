@@ -624,31 +624,31 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
     }
   }
 
-  if (print_results == "all" && get_verbosity() >= 3) {
-    box::use(artma / visualization / export[preview_plot])
-    cli::cli_alert_info("Printing BMA plots...")
-    preview_plot(inclusion_plot)
-    safe_render_plot(bma_dist_call, "distribution plot")
-    if (has_corrplot) {
-      safe_render_plot(corrplot_mixed_call, "correlation plot")
-    }
-  }
+  box::use(
+    artma / visualization / export[
+      base_plot_device_size, ensure_export_dir, open_png_device, preview_needs_file,
+      preview_plot, save_plot
+    ]
+  )
 
-  if (export_graphics) {
-    box::use(
-      artma / visualization / export[
-        base_plot_device_size, ensure_export_dir, open_png_device, save_plot
-      ]
-    )
+  should_preview <- print_results == "all" && get_verbosity() >= 3
+  preview_via_file <- should_preview && preview_needs_file()
 
+  main_path <- dist_path <- corrplot_path <- NULL
+
+  # Exports run before the previews: a file preview shows the exported PNGs,
+  # and when exports are off it renders the plots to throwaway tempfiles
+  # instead (which stay out of the cache's output-file capture).
+  if (export_graphics || preview_via_file) {
     gprior <- bma_model$gprior.info$gtype
     mprior <- bma_model$mprior.info$origargs$mpmode
 
-    ensure_export_dir(export_path)
+    target_path <- if (export_graphics) export_path else tempfile("artma_preview_")
+    ensure_export_dir(target_path)
 
-    main_path <- file.path(export_path, paste0("bma_", gprior, "_", mprior, "_results.png"))
-    dist_path <- file.path(export_path, paste0("bma_", gprior, "_", mprior, "_dist.png"))
-    corrplot_path <- file.path(export_path, paste0("bma_", gprior, "_", mprior, "_corrplot.png"))
+    main_path <- file.path(target_path, paste0("bma_", gprior, "_", mprior, "_results.png"))
+    dist_path <- file.path(target_path, paste0("bma_", gprior, "_", mprior, "_dist.png"))
+    corrplot_path <- file.path(target_path, paste0("bma_", gprior, "_", mprior, "_corrplot.png"))
 
     for (path in list(main_path, dist_path, corrplot_path)) {
       if (file.exists(path)) {
@@ -657,13 +657,16 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
     }
 
     if (!is.null(inclusion_plot)) {
-      save_plot(inclusion_plot, main_path, width = 900, height = 650, scale = graph_scale)
+      save_plot(
+        inclusion_plot, main_path,
+        width = 900, height = 650, scale = graph_scale, record = export_graphics
+      )
     }
 
     dist_size <- base_plot_device_size(5.87, 5.62, graph_scale)
     open_png_device(dist_path,
       width = dist_size$width, height = dist_size$height, units = "px",
-      res = dist_size$res
+      res = dist_size$res, record = export_graphics
     )
     safe_render_plot(bma_dist_call, "distribution plot")
     grDevices::dev.off()
@@ -672,10 +675,29 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
       corrplot_size <- base_plot_device_size(7.78, 7.43, graph_scale)
       open_png_device(corrplot_path,
         width = corrplot_size$width, height = corrplot_size$height, units = "px",
-        res = corrplot_size$res
+        res = corrplot_size$res, record = export_graphics
       )
       safe_render_plot(corrplot_mixed_call, "correlation plot")
       grDevices::dev.off()
+    }
+  }
+
+  if (should_preview) {
+    cli::cli_alert_info("Printing BMA plots...")
+    if (preview_via_file) {
+      # The base-graphics plots have no printable object; the file preview only
+      # needs the exported paths.
+      preview_plot(inclusion_plot, path = main_path)
+      preview_plot(NULL, path = dist_path)
+      if (has_corrplot) {
+        preview_plot(NULL, path = corrplot_path)
+      }
+    } else {
+      preview_plot(inclusion_plot)
+      safe_render_plot(bma_dist_call, "distribution plot")
+      if (has_corrplot) {
+        safe_render_plot(corrplot_mixed_call, "correlation plot")
+      }
     }
   }
 

@@ -274,13 +274,15 @@ test_that("preview_plot prints in the parent but not inside a forked worker", {
 
   probe <- structure(list(), class = "artma_preview_probe")
 
-  with_forked_worker_flag(preview_plot(probe))
+  # `file_preview = FALSE` pins the print path: on a macOS terminal the file
+  # preview would otherwise take over and skip the device entirely.
+  with_forked_worker_flag(preview_plot(probe, file_preview = FALSE))
   expect_equal(calls$n, 0L)
 
-  preview_plot(probe)
+  preview_plot(probe, file_preview = FALSE)
   expect_equal(calls$n, 1L)
 
-  expect_null(preview_plot(NULL))
+  expect_null(preview_plot(NULL, file_preview = FALSE))
   expect_equal(calls$n, 1L)
 })
 
