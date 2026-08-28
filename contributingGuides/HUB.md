@@ -132,11 +132,18 @@ options-file item, Settings, Help and Exit.
   `rebuild_data`, wired to `prepare_run_context()` in `R/artma.R` so the run
   pipeline picks the fresh frame up too), and says so. Non-data edits never
   trigger a rebuild.
-- **Preview data**: prepares the data if the session has none yet, then prints
-  a textual summary of the frame (rows,
-  columns, study count when the config resolved `study_id`, missing-value
-  counts, effect and SE ranges), then offers the spreadsheet viewer (via
-  `artma::data_preview()`) when one is available.
+- **Preview data** (`interactive/preview.R`): prepares the data if the session
+  has none yet, prints the overview screen (rows, columns, study count when
+  the config resolved `study_id`, missing-value counts, a meta-analysis health
+  panel over `effect` and `se`: naive and precision-weighted mean effect, sign
+  split, share significant at 5%, largest |t|, and the effect and SE ranges),
+  then loops a submenu: Overview (reprint), Columns (per-column role, source
+  name for renamed columns, type, missing count, value summary), Studies
+  (estimates-per-study spread plus the largest studies with mean effect and
+  SE, capped at 10 rows), and Open spreadsheet viewer (via
+  `artma::data_preview()`), which only appears when `data_viewer_available()`
+  says one exists. All screens are plain terminal output, so the flow works
+  in viewer-less sessions too.
 - **Results**: submenu with "Open results folder" (`artma::results_open()`)
   and "Render HTML report" (`artma::report_render()` on the accumulated
   results). Both print a friendly message and do nothing before the first run.
