@@ -30,6 +30,7 @@
 - [Autonomy: how much artma asks](#autonomy-how-much-artma-asks)
 - [Results and visualization](#results-and-visualization)
 - [Custom methods](#custom-methods)
+- [Citation](#citation)
 - [Learn more](#learn-more)
 
 # Installation
@@ -268,6 +269,19 @@ box::export(my_method, run)
 The `tables` slot holds the display artifacts (rounded, formatted for a human reader); `estimates` holds the same numbers unrounded, in a long format shared by every method (`method`, `model`, `term`, `estimate`, `std_error`, `statistic`, `p_value`, `conf_low`, `conf_high`, `n_obs`, `n_clusters`, `note`), and is what a downstream pipeline reads from `<method>.csv`.
 
 Method parameters beyond the data frame come from the options system, so custom methods are configured the same way as built-in ones. See [README-dev.md](README-dev.md) for the full developer setup.
+
+# Citation
+
+If you use artma in your work, please cite it. The reference and a ready-made BibTeX entry are available from R:
+
+```r
+citation("artma")
+```
+
+The repository also ships a [CITATION.cff](CITATION.cff) file, so GitHub's "Cite this repository" button and citation managers can read the metadata directly.
+
+<!-- Zenodo DOI badge: uncomment and fill in the DOI after the first Zenodo-linked GitHub release -->
+<!-- [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX) -->
 
 # Learn more
 
