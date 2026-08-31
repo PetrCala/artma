@@ -22,6 +22,7 @@ the results as R objects.
 - [Autonomy: how much artma asks](#autonomy-how-much-artma-asks)
 - [Results and visualization](#results-and-visualization)
 - [Custom methods](#custom-methods)
+- [Citation](#citation)
 - [Learn more](#learn-more)
 
 # Installation
@@ -351,6 +352,21 @@ Method parameters beyond the data frame come from the options system, so
 custom methods are configured the same way as built-in ones. See
 [README-dev.md](https://petrcala.github.io/artma/README-dev.md) for the
 full developer setup.
+
+# Citation
+
+If you use artma in your work, please cite it. The reference and a
+ready-made BibTeX entry are available from R:
+
+``` r
+
+citation("artma")
+```
+
+The repository also ships a
+[CITATION.cff](https://petrcala.github.io/artma/CITATION.cff) file, so
+GitHub’s “Cite this repository” button and citation managers can read
+the metadata directly.
 
 # Learn more
 

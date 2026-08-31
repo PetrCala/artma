@@ -90,6 +90,7 @@ Effortlessly bridging the gap between data and models
 <li><a href="#autonomy-how-much-artma-asks">Autonomy: how much artma asks</a></li>
 <li><a href="#results-and-visualization">Results and visualization</a></li>
 <li><a href="#custom-methods">Custom methods</a></li>
+<li><a href="#citation">Citation</a></li>
 <li><a href="#learn-more">Learn more</a></li>
 </ul>
 <div class="section level1">
@@ -392,6 +393,16 @@ Effortlessly bridging the gap between data and models
 <span><span class="fu">box</span><span class="fu">::</span><span class="fu"><a href="https://klmr.me/box/reference/export.html" class="external-link">export</a></span><span class="op">(</span><span class="va">my_method</span>, <span class="va">run</span><span class="op">)</span></span></code></pre></div>
 <p>The <code>tables</code> slot holds the display artifacts (rounded, formatted for a human reader); <code>estimates</code> holds the same numbers unrounded, in a long format shared by every method (<code>method</code>, <code>model</code>, <code>term</code>, <code>estimate</code>, <code>std_error</code>, <code>statistic</code>, <code>p_value</code>, <code>conf_low</code>, <code>conf_high</code>, <code>n_obs</code>, <code>n_clusters</code>, <code>note</code>), and is what a downstream pipeline reads from <code>&lt;method&gt;.csv</code>.</p>
 <p>Method parameters beyond the data frame come from the options system, so custom methods are configured the same way as built-in ones. See <a href="README-dev.html">README-dev.md</a> for the full developer setup.</p>
+</div>
+<div class="section level1">
+<h1 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
+</h1>
+<p>If you use artma in your work, please cite it. The reference and a ready-made BibTeX entry are available from R:</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/citation.html" class="external-link">citation</a></span><span class="op">(</span><span class="st">"artma"</span><span class="op">)</span></span></code></pre></div>
+<p>The repository also ships a <a href="CITATION.cff">CITATION.cff</a> file, so GitHub’s “Cite this repository” button and citation managers can read the metadata directly.</p>
+<!-- Zenodo DOI badge: uncomment and fill in the DOI after the first Zenodo-linked GitHub release -->
+<!-- [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX) -->
 </div>
 <div class="section level1">
 <h1 id="learn-more">Learn more<a class="anchor" aria-label="anchor" href="#learn-more"></a>
