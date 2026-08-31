@@ -36,3 +36,4 @@
 ^Makefile$
 ^\.claude$
 ^\.Rprofile$
+^CITATION\.cff$

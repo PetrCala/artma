@@ -1,0 +1,20 @@
+pub_date <- meta[["Date/Publication"]]
+year <- if (!is.null(pub_date) && nzchar(pub_date)) {
+  sub("-.*", "", pub_date)
+} else {
+  format(Sys.Date(), "%Y")
+}
+
+note <- if (!is.null(meta$Version)) {
+  sprintf("R package version %s", meta$Version)
+}
+
+bibentry(
+  bibtype = "Manual",
+  header = "To cite artma in publications use:",
+  title = "{artma}: Automatic Replication Tools for Meta-Analysis",
+  author = person(given = "Petr", family = "Čala"),
+  year = year,
+  note = note,
+  url = "https://CRAN.R-project.org/package=artma"
+)

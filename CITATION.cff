@@ -1,0 +1,43 @@
+# ------------------------------------------------
+# CITATION.cff file created with {cffr} R package
+# See also: https://docs.ropensci.org/cffr/
+# ------------------------------------------------
+ 
+cff-version: 1.2.0
+message: 'To cite package "artma" in publications use:'
+type: software
+license: GPL-3.0-only
+title: 'artma: Automatic Replication Tools for Meta-Analysis'
+version: 0.4.1
+identifiers:
+- type: doi
+  value: 10.32614/CRAN.package.artma
+abstract: Provides a unified and straightforward interface for performing a variety
+  of meta-analysis methods directly from user data. Users can input a data frame,
+  specify key parameters, and effortlessly execute and compare multiple common meta-analytic
+  models. Designed for immediate usability, the package facilitates transparent, reproducible
+  research without manual implementation of each analytical method. Ideal for researchers
+  aiming for efficiency and reproducibility, it streamlines workflows from data preparation
+  to results interpretation.
+authors:
+- family-names: Čala
+  given-names: Petr
+  email: 61505008@fsv.cuni.cz
+preferred-citation:
+  type: manual
+  title: 'artma: Automatic Replication Tools for Meta-Analysis'
+  authors:
+  - family-names: Čala
+    given-names: Petr
+    email: 61505008@fsv.cuni.cz
+  year: '2026'
+  notes: R package version 0.4.1
+  url: https://CRAN.R-project.org/package=artma
+repository: https://CRAN.R-project.org/package=artma
+repository-code: https://github.com/PetrCala/artma
+url: https://petrcala.github.io/artma/
+contact:
+- family-names: Čala
+  given-names: Petr
+  email: 61505008@fsv.cuni.cz
+
