@@ -335,47 +335,88 @@ compute_study_medians <- function(df, var_name) {
 
 #' @title p-uniform* likelihood function
 #' @description
-#' Computes the negative log-likelihood for the p-uniform* model.
-#' This is a local implementation to avoid dependency on the unstable puniform package.
+#' Computes the negative log-likelihood for the p-uniform* selection model
+#' (van Aert & van Assen, 2023). Every study contributes: a study that is
+#' significant on the declared side is a normal density truncated to the
+#' selection region, and a non-significant study is the same density truncated
+#' to its complement. Fitting only the significant studies would be the
+#' original p-uniform model (van Assen, van Aert & Wicherts, 2015); including
+#' the non-significant ones is what the star variant adds. This is a local
+#' implementation to avoid dependency on the unstable puniform package and
+#' matches `puniform:::ml_star()`.
+#'
+#' Effects are expected in the "right-sided" frame: [run_puniform_star()]
+#' flips the sign of the data for `side = "left"` before calling in here and
+#' flips the estimate back afterwards.
 #' @param params *[numeric]* Parameters (effect size, heterogeneity tau).
-#' @param yi *[numeric]* Effect sizes.
+#' @param yi *[numeric]* Effect sizes of all studies, right-sided frame.
 #' @param vi *[numeric]* Variances.
-#' @param ni *[numeric]* Sample sizes.
 #' @param alpha *[numeric]* Significance level (default 0.05).
 #' @return *[numeric]* Negative log-likelihood value.
-puniform_star_nll <- function(params, yi, vi, ni, alpha = 0.05) {
+puniform_star_nll <- function(params, yi, vi, alpha = 0.05) {
   theta <- params[1]
   tau <- if (length(params) > 1) max(params[2], 0) else 0
 
   # Total variance
-  vi_total <- vi + tau^2
+  sd_total <- sqrt(vi + tau^2)
 
-  # Critical value
-  z_crit <- stats::qnorm(1 - alpha / 2)
+  # Selection is on the observed z-statistic yi / se_i, so the threshold in
+  # effect space is z_crit * se_i, fixed in tau. Scaling the threshold by the
+  # total SD instead lets the null model inflate tau until the observed
+  # effects fall outside the selection region while it still divides by a
+  # small P(significant), which spuriously rewards the null and collapses
+  # the LR test.
+  crit_y <- puniform_critical_z(alpha) * sqrt(vi)
+  significant <- yi >= crit_y
 
-  # Publication probability (conditional on being significant). Selection is
-  # on the observed z-statistic yi / se_i, so the threshold in effect space is
-  # z_crit * se_i, fixed in tau. Scaling the threshold by the total SD instead
-  # lets the null model inflate tau until the observed effects fall outside
-  # the selection region while it still divides by a small P(significant),
-  # which spuriously rewards the null and collapses the LR test.
-  crit_y <- z_crit * sqrt(vi)
-  pub_prob <- 1 - stats::pnorm(crit_y, mean = theta, sd = sqrt(vi_total)) +
-    stats::pnorm(-crit_y, mean = theta, sd = sqrt(vi_total))
-  pub_prob <- pmax(pub_prob, .Machine$double.eps)
+  # Each study is conditioned on its own significance status, both on the log
+  # scale so a theta far from the data does not underflow to log(0).
+  log_dens <- stats::dnorm(yi, mean = theta, sd = sd_total, log = TRUE)
+  log_p_sig <- stats::pnorm(crit_y, mean = theta, sd = sd_total, lower.tail = FALSE, log.p = TRUE)
+  log_p_nsig <- stats::pnorm(crit_y, mean = theta, sd = sd_total, log.p = TRUE)
+  log_p_status <- log_p_nsig
+  log_p_status[significant] <- log_p_sig[significant]
 
-  # Likelihood contribution
-  ll <- sum(stats::dnorm(yi, mean = theta, sd = sqrt(vi_total), log = TRUE) - log(pub_prob))
+  -sum(log_dens - log_p_status)
+}
 
-  -ll
+#' @title One-sided critical z-value of the p-uniform selection rule
+#' @description
+#' A study counts as significant on the declared side when its z-statistic
+#' exceeds the two-sided `alpha` critical value in that direction, which is
+#' the convention of `puniform::puni_star()` (its `alpha` is halved).
+#' @param alpha *[numeric]* Two-sided significance level used for selection.
+#' @return *[numeric]* Critical z-value.
+puniform_critical_z <- function(alpha) {
+  stats::qnorm(1 - alpha / 2)
+}
+
+#' @title Resolve the selection side of the p-uniform model
+#' @description
+#' Maps the user-facing `side` option to a sign multiplier. `"auto"` takes the
+#' sign of the inverse-variance weighted mean of all studies; a pooled effect
+#' of exactly zero is treated as right-sided.
+#' @param side *[character]* One of `"auto"`, `"left"`, `"right"`.
+#' @param yi *[numeric]* Effect sizes of all studies (original sign).
+#' @param vi *[numeric]* Variances.
+#' @return *[list]* `side` (the resolved side, never `"auto"`) and `sign`
+#'   (`1` for right, `-1` for left).
+resolve_puniform_side <- function(side, yi, vi) {
+  if (side == "auto") {
+    weights <- 1 / vi
+    pooled <- sum(yi * weights) / sum(weights)
+    side <- if (is.finite(pooled) && pooled < 0) "left" else "right"
+  }
+  list(side = side, sign = if (side == "left") -1 else 1)
 }
 
 #' @title Conditional p-value transform for the p-uniform selection model
 #' @description
-#' Computes, for each significant study, the CDF of its (sign-folded) z-score
-#' conditional on being selected for statistical significance, evaluated at a
-#' hypothesized true effect theta. Under the correctly specified theta these
-#' values are distributed Uniform(0, 1) (van Assen, van Aert & Wicherts, 2015).
+#' Computes, for each significant study, the CDF of its z-score conditional
+#' on being selected for statistical significance, evaluated at a hypothesized
+#' true effect theta. Under the correctly specified theta these values are
+#' distributed Uniform(0, 1) (van Assen, van Aert & Wicherts, 2015). Inputs
+#' are in the right-sided frame (see [run_puniform_star()]).
 #' @param theta *[numeric]* Hypothesized true effect size.
 #' @param yi *[numeric]* Effect sizes, restricted to significant studies.
 #' @param vi *[numeric]* Variances.
@@ -383,10 +424,9 @@ puniform_star_nll <- function(params, yi, vi, ni, alpha = 0.05) {
 #' @return *[numeric]* Conditional p-values, one per study, in (0, 1).
 puniform_transform <- function(theta, yi, vi, alpha) {
   sei <- sqrt(vi)
-  z_crit <- stats::qnorm(1 - alpha / 2)
-  sign_i <- sign(yi)
-  zi <- sign_i * yi / sei
-  ncp <- sign_i * theta / sei
+  z_crit <- puniform_critical_z(alpha)
+  zi <- yi / sei
+  ncp <- theta / sei
 
   # qi = (S(c) - S(z)) / S(c) = 1 - S(z)/S(c) with S the normal survival
   # function and z >= c. Computed on the log scale: the difference form
@@ -406,11 +446,10 @@ puniform_transform <- function(theta, yi, vi, alpha) {
 #' conditional p-value (see puniform_transform) across significant studies
 #' equals its expected value of 0.5, following the original p-uniform method
 #' of van Assen, van Aert & Wicherts (2015). Standard errors use the delta
-#' method. The sign folding in puniform_transform preserves the sign of
-#' theta itself (the conditional p-values are uniform exactly at the signed
-#' true effect), so the root is searched over a symmetric interval; a
-#' non-negative search would leave meta-analyses of negative effects
-#' spuriously "not estimable".
+#' method. The root is searched over a symmetric interval: the data arrive in
+#' the right-sided frame, but a literature whose significant studies scatter
+#' around the threshold can still place the root below zero, and a
+#' non-negative search would leave it spuriously "not estimable".
 #' @param yi *[numeric]* Effect sizes, restricted to significant studies.
 #' @param vi *[numeric]* Variances.
 #' @param alpha *[numeric]* Significance level used for selection.
@@ -456,17 +495,17 @@ run_puniform_mm <- function(yi, vi, alpha) {
 
 #' @title Maximum-likelihood estimation for p-uniform*
 #' @description
-#' Fits the p-uniform* selection model by unconstrained maximum likelihood.
+#' Fits the p-uniform* selection model by unconstrained maximum likelihood on
+#' all studies, significant or not (see [puniform_star_nll()]).
 #' The publication-bias test itself is method-independent and lives in
 #' [run_puniform_star()]: the likelihood-ratio test of theta = 0 that used to
 #' sit here was a test of no effect, not of publication bias, and was
 #' reported under the wrong label.
-#' @param yi *[numeric]* Effect sizes, restricted to significant studies.
+#' @param yi *[numeric]* Effect sizes of all studies, right-sided frame.
 #' @param vi *[numeric]* Variances.
-#' @param ni *[numeric]* Sample sizes.
 #' @param alpha *[numeric]* Significance level used for selection.
 #' @return *[list]* theta_est, theta_se, converged, note.
-run_puniform_ml <- function(yi, vi, ni, alpha) {
+run_puniform_ml <- function(yi, vi, alpha) {
   start_theta <- mean(yi)
   start_tau <- stats::sd(yi)
 
@@ -476,7 +515,6 @@ run_puniform_ml <- function(yi, vi, ni, alpha) {
       fn = puniform_star_nll,
       yi = yi,
       vi = vi,
-      ni = ni,
       alpha = alpha,
       method = "BFGS"
     ),
@@ -497,7 +535,7 @@ run_puniform_ml <- function(yi, vi, ni, alpha) {
   # Approximate standard error using the Hessian of the full model.
   theta_se <- tryCatch(
     {
-      hess <- stats::optimHess(par = opt_result$par, fn = puniform_star_nll, yi = yi, vi = vi, ni = ni, alpha = alpha)
+      hess <- stats::optimHess(par = opt_result$par, fn = puniform_star_nll, yi = yi, vi = vi, alpha = alpha)
       se_val <- sqrt(solve(hess)[1, 1])
       if (is.finite(se_val)) se_val else NA_real_
     },
@@ -542,33 +580,47 @@ run_puniform_bias_test <- function(yi_all, vi_all, yi_sig, vi_sig, alpha) {
 #' @title Run p-uniform* estimation
 #' @description
 #' Estimates publication bias and effect size using the p-uniform* method.
-#' This is a local implementation based on van Aert & van Assen (2019),
-#' supporting maximum likelihood ("ML") and method-of-moments ("P") estimation.
-#' @param df *[data.frame]* Data frame with effect, se, study_id, study_size, n_obs.
+#' This is a local implementation based on van Aert & van Assen (2023).
+#' Selection is one-directional: a study is "significant" when its
+#' z-statistic exceeds the two-sided `alpha` critical value on the declared
+#' `side`, matching `puniform::puni_star()`. Internally the effects are
+#' flipped into a right-sided frame, so every estimator below sees a
+#' literature selected for significantly positive results, and the final
+#' estimate is flipped back.
+#'
+#' Method `"ML"` fits the p-uniform* likelihood on all studies, significant
+#' or not. Method `"P"` is the original p-uniform method-of-moments estimator
+#' and uses the significant studies only.
+#' @param df *[data.frame]* Data frame with effect, se, study_id.
 #' @param add_significance_marks *[logical]* Whether to add significance asterisks.
 #' @param round_to *[integer]* Number of decimal places for rounding.
 #' @param alpha *[numeric]* Significance level for selection (default 0.05).
 #' @param method *[character]* Estimation method ("ML" or "P").
+#' @param side *[character]* Direction of the selection: `"left"`,
+#'   `"right"`, or `"auto"` (default), which takes the sign of the
+#'   inverse-variance weighted mean of all studies.
 #' @return *[list]* Contains coefficients, test statistics, the method actually
-#'   used (`method_used`), and a `note` explaining non-convergence or a
-#'   fallback from "ML" to "P", if either occurred.
-run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, alpha = 0.05, method = "ML") {
+#'   used (`method_used`), the resolved selection side (`side_used`), and a
+#'   `note` explaining non-convergence or a fallback from "ML" to "P", if
+#'   either occurred.
+run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, alpha = 0.05, method = "ML", side = "auto") {
   validate(
     is.data.frame(df),
     is.logical(add_significance_marks),
     is.numeric(round_to),
     is.numeric(alpha),
-    is.character(method)
+    is.character(method),
+    is.character(side)
   )
   assert(method %in% c("ML", "P"), "method must be one of 'ML' or 'P'.")
+  assert(side %in% c("auto", "left", "right"), "side must be one of 'auto', 'left', or 'right'.")
 
-  required_cols <- c("effect", "se", "study_id", "study_size", "n_obs")
+  required_cols <- c("effect", "se", "study_id")
   validate(all(required_cols %in% colnames(df)))
 
   # Compute study medians
   med_yi <- compute_study_medians(df, "effect")
   med_ses <- compute_study_medians(df, "se")
-  med_ni <- compute_study_medians(df, "study_size")
 
   # Sampling variance of each study's effect estimate. This must be se^2:
   # multiplying by the sample size (as an earlier version did) yields the
@@ -576,10 +628,15 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
   # and destroying the power of the LR test.
   med_vi <- med_ses^2
 
-  # Filter for significant effects (basic p-uniform assumption)
-  z_scores <- abs(med_yi / med_ses)
-  z_crit <- stats::qnorm(1 - alpha / 2)
-  sig_mask <- z_scores >= z_crit
+  # Flip into the right-sided frame so that "significant" means significantly
+  # positive for every estimator below.
+  resolved_side <- resolve_puniform_side(side, med_yi, med_vi)
+  side_sign <- resolved_side$sign
+  yi_all <- side_sign * med_yi
+
+  # Studies significant on the declared side
+  z_scores <- yi_all / med_ses
+  sig_mask <- z_scores >= puniform_critical_z(alpha)
 
   if (sum(sig_mask) < 2) {
     # Not enough significant studies to estimate theta or run the bias test.
@@ -590,13 +647,15 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
     l_stat <- NA_real_
     l_pval <- NA_real_
     method_used <- method
-    note <- sprintf("Fewer than 2 studies were significant at alpha = %s; effect not estimable.", alpha)
+    note <- sprintf(
+      "Fewer than 2 studies were significant at alpha = %s on the %s side; effect not estimable.",
+      alpha, resolved_side$side
+    )
   } else {
-    yi_sig <- med_yi[sig_mask]
+    yi_sig <- yi_all[sig_mask]
     vi_sig <- med_vi[sig_mask]
-    ni_sig <- med_ni[sig_mask]
 
-    fit_result <- if (method == "P") run_puniform_mm(yi_sig, vi_sig, alpha) else run_puniform_ml(yi_sig, vi_sig, ni_sig, alpha)
+    fit_result <- if (method == "P") run_puniform_mm(yi_sig, vi_sig, alpha) else run_puniform_ml(yi_all, med_vi, alpha)
     method_used <- method
 
     # A failed ML fit falls back to the method-of-moments (P) estimator so a
@@ -613,13 +672,14 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
       }
     }
 
-    theta_est <- fit_result$theta_est
+    # Back to the original sign; the standard error is sign-invariant.
+    theta_est <- side_sign * fit_result$theta_est
     theta_se <- fit_result$theta_se
     note <- fit_result$note
 
     # The publication-bias test is method-independent: Fisher's method on the
     # conditional transforms at the all-studies fixed-effect estimate.
-    bias_test <- run_puniform_bias_test(med_yi, med_vi, yi_sig, vi_sig, alpha)
+    bias_test <- run_puniform_bias_test(yi_all, med_vi, yi_sig, vi_sig, alpha)
     l_stat <- bias_test$l_stat
     l_pval <- bias_test$l_pval
   }
@@ -645,6 +705,7 @@ run_puniform_star <- function(df, add_significance_marks = TRUE, round_to = 3L, 
     test_statistic = l_stat,
     test_p_value = l_pval,
     method_used = method_used,
+    side_used = resolved_side$side,
     note = note
   )
 }
@@ -706,7 +767,8 @@ run_exogeneity_tests <- function(df, options) {
       add_significance_marks = options$add_significance_marks,
       round_to = options$round_to,
       alpha = options$puniform_alpha,
-      method = options$puniform_method
+      method = options$puniform_method,
+      side = options$puniform_side %||% "auto"
     ),
     error = function(e) {
       list(

@@ -95,6 +95,7 @@ Method-specific parameters for each analysis method:
 - `iv_instrument`: Instrument selection (automatic or specific formula)
 - `puniform_alpha`: Significance level for p-uniform*
 - `puniform_method`: Estimation method (ML or P)
+- `puniform_side`: Direction of the selection for significance (auto, left, or right)
 
 #### `bma` (Bayesian Model Averaging)
 

@@ -233,15 +233,29 @@ methods:
       type: "numeric"
       default: 0.05
       help: |
-        Significance level for the p-uniform* selection model.
-        Defaults to 0.05 (5%).
+        Two-sided significance level for the p-uniform* selection model.
+        A study counts as significant when its z-statistic exceeds the
+        corresponding critical value on the side declared by
+        {.strong puniform_side}. Defaults to 0.05 (5%).
 
     puniform_method:
       type: "enum: ML|P"
       default: "ML"
       help: |
         Estimation method for p-uniform*.
-        Use {.strong ML} for maximum likelihood or {.strong P} for method of moments.
+        Use {.strong ML} for maximum likelihood, which fits the p-uniform*
+        likelihood on all studies (significant or not), or {.strong P} for
+        the original p-uniform method of moments on the significant studies.
+
+    puniform_side:
+      type: "enum: auto|left|right"
+      default: "auto"
+      help: |
+        Direction of the selection for significance in the p-uniform* model.
+        {.strong right} treats studies with significantly positive effects as
+        selected, {.strong left} significantly negative ones. {.strong auto}
+        picks the side from the sign of the inverse-variance weighted mean of
+        all studies.
 
   box_plot:
     factor_by:
