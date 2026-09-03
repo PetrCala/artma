@@ -26,3 +26,8 @@ Useful links:
 Authors:
 
 - Petr Čala <61505008@fsv.cuni.cz>
+
+Other contributors:
+
+- Matyáš Tvrz (cluster-robust standard errors for frequentist model
+  averaging) \[contributor\]

@@ -23,6 +23,7 @@ the results as R objects.
 - [Results and visualization](#results-and-visualization)
 - [Custom methods](#custom-methods)
 - [Citation](#citation)
+  - [Contributors](#contributors)
 - [Learn more](#learn-more)
 
 # Installation
@@ -367,6 +368,13 @@ The repository also ships a
 [CITATION.cff](https://petrcala.github.io/artma/CITATION.cff) file, so
 GitHub’s “Cite this repository” button and citation managers can read
 the metadata directly.
+
+## Contributors
+
+- **Matyáš Tvrz** (bachelor thesis under prof. Havránková, IES)
+  contributed the cluster-robust standard errors used by frequentist
+  model averaging (`methods.fma`): the CRVE formula and small-sample
+  correction, reworked to fit the package’s estimator and conventions.
 
 # Learn more
 

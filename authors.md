@@ -4,6 +4,9 @@
 
 - **Petr Čala**. Author, maintainer.
 
+- **Matyáš Tvrz**. Contributor.  
+  cluster-robust standard errors for frequentist model averaging
+
 ## Citation
 
 Source:
