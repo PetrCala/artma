@@ -23,6 +23,8 @@ authors:
 - family-names: Čala
   given-names: Petr
   email: 61505008@fsv.cuni.cz
+- family-names: Tvrz
+  given-names: Matyáš
 preferred-citation:
   type: manual
   title: 'artma: Automatic Replication Tools for Meta-Analysis'

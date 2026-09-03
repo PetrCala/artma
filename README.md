@@ -31,6 +31,7 @@
 - [Results and visualization](#results-and-visualization)
 - [Custom methods](#custom-methods)
 - [Citation](#citation)
+  - [Contributors](#contributors)
 - [Learn more](#learn-more)
 
 # Installation
@@ -282,6 +283,10 @@ The repository also ships a [CITATION.cff](CITATION.cff) file, so GitHub's "Cite
 
 <!-- Zenodo DOI badge: uncomment and fill in the DOI after the first Zenodo-linked GitHub release -->
 <!-- [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX) -->
+
+## Contributors
+
+- **Matyáš Tvrz** (bachelor thesis under prof. Havránková, IES) contributed the cluster-robust standard errors used by frequentist model averaging (`methods.fma`): the CRVE formula and small-sample correction, reworked to fit the package's estimator and conventions.
 
 # Learn more
 
