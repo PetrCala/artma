@@ -236,6 +236,12 @@ winsorization_tails <- function(n_lower, n_upper) {
 
 #' @title Winsorize data
 #' @description Winsorize effect and standard error columns at specified quantiles.
+#'   The clip values are order statistics (`stats::quantile(type = 1)`, the
+#'   inverse ECDF), so every clipped value is replaced by the nearest retained
+#'   observation, matching Stata's `winsor` and the applied convention. The
+#'   default type 7 interpolates between order statistics and can clip to a
+#'   value no observation attains, which shifts threshold-based methods such
+#'   as WAAP or the stem cut onto a different subsample.
 #' @param df *\[data.frame\]* The data frame to winsorize
 #' @return *\[data.frame\]* The data frame with winsorized values
 #' @keywords internal
@@ -261,8 +267,8 @@ winsorize_data <- function(df) {
 
   # Winsorize effect column
   if ("effect" %in% colnames(df)) {
-    lower_q <- stats::quantile(df$effect, probs = winsorization_level, na.rm = TRUE)
-    upper_q <- stats::quantile(df$effect, probs = 1 - winsorization_level, na.rm = TRUE)
+    lower_q <- stats::quantile(df$effect, probs = winsorization_level, na.rm = TRUE, type = 1)
+    upper_q <- stats::quantile(df$effect, probs = 1 - winsorization_level, na.rm = TRUE, type = 1)
 
     n_lower <- sum(df$effect < lower_q, na.rm = TRUE)
     n_upper <- sum(df$effect > upper_q, na.rm = TRUE)
@@ -277,8 +283,8 @@ winsorize_data <- function(df) {
 
   # Winsorize standard error column
   if ("se" %in% colnames(df)) {
-    lower_q <- stats::quantile(df$se, probs = winsorization_level, na.rm = TRUE)
-    upper_q <- stats::quantile(df$se, probs = 1 - winsorization_level, na.rm = TRUE)
+    lower_q <- stats::quantile(df$se, probs = winsorization_level, na.rm = TRUE, type = 1)
+    upper_q <- stats::quantile(df$se, probs = 1 - winsorization_level, na.rm = TRUE, type = 1)
 
     n_lower <- sum(df$se < lower_q, na.rm = TRUE)
     n_upper <- sum(df$se > upper_q, na.rm = TRUE)
@@ -339,5 +345,6 @@ box::export(
   enforce_data_types,
   enforce_correct_values,
   apply_subset_conditions,
+  winsorize_data,
   preprocess_data
 )
