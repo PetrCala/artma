@@ -70,3 +70,5 @@ Columns a method does not fill come back as typed `NA`s. `linear_tests` (`linear
 Every method that reports numbers must fill the slot: `tests/testthat/test-method-estimates-contract.R` walks each discovered method's parse tree and fails when `new_method_result()` is called without an `estimates` argument. Plot-only methods (`funnel_plot`, `box_plot`, `t_stat_histogram`, `prima_facie_graphs`) are listed there as the explicit exception.
 
 Rounding is a display concern: nothing on the `estimates` path may call `format_number()` or read `artma.output.number_of_decimals`.
+
+Estimates are reported on the scale of the input data. A method that transforms its design matrix internally (BMA z-scores every non-binary column, the effect included, before calling `BMS::bms`) must undo the transform before filling `tables` and `estimates`; `unscale_bma_coefs()` (`inst/artma/econometric/bma.R`) is the reference for the slope and intercept corrections. The transformed frame may still travel in `meta` for downstream methods that need it (`best_practice_estimate` reads the scaling attributes off `bma_result$meta$data`).

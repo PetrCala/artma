@@ -4,6 +4,13 @@
 #' effects across moderator variables. The method uses the BMS package to
 #' estimate the posterior inclusion probability (PIP) and coefficient estimates
 #' for each potential moderator variable.
+#'
+#' The design matrix handed to BMS is z-scored (every non-binary column, the
+#' effect included; see `get_bma_data()`), which the best-practice estimate
+#' relies on. Reported posterior means and standard deviations are moved back
+#' onto the data scale by `unscale_bma_coefs()`, so `tables$coefficients`,
+#' `estimates`, and the printed table all read in the units of the input
+#' columns. `meta$data` stays the standardized frame the model was fitted on.
 bma <- function(df) {
   box::use(
     artma / const[CONST],
@@ -215,7 +222,8 @@ bma <- function(df) {
 #'
 #' BMA reports a posterior, not a sampling distribution, so the inferential
 #' columns are read Bayesian: `estimate` is the posterior mean, `std_error` the
-#' posterior standard deviation, and `statistic` the posterior inclusion
+#' posterior standard deviation (both on the data scale, not the standardized
+#' one the model was fitted on), and `statistic` the posterior inclusion
 #' probability (PIP). There is no frequentist test statistic or p-value to put
 #' there instead, and PIP is the number every downstream consumer of a BMA run
 #' wants next to the mean, so it takes the `statistic` slot and each row carries
