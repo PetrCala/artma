@@ -272,3 +272,58 @@ test_that("enforce_correct_values 'ignore' strategy silently keeps rows", {
 
 # resolve_se_zero_handling now lives in inst/artma/data/configure.R; see
 # tests/testthat/test-data-configure.R for its tests.
+
+# -- winsorize_data ------------------------------------------------------------
+
+test_that("winsorize_data clips to order statistics, not interpolated quantiles", {
+  box::use(artma / data / preprocess[winsorize_data])
+
+  withr::local_options(list(
+    "artma.data.winsorization_level" = 0.1,
+    "artma.verbose" = 1
+  ))
+
+  # With 20 observations and p = 0.1, the type 1 (inverse ECDF) quantiles are
+  # the 2nd and 18th order statistics. Type 7 would interpolate to 2.9 and
+  # 18.1, values no observation attains.
+  df <- data.frame(effect = 1:20 / 1, se = 20:1 / 10)
+  result <- winsorize_data(df)
+
+  expect_equal(min(result$effect), 2)
+  expect_equal(max(result$effect), 18)
+  expect_equal(result$effect, pmax(pmin(df$effect, 18), 2))
+  expect_true(all(result$effect %in% df$effect))
+
+  expect_equal(min(result$se), 0.2)
+  expect_equal(max(result$se), 1.8)
+  expect_equal(result$se, pmax(pmin(df$se, 1.8), 0.2))
+  expect_true(all(result$se %in% df$se))
+})
+
+test_that("winsorize_data ignores NA values when locating the clip points", {
+  box::use(artma / data / preprocess[winsorize_data])
+
+  withr::local_options(list(
+    "artma.data.winsorization_level" = 0.1,
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(effect = c(NA, 1:20, NA), se = rep(0.5, 22))
+  result <- winsorize_data(df)
+
+  expect_true(all(is.na(result$effect[c(1, 22)])))
+  expect_equal(result$effect[2:21], pmax(pmin(1:20, 18), 2))
+  expect_equal(result$se, df$se)
+})
+
+test_that("winsorize_data is a no-op when the level is zero", {
+  box::use(artma / data / preprocess[winsorize_data])
+
+  withr::local_options(list(
+    "artma.data.winsorization_level" = 0,
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(effect = 1:20 / 1, se = 20:1 / 10)
+  expect_equal(winsorize_data(df), df)
+})

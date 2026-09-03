@@ -1130,7 +1130,9 @@ data:
     suppress_help_in_prompt: true
     help: |
       Winsorization level for effect and standard error variables.
-      Values will be capped at the specified quantile from both tails.
+      Values will be capped at the specified quantile from both tails. The cap
+      is an order statistic (the nearest retained observation, as in Stata's
+      winsor), not an interpolated quantile.
       Options:
         {cli::symbol$bullet} {.strong 0}: No winsorization (keep all original values)
         {cli::symbol$bullet} {.strong 0.01}: Winsorize at 1% level (default)
