@@ -190,6 +190,40 @@ test_that("compute_optional_columns keeps a user-supplied precision column when 
 })
 
 
+test_that("compute_optional_columns computes t_stat from effect and se when none is mapped", {
+  local_compute_options()
+
+  result <- compute_optional_columns(sample_study_df())
+
+  expect_equal(result$t_stat, result$effect / result$se)
+})
+
+
+test_that("compute_optional_columns keeps a mapped t_stat column when winsorization is disabled", {
+  df <- sample_study_df()
+  df$t_stat <- c(3, 4, 5)
+
+  local_compute_options()
+
+  result <- compute_optional_columns(df)
+
+  expect_equal(result$t_stat, c(3, 4, 5))
+})
+
+
+test_that("compute_optional_columns recomputes a mapped t_stat column when winsorization is active", {
+  df <- sample_study_df()
+  df$t_stat <- c(3, 4, 5)
+
+  withr::local_options(list("artma.data.winsorization_level" = 0.01))
+  local_compute_options()
+
+  result <- compute_optional_columns(df)
+
+  expect_equal(result$t_stat, result$effect / result$se)
+})
+
+
 test_that("compute_optional_columns does not warn about study_id for valid string labels", {
   df <- sample_study_df()
   local_compute_options()

@@ -400,6 +400,27 @@ test_that("run_p_hacking_tests reports p-value counts and a caliper table", {
   expect_true(any(grepl("p-value", result$caliper[[1]])))
 })
 
+test_that("run_p_hacking_tests picks the t-statistic source from t_stat_source", {
+  local_options(artma.verbose = 1)
+  df <- make_p_hacking_df()
+  # A reported t_stat that disagrees with effect / se, as when the primary
+  # studies clustered their standard errors: doubling pushes the t = 1.5 and
+  # t = 1.0 rows past the 5% threshold, leaving only t = 0.5 (now 1.0) below.
+  df$t_stat <- 2 * df$effect / df$se
+
+  reported <- run_p_hacking_tests(df, base_p_hacking_options(t_stat_source = "reported"))
+  computed <- run_p_hacking_tests(df, base_p_hacking_options(t_stat_source = "computed"))
+  default <- run_p_hacking_tests(df, base_p_hacking_options())
+
+  expect_equal(computed$n_significant_005, 3L)
+  expect_equal(reported$n_significant_005, 5L)
+  expect_equal(default$n_significant_005, reported$n_significant_005)
+  expect_error(
+    run_p_hacking_tests(df, base_p_hacking_options(t_stat_source = "raw")),
+    "t_stat_source"
+  )
+})
+
 test_that("run_p_hacking_tests dedupes duplicated caliper thresholds/widths without crashing", {
   local_options(artma.verbose = 1)
   df <- make_p_hacking_df()

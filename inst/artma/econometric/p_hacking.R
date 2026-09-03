@@ -630,13 +630,27 @@ run_cox_shi <- function(pvalues, study_id = NULL, p_min, p_max, n_bins = 10L,
 #' Executes comprehensive p-hacking detection tests: Caliper (Gerber & Malhotra, 2008),
 #' Elliott et al. (2022).
 #' @param df *[data.frame]* Input data with effect, se, and study_id columns.
-#' @param options *[list]* Options containing test parameters.
+#' @param options *[list]* Options containing test parameters. `t_stat_source`
+#'   picks the t-statistic the tests turn into p-values: `"reported"` (the
+#'   default) takes `df$t_stat` where present, falling back to `effect / se`;
+#'   `"computed"` always recomputes `effect / se`.
 #' @return *[list]* Contains test results and formatted summaries.
 run_p_hacking_tests <- function(df, options) {
   validate(is.data.frame(df), is.list(options))
 
+  t_stat_source <- options$t_stat_source %||% "reported"
+  assert(
+    t_stat_source %in% c("reported", "computed"),
+    "t_stat_source must be one of: reported, computed"
+  )
+
   study_id <- if ("study_id" %in% colnames(df)) df$study_id else seq_len(nrow(df))
-  t_stats <- resolve_t_stats(df)
+  t_stats <- if (identical(t_stat_source, "computed")) {
+    validate(is.numeric(df$effect), is.numeric(df$se))
+    df$effect / df$se
+  } else {
+    resolve_t_stats(df)
+  }
   pvalues <- 2 * stats::pnorm(-abs(t_stats))
 
   supports <- options$elliott_supports %||% DEFAULT_ELLIOTT_SUPPORTS

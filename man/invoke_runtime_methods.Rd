@@ -4,7 +4,13 @@
 \alias{invoke_runtime_methods}
 \title{Invoke methods}
 \usage{
-invoke_runtime_methods(methods, df, modules_dir = NULL, ...)
+invoke_runtime_methods(
+  methods,
+  df,
+  modules_dir = NULL,
+  unwinsorized_df = NULL,
+  ...
+)
 }
 \arguments{
 \item{methods}{\emph{[character]} A character vector of the methods to invoke.}
@@ -12,6 +18,12 @@ invoke_runtime_methods(methods, df, modules_dir = NULL, ...)
 \item{df}{\emph{[data.frame]} The data frame to invoke the methods on.}
 
 \item{modules_dir}{\emph{[character, optional]} Directory to discover runtime method modules in. Defaults to \code{NULL}, in which case the standard package methods directory is used. Used mainly for dependency injection in tests.}
+
+\item{unwinsorized_df}{\emph{[data.frame|function, optional]} The data frame
+prepared without winsorization, or a function returning it, handed to
+methods registered with \code{winsorize = FALSE} in place of \code{df}. Defaults to
+\code{NULL}: such methods then run on \code{df}, with a warning when winsorization
+is active.}
 
 \item{...}{\emph{[any]} Additional arguments to pass to the methods.}
 }

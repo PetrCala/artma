@@ -40,6 +40,7 @@ The remaining metadata arguments are optional:
 
 - `depends_on`: the orchestrator (`invoke_runtime_methods()` in `R/artma.R`) topologically sorts by these edges (erroring on cycles) and passes each upstream result as a `<dependency>_result` argument, so `depends_on = "bma"` yields a `bma_result` parameter. Discovery order is preserved among independent methods.
 - `required_columns`: a method whose columns are missing from the data is skipped with an explanation instead of aborting the run.
+- `winsorize`: `FALSE` hands the method the data frame prepared without winsorization (`effect`, `se`, and the columns derived from them unclipped; everything else identical) instead of the shared winsorized frame. The orchestrator builds that frame lazily from the run context (`unwinsorized_df` in `prepare_run_context()`), so a direct `invoke_runtime_methods()` call that supplies none falls back to `df` with a warning when winsorization is active. Use it for methods that winsorization distorts, such as `p_hacking_tests`, whose p-curve density tests read clipping as the bunching they detect.
 - `suggests`: the single declarative gate for optional packages. Missing packages soft-skip the method with a message, plus an interactive install offer. Exception: a non-interactive run requesting exactly that single method hard-aborts so scripts get a clear signal. Packages powering only an optional sub-model (e.g. `bayesm` in `nonlinear_tests`) stay as call-site `requireNamespace()` guards instead.
 
 ## Return contract

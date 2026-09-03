@@ -15,10 +15,12 @@ to decide which columns the data preparation must resolve.}
 }
 \value{
 \emph{[list]} The run context: \code{df} (the prepared data frame),
-\code{output_dir} (the base output directory; \code{NULL} when results are not
-saved, and replaced by the run's own directory in \code{execute_run()}),
-\code{save_results} and \code{capture} (the open output-file capture frame
-identifier).
+\code{unwinsorized_df} (a function returning the same frame prepared without
+winsorization, built on first call and then kept; handed to methods that
+register \code{winsorize = FALSE}), \code{output_dir} (the base output directory;
+\code{NULL} when results are not saved, and replaced by the run's own
+directory in \code{execute_run()}), \code{save_results} and \code{capture} (the open
+output-file capture frame identifier).
 }
 \description{
 First step of the \code{artma()} pipeline: resolve the output

@@ -391,14 +391,16 @@ restore_last_options_file <- function(bind_options, options_dir = NULL) {
 #' @param methods *\[character, optional\]* The methods the run will invoke, used
 #'   to decide which columns the data preparation must resolve.
 #' @return *\[list\]* The run context: `df` (the prepared data frame),
-#'   `output_dir` (the base output directory; `NULL` when results are not
-#'   saved, and replaced by the run's own directory in `execute_run()`),
-#'   `save_results` and `capture` (the open output-file capture frame
-#'   identifier).
+#'   `unwinsorized_df` (a function returning the same frame prepared without
+#'   winsorization, built on first call and then kept; handed to methods that
+#'   register `winsorize = FALSE`), `output_dir` (the base output directory;
+#'   `NULL` when results are not saved, and replaced by the run's own
+#'   directory in `execute_run()`), `save_results` and `capture` (the open
+#'   output-file capture frame identifier).
 #' @keywords internal
 prepare_run_context <- function(data = NULL, methods = NULL) {
   box::use(
-    artma / data / index[prepare_data],
+    artma / data / index[compute_unwinsorized_data, prepare_data, without_winsorization],
     artma / libs / core / utils[get_verbosity],
     artma / libs / infrastructure / output_files[
       begin_output_file_capture, end_output_file_capture
@@ -435,6 +437,7 @@ prepare_run_context <- function(data = NULL, methods = NULL) {
   # Prepare data: use provided data or load from options
   if (is.null(data)) {
     df <- prepare_data(methods = methods)
+    build_unwinsorized <- compute_unwinsorized_data
   } else {
     # User provided data directly - still need to preprocess and compute.
     # Mirror prepare_data's phases: decide the NA strategy (configure), run
@@ -462,12 +465,27 @@ prepare_run_context <- function(data = NULL, methods = NULL) {
     df <- preprocess_data(data)
     df <- compute_optional_columns(df)
     update_config_with_computed_columns(df)
+    build_unwinsorized <- function() {
+      without_winsorization(compute_optional_columns(preprocess_data(data)))
+    }
+  }
+
+  # The unwinsorized frame is built on first use and then kept: only methods
+  # registered with `winsorize = FALSE` need it, and a hub session may run them
+  # repeatedly against one prepared context.
+  unwinsorized_state <- new.env(parent = emptyenv())
+  unwinsorized_df <- function() {
+    if (is.null(unwinsorized_state$df)) {
+      unwinsorized_state$df <- build_unwinsorized()
+    }
+    unwinsorized_state$df
   }
 
   handed_over <- TRUE
 
   list(
     df = df,
+    unwinsorized_df = unwinsorized_df,
     output_dir = output_dir,
     save_results = save_results,
     capture = run_capture
@@ -510,7 +528,12 @@ execute_run <- function(context, methods = NULL, ...) {
   }
 
   # Invoke methods
-  results <- invoke_runtime_methods(methods = methods, df = context$df, ...)
+  results <- invoke_runtime_methods(
+    methods = methods,
+    df = context$df,
+    unwinsorized_df = context$unwinsorized_df,
+    ...
+  )
 
   # Export tabular results
   run_files <- character()
@@ -621,6 +644,11 @@ summarize_run <- function(results, context, run_files = character(), open_result
 #' @param methods *\[character\]* A character vector of the methods to invoke.
 #' @param df *\[data.frame\]* The data frame to invoke the methods on.
 #' @param modules_dir *\[character, optional\]* Directory to discover runtime method modules in. Defaults to `NULL`, in which case the standard package methods directory is used. Used mainly for dependency injection in tests.
+#' @param unwinsorized_df *\[data.frame|function, optional\]* The data frame
+#'   prepared without winsorization, or a function returning it, handed to
+#'   methods registered with `winsorize = FALSE` in place of `df`. Defaults to
+#'   `NULL`: such methods then run on `df`, with a warning when winsorization
+#'   is active.
 #' @param ... *\[any\]* Additional arguments to pass to the methods.
 #' @return *\[list\]* Results of the invocations, indexed by method names.
 #'   Failed methods are omitted; their names and error messages are attached
@@ -633,12 +661,14 @@ summarize_run <- function(results, context, run_files = character(), open_result
 #' invoke_runtime_methods(c("funnel_plot", "bma", "fma"), df)
 #'
 #' @keywords internal
-invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
+invoke_runtime_methods <- function(methods, df, modules_dir = NULL, unwinsorized_df = NULL, ...) {
   box::use(
     artma / const[CONST],
     artma / interactive / method_picker[ask_runtime_methods],
+    artma / libs / core / log[log_warn],
     artma / libs / core / string[pluralize],
     artma / libs / core / utils[get_verbosity],
+    artma / options / typed_accessors[is_winsorization_active],
     artma / libs / infrastructure / output_files[record_output_files],
     artma / modules / methods_table[build_methods_table],
     artma / modules / method_execution[
@@ -756,6 +786,33 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
 
   extra_args <- list(...)
 
+  # Methods registered with `winsorize = FALSE` get the frame prepared without
+  # winsorization, resolved once on first need from the supplied frame or
+  # thunk. When winsorization is off there is nothing to undo and `df` is that
+  # frame already. When it is on and nothing was supplied, the method runs on
+  # `df` and says so: silently handing it clipped values is the failure this
+  # opt-out exists to prevent.
+  unwinsorized_state <- new.env(parent = emptyenv())
+  resolve_unwinsorized_df <- function(method_name) {
+    if (!is.null(unwinsorized_state$df)) {
+      return(unwinsorized_state$df)
+    }
+    frame <- df
+    if (is_winsorization_active()) {
+      supplied <- if (is.function(unwinsorized_df)) unwinsorized_df() else unwinsorized_df
+      if (is.data.frame(supplied)) {
+        frame <- supplied
+      } else {
+        log_warn(paste0(
+          "{.code {method_name}} opts out of winsorization, but no unwinsorized ",
+          "data frame was supplied; running it on the winsorized data."
+        ))
+      }
+    }
+    unwinsorized_state$df <- frame
+    frame
+  }
+
   # Methods that do not depend on one another form a layer and can run
   # concurrently. Every method gets its own RNG stream up front, derived from
   # the run seed and the method's own name, so a run is reproducible given the
@@ -852,7 +909,8 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, ...) {
         next
       }
 
-      method_args <- c(list(df = df), extra_args)
+      method_df <- if (isFALSE(meta$winsorize)) resolve_unwinsorized_df(method_name) else df
+      method_args <- c(list(df = method_df), extra_args)
 
       # Pass each upstream dependency's result to the dependent as
       # `<dependency>_result`, unless the caller already supplied it. Every

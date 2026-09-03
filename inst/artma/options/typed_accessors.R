@@ -116,6 +116,16 @@ get_winsorization_level <- function() {
   getOption("artma.data.winsorization_level", default = WINSORIZATION_DISABLED_LEVEL)
 }
 
+#' @title Is winsorization active?
+#' @description Whether the compute phase clips `effect` and `se`: `TRUE` for
+#'   a set, non-missing, non-zero winsorization level.
+#' @return *\[logical\]* `TRUE` when the pipeline winsorizes.
+#' @keywords internal
+is_winsorization_active <- function() {
+  level <- get_winsorization_level()
+  !is.null(level) && length(level) == 1L && !is.na(level) && level != WINSORIZATION_DISABLED_LEVEL
+}
+
 #' @title Missing-value handling strategy accessor
 #' @description The strategy for handling missing values in the compute phase.
 #'   Resolves the `.na` template sentinel to the documented `"stop"` default.
@@ -149,6 +159,7 @@ box::export(
   option_template_default,
   get_precision_type,
   get_winsorization_level,
+  is_winsorization_active,
   get_na_handling,
   get_max_imputation_missingness,
   get_se_zero_handling,

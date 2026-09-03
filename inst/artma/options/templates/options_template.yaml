@@ -702,6 +702,21 @@ methods:
         only the combined MA table is displayed.
 
   p_hacking_tests:
+    t_stat_source:
+      type: "character"
+      default: "reported"
+      help: |
+        Which t-statistic the tests turn into p-values.
+        "reported" (default) uses the mapped `t_stat` column as the data reports
+        it: that is the number an author would have been hacking toward, and it
+        can carry inference (clustered standard errors, say) that `effect / se`
+        cannot rebuild. Without a mapped column the pipeline fills `t_stat` with
+        `effect / se`, so the two settings then agree.
+        "computed" always recomputes `effect / se`.
+        Either way the tests run on the unwinsorized `effect` and `se`: clipping
+        piles observations onto the two clip values, which is the density
+        irregularity the Elliott et al. (2022) battery is built to detect.
+
     include_caliper:
       type: "logical"
       default: true
