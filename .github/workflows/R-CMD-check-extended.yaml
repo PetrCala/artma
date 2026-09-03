@@ -69,6 +69,21 @@ jobs:
         with:
           extra-packages: any::rcmdcheck
           needs: check
+          # macOS caches built before the JAGS pin hold a RoBMA linked to
+          # Homebrew's libjags; a new cache version leaves them behind.
+          cache-version: ${{ runner.os == 'macOS' && 2 || 1 }}
+
+      - name: Rebuild RoBMA against the pinned JAGS (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          # A RoBMA binary linked to Homebrew's libjags (a stale cache, or an
+          # r-universe build) cannot load its JAGS module here; rebuild it
+          # from source so it links the pinned /usr/local install.
+          so="$(Rscript -e 'cat(system.file("libs", "RoBMA.so", package = "RoBMA"))')"
+          if [ -n "$so" ] && otool -L "$so" | grep -q "/opt/homebrew"; then
+            Rscript -e 'install.packages("RoBMA", type = "source", repos = "https://cloud.r-project.org")'
+          fi
 
       - uses: r-lib/actions/check-r-package@v2
         with:
