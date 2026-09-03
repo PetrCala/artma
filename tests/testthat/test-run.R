@@ -423,6 +423,76 @@ test_that("invoke_runtime_methods aborts for a lone non-interactive method missi
   )
 })
 
+test_that("invoke_runtime_methods hands the unwinsorized frame to methods that opt out", {
+  fake_methods <- list(
+    clipped = list(run = function(df, ...) max(df$effect)),
+    raw = list(
+      run = function(df, ...) max(df$effect),
+      meta = list(winsorize = FALSE)
+    )
+  )
+  methods_dir <- local_mock_methods_dir(fake_methods)
+  withr::local_options(list(artma.verbose = 1, artma.data.winsorization_level = 0.05))
+  df <- data.frame(effect = c(1, 2, 3), se = 1)
+  unwinsorized <- data.frame(effect = c(1, 2, 30), se = 1)
+  builds <- 0L
+
+  results <- artma:::invoke_runtime_methods(
+    methods = c("clipped", "raw"),
+    df = df,
+    modules_dir = methods_dir,
+    unwinsorized_df = function() {
+      builds <<- builds + 1L
+      unwinsorized
+    }
+  )
+
+  expect_equal(results$clipped, 3)
+  expect_equal(results$raw, 30)
+  expect_equal(builds, 1L)
+})
+
+test_that("invoke_runtime_methods runs an opted-out method on df when winsorization is off", {
+  fake_methods <- list(
+    raw = list(run = function(df, ...) max(df$effect), meta = list(winsorize = FALSE))
+  )
+  methods_dir <- local_mock_methods_dir(fake_methods)
+  withr::local_options(list(artma.verbose = 1, artma.data.winsorization_level = 0))
+  built <- FALSE
+
+  results <- artma:::invoke_runtime_methods(
+    methods = "raw",
+    df = data.frame(effect = c(1, 2, 3), se = 1),
+    modules_dir = methods_dir,
+    unwinsorized_df = function() {
+      built <<- TRUE
+      data.frame(effect = 30, se = 1)
+    }
+  )
+
+  expect_equal(results$raw, 3)
+  expect_false(built)
+})
+
+test_that("invoke_runtime_methods warns when an opted-out method gets no unwinsorized frame", {
+  fake_methods <- list(
+    raw = list(run = function(df, ...) max(df$effect), meta = list(winsorize = FALSE))
+  )
+  methods_dir <- local_mock_methods_dir(fake_methods)
+  withr::local_options(list(artma.verbose = 2, artma.data.winsorization_level = 0.05))
+
+  messages <- capture_messages(
+    results <- artma:::invoke_runtime_methods(
+      methods = "raw",
+      df = data.frame(effect = c(1, 2, 3), se = 1),
+      modules_dir = methods_dir
+    )
+  )
+
+  expect_equal(results$raw, 3)
+  expect_true(any(grepl("no unwinsorized data frame", messages)))
+})
+
 test_that("invoke_runtime_methods produces the same results in parallel and sequentially", {
   cores <- tryCatch(parallel::detectCores(), error = function(err) NA_integer_)
   testthat::skip_if(
@@ -673,6 +743,24 @@ test_that("execute_run invokes the methods and reports no files when results are
   expect_equal(capture_depth(), depth_before)
 })
 
+test_that("execute_run hands an opted-out method the context's unwinsorized frame", {
+  fake_methods <- list(
+    raw = list(
+      run = function(df, ...) list(tables = list(), meta = list(max_effect = max(df$effect))),
+      meta = list(winsorize = FALSE)
+    )
+  )
+  withr::local_options(list(artma.verbose = 0, artma.data.winsorization_level = 0.05))
+  methods_dir <- local_mock_methods_dir(fake_methods)
+
+  context <- local_run_context(data.frame(effect = c(1, 2, 3), se = 1), save_results = FALSE)
+  context$unwinsorized_df <- function() data.frame(effect = c(1, 2, 30), se = 1)
+
+  run <- artma:::execute_run(context, methods = "raw", modules_dir = methods_dir)
+
+  expect_equal(run$results$raw$meta$max_effect, 30)
+})
+
 test_that("execute_run exports tables, writes the manifest, and closes the capture", {
   box::use(artma / output / run_manifest[read_run_manifest])
 
@@ -817,6 +905,40 @@ test_that("prepare_run_context preprocesses a supplied data frame the same way",
   # The output directories are resolved and created before any data work.
   expect_equal(from_data$output_dir, output_dir)
   expect_true(dir.exists(file.path(output_dir, "tables")))
+})
+
+test_that("prepare_run_context exposes an unwinsorized variant of the prepared frame", {
+  withr::local_options(prepare_step_options)
+  withr::local_options(list(
+    artma.verbose = 0,
+    artma.output.save_results = FALSE,
+    artma.data.winsorization_level = 0.1
+  ))
+  box::use(
+    artma / data / read[read_data],
+    artma / libs / infrastructure / output_files[end_output_file_capture]
+  )
+
+  from_file <- artma:::prepare_run_context(data = NULL, methods = "funnel_plot")
+  end_output_file_capture(from_file$capture)
+  from_data <- artma:::prepare_run_context(data = read_data(), methods = "funnel_plot")
+  withr::defer(end_output_file_capture(from_data$capture))
+
+  for (context in list(from_file, from_data)) {
+    clipped <- context$df
+    raw <- context$unwinsorized_df()
+
+    expect_equal(dim(raw), dim(clipped))
+    expect_equal(names(raw), names(clipped))
+    expect_equal(raw$obs_id, clipped$obs_id)
+    # Winsorization pulled the tails in; the unwinsorized frame keeps them,
+    # and its derived columns follow the unclipped values.
+    expect_true(max(raw$effect) > max(clipped$effect))
+    expect_true(max(raw$se) > max(clipped$se))
+    expect_equal(raw$precision, 1 / raw$se)
+    # Built once, then kept for the context's lifetime.
+    expect_true(identical(context$unwinsorized_df(), raw))
+  }
 })
 
 test_that("prepare_run_context closes its capture when preparation fails", {

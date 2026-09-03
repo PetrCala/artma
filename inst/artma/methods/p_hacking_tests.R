@@ -7,6 +7,12 @@
 #'
 #' The MAIVE estimator has its own method (`maive`); it is an estimator rather
 #' than a test, and its diagnostics do not read as p-hacking p-values.
+#'
+#' The method registers `winsorize = FALSE`, so the orchestrator hands it the
+#' data prepared without winsorization: clipping `se` piles observations onto
+#' the two clip values, which is the p-curve irregularity the Elliott et al.
+#' battery detects. The `t_stat_source` option picks whether the tests use the
+#' `t_stat` column as reported in the data or recompute `effect / se`.
 p_hacking_tests <- function(df) {
   box::use(
     artma / libs / core / validation[validate, validate_columns],
@@ -25,6 +31,11 @@ p_hacking_tests <- function(df) {
   opt <- get_option_group("artma.methods.p_hacking_tests")
 
   resolved <- resolve_options(opt, list(
+    t_stat_source = opt_spec(
+      default = "reported", type = "character",
+      constraint = function(x) x %in% c("reported", "computed"),
+      constraint_msg = "t_stat_source must be one of: reported, computed"
+    ),
     include_caliper = opt_spec(default = TRUE, type = "logical"),
     caliper_thresholds = opt_spec(
       default = c(1.645, 1.96, 2.58), type = "numeric",
@@ -106,6 +117,7 @@ p_hacking_tests <- function(df) {
   }
 
   resolved_options <- list(
+    t_stat_source = resolved$t_stat_source,
     include_caliper = resolved$include_caliper,
     caliper_thresholds = resolved$caliper_thresholds,
     caliper_widths = resolved$caliper_widths,
@@ -134,6 +146,14 @@ p_hacking_tests <- function(df) {
 
   if (verbosity >= 1) {
     cli::cli_h2("P-hacking tests")
+
+    t_stat_note <- switch(resolved$t_stat_source,
+      reported = "the t-statistics as reported in the data (recomputed from effect / se where none is mapped)",
+      computed = "t-statistics recomputed from effect / se"
+    )
+    cli::cli_text(
+      "P-values are derived from {t_stat_note}, on unwinsorized effect sizes and standard errors."
+    )
 
     # Caliper tests (Gerber & Malhotra, 2008)
     if (!is.null(results$caliper) && nrow(results$caliper) > 0) {
@@ -294,7 +314,9 @@ run <- register_runtime_method(
   p_hacking_tests,
   stage = "p_hacking_tests",
   description = "Caliper tests and the Elliott et al. (2022) p-hacking battery",
-  required_columns = c("effect", "se", "t_stat", "study_id")
+  required_columns = c("effect", "se", "t_stat", "study_id"),
+  # Clipping se manufactures the p-value bunching these tests look for.
+  winsorize = FALSE
 )
 
 box::export(p_hacking_tests, p_hacking_tests_estimates, run)

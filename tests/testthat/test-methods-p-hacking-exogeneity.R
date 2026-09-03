@@ -57,6 +57,43 @@ test_that("p_hacking_tests returns the standard contract with a caliper table", 
   expect_true(is.numeric(estimates$estimate))
 })
 
+test_that("p_hacking_tests opts out of the pipeline's winsorization", {
+  box::use(
+    artma / methods / p_hacking_tests[run],
+    artma / modules / runtime_methods[get_method_metadata]
+  )
+
+  expect_false(get_method_metadata(run, name = "p_hacking_tests")$winsorize)
+})
+
+test_that("p_hacking_tests honours the t_stat_source option", {
+  local_caliper_only_options()
+
+  base <- make_p_hacking_df()
+  # Reported t-statistics that disagree with effect / se on every row, as when
+  # the primary studies clustered their standard errors.
+  reported <- base
+  reported$t_stat <- 2 * base$effect / base$se
+  # The frame whose effect / se reproduce those reported t-statistics.
+  rescaled <- base
+  rescaled$effect <- 2 * base$effect
+  rescaled$t_stat <- rescaled$effect / rescaled$se
+
+  with_options(list(artma.methods.p_hacking_tests.t_stat_source = "reported"), {
+    from_reported <- p_hacking_tests(reported)$estimates
+    expect_equal(from_reported, p_hacking_tests(rescaled)$estimates)
+    expect_false(isTRUE(all.equal(from_reported, p_hacking_tests(base)$estimates)))
+  })
+
+  with_options(list(artma.methods.p_hacking_tests.t_stat_source = "computed"), {
+    expect_equal(p_hacking_tests(reported)$estimates, p_hacking_tests(base)$estimates)
+  })
+
+  with_options(list(artma.methods.p_hacking_tests.t_stat_source = "raw"), {
+    expect_error(p_hacking_tests(reported), "t_stat_source")
+  })
+})
+
 test_that("p_hacking_tests aborts when a required column is missing", {
   local_options(artma.verbose = 1)
   # Missing t_stat and study_id.

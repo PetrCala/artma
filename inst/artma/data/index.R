@@ -139,6 +139,41 @@ compute_data <- cache_cli_runner(
   key_builder = function(...) build_data_cache_signature()
 )
 
+#' @title Compute the unwinsorized variant of the prepared data
+#' @description The compute phase again, with winsorization switched off, for
+#'   runtime methods that declare `winsorize = FALSE` (see
+#'   `register_runtime_method()`). Everything else about the frame (cleaning,
+#'   missing-value handling, subset conditions, derived columns) is identical,
+#'   so the result has the same rows and columns as `prepare_data()` returned,
+#'   with `effect`, `se` and the columns derived from them unclipped. Reads the
+#'   raw frame primed by the preceding `prepare_data()` call; the cache keys
+#'   on the option group, so the two variants never collide. Runs at most at
+#'   warning verbosity: the winsorized pass already narrated the pipeline.
+#' @return *[data.frame]* The prepared data frame without winsorization.
+compute_unwinsorized_data <- function() {
+  without_winsorization(compute_data())
+}
+
+#' @title Evaluate a compute step with winsorization switched off
+#' @description Runs `expr` with the winsorization level pinned to `0` and the
+#'   verbosity capped at warnings, so a second pass over the pipeline neither
+#'   clips nor repeats the narration of the first. Shared by
+#'   `compute_unwinsorized_data()` and the provided-data branch of
+#'   `prepare_run_context()`.
+#' @param expr *[any]* The expression to evaluate.
+#' @return The value of `expr`.
+without_winsorization <- function(expr) {
+  box::use(artma / libs / core / utils[get_verbosity])
+
+  withr::with_options(
+    list(
+      artma.data.winsorization_level = 0,
+      artma.verbose = min(get_verbosity(), 2)
+    ),
+    expr
+  )
+}
+
 #' @title Persist phase
 #' @description Idempotent, always-run phase. Registers the computed columns in
 #'   the data config so they survive a warm-cache run (when compute is skipped).
@@ -209,6 +244,8 @@ box::export(
   prepare_data,
   configure_data, # phases exported so tests can drive them in isolation
   compute_data_impl,
+  compute_unwinsorized_data,
+  without_winsorization,
   persist_data,
   prime_raw_df, # lets tests seed the raw frame the cached compute reads
   read_data,

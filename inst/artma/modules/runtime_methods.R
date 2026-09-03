@@ -203,6 +203,12 @@ METHOD_META_ATTR <- "artma_method_meta"
 #'   this is the single, declarative gate for optional-package dependencies.
 #' * `opt_in`: when `TRUE`, the method is left out of `methods = "all"` and must
 #'   be requested by name. Use it for methods too expensive to run by default.
+#' * `winsorize`: when `FALSE`, the orchestrator hands the method the data
+#'   frame prepared without winsorization (`effect`, `se` and the columns
+#'   derived from them unclipped) instead of the shared winsorized frame. Use
+#'   it for methods whose statistics winsorization distorts, such as the
+#'   p-curve density tests in `p_hacking_tests`, which clipping feeds exactly
+#'   the bunching they are built to detect.
 #'
 #' Disk caching is opt-in. Only the expensive stages (BMA, RoBMA) set
 #' `cached = TRUE`; the Elliott simulation keeps its own narrow cache in
@@ -227,6 +233,9 @@ METHOD_META_ATTR <- "artma_method_meta"
 #' @param opt_in *\[logical, optional\]* If `TRUE`, exclude the method from
 #'   `methods = "all"`; it then runs only when named explicitly. Defaults to
 #'   `FALSE`.
+#' @param winsorize *\[logical, optional\]* If `FALSE`, the method receives the
+#'   data frame prepared without winsorization. Defaults to `TRUE`, the shared
+#'   winsorized frame.
 #' @param cached *\[logical, optional\]* If `TRUE`, wrap the method in the full
 #'   disk-caching stack (memoise, cache signature, package source fingerprint,
 #'   output-file revalidation). Defaults to `FALSE`, which returns the
@@ -248,6 +257,7 @@ register_runtime_method <- function(impl, stage,
                                     required_columns = character(),
                                     suggests = character(),
                                     opt_in = FALSE,
+                                    winsorize = TRUE,
                                     cached = FALSE,
                                     label = NULL,
                                     key_builder = NULL, ...) {
@@ -287,7 +297,8 @@ register_runtime_method <- function(impl, stage,
     depends_on = as.character(depends_on),
     required_columns = as.character(required_columns),
     suggests = as.character(suggests),
-    opt_in = isTRUE(opt_in)
+    opt_in = isTRUE(opt_in),
+    winsorize = !isFALSE(winsorize)
   )
 
   run
@@ -300,7 +311,7 @@ register_runtime_method <- function(impl, stage,
 #' @param name *\[character, optional\]* Method name, used as the default stage
 #'   and label when the wrapper carries no metadata.
 #' @return *\[list\]* A list with `stage`, `label`, `description`,
-#'   `depends_on`, `required_columns`, `suggests`, and `opt_in`.
+#'   `depends_on`, `required_columns`, `suggests`, `opt_in`, and `winsorize`.
 get_method_metadata <- function(run_fn, name = NULL) {
   meta <- attr(run_fn, METHOD_META_ATTR, exact = TRUE)
   if (is.null(meta)) {
@@ -314,7 +325,8 @@ get_method_metadata <- function(run_fn, name = NULL) {
     depends_on = character(),
     required_columns = character(),
     suggests = character(),
-    opt_in = FALSE
+    opt_in = FALSE,
+    winsorize = TRUE
   )
 
   utils::modifyList(defaults, meta)

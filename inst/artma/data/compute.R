@@ -208,13 +208,21 @@ add_study_id_column <- function(df) {
 }
 
 #' @title Add t-statistic column
-#' @description Add a t-statistic column to the data frame.
+#' @description Add a t-statistic column to the data frame. A mapped `t_stat`
+#'   column is kept as reported (it may carry inference the meta-analyst cannot
+#'   rebuild from `effect`/`se`, such as clustered standard errors) unless
+#'   winsorization clipped `effect`/`se` upstream, in which case it is
+#'   recomputed from the clipped values so the three columns stay consistent,
+#'   mirroring `add_precision_column()`. Without a mapped column it is
+#'   computed as `effect / se`.
 #' @param df *\[data.frame\]* The data frame to add the t-statistic column to.
 #' @return *\[data.frame\]* The data frame with the t-statistic column.
 #' @keywords internal
 add_t_stat_column <- function(df) {
   box::use(
-    calc = artma / calc / index
+    calc = artma / calc / index,
+    artma / libs / core / utils[get_verbosity],
+    artma / options / typed_accessors[is_winsorization_active]
   )
 
   if ("t_stat" %in% colnames(df)) {
@@ -225,6 +233,14 @@ add_t_stat_column <- function(df) {
         "i" = "Please add these to your data frame, or remove the {.val t_stat} column mapping so they are computed automatically.",
         "i" = "You can remove the mapping by running {.code artma::config_set('t_stat', source_name = NA)}."
       ))
+    }
+
+    if (!is_winsorization_active()) {
+      return(df)
+    }
+
+    if (get_verbosity() >= 3) {
+      cli::cli_alert_info("Recalculating {.field t_stat} from winsorized data.")
     }
   }
 

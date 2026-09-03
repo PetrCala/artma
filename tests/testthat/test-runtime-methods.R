@@ -96,6 +96,7 @@ test_that("register_runtime_method attaches declarative metadata", {
   expect_equal(meta$suggests, "BMS")
   expect_equal(meta$stage, "demo")
   expect_equal(meta$opt_in, FALSE)
+  expect_equal(meta$winsorize, TRUE)
 })
 
 test_that("register_runtime_method leaves cheap methods uncached by default", {
@@ -159,6 +160,16 @@ test_that("register_runtime_method records the opt-in flag", {
   expect_true(get_method_metadata(run, name = "pricey")$opt_in)
 })
 
+test_that("register_runtime_method records the winsorization opt-out", {
+  box::use(
+    artma / modules / runtime_methods[get_method_metadata, register_runtime_method]
+  )
+
+  run <- register_runtime_method(function(df, ...) df, stage = "raw", winsorize = FALSE)
+
+  expect_equal(get_method_metadata(run, name = "raw")$winsorize, FALSE)
+})
+
 test_that("get_method_metadata fills defaults for methods without metadata", {
   box::use(
     artma / modules / runtime_methods[get_method_metadata]
@@ -170,6 +181,7 @@ test_that("get_method_metadata fills defaults for methods without metadata", {
   expect_equal(meta$suggests, character())
   expect_equal(meta$stage, "bare")
   expect_equal(meta$opt_in, FALSE)
+  expect_equal(meta$winsorize, TRUE)
 })
 
 test_that("get_runtime_method_modules ignores helper modules", {
