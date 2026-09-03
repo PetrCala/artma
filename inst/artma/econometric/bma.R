@@ -325,8 +325,9 @@ get_bma_data <- function(input_data, input_var_list, variable_info, scale_data =
       centers[[column]] <- as.numeric(attr(scaled, "scaled:center"))
       scales[[column]] <- as.numeric(attr(scaled, "scaled:scale"))
     }
-    # Consumed by the best-practice estimate to move raw-scale overrides onto
-    # the standardized scale and to move its outputs back off it.
+    # Consumed by `unscale_bma_coefs()` to report posterior moments on the
+    # data scale, and by the best-practice estimate to move raw-scale
+    # overrides onto the standardized scale and its outputs back off it.
     attr(bma_data, "bpe_scale_centers") <- centers
     attr(bma_data, "bpe_scale_scales") <- scales
   }
@@ -510,6 +511,99 @@ rename_bma_model <- function(bma_model, input_var_list) {
 }
 
 
+#' Move BMA coefficients from the standardized scale back to the data scale
+#'
+#' @description
+#' `get_bma_data()` z-scores every non-binary column, the response included,
+#' before the frame reaches `BMS::bms`. The UIP g-prior is scale invariant, so
+#' posterior inclusion probabilities are unaffected, but the posterior means
+#' and standard deviations come out in y-SD-per-x-SD units (y-SD units for the
+#' unscaled dummies). This function inverts the transform using the centers and
+#' scales stored on the frame, so the reported numbers are on the same scale as
+#' the input data:
+#'
+#' - slopes and their SDs: multiplied by `sd(y) / sd(x_j)` (`sd(x_j) = 1` for
+#'   columns that were never scaled);
+#' - the intercept: rescaled by `sd(y)`, shifted by `mean(y)`, and corrected
+#'   for the centering of every scaled regressor. BMS reports no posterior SD
+#'   for the intercept, so its `Post SD` stays `NA`.
+#'
+#' The frame is returned unchanged when it carries no scaling attributes.
+#'
+#' @param bma_coefs *\[matrix\]* The coefficient matrix from `stats::coef()`
+#'   on a `bma` object, as returned with `include.constant = TRUE`.
+#' @param bma_data *\[data.frame\]* The frame the model was fitted on, carrying
+#'   the `bpe_scale_centers` / `bpe_scale_scales` attributes set by
+#'   `get_bma_data()` (identity when absent).
+#' @param reg_names *\[character\]* The raw regressor names of the model, in
+#'   the model's index order (`bma_model$reg.names` before any renaming).
+#' @return *\[matrix\]* The coefficient matrix on the data scale.
+#' @export
+unscale_bma_coefs <- function(bma_coefs, bma_data, reg_names) {
+  box::use(
+    artma / libs / core / validation[assert, validate]
+  )
+
+  validate(
+    is.matrix(bma_coefs),
+    is.data.frame(bma_data),
+    is.character(reg_names)
+  )
+
+  centers <- attr(bma_data, "bpe_scale_centers")
+  scales <- attr(bma_data, "bpe_scale_scales")
+  if (is.null(centers) || is.null(scales)) {
+    return(bma_coefs)
+  }
+
+  assert(
+    all(c("Post Mean", "Post SD") %in% colnames(bma_coefs)),
+    "The BMA coefficient matrix must carry 'Post Mean' and 'Post SD' columns."
+  )
+
+  center_of <- function(name) if (name %in% names(centers)) centers[[name]] else 0
+  scale_of <- function(name) if (name %in% names(scales)) scales[[name]] else 1
+
+  is_intercept <- rownames(bma_coefs) == "(Intercept)"
+  # `coef.bma` carries the model index of each row (0 for the intercept); fall
+  # back to row order, which `order.by.pip = FALSE` keeps in index order.
+  row_idx <- if ("Idx" %in% colnames(bma_coefs)) {
+    as.integer(bma_coefs[, "Idx"])
+  } else {
+    idx <- cumsum(!is_intercept)
+    idx[is_intercept] <- 0L
+    idx
+  }
+  slope_rows <- which(!is_intercept)
+  assert(
+    all(row_idx[slope_rows] >= 1L & row_idx[slope_rows] <= length(reg_names)),
+    "BMA coefficient rows do not line up with the model's regressor names."
+  )
+  slope_names <- reg_names[row_idx[slope_rows]]
+
+  y_center <- center_of("effect")
+  y_scale <- scale_of("effect")
+
+  x_centers <- vapply(slope_names, center_of, numeric(1))
+  x_scales <- vapply(slope_names, scale_of, numeric(1))
+  factors <- y_scale / x_scales
+
+  unscaled <- bma_coefs
+  unscaled[slope_rows, "Post Mean"] <- bma_coefs[slope_rows, "Post Mean"] * factors
+  unscaled[slope_rows, "Post SD"] <- bma_coefs[slope_rows, "Post SD"] * factors
+
+  if (any(is_intercept)) {
+    raw_slopes <- unscaled[slope_rows, "Post Mean"]
+    unscaled[is_intercept, "Post Mean"] <- y_center +
+      y_scale * bma_coefs[is_intercept, "Post Mean"] -
+      sum(raw_slopes * x_centers)
+    unscaled[is_intercept, "Post SD"] <- y_scale * bma_coefs[is_intercept, "Post SD"]
+  }
+
+  unscaled
+}
+
+
 #' Extract results from a Bayesian Model Averaging regression
 #'
 #' @description
@@ -551,12 +645,15 @@ extract_bma_results <- function(bma_model, bma_data, input_var_list, print_resul
     is.numeric(graph_scale)
   )
 
+  raw_reg_names <- bma_model$reg.names
   bma_model <- rename_bma_model(bma_model, input_var_list)
 
   effect_verbose <- input_var_list$var_name_verbose[match("effect", input_var_list$var_name)]
   bma_matrix_names <- c(effect_verbose, bma_model$reg.names)
 
   bma_coefs <- stats::coef(bma_model, order.by.pip = FALSE, exact = TRUE, include.constant = TRUE)
+  # The model was fitted on the z-scored frame; report on the data scale.
+  bma_coefs <- unscale_bma_coefs(bma_coefs, bma_data, raw_reg_names)
 
   if (get_verbosity() >= 3 && print_results != "none") {
     cli::cli_h3("Bayesian Model Averaging Results")
@@ -829,6 +926,7 @@ box::export(
   run_bma,
   rename_bma_model,
   extract_bma_results,
+  unscale_bma_coefs,
   build_bma_model_labels,
   render_bma_comparison_plot,
   strip_bms_time_reseed
