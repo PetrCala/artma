@@ -21,7 +21,13 @@ emitted if every method failed.
 ## Usage
 
 ``` r
-invoke_runtime_methods(methods, df, modules_dir = NULL, ...)
+invoke_runtime_methods(
+  methods,
+  df,
+  modules_dir = NULL,
+  unwinsorized_df = NULL,
+  ...
+)
 ```
 
 ## Arguments
@@ -39,6 +45,14 @@ invoke_runtime_methods(methods, df, modules_dir = NULL, ...)
   *\[character, optional\]* Directory to discover runtime method modules
   in. Defaults to `NULL`, in which case the standard package methods
   directory is used. Used mainly for dependency injection in tests.
+
+- unwinsorized_df:
+
+  *\[data.frame\|function, optional\]* The data frame prepared without
+  winsorization, or a function returning it, handed to methods
+  registered with `winsorize = FALSE` in place of `df`. Defaults to
+  `NULL`: such methods then run on `df`, with a warning when
+  winsorization is active.
 
 - ...:
 
