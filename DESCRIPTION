@@ -55,6 +55,7 @@ Suggests:
     NlcOptim (>= 0.6),
     plm (>= 2.6-3),
     plotly (>= 4.10.0),
+    puniform (>= 0.2.7),
     quadprog (>= 1.5-8),
     ragg (>= 1.5.0),
     rddensity (>= 2.5),

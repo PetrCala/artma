@@ -30,6 +30,7 @@ exogeneity_tests <- function(df) {
         constraint_msg = "puniform_alpha must lie in the (0, 1) interval."
       ),
       puniform_method = opt_spec(default = "ML", type = "character"),
+      puniform_side = opt_spec(default = "auto", type = "character"),
       round_to = opt_spec(
         default = 3L, type = "numeric", key = "artma.output.number_of_decimals",
         cast = as.integer,
