@@ -2,14 +2,17 @@ name: Setup JAGS
 description: >
   Install the JAGS system library needed by RoBMA (Suggests). On Linux
   setup-r-dependencies installs it from the declared sysreqs; macOS and
-  Windows need it installed explicitly. The Windows install directory is
-  cached: the SourceForge download usually takes seconds but sporadically
-  stalls for minutes (observed 225s), and every workflow that uses this
-  action also runs on master pushes, so the cache is seeded under
+  Windows install the pinned SourceForge build explicitly. The pin matters
+  on macOS: Homebrew's jags formula moved to 5.0.0, whose distribution API
+  breaks the RoBMA source build, and RoBMA is built from source there
+  because CRAN's arm64 binary lags the source release. The Windows install
+  directory is cached: the SourceForge download usually takes seconds but
+  sporadically stalls for minutes (observed 225s), and every workflow that
+  uses this action also runs on master pushes, so the cache is seeded under
   refs/heads/master where all PR branches can restore it.
 inputs:
   jags-version:
-    description: JAGS version to install on Windows.
+    description: JAGS version to install on macOS and Windows.
     required: false
     default: "4.3.1"
 runs:
@@ -18,7 +21,17 @@ runs:
     - name: Install JAGS (macOS)
       if: runner.os == 'macOS'
       shell: bash
-      run: brew install jags
+      run: |
+        # The official universal (arm64 + x86_64) installer lands in
+        # /usr/local, where CRAN's rjags binary expects libjags. Homebrew's
+        # pkg-config does not search /usr/local by default, so point source
+        # builds (RoBMA) at the installed jags.pc.
+        version="${{ inputs.jags-version }}"
+        installer="$RUNNER_TEMP/JAGS-${version}.pkg"
+        curl -L --retry 3 -o "$installer" \
+          "https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Mac%20OS%20X/JAGS-${version}.pkg/download"
+        sudo installer -pkg "$installer" -target /
+        echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
 
     - name: Cache JAGS (Windows)
       if: runner.os == 'Windows'
