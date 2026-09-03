@@ -24,5 +24,10 @@ Authors:
   \item Petr Čala \email{61505008@fsv.cuni.cz}
 }
 
+Other contributors:
+\itemize{
+  \item Matyáš Tvrz (cluster-robust standard errors for frequentist model averaging) [contributor]
+}
+
 }
 \keyword{internal}
