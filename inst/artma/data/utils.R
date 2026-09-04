@@ -57,6 +57,24 @@ get_reserved_colnames <- function() {
   union(get_required_colnames(), CONST$DATA$COMPUTED_COLNAMES)
 }
 
+#' @title Get columns the compute phase rebuilds from winsorized data
+#' @description Columns whose mapped values `compute_optional_columns()`
+#'   discards and recalculates from the winsorized `effect`/`se` (see
+#'   `add_precision_column()`). Upstream steps skip these columns so that no
+#'   imputation work, or reported imputation count, goes into values about to
+#'   be thrown away (issue #522). `t_stat` is rebuilt the same way but keeps
+#'   its own completeness check before the recompute, so it is not listed.
+#' @param df *\[data.frame\]* The data frame.
+#' @return *\[character\]* Column names present in `df` that the compute
+#'   phase recalculates; empty when winsorization is off.
+get_winsorization_recomputed_cols <- function(df) {
+  box::use(artma / options / typed_accessors[is_winsorization_active])
+  if (!is_winsorization_active()) {
+    return(character(0))
+  }
+  intersect("precision", colnames(df))
+}
+
 #' Get the number of studies in an analysis data frame.
 #'
 #' @param df *\[data.frame\]* The analysis data frame.
@@ -282,6 +300,7 @@ box::export(
   get_required_colnames,
   get_reserved_colnames,
   get_standardized_colnames,
+  get_winsorization_recomputed_cols,
   raise_invalid_data_type_error,
   standardize_column_names
 )

@@ -172,6 +172,67 @@ test_that("compute_optional_columns recomputes a user-supplied precision column 
 })
 
 
+test_that("compute_optional_columns warns before overwriting a mapped precision column, naming the mapping", {
+  df <- data.frame(
+    study_id = c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)"),
+    effect = c(0.2, 0.5, 0.1),
+    se = c(0.1, 0.2, 0.1),
+    n_obs = c(120, 150, 120),
+    precision = c(999, 999, 999),
+    stringsAsFactors = FALSE
+  )
+
+  withr::local_options(list("artma.data.winsorization_level" = 0.01))
+  local_compute_options()
+  overrides <- computed_config_overrides
+  overrides$precision <- list(var_name = "precision", source_name = "weight")
+  withr::local_options(list("artma.data.columns" = overrides, "artma.verbose" = 2))
+
+  expect_message(
+    result <- compute_optional_columns(df),
+    "data.columns.precision.source_name"
+  )
+  expect_message(compute_optional_columns(df), "weight")
+  expect_equal(result$precision, 1 / result$se)
+})
+
+
+test_that("compute_optional_columns warns about an unmapped precision data column without naming a mapping", {
+  df <- data.frame(
+    study_id = c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)"),
+    effect = c(0.2, 0.5, 0.1),
+    se = c(0.1, 0.2, 0.1),
+    n_obs = c(120, 150, 120),
+    precision = c(999, 999, 999),
+    stringsAsFactors = FALSE
+  )
+
+  withr::local_options(list("artma.data.winsorization_level" = 0.01))
+  local_compute_options()
+  withr::local_options(list("artma.verbose" = 2))
+
+  expect_message(compute_optional_columns(df), "precision")
+  expect_no_message(compute_optional_columns(df), message = "source_name")
+})
+
+
+test_that("compute_optional_columns does not warn about a precision column when winsorization is disabled", {
+  df <- data.frame(
+    study_id = c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)"),
+    effect = c(0.2, 0.5, 0.1),
+    se = c(0.1, 0.2, 0.1),
+    n_obs = c(120, 150, 120),
+    precision = c(999, 999, 999),
+    stringsAsFactors = FALSE
+  )
+
+  local_compute_options()
+  withr::local_options(list("artma.verbose" = 2))
+
+  expect_no_message(compute_optional_columns(df), message = "Winsorization")
+})
+
+
 test_that("compute_optional_columns keeps a user-supplied precision column when winsorization is disabled", {
   df <- data.frame(
     study_id = c("Albeigh (2008)", "Baker (2009)", "Albeigh (2008)"),
