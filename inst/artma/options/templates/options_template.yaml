@@ -206,16 +206,20 @@ methods:
 
   exogeneity_tests:
     iv_instrument:
-      type: "enum: automatic|1/sqrt(n_obs)|1/n_obs|1/n_obs^2|log(n_obs)"
+      type: "enum: automatic|1/sqrt(n_obs)|1/n_obs|1/n_obs^2|sqrt(n_obs)|log(n_obs)"
       default: "1/sqrt(n_obs)"
       help: |
         Instrument to use for the instrumental variable (IV) regression.
         Defaults to {.strong 1/sqrt(n_obs)}, the theoretically motivated
         instrument: the standard error of an estimator scales with 1/sqrt(N),
         so sample size predicts reported precision without being a channel for
-        selective reporting. It is also the instrument used throughout the
-        applied literature, which keeps results comparable with published
-        meta-analyses.
+        selective reporting.
+
+        Published meta-analyses are not unanimous about the functional form.
+        {.strong sqrt(n_obs)} and {.strong log(n_obs)} are both in common use,
+        and on some datasets they are considerably stronger in the first stage
+        than {.strong 1/sqrt(n_obs)}; pick the one the analysis you are
+        replicating uses.
 
         {.strong automatic} instead ranks the candidates by first-stage
         F-statistic and picks the strongest, breaking ties in favor of
