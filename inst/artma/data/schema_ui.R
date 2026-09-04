@@ -2,7 +2,8 @@
 #' @description Console-facing layer for schema reconciliation: prints the drift
 #'   summary, collects decisions (interactively or automatically), and confirms
 #'   the outcome. Every prompt lives here so the detection and persistence
-#'   layers stay pure.
+#'   layers stay pure. The menu backend is injectable (`select_fn`), so the
+#'   prompt flow is drivable without a terminal.
 
 #' @title Format confidence as percentage string
 #' @keywords internal
@@ -10,10 +11,61 @@ fmt_pct <- function(score) {
   paste0(round(score * 100), "%")
 }
 
+#' @title Whether a proposal is safe to apply without asking
+#' @description High enough confidence and no tie, either with a rival
+#'   candidate or with another missing column claiming the same candidate.
+#' @keywords internal
+proposal_is_auto <- function(prop) {
+  box::use(artma / data / column_recognition[MATCH_THRESHOLDS])
+
+  !is.null(prop) && !is.na(prop$candidate) &&
+    prop$score >= MATCH_THRESHOLDS$rename_auto &&
+    !isTRUE(prop$ambiguous)
+}
+
+#' @title Whether a proposal carries a candidate worth showing
+#' @keywords internal
+proposal_has_candidate <- function(prop) {
+  !is.null(prop) && !is.na(prop$candidate)
+}
+
+#' @title Describe a proposal for the drift summary
+#' @return *\[character\]* Plain text such as `suggested: "x" [80%]`, with a
+#'   note when the suggestion is a tie, or `no suggestion`.
+#' @keywords internal
+describe_proposal <- function(prop) {
+  if (!proposal_has_candidate(prop)) {
+    return("no suggestion")
+  }
+  text <- cli::format_inline("suggested: {.val {prop$candidate}} [{fmt_pct(prop$score)}]")
+  if (isTRUE(prop$ambiguous)) {
+    tie <- if (!is.na(prop$runner_up)) {
+      cli::format_inline("ties with {.val {prop$runner_up}}")
+    } else {
+      "also claimed by another missing column"
+    }
+    text <- paste0(text, ", ", tie)
+  }
+  text
+}
+
+#' @title Hints on how to resolve a required column by hand
+#' @keywords internal
+manual_mapping_hints <- function(std) {
+  c(
+    "i" = cli::format_inline(
+      "Map it directly: {.code artma::config_set(\"{std}\", source_name = \"<column>\")}, or set {.code data.columns.{std}.source_name} in the options file."
+    ),
+    "i" = cli::format_inline(
+      "Or set {.code data.reconcile_mode} to {.val ask} and run in an interactive session to pick the column at a prompt."
+    )
+  )
+}
+
 #' @title Show drift summary
 #' @description Prints a unified diff of detected changes to the console.
 #' @keywords internal
-show_drift_summary <- function(drift, proposals_roles, proposals_moderators, role_sources) {
+show_drift_summary <- function(drift, proposals_roles, proposals_optional, proposals_moderators, role_sources) {
   cli::cli_rule(left = "artma detected dataset changes")
 
   # Role (standard) columns
@@ -26,13 +78,17 @@ show_drift_summary <- function(drift, proposals_roles, proposals_moderators, rol
       )
     } else if (std %in% names(drift$missing_roles)) {
       prop <- proposals_roles[[std]]
-      if (!is.null(prop) && !is.na(prop$candidate)) {
-        cli::cli_alert_warning(
-          "{.val {stored}} {cli::symbol$arrow_right} NOT FOUND  (suggested: {.val {prop$candidate}} [{fmt_pct(prop$score)}])"
-        )
+      note <- describe_proposal(prop)
+      if (proposal_has_candidate(prop)) {
+        cli::cli_alert_warning("{.val {stored}} {cli::symbol$arrow_right} NOT FOUND  ({note})")
       } else {
-        cli::cli_alert_danger("{.val {stored}} {cli::symbol$arrow_right} NOT FOUND  (no suggestion)")
+        cli::cli_alert_danger("{.val {stored}} {cli::symbol$arrow_right} NOT FOUND  ({note})")
       }
+    } else if (std %in% names(drift$missing_optional_roles)) {
+      note <- describe_proposal(proposals_optional[[std]])
+      cli::cli_alert_warning(
+        "{.val {stored}} {cli::symbol$arrow_right} NOT FOUND  (optional {.field {std}}; {note})"
+      )
     } else {
       cli::cli_alert_success("{.val {stored}} {cli::symbol$tick}")
     }
@@ -42,14 +98,8 @@ show_drift_summary <- function(drift, proposals_roles, proposals_moderators, rol
   if (length(drift$missing_moderators) > 0 || length(drift$added) > 0) {
     cli::cli_h3("Moderator columns")
     for (mod in drift$missing_moderators) {
-      prop <- proposals_moderators[[mod]]
-      if (!is.null(prop) && !is.na(prop$candidate)) {
-        cli::cli_alert_warning(
-          "{.val {mod}} {cli::symbol$arrow_right} NOT FOUND  (suggested: {.val {prop$candidate}} [{fmt_pct(prop$score)}])"
-        )
-      } else {
-        cli::cli_alert_warning("{.val {mod}} {cli::symbol$arrow_right} NOT FOUND")
-      }
+      note <- describe_proposal(proposals_moderators[[mod]])
+      cli::cli_alert_warning("{.val {mod}} {cli::symbol$arrow_right} NOT FOUND  ({note})")
     }
     for (col in drift$added) {
       cli::cli_alert_info("{.val {col}}  (new column)")
@@ -61,14 +111,17 @@ show_drift_summary <- function(drift, proposals_roles, proposals_moderators, rol
 
 #' @title Auto-resolve decisions
 #' @description Applies defaults without prompting (for auto mode).
+#' @return *\[list\]* With `renames` (required roles), `unmaps` (optional roles
+#'   whose mapping is dropped), `drops`, `remaps` (moderators), `conflicts`.
 #' @keywords internal
-auto_decisions <- function(drift, proposals_roles, proposals_moderators) {
+auto_decisions <- function(drift, proposals_roles, proposals_optional, proposals_moderators) {
   box::use(
     artma / libs / core / utils[get_verbosity],
     artma / data / column_recognition[MATCH_THRESHOLDS]
   )
 
   renames <- list()
+  unmaps <- character(0)
   drops <- character(0)
   remaps <- list()
   conflicts <- list()
@@ -85,40 +138,68 @@ auto_decisions <- function(drift, proposals_roles, proposals_moderators) {
     }
   }
 
-  # Role columns: accept high-confidence proposals, abort if unresolvable
+  # Required roles: accept unambiguous high-confidence proposals, abort otherwise
   for (std in names(drift$missing_roles)) {
     stored <- drift$missing_roles[[std]]
     prop <- proposals_roles[[std]]
 
-    if (!is.null(prop) && !is.na(prop$candidate) && prop$score >= MATCH_THRESHOLDS$rename_auto) {
+    if (proposal_is_auto(prop)) {
       renames[[std]] <- prop$candidate
       if (get_verbosity() >= 3) {
         cli::cli_alert_info(
           "Auto-mapped {.val {stored}} {cli::symbol$arrow_right} {.val {prop$candidate}} [{fmt_pct(prop$score)}]"
         )
       }
+      next
+    }
+
+    candidate_msg <- if (!proposal_has_candidate(prop)) {
+      "No candidate found."
+    } else if (isTRUE(prop$ambiguous)) {
+      cli::format_inline(
+        "Best candidate {.val {prop$candidate}} [{fmt_pct(prop$score)}] is ambiguous: it {describe_tie(prop)}."
+      )
     } else {
-      candidate_msg <- if (!is.null(prop) && !is.na(prop$candidate)) {
-        cli::format_inline(
-          "Best candidate {.val {prop$candidate}} has confidence {fmt_pct(prop$score)} (below {fmt_pct(MATCH_THRESHOLDS$rename_auto)})."
+      cli::format_inline(
+        "Best candidate {.val {prop$candidate}} has confidence {fmt_pct(prop$score)} (below {fmt_pct(MATCH_THRESHOLDS$rename_auto)})."
+      )
+    }
+    cli::cli_abort(c(
+      "x" = "Cannot auto-resolve missing required column: {.val {stored}}",
+      "i" = candidate_msg,
+      manual_mapping_hints(std)
+    ))
+  }
+
+  # Optional roles: remap if unambiguous and confident, otherwise drop the
+  # mapping. The pipeline tolerates an unmapped optional role, so this never
+  # aborts.
+  for (std in names(drift$missing_optional_roles)) {
+    stored <- drift$missing_optional_roles[[std]]
+    prop <- proposals_optional[[std]]
+
+    if (proposal_is_auto(prop)) {
+      renames[[std]] <- prop$candidate
+      if (get_verbosity() >= 3) {
+        cli::cli_alert_info(
+          "Auto-mapped optional {.val {stored}} {cli::symbol$arrow_right} {.val {prop$candidate}} [{fmt_pct(prop$score)}]"
         )
-      } else {
-        "No candidate found."
       }
-      cli::cli_abort(c(
-        "x" = "Cannot auto-resolve missing required column: {.val {stored}}",
-        "i" = candidate_msg,
-        "i" = "Use {.code reconcile = \"ask\"} to resolve this interactively.",
-        "i" = "Or map it directly by setting {.code data.columns.{std}.source_name} in the options file."
-      ))
+    } else {
+      unmaps <- c(unmaps, std)
+      if (get_verbosity() >= 2) {
+        cli::cli_alert_warning(
+          "Dropped the mapping {.val {stored}} {cli::symbol$arrow_right} {.field {std}}: the column no longer exists in the data. Map another column with {.code artma::config_set(\"{std}\", source_name = \"<column>\")} if needed."
+        )
+      }
     }
   }
 
-  # Moderators: drop missing, remap if high confidence
+  # Moderators: drop missing, remap if unambiguous and confident
   for (mod in drift$missing_moderators) {
     prop <- proposals_moderators[[mod]]
 
-    if (!is.null(prop) && !is.na(prop$candidate) && prop$score >= MATCH_THRESHOLDS$rename_auto) {
+    if (proposal_is_auto(prop)) {
       remaps[[mod]] <- prop$candidate
       if (get_verbosity() >= 3) {
         cli::cli_alert_info(
@@ -128,24 +209,63 @@ auto_decisions <- function(drift, proposals_roles, proposals_moderators) {
     } else {
       drops <- c(drops, mod)
       if (get_verbosity() >= 3) {
-        cli::cli_alert_warning("Dropped missing moderator {.val {mod}} from analysis configuration.")
+        why <- if (proposal_has_candidate(prop)) {
+          cli::format_inline(" ({describe_proposal(prop)}; not applied without asking)")
+        } else {
+          ""
+        }
+        cli::cli_alert_warning("Dropped missing moderator {.val {mod}} from analysis configuration{why}.")
       }
     }
   }
 
-  list(renames = renames, drops = drops, remaps = remaps, conflicts = conflicts)
+  list(renames = renames, unmaps = unmaps, drops = drops, remaps = remaps, conflicts = conflicts)
+}
+
+#' @title Describe why a proposal is a tie
+#' @keywords internal
+describe_tie <- function(prop) {
+  if (!is.na(prop$runner_up)) {
+    cli::format_inline("scores about the same as {.val {prop$runner_up}}")
+  } else {
+    "is claimed equally well by another missing column"
+  }
 }
 
 #' @title Ask for reconciliation decisions interactively
 #' @description Shows menus for each drift item and collects user choices.
+#'   Columns already chosen for one record are withheld from the later menus,
+#'   so two records never end up on the same column.
+#' @param select_fn *\[function, optional\]* Menu backend with the signature
+#'   of `climenu::select(choices, prompt)`, returning the chosen label or
+#'   `NULL`. Defaults to `climenu::select`; injectable for tests.
 #' @keywords internal
-ask_decisions <- function(drift, proposals_roles, proposals_moderators, raw_df) {
+ask_decisions <- function(drift, proposals_roles, proposals_optional, proposals_moderators, raw_df, select_fn = NULL) {
+  if (is.null(select_fn)) select_fn <- climenu::select
+
   renames <- list()
+  unmaps <- character(0)
   drops <- character(0)
   remaps <- list()
   conflicts <- list()
 
   all_df_cols <- make.names(colnames(raw_df))
+  taken <- character(0)
+
+  abort_by_user <- function() cli::cli_abort("Reconciliation aborted by user.")
+
+  # A proposal whose candidate an earlier answer already claimed is no longer
+  # on offer.
+  usable_proposal <- function(prop) {
+    proposal_has_candidate(prop) && !prop$candidate %in% taken
+  }
+
+  pick_manually <- function(prompt_text) {
+    available <- setdiff(all_df_cols, taken)
+    choice <- select_fn(choices = available, prompt = prompt_text)
+    if (is.null(choice)) abort_by_user()
+    choice
+  }
 
   # --- Mapping conflicts ---
   for (std in names(drift$conflicts)) {
@@ -160,25 +280,22 @@ ask_decisions <- function(drift, proposals_roles, proposals_moderators, raw_df) 
       "Abort"
     )
 
-    choice <- climenu::select(choices = choices, prompt = prompt_text)
+    choice <- select_fn(choices = choices, prompt = prompt_text)
 
-    if (is.null(choice) || grepl("^Abort", choice)) {
-      cli::cli_abort("Reconciliation aborted by user.")
-    }
+    if (is.null(choice) || grepl("^Abort", choice)) abort_by_user()
 
     conflicts[[std]] <- if (grepl("^Keep", choice)) "keep_mapping" else "use_existing"
   }
 
-  # --- Role columns ---
+  # --- Required role columns ---
   for (std in names(drift$missing_roles)) {
     stored <- drift$missing_roles[[std]]
     prop <- proposals_roles[[std]]
-
-    has_proposal <- !is.null(prop) && !is.na(prop$candidate)
+    has_proposal <- usable_proposal(prop)
 
     if (has_proposal) {
       prompt_text <- cli::format_inline(
-        "Required column {.val {stored}} is missing. Suggested rename: {.val {prop$candidate}} [{fmt_pct(prop$score)}]"
+        "Required column {.val {stored}} is missing. Suggested rename: {.val {prop$candidate}} [{fmt_pct(prop$score)}]{tie_suffix(prop)}"
       )
       choices <- c(
         cli::format_inline("Accept: use {.val {prop$candidate}}"),
@@ -192,37 +309,60 @@ ask_decisions <- function(drift, proposals_roles, proposals_moderators, raw_df) 
       choices <- c("Map to a different column", "Abort")
     }
 
-    choice <- climenu::select(choices = choices, prompt = prompt_text)
+    choice <- select_fn(choices = choices, prompt = prompt_text)
 
-    if (is.null(choice) || grepl("^Abort", choice)) {
-      cli::cli_abort("Reconciliation aborted by user.")
-    }
+    if (is.null(choice) || grepl("^Abort", choice)) abort_by_user()
 
-    if (has_proposal && grepl("^Accept", choice)) {
-      renames[[std]] <- prop$candidate
+    picked <- if (has_proposal && grepl("^Accept", choice)) {
+      prop$candidate
     } else {
-      # Manual mapping via second menu
-      available <- setdiff(all_df_cols, unlist(renames))
-      manual_choice <- climenu::select(
-        choices = available,
-        prompt  = cli::format_inline("Select the column to use for {.val {std}}:")
-      )
-      if (is.null(manual_choice)) {
-        cli::cli_abort("Reconciliation aborted by user.")
-      }
-      renames[[std]] <- manual_choice
+      pick_manually(cli::format_inline("Select the column to use for {.val {std}}:"))
     }
+    renames[[std]] <- picked
+    taken <- c(taken, picked)
+  }
+
+  # --- Optional role columns ---
+  for (std in names(drift$missing_optional_roles)) {
+    stored <- drift$missing_optional_roles[[std]]
+    prop <- proposals_optional[[std]]
+    has_proposal <- usable_proposal(prop)
+
+    prompt_text <- cli::format_inline(
+      "Optional column {.field {std}} was mapped from {.val {stored}}, which no longer exists in the dataset."
+    )
+    choices <- c(
+      "Drop the mapping (default)",
+      if (has_proposal) cli::format_inline("Remap to {.val {prop$candidate}} [{fmt_pct(prop$score)}]{tie_suffix(prop)}"),
+      "Map to a different column",
+      "Abort"
+    )
+
+    choice <- select_fn(choices = choices, prompt = prompt_text)
+
+    if (is.null(choice) || grepl("^Abort", choice)) abort_by_user()
+
+    if (grepl("^Drop", choice)) {
+      unmaps <- c(unmaps, std)
+      next
+    }
+    picked <- if (has_proposal && grepl("^Remap", choice)) {
+      prop$candidate
+    } else {
+      pick_manually(cli::format_inline("Select the column to use for {.field {std}}:"))
+    }
+    renames[[std]] <- picked
+    taken <- c(taken, picked)
   }
 
   # --- Moderator columns ---
   for (mod in drift$missing_moderators) {
     prop <- proposals_moderators[[mod]]
-
-    has_proposal <- !is.null(prop) && !is.na(prop$candidate)
+    has_proposal <- usable_proposal(prop)
 
     if (has_proposal) {
       prompt_text <- cli::format_inline(
-        "Moderator {.val {mod}} no longer exists. Suggested rename: {.val {prop$candidate}} [{fmt_pct(prop$score)}]"
+        "Moderator {.val {mod}} no longer exists. Suggested rename: {.val {prop$candidate}} [{fmt_pct(prop$score)}]{tie_suffix(prop)}"
       )
       choices <- c(
         "Drop from analysis (default)",
@@ -241,43 +381,55 @@ ask_decisions <- function(drift, proposals_roles, proposals_moderators, raw_df) 
       )
     }
 
-    choice <- climenu::select(choices = choices, prompt = prompt_text)
+    choice <- select_fn(choices = choices, prompt = prompt_text)
 
-    if (is.null(choice) || grepl("^Abort", choice)) {
-      cli::cli_abort("Reconciliation aborted by user.")
-    }
+    if (is.null(choice) || grepl("^Abort", choice)) abort_by_user()
 
     if (grepl("^Drop", choice)) {
       drops <- c(drops, mod)
-    } else if (has_proposal && grepl("^Remap", choice)) {
-      remaps[[mod]] <- prop$candidate
-    } else {
-      # Manual mapping
-      available <- setdiff(all_df_cols, unlist(renames))
-      manual_choice <- climenu::select(
-        choices = available,
-        prompt  = cli::format_inline("Select the column to remap {.val {mod}} to:")
-      )
-      if (is.null(manual_choice)) {
-        cli::cli_abort("Reconciliation aborted by user.")
-      }
-      remaps[[mod]] <- manual_choice
+      next
     }
+    picked <- if (has_proposal && grepl("^Remap", choice)) {
+      prop$candidate
+    } else {
+      pick_manually(cli::format_inline("Select the column to remap {.val {mod}} to:"))
+    }
+    remaps[[mod]] <- picked
+    taken <- c(taken, picked)
   }
 
-  list(renames = renames, drops = drops, remaps = remaps, conflicts = conflicts)
+  list(renames = renames, unmaps = unmaps, drops = drops, remaps = remaps, conflicts = conflicts)
+}
+
+#' @title Suffix noting a tied suggestion in a prompt
+#' @keywords internal
+tie_suffix <- function(prop) {
+  if (!isTRUE(prop$ambiguous)) {
+    return("")
+  }
+  paste0(" (", describe_tie(prop), ")")
 }
 
 #' @title Show reconciliation outcome summary and ask for confirmation
+#' @param select_fn *\[function, optional\]* Menu backend, see `ask_decisions()`.
 #' @keywords internal
-confirm_decisions <- function(decisions, drift, role_sources) {
+confirm_decisions <- function(decisions, drift, role_sources, select_fn = NULL) {
+  if (is.null(select_fn)) select_fn <- climenu::select
+
   cli::cli_rule(left = "Configuration update summary")
 
-  # Role renames
+  # Role renames (required and optional)
   for (std in names(decisions$renames)) {
     old_raw <- role_sources[[std]]
     new_raw <- decisions$renames[[std]]
     cli::cli_alert_success("Mapped: {.val {old_raw}} {cli::symbol$arrow_right} {.val {new_raw}}")
+  }
+
+  # Dropped optional mappings
+  for (std in decisions$unmaps) {
+    cli::cli_alert_warning(
+      "Dropped mapping: {.val {role_sources[[std]]}} {cli::symbol$arrow_right} {.field {std}} (optional; left unmapped)"
+    )
   }
 
   # Mapping conflict resolutions
@@ -315,7 +467,7 @@ confirm_decisions <- function(decisions, drift, role_sources) {
   # Unchanged role columns
   unchanged <- setdiff(
     names(role_sources),
-    c(names(drift$missing_roles), names(drift$conflicts))
+    c(names(drift$missing_roles), names(drift$missing_optional_roles), names(drift$conflicts))
   )
   if (length(unchanged) > 0) {
     unchanged_raw <- unlist(role_sources[unchanged], use.names = FALSE)
@@ -324,7 +476,7 @@ confirm_decisions <- function(decisions, drift, role_sources) {
 
   cli::cli_rule()
 
-  choice <- climenu::select(
+  choice <- select_fn(
     choices = c("Save changes and continue analysis", "Abort"),
     prompt  = "Apply these changes to your configuration file?"
   )
@@ -336,4 +488,4 @@ confirm_decisions <- function(decisions, drift, role_sources) {
   invisible(NULL)
 }
 
-box::export(show_drift_summary, auto_decisions, ask_decisions, confirm_decisions)
+box::export(show_drift_summary, auto_decisions, ask_decisions, confirm_decisions, proposal_is_auto)

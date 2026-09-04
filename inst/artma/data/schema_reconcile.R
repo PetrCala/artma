@@ -19,6 +19,7 @@ box::use(
     ask_decisions,
     auto_decisions,
     confirm_decisions,
+    proposal_is_auto,
     show_drift_summary
   ]
 )
@@ -31,6 +32,13 @@ emit_reconcile_complete <- function() {
   if (get_verbosity() >= 3) {
     cli::cli_alert_success("Schema reconciliation complete.")
   }
+}
+
+#' @title Columns a set of proposals lays claim to
+#' @keywords internal
+proposed_candidates <- function(proposals) {
+  candidates <- unlist(lapply(proposals, function(prop) prop$candidate), use.names = FALSE)
+  candidates[!is.na(candidates)]
 }
 
 #' @title Reconcile schema drift
@@ -49,10 +57,13 @@ emit_reconcile_complete <- function() {
 #'   Defaults to `interactive()`. Injectable so both branches of the prompt gate
 #'   are exercisable in headless tests; production callers should leave it at
 #'   the default.
+#' @param select_fn *\[function, optional\]* Menu backend for the interactive
+#'   path, see `artma / data / schema_ui[ask_decisions]`. Defaults to `NULL`
+#'   (`climenu::select`); injectable for tests.
 #' @return `NULL` invisibly. Side effects: updates options file and in-memory
 #'   state if drift is detected and resolved.
 #' @keywords internal
-reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_interactive = interactive()) {
+reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_interactive = interactive(), select_fn = NULL) {
   box::use(
     artma / libs / core / autonomy[should_prompt_user],
     artma / libs / core / utils[get_verbosity],
@@ -77,10 +88,10 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
 
   if (first_run) {
     # No baseline schema yet, so moderator and "added" comparisons are
-    # meaningless and get suppressed. Missing required roles and mapping
-    # conflicts are baseline-independent, though: a required role with neither
-    # a mapping nor a matching raw column is just as broken on the first run as
-    # on the tenth. Suppressing it here only defers the failure to
+    # meaningless and get suppressed. Missing roles and mapping conflicts are
+    # baseline-independent, though: a required role with neither a mapping nor
+    # a matching raw column is just as broken on the first run as on the
+    # tenth. Suppressing it here only defers the failure to
     # `standardize_column_names()`, which by design cannot offer a fix, so the
     # user's first-ever run got a flat abort while every later run got the
     # reconciliation UI. Let it through and resolve it here.
@@ -93,12 +104,8 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
     drift$added <- setdiff(drift$added, expected_schema_cols)
   }
 
-  drift$has_drift <- (
-    length(drift$missing_roles) > 0 ||
-      length(drift$missing_moderators) > 0 ||
-      length(drift$added) > 0 ||
-      length(drift$conflicts) > 0
-  )
+  drift_fields <- c("missing_roles", "missing_optional_roles", "missing_moderators", "added", "conflicts")
+  drift$has_drift <- any(lengths(drift[drift_fields]) > 0)
 
   if (!drift$has_drift) {
     if (first_run) persist_expected_schema_cols(current_schema_cols)
@@ -112,6 +119,11 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
     if (length(drift$missing_roles) > 0) {
       msgs <- c(msgs, "i" = cli::format_inline(
         "Missing required column{?s}: {.val {unname(drift$missing_roles)}}"
+      ))
+    }
+    if (length(drift$missing_optional_roles) > 0) {
+      msgs <- c(msgs, "i" = cli::format_inline(
+        "Missing mapped optional column{?s}: {.val {unname(drift$missing_optional_roles)}}"
       ))
     }
     if (length(drift$missing_moderators) > 0) {
@@ -131,8 +143,7 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
       ))
     }
     msgs <- c(msgs,
-      "i" = "Use {.code reconcile = \"ask\"} for interactive resolution.",
-      "i" = "Use {.code reconcile = \"auto\"} for automatic resolution."
+      "i" = "Set {.code data.reconcile_mode} to {.val ask} for interactive resolution, or to {.val auto} for automatic resolution."
     )
     cli::cli_abort(msgs)
   }
@@ -142,7 +153,8 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
   box::use(
     artma / data / utils[get_colnames_map, get_standardized_colnames]
   )
-  role_sources <- as.list(drift$missing_roles)
+  missing_role_sources <- c(drift$missing_roles, drift$missing_optional_roles)
+  role_sources <- as.list(missing_role_sources)
   matched_role_sources <- character(0)
   full_map <- get_colnames_map()
   # Required roles with no explicit record are tracked as identity mappings
@@ -150,7 +162,7 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
     full_map[[std]] <- std
   }
   for (std in names(full_map)) {
-    if (!std %in% names(drift$missing_roles)) {
+    if (!std %in% names(missing_role_sources)) {
       role_sources[[std]] <- full_map[[std]]
       matched_role_sources <- c(matched_role_sources, full_map[[std]])
     }
@@ -158,14 +170,23 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
 
   moderator_keys <- setdiff(names(columns_store), get_standardized_colnames())
   matched_cols <- make.names(c(matched_role_sources, moderator_keys))
-  matched_cols <- setdiff(matched_cols, make.names(unname(drift$missing_roles)))
+  matched_cols <- setdiff(matched_cols, make.names(unname(missing_role_sources)))
   available_cols <- setdiff(make.names(colnames(raw_df)), matched_cols)
 
-  # Rename proposals via the shared matching engine
+  # Rename proposals via the shared matching engine. Each pass is exclusive
+  # within itself, and the passes run in priority order (required roles,
+  # optional roles, moderators) with earlier winners withheld from later
+  # passes, so no column is ever proposed to two records.
   proposals_roles <- propose_renames(
     drift$missing_roles, available_cols,
     raw_df = raw_df, roles_known = TRUE
   )
+  available_cols <- setdiff(available_cols, proposed_candidates(proposals_roles))
+  proposals_optional <- propose_renames(
+    drift$missing_optional_roles, available_cols,
+    raw_df = raw_df, roles_known = TRUE
+  )
+  available_cols <- setdiff(available_cols, proposed_candidates(proposals_optional))
   proposals_moderators <- propose_renames(
     stats::setNames(drift$missing_moderators, drift$missing_moderators),
     available_cols,
@@ -177,7 +198,7 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
   # printing - it was previously ungated, unlike every sibling cli call in
   # this module.
   if (get_verbosity() >= 2) {
-    show_drift_summary(drift, proposals_roles, proposals_moderators, role_sources)
+    show_drift_summary(drift, proposals_roles, proposals_optional, proposals_moderators, role_sources)
   }
 
   # Collect decisions. A required role with no auto-acceptable candidate cannot
@@ -187,13 +208,8 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
   # right there to answer. This mirrors `interactive_column_mapping()`, which
   # already falls through to its prompts for missing required columns at the
   # autonomous level. Optional and moderator decisions stay gated as before.
-  box::use(artma / data / column_recognition[MATCH_THRESHOLDS])
-
   unresolvable_roles <- Filter(
-    function(std) {
-      prop <- proposals_roles[[std]]
-      is.null(prop) || is.na(prop$candidate) || prop$score < MATCH_THRESHOLDS$rename_auto
-    },
+    function(std) !proposal_is_auto(proposals_roles[[std]]),
     names(drift$missing_roles)
   )
 
@@ -203,10 +219,13 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
   )
 
   if (mode == "auto" || !do_prompt) {
-    decisions <- auto_decisions(drift, proposals_roles, proposals_moderators)
+    decisions <- auto_decisions(drift, proposals_roles, proposals_optional, proposals_moderators)
   } else {
-    decisions <- ask_decisions(drift, proposals_roles, proposals_moderators, raw_df)
-    confirm_decisions(decisions, drift, role_sources)
+    decisions <- ask_decisions(
+      drift, proposals_roles, proposals_optional, proposals_moderators, raw_df,
+      select_fn = select_fn
+    )
+    confirm_decisions(decisions, drift, role_sources, select_fn = select_fn)
   }
 
   # Apply through the single write path

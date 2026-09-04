@@ -113,7 +113,17 @@ apply_reconciliation <- function(decisions) {
     }
   }
 
-  # 4. Mapping conflict resolutions: either the mapping wins and the raw
+  # 4. Dropped mappings: an optional role whose mapped source column vanished
+  #    loses its source_name; the rest of the record (if any) stays.
+  for (std in decisions$unmaps) {
+    entry <- store[[std]]
+    if (!is.list(entry)) next
+    entry$source_name <- NULL
+    entry$drop_conflicting_raw <- NULL
+    store[[std]] <- if (length(entry) == 0) NULL else entry
+  }
+
+  # 5. Mapping conflict resolutions: either the mapping wins and the raw
   #    column is flagged for dropping at standardization time, or the mapping
   #    is removed so the raw column backs the role directly.
   for (std in names(decisions$conflicts)) {
