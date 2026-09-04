@@ -3,6 +3,8 @@ box::use(
     expect_equal,
     expect_error,
     expect_false,
+    expect_gt,
+    expect_lt,
     expect_match,
     expect_true,
     test_that
@@ -502,8 +504,10 @@ test_that("run_p_hacking_tests honours custom Elliott supports", {
   # The [0, 0.10] rows are replaced, not appended.
   expect_false(any(grepl("[0, 0.10]", result$elliott$Test, fixed = TRUE)))
   expect_false(any(grepl("Observations in [0, 0.1]", result$elliott$Test, fixed = TRUE)))
-  # The observation count matches the requested support window.
-  expected_n <- sum(2 * stats::pnorm(-abs(df$effect / df$se)) <= 0.15)
+  # The observation count matches the requested support window, lower bound
+  # included: the counts describe the sample the tests actually saw.
+  pvals <- 2 * stats::pnorm(-abs(df$effect / df$se))
+  expected_n <- sum(pvals >= 1e-5 & pvals <= 0.15)
   obs_row <- result$elliott[result$elliott$Test == "Observations in [0, 0.15]", ]
   expect_equal(obs_row$`P-value`, as.character(expected_n))
 })
@@ -566,6 +570,70 @@ test_that("the options template default matches the built-in Elliott supports", 
   def <- get_option_defs(opt_path = "methods.p_hacking_tests.elliott_supports")[[1]]
 
   expect_equal(def$default, c(0.05, 0.1, 0.15))
+})
+
+test_that("the options template default matches the built-in Elliott lower bound", {
+  def <- get_option_defs(opt_path = "methods.p_hacking_tests.elliott_p_min")[[1]]
+
+  expect_equal(def$default, 1e-5)
+})
+
+# A flat p-curve plus 60 estimates whose |t| is large enough that
+# 2 * pnorm(-|t|) underflows to exactly 0 in double precision.
+underflow_df <- function() {
+  set.seed(404, kind = "Mersenne-Twister", normal.kind = "Inversion")
+  flat_t <- stats::qnorm(1 - stats::runif(300) / 2)
+  zero_t <- rep(40, 60)
+  t_stats <- c(flat_t, zero_t)
+  data.frame(
+    effect = t_stats,
+    se = rep(1, length(t_stats)),
+    study_id = 1 + ((seq_along(t_stats) - 1) %/% 20)
+  )
+}
+
+test_that("the Elliott battery excludes p-values that underflowed to zero", {
+  local_options(artma.verbose = 1, artma.cache.use_cache = FALSE)
+  df <- underflow_df()
+  pvals <- 2 * stats::pnorm(-abs(df$effect / df$se))
+  expect_equal(sum(pvals == 0), 60L)
+
+  run_with_p_min <- function(...) {
+    run_p_hacking_tests(
+      df,
+      base_p_hacking_options(include_caliper = FALSE, include_elliott = TRUE, ...)
+    )
+  }
+
+  default_run <- run_with_p_min()
+  zero_run <- run_with_p_min(elliott_p_min = 0)
+
+  obs_of <- function(result) {
+    as.numeric(result$elliott[result$elliott$Test == "Observations in [0, 0.1]", "P-value"])
+  }
+  # The default lower bound drops exactly the underflowed p-values.
+  expect_equal(obs_of(default_run), obs_of(zero_run) - 60)
+
+  # Keeping the zeros piles 60 observations into the lower half of the window
+  # and saturates the binomial statistic, so the answer moves materially.
+  default_p <- as.numeric(default_run$elliott_results$binomial_01$p_value)
+  zero_p <- as.numeric(zero_run$elliott_results$binomial_01$p_value)
+  expect_lt(default_p, 0.9)
+  expect_gt(zero_p - default_p, 0.3)
+})
+
+test_that("run_p_hacking_tests rejects an invalid Elliott lower bound", {
+  local_options(artma.verbose = 1, artma.cache.use_cache = FALSE)
+  df <- make_p_hacking_df()
+
+  bad_options <- function(p_min) {
+    base_p_hacking_options(include_caliper = FALSE, include_elliott = TRUE, elliott_p_min = p_min)
+  }
+
+  expect_error(run_p_hacking_tests(df, bad_options(c(1e-5, 1e-4))), "single finite number")
+  expect_error(run_p_hacking_tests(df, bad_options(NA_real_)), "single finite number")
+  expect_error(run_p_hacking_tests(df, bad_options(-1e-5)), "non-negative")
+  expect_error(run_p_hacking_tests(df, bad_options(0.06)), "smallest elliott_supports bound")
 })
 
 test_that("run_p_hacking_tests rejects invalid Elliott supports", {

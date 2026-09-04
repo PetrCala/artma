@@ -3,6 +3,8 @@ box::use(
     expect_equal,
     expect_error,
     expect_false,
+    expect_gt,
+    expect_lt,
     expect_match,
     expect_no_error,
     expect_true,
@@ -175,6 +177,48 @@ test_that("a custom elliott_supports option flows through to the Cox-Shi call", 
   expect_true(formatted_p_to_num(narrow_p) > 0.05)
   expect_true(formatted_p_to_num(custom_p) < 0.05)
   expect_false(identical(narrow_p, custom_p))
+})
+
+test_that("elliott_p_min flows through and defaults to the canonical 1e-5", {
+  # 60 estimates whose two-sided p-value underflows to exactly 0, on top of a
+  # flat p-curve that is quiet on [0, 0.10] by itself.
+  set.seed(404, kind = "Mersenne-Twister", normal.kind = "Inversion")
+  t_stats <- c(stats::qnorm(1 - stats::runif(300) / 2), rep(40, 60))
+  df <- data.frame(
+    effect = t_stats,
+    se = rep(1, length(t_stats)),
+    t_stat = t_stats,
+    study_id = 1 + ((seq_along(t_stats) - 1) %/% 20)
+  )
+
+  run_with_p_min <- function(p_min = NULL) {
+    opts <- elliott_base_options()
+    opts$artma.methods.p_hacking_tests.include_cox_shi <- FALSE
+    opts$artma.methods.p_hacking_tests.elliott_supports <- c(0.05, 0.1)
+    if (!is.null(p_min)) {
+      opts$artma.methods.p_hacking_tests.elliott_p_min <- p_min
+    }
+    with_options(opts, p_hacking_tests(df))
+  }
+
+  default_result <- run_with_p_min()
+  zero_result <- run_with_p_min(0)
+
+  obs_of <- function(result) {
+    as.numeric(result$tables$elliott[
+      result$tables$elliott$Test == "Observations in [0, 0.1]", "P-value"
+    ])
+  }
+  expect_equal(obs_of(default_result), obs_of(zero_result) - 60)
+
+  binomial_of <- function(result) {
+    est <- result$estimates
+    as.numeric(est$p_value[est$model == "binomial" & est$term == "[0, 0.10]"])
+  }
+  # Keeping the zeros piles 60 observations into the lower half of the window
+  # and saturates the binomial statistic, so the answer moves materially.
+  expect_lt(binomial_of(default_result), 0.9)
+  expect_gt(binomial_of(zero_result) - binomial_of(default_result), 0.3)
 })
 
 test_that("p_hacking_tests surfaces the Cox-Shi skip reason in output and meta", {
