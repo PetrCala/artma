@@ -52,7 +52,9 @@ invoke_runtime_methods(
   winsorization, or a function returning it, handed to methods
   registered with `winsorize = FALSE` in place of `df`. Defaults to
   `NULL`: such methods then run on `df`, with a warning when
-  winsorization is active.
+  winsorization is active. A build that fails (the frame reruns the data
+  pipeline unclipped, so it can abort where the winsorized pass did not)
+  fails only the methods that asked for it.
 
 - ...:
 
