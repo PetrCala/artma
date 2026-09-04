@@ -2,6 +2,8 @@ box::use(
   testthat[
     expect_equal,
     expect_error,
+    expect_false,
+    expect_identical,
     expect_no_error,
     expect_true,
     test_that
@@ -11,6 +13,7 @@ box::use(
 box::use(
   artma / data / smart_detection[
     detect_delimiter,
+    has_utf8_bom,
     smart_read_csv,
     validate_df_structure
   ]
@@ -26,6 +29,17 @@ create_temp_csv <- function(content, delimiter = ",") {
     paste(apply(content, 1, paste, collapse = delimiter), collapse = "\n")
   }
   writeLines(lines, tmp_file)
+  tmp_file
+}
+
+# Write raw bytes so a UTF-8 BOM survives exactly as Excel's "CSV UTF-8"
+# export would write it.
+create_temp_bom_csv <- function(lines) {
+  tmp_file <- tempfile(fileext = ".csv")
+  con <- file(tmp_file, open = "wb")
+  on.exit(close(con))
+  writeBin(as.raw(c(0xEF, 0xBB, 0xBF)), con)
+  writeBin(charToRaw(paste0(paste(lines, collapse = "\n"), "\n")), con)
   tmp_file
 }
 
@@ -282,4 +296,78 @@ test_that("smart_read_csv with auto-detection works end-to-end", {
   expect_equal(ncol(df), 4)
   expect_true(is.na(df$effect[3]))
   expect_equal(df$study_id[1], "Study A")
+})
+
+
+test_that("has_utf8_bom only reports files that start with the BOM bytes", {
+  bom_file <- create_temp_bom_csv(c("obs_id;study_name", "1;Smith (2020)"))
+  plain_file <- create_temp_csv(c("obs_id;study_name", "1;Smith (2020)"))
+  on.exit(unlink(c(bom_file, plain_file)))
+
+  expect_true(has_utf8_bom(bom_file))
+  expect_false(has_utf8_bom(plain_file))
+})
+
+
+test_that("smart_read_csv reads the first column of a BOM-prefixed file under its real name", {
+  tmp_file <- create_temp_bom_csv(c(
+    "obs_id;study_name;beta_estimate;beta_se",
+    "1;Smith (2020);0.5;0.1",
+    "2;Jones (2021);0.7;0.2"
+  ))
+  on.exit(unlink(tmp_file))
+
+  df <- smart_read_csv(tmp_file)
+
+  expect_identical(names(df), c("obs_id", "study_name", "beta_estimate", "beta_se"))
+  expect_identical(charToRaw(names(df)[[1]]), charToRaw("obs_id"))
+  expect_equal(df$obs_id, c(1L, 2L))
+  expect_equal(df$study_name, c("Smith (2020)", "Jones (2021)"))
+})
+
+
+test_that("smart_read_csv keeps a BOM-prefixed file's non-ASCII bytes intact in any locale", {
+  # The bytes must survive untouched: encoding repair happens later in
+  # `normalize_read_df`, and re-encoding through `fileEncoding` would truncate
+  # them under a C locale.
+  tmp_file <- create_temp_bom_csv(c(
+    "study_id,effect,se",
+    "M\u00fcller (2019),0.5,0.1"
+  ))
+  on.exit(unlink(tmp_file))
+
+  df <- smart_read_csv(tmp_file, delim = ",")
+
+  expect_identical(names(df)[[1]], "study_id")
+  expect_identical(charToRaw(df$study_id), charToRaw("M\u00fcller (2019)"))
+})
+
+
+test_that("smart_read_csv unquotes a BOM-prefixed quoted header", {
+  tmp_file <- create_temp_bom_csv(c(
+    '"study_id";"effect";"se"',
+    '"Study A";0.5;0.1'
+  ))
+  on.exit(unlink(tmp_file))
+
+  df <- smart_read_csv(tmp_file)
+
+  expect_identical(names(df), c("study_id", "effect", "se"))
+  expect_equal(df$study_id, "Study A")
+})
+
+
+test_that("smart_read_csv reads a BOM-prefixed file through the read.csv fallback too", {
+  # A ragged row makes read.table fail on the detected parameters; the
+  # fallback must also start past the BOM.
+  tmp_file <- create_temp_bom_csv(c(
+    "obs_id,effect,se",
+    "1,0.5,0.1",
+    "2,0.7,0.2,extra"
+  ))
+  on.exit(unlink(tmp_file))
+
+  df <- suppressWarnings(smart_read_csv(tmp_file, delim = ","))
+
+  expect_identical(names(df)[[1]], "obs_id")
 })

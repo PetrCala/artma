@@ -52,6 +52,69 @@ detect_delimiter <- function(path, n_lines = 5) {
 }
 
 
+UTF8_BOM <- as.raw(c(0xEF, 0xBB, 0xBF))
+
+
+#' @title Detect a UTF-8 byte order mark
+#' @description Reports whether a file starts with the UTF-8 BOM (`EF BB BF`).
+#'   Excel's "CSV UTF-8" export and Windows Notepad write one; left in place,
+#'   `utils::read.table()` folds the three bytes into the first header name and
+#'   `make.names()` renders them as `X...<name>`, so the first column loses its
+#'   identity silently.
+#' @param path *\[character\]* Path to the file
+#' @return *\[logical\]* TRUE when the file starts with a UTF-8 BOM
+has_utf8_bom <- function(path) {
+  box::use(artma / libs / core / validation[validate])
+
+  validate(is.character(path), file.exists(path))
+
+  con <- file(path, open = "rb")
+  on.exit(close(con), add = TRUE)
+  head_bytes <- readBin(con, what = "raw", n = 3L)
+  length(head_bytes) == 3L && identical(head_bytes, UTF8_BOM)
+}
+
+
+#' @title Drop a leading UTF-8 BOM from a string
+#' @description Byte-level so that it behaves the same in every locale and
+#'   never touches the rest of the line, which may still be raw single-byte
+#'   encoded text awaiting repair in `normalize_read_df`.
+#' @param x *\[character(1)\]* The first line of a file
+#' @return *\[character(1)\]* The line without its BOM
+#' @keywords internal
+strip_utf8_bom <- function(x) {
+  bytes <- charToRaw(x)
+  if (length(bytes) < 3L || !identical(bytes[1:3], UTF8_BOM)) {
+    return(x)
+  }
+  rawToChar(bytes[-(1:3)])
+}
+
+
+#' @title Open a text connection positioned past the UTF-8 BOM
+#' @description Reads the header line, strips the BOM, and pushes the line
+#'   back onto the connection so the reader sees the file as if the BOM had
+#'   never been written. This avoids `fileEncoding = "UTF-8-BOM"`, which
+#'   re-encodes the whole file into the native encoding and truncates
+#'   non-ASCII values in a C locale. The caller closes the connection.
+#' @param path *\[character\]* Path to the file
+#' @return *\[connection\]* An open text-mode connection
+#' @keywords internal
+open_past_bom <- function(path) {
+  con <- file(path, open = "rt")
+  # Hand the connection to the caller only once it is positioned; close it
+  # ourselves if the header read fails.
+  positioned <- FALSE
+  on.exit(if (!positioned) close(con), add = TRUE)
+  first_line <- readLines(con, n = 1L, warn = FALSE)
+  if (length(first_line) == 1L) {
+    pushBack(strip_utf8_bom(first_line), con)
+  }
+  positioned <- TRUE
+  con
+}
+
+
 #' @title Smart read CSV with auto-detection
 #' @description Read CSV file with automatic delimiter detection
 #' @param path *\[character\]* Path to the file
@@ -73,19 +136,34 @@ smart_read_csv <- function(path, delim = NULL) {
     }
   }
 
+  # A leading BOM would otherwise be read as part of the first header name.
+  # BOM-prefixed files are read through a connection positioned past it; every
+  # other file keeps the plain path so nothing changes for them.
+  has_bom <- has_utf8_bom(path)
+  read_input <- function(reader) {
+    if (!has_bom) {
+      return(reader(path))
+    }
+    con <- open_past_bom(path)
+    on.exit(close(con), add = TRUE)
+    reader(con)
+  }
+
   # Try reading with detected parameters
   df <- tryCatch(
     {
-      utils::read.table(
-        path,
-        header = TRUE,
-        sep = delim,
-        stringsAsFactors = FALSE,
-        na.strings = CONST$DATA$NA_STRINGS,
-        strip.white = TRUE,
-        comment.char = "",
-        quote = "\""
-      )
+      read_input(function(input) {
+        utils::read.table(
+          input,
+          header = TRUE,
+          sep = delim,
+          stringsAsFactors = FALSE,
+          na.strings = CONST$DATA$NA_STRINGS,
+          strip.white = TRUE,
+          comment.char = "",
+          quote = "\""
+        )
+      })
     },
     error = function(e) {
       # Fallback: try with default read.csv
@@ -93,7 +171,9 @@ smart_read_csv <- function(path, delim = NULL) {
         cli::cli_alert_warning("Failed to read with detected parameters, trying fallback method")
       }
       tryCatch(
-        utils::read.csv(path, stringsAsFactors = FALSE, na.strings = CONST$DATA$NA_STRINGS),
+        read_input(function(input) {
+          utils::read.csv(input, stringsAsFactors = FALSE, na.strings = CONST$DATA$NA_STRINGS)
+        }),
         error = function(e2) {
           cli::cli_abort(c(
             "x" = "Failed to read CSV file: {.path {path}}",
@@ -207,6 +287,7 @@ validate_df_structure <- function(df, path) {
 
 box::export(
   detect_delimiter,
+  has_utf8_bom,
   smart_read_csv,
   validate_df_structure,
   normalize_whitespace_to_na
