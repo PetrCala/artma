@@ -793,6 +793,19 @@ methods:
         flip the substantive conclusion, so report which support a rejection
         comes from.
 
+    elliott_p_min:
+      type: "numeric"
+      default: 1.0e-5
+      help: |
+        Lower bound of the p-value supports [p_min, p_max] on which the Elliott
+        et al. (2022) battery runs. Defaults to `1e-5`, matching the canonical
+        Elliott et al. code, which excludes p-values that underflowed to
+        exactly zero and starts the Cox-Shi binning grid there. Those zeros are
+        common in large samples and pull the whole battery towards rejection
+        when they are kept, so set this to `0` only to reproduce a specific
+        published application. Must be non-negative and below the smallest
+        `elliott_supports` bound.
+
     simulate_cdfs:
       chunk_size:
         type: "integer"

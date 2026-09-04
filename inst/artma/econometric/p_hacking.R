@@ -35,6 +35,13 @@ skip_reason <- function(value) {
 
 DEFAULT_ELLIOTT_SUPPORTS <- c(0.05, 0.1, 0.15)
 
+# Lower bound of the Elliott supports. The canonical Elliott et al. (2022) code
+# and `phack::phack_test_cox_shi` both bin from 1e-5 rather than 0, which drops
+# p-values that underflowed to exactly zero. Those are common (any |t| large
+# enough that 2 * pnorm(-|t|) underflows lands there) and pull every test in the
+# battery towards rejection when they are kept.
+DEFAULT_ELLIOTT_P_MIN <- 1e-5
+
 #' @title Result-list key suffix for an Elliott support upper bound
 #' @param p_max *[numeric]* Support upper bound, e.g. `0.05`.
 #' @return *[character]* Suffix such as `"005"` (0.05) or `"01"` (0.1).
@@ -659,6 +666,12 @@ run_p_hacking_tests <- function(df, options) {
   assert(all(supports > 0 & supports <= 1), "elliott_supports must lie in (0, 1]")
   assert(!is.unsorted(supports, strictly = TRUE), "elliott_supports must be strictly increasing")
 
+  p_min <- options$elliott_p_min %||% DEFAULT_ELLIOTT_P_MIN
+  validate(is.numeric(p_min))
+  assert(length(p_min) == 1 && is.finite(p_min), "elliott_p_min must be a single finite number")
+  assert(p_min >= 0, "elliott_p_min must be non-negative")
+  assert(p_min < min(supports), "elliott_p_min must be below the smallest elliott_supports bound")
+
   output <- list()
   skipped <- list()
   record_skip <- function(key, label, value) {
@@ -720,7 +733,7 @@ run_p_hacking_tests <- function(df, options) {
         test = paste0("Binomial [0, ", support_label(p_max), "]"),
         family = "binomial",
         support = support_interval_label(p_max),
-        p_value = run_binomial(pvalues, 0, p_max, type = "c")
+        p_value = run_binomial(pvalues, p_min, p_max, type = "c")
       )
     }
 
@@ -736,7 +749,7 @@ run_p_hacking_tests <- function(df, options) {
         test = paste0("LCM [0, ", support_label(p_max), "]"),
         family = "lcm",
         support = support_interval_label(p_max),
-        p_value = lcm_skip %||% run_lcm(pvalues, 0, p_max, cdfs)
+        p_value = lcm_skip %||% run_lcm(pvalues, p_min, p_max, cdfs)
       )
     }
 
@@ -746,7 +759,7 @@ run_p_hacking_tests <- function(df, options) {
         test = paste0("Fisher [0, ", support_label(p_max), "]"),
         family = "fisher",
         support = support_interval_label(p_max),
-        p_value = run_fisher(pvalues, 0, p_max)
+        p_value = run_fisher(pvalues, p_min, p_max)
       )
     }
 
@@ -768,7 +781,7 @@ run_p_hacking_tests <- function(df, options) {
           family = "cox_shi",
           support = support_interval_label(p_max),
           p_value = run_cox_shi(
-            pvalues, study_id, 0, p_max,
+            pvalues, study_id, p_min, p_max,
             n_bins = options$cox_shi_bins,
             monotonicity_order = options$cox_shi_order,
             use_bounds = options$cox_shi_bounds
@@ -816,8 +829,11 @@ build_elliott_summary <- function(elliott_tests, pvalues, options) {
     check.names = FALSE
   )
 
-  # Add observation count rows, widest support first
+  # Add observation count rows, widest support first. The counts describe the
+  # sample the tests actually saw, so they honour the lower bound as well: with
+  # the default `p_min` the p-values that underflowed to zero are not in it.
   supports <- sort(options$elliott_supports %||% DEFAULT_ELLIOTT_SUPPORTS, decreasing = TRUE)
+  p_min <- options$elliott_p_min %||% DEFAULT_ELLIOTT_P_MIN
 
   obs_rows <- data.frame(
     Test = vapply(
@@ -827,7 +843,7 @@ build_elliott_summary <- function(elliott_tests, pvalues, options) {
     ),
     `P-value` = vapply(
       supports,
-      function(p_max) as.character(sum(pvalues >= 0 & pvalues <= p_max, na.rm = TRUE)),
+      function(p_max) as.character(sum(pvalues >= p_min & pvalues <= p_max, na.rm = TRUE)),
       character(1)
     ),
     stringsAsFactors = FALSE,

@@ -63,6 +63,11 @@ p_hacking_tests <- function(df) {
       },
       constraint_msg = "elliott_supports must be strictly increasing p-value bounds in (0, 1]"
     ),
+    elliott_p_min = opt_spec(
+      default = 1e-5, type = "numeric",
+      constraint = function(x) length(x) == 1 && is.finite(x) && x >= 0 && x < 1,
+      constraint_msg = "elliott_p_min must be a single number in [0, 1)"
+    ),
     lcm_iterations = opt_spec(
       default = 10000L, type = "numeric", cast = as.integer,
       constraint = function(x) x > 0, constraint_msg = "lcm_iterations must be positive"
@@ -126,6 +131,7 @@ p_hacking_tests <- function(df) {
     caliper_cluster = resolved$caliper_cluster,
     include_elliott = resolved$include_elliott,
     elliott_supports = resolved$elliott_supports,
+    elliott_p_min = resolved$elliott_p_min,
     lcm_iterations = resolved$lcm_iterations,
     lcm_grid_points = resolved$lcm_grid_points,
     simulate_cdfs_chunk_size = resolved$simulate_cdfs_chunk_size,
@@ -185,6 +191,13 @@ p_hacking_tests <- function(df) {
         "These test global monotonicity of the p-value density, so they can legitimately ",
         "disagree with the local caliper results above."
       )
+
+      if (resolved$elliott_p_min > 0) {
+        cli::cli_text(
+          "Supports start at p = {resolved$elliott_p_min} (Elliott et al.'s lower bound), so p-values ",
+          "that underflowed to exactly zero are excluded from both the tests and the counts below."
+        )
+      }
 
       elliott_lines <- capture_print_wide(results$elliott, row.names = FALSE)
       cli::cli_verbatim(elliott_lines)
