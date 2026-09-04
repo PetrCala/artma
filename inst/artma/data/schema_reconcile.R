@@ -233,6 +233,9 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
   moderator_keys <- setdiff(names(columns_store), get_standardized_colnames())
   matched_cols <- make.names(c(matched_role_sources, moderator_keys))
   matched_cols <- setdiff(matched_cols, make.names(unname(missing_role_sources)))
+  # This pool is also what the manual picker offers: columns no untouched
+  # record backs. A candidate a proposal lost out on stays pickable, since
+  # `ask_decisions()` withholds only what it actually hands out (issue #548).
   available_cols <- setdiff(make.names(colnames(raw_df)), matched_cols)
 
   # Rename proposals via the shared matching engine, exclusive both within and
@@ -282,7 +285,7 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
   } else {
     decisions <- ask_decisions(
       drift, proposals_roles, proposals_optional, proposals_moderators, raw_df,
-      select_fn = select_fn
+      available_cols = available_cols, select_fn = select_fn
     )
     confirm_decisions(decisions, drift, role_sources, select_fn = select_fn)
   }

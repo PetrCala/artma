@@ -715,6 +715,68 @@ test_that("reconcile_schema ask offers the confident record the candidate a requ
   expect_true(any(grepl("studies", offered[[2]], fixed = TRUE)))
 })
 
+test_that("reconcile_schema ask does not offer a column another record backs", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  # se_col vanished with no lookalike. effect_size, study and n_obs all still
+  # back a record of their own, so extra_col is the only pickable column.
+  df <- data.frame(effect_size = 1:3, study = "A", n_obs = 10L, extra_col = c(0.1, 0.2, 0.3))
+  menu <- scripted_menu(c("^Map to a different column", "^extra_col$", "^Save"))
+
+  withr::with_options(
+    ask_opts(),
+    {
+      reconcile_schema(df, mode = "ask", is_interactive = TRUE, select_fn = menu$fn)
+      store <- getOption("artma.data.columns")
+      expect_equal(store$se$source_name, "extra_col")
+      expect_false(identical(store$se$source_name, store$effect$source_name))
+    }
+  )
+
+  expect_equal(menu$state$offered[[2]], "extra_col")
+})
+
+test_that("reconcile_schema ask aborts rather than mapping onto a claimed column", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  # Every column of the dataset already backs a record, so the manual picker
+  # has nothing left to offer for the vanished se_col.
+  df <- data.frame(effect_size = 1:3, study = "A", n_obs = 10L)
+  menu <- scripted_menu("^Map to a different column")
+
+  withr::with_options(
+    ask_opts(),
+    expect_error(
+      reconcile_schema(df, mode = "ask", is_interactive = TRUE, select_fn = menu$fn),
+      "No unclaimed column"
+    )
+  )
+})
+
+test_that("reconcile_schema ask does not remap a moderator onto a role column", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  menu <- scripted_menu(c("^Map to a different column", "^extra_col$", "^Save"))
+
+  withr::with_options(
+    ask_opts(list(
+      "artma.data.columns" = base_store(list(region = list(bma = TRUE))),
+      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study", "n_obs", "region")
+    )),
+    {
+      reconcile_schema(
+        base_df(extra_col = c(0.1, 0.2, 0.3)),
+        mode = "ask", is_interactive = TRUE, select_fn = menu$fn
+      )
+      store <- getOption("artma.data.columns")
+      expect_true("extra_col" %in% names(store))
+      expect_false("region" %in% names(store))
+    }
+  )
+
+  expect_equal(menu$state$offered[[2]], "extra_col")
+})
+
 test_that("reconcile_schema ask aborts cleanly when the user declines to save", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
 
@@ -762,7 +824,8 @@ test_that("reconcile_schema ask does not map a role onto a column the manual men
   box::use(artma / data / schema_reconcile[reconcile_schema])
 
   # Asks for the manual column list, then answers it with a column that is not
-  # in the data at all.
+  # in the data at all. spare_col keeps the manual menu non-empty, since the
+  # picker only offers columns no other record backs.
   invent_column <- function(choices, prompt, ...) {
     hit <- grep("^Map to a different column", choices, value = TRUE)
     if (length(hit) > 0) hit[[1]] else "no_such_column"
@@ -771,11 +834,14 @@ test_that("reconcile_schema ask does not map a role onto a column the manual men
   withr::with_options(
     ask_opts(list(
       "artma.data.columns" = base_store(list(t_stat = list(source_name = "tstat"))),
-      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study", "n_obs", "tstat")
+      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study", "n_obs", "tstat", "spare_col")
     )),
     {
       expect_error(
-        reconcile_schema(base_df(), mode = "ask", is_interactive = TRUE, select_fn = invent_column),
+        reconcile_schema(
+          base_df(spare_col = c(0.1, 0.2, 0.3)),
+          mode = "ask", is_interactive = TRUE, select_fn = invent_column
+        ),
         "not offered"
       )
       expect_equal(getOption("artma.data.columns")$t_stat$source_name, "tstat")
