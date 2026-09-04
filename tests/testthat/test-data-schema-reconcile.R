@@ -3,6 +3,7 @@ box::use(
     expect_equal,
     expect_error,
     expect_false,
+    expect_identical,
     expect_null,
     expect_true,
     test_that
