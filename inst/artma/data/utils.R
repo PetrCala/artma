@@ -60,10 +60,9 @@ get_reserved_colnames <- function() {
 #' @title Get columns the compute phase rebuilds from winsorized data
 #' @description Columns whose mapped values `compute_optional_columns()`
 #'   discards and recalculates from the winsorized `effect`/`se` (see
-#'   `add_precision_column()`). Upstream steps skip these columns so that no
-#'   imputation work, or reported imputation count, goes into values about to
-#'   be thrown away (issue #522). `t_stat` is rebuilt the same way but keeps
-#'   its own completeness check before the recompute, so it is not listed.
+#'   `add_precision_column()` and `add_t_stat_column()`). Upstream steps skip
+#'   these columns so that no imputation work, or reported imputation count,
+#'   goes into values about to be thrown away (issues #522 and #538).
 #' @param df *\[data.frame\]* The data frame.
 #' @return *\[character\]* Column names present in `df` that the compute
 #'   phase recalculates; empty when winsorization is off.
@@ -72,7 +71,7 @@ get_winsorization_recomputed_cols <- function(df) {
   if (!is_winsorization_active()) {
     return(character(0))
   }
-  intersect("precision", colnames(df))
+  intersect(c("precision", "t_stat"), colnames(df))
 }
 
 #' Get the number of studies in an analysis data frame.

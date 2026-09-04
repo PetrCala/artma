@@ -1,5 +1,5 @@
 box::use(
-  testthat[expect_equal, expect_message, expect_no_message, expect_true, test_that]
+  testthat[expect_equal, expect_error, expect_message, expect_no_message, expect_true, test_that]
 )
 
 box::use(
@@ -282,6 +282,89 @@ test_that("compute_optional_columns recomputes a mapped t_stat column when winso
   result <- compute_optional_columns(df)
 
   expect_equal(result$t_stat, result$effect / result$se)
+})
+
+
+test_that("compute_optional_columns warns before overwriting a mapped t_stat column, naming the mapping", {
+  df <- sample_study_df()
+  df$t_stat <- c(3, 4, 5)
+
+  withr::local_options(list("artma.data.winsorization_level" = 0.01))
+  local_compute_options()
+  overrides <- computed_config_overrides
+  overrides$t_stat <- list(var_name = "t_stat", source_name = "tval")
+  withr::local_options(list("artma.data.columns" = overrides, "artma.verbose" = 2))
+
+  expect_message(
+    result <- compute_optional_columns(df),
+    "data.columns.t_stat.source_name"
+  )
+  expect_message(compute_optional_columns(df), "tval")
+  expect_equal(result$t_stat, result$effect / result$se)
+})
+
+
+test_that("compute_optional_columns warns about an unmapped t_stat data column without naming a mapping", {
+  df <- sample_study_df()
+  df$t_stat <- c(3, 4, 5)
+
+  withr::local_options(list("artma.data.winsorization_level" = 0.01))
+  local_compute_options()
+  withr::local_options(list("artma.verbose" = 2))
+
+  expect_message(compute_optional_columns(df), "t_stat")
+  expect_no_message(compute_optional_columns(df), message = "source_name")
+})
+
+
+test_that("compute_optional_columns does not warn about a t_stat column when winsorization is disabled", {
+  df <- sample_study_df()
+  df$t_stat <- c(3, 4, 5)
+
+  local_compute_options()
+  withr::local_options(list("artma.verbose" = 2))
+
+  expect_no_message(compute_optional_columns(df), message = "Winsorization")
+})
+
+
+test_that("compute_optional_columns recomputes a mapped t_stat column with missing values instead of aborting", {
+  df <- sample_study_df()
+  df$t_stat <- c(3, NA, 5)
+
+  withr::local_options(list("artma.data.winsorization_level" = 0.01))
+  local_compute_options()
+
+  result <- compute_optional_columns(df)
+
+  expect_equal(result$t_stat, result$effect / result$se)
+})
+
+
+test_that("compute_optional_columns aborts on a missing t_stat it is going to keep", {
+  df <- sample_study_df()
+  df$t_stat <- c(3, NA, 5)
+
+  local_compute_options()
+
+  expect_error(compute_optional_columns(df), "missing t-statistic")
+})
+
+
+test_that("the unwinsorized pass keeps a mapped t_stat even when winsorization is configured", {
+  # The path p_hacking_tests takes: it runs on the unwinsorized frame with
+  # `t_stat_source: reported`, so the reported t-statistics must survive.
+  box::use(artma / data / index[without_winsorization])
+
+  df <- sample_study_df()
+  df$t_stat <- c(3, 4, 5)
+
+  withr::local_options(list("artma.data.winsorization_level" = 0.01))
+  local_compute_options()
+
+  result <- without_winsorization(compute_optional_columns(df))
+
+  expect_equal(result$t_stat, c(3, 4, 5))
 })
 
 
