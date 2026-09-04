@@ -799,11 +799,14 @@ methods:
       help: |
         Lower bound of the p-value supports [p_min, p_max] on which the Elliott
         et al. (2022) battery runs. Defaults to `1e-5`, matching the canonical
-        Elliott et al. code, which excludes p-values that underflowed to
-        exactly zero and starts the Cox-Shi binning grid there. Those zeros are
-        common in large samples and pull the whole battery towards rejection
-        when they are kept, so set this to `0` only to reproduce a specific
-        published application. Must be non-negative and below the smallest
+        Elliott et al. code, which starts the Cox-Shi binning grid there and
+        drops every p-value below it. That covers p-values which underflowed to
+        exactly zero as well as genuine ones (1e-5 is |t| = 4.42, so a strongly
+        powered literature has many), and keeping either kind pulls the whole
+        battery towards rejection. The support bound appears in every Elliott
+        row label, and the observation counts honour it too, so they run lower
+        than a published figure counting from zero; set this to `0` to
+        reproduce such a figure. Must be non-negative and below the smallest
         `elliott_supports` bound.
 
     simulate_cdfs:

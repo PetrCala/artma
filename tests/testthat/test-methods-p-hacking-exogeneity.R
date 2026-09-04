@@ -161,14 +161,14 @@ test_that("a custom elliott_supports option flows through to the Cox-Shi call", 
   narrow_result <- run_with_supports(c(0.05, 0.1))
   custom_result <- run_with_supports(c(0.05, 0.15))
 
-  expect_true("Cox-Shi [0, 0.15]" %in% custom_result$tables$elliott$Test)
-  expect_false(any(grepl("[0, 0.10]", custom_result$tables$elliott$Test, fixed = TRUE)))
+  expect_true("Cox-Shi [1e-05, 0.15]" %in% custom_result$tables$elliott$Test)
+  expect_false(any(grepl("[1e-05, 0.10]", custom_result$tables$elliott$Test, fixed = TRUE)))
 
   narrow_p <- narrow_result$tables$elliott[
-    narrow_result$tables$elliott$Test == "Cox-Shi [0, 0.10]", "P-value"
+    narrow_result$tables$elliott$Test == "Cox-Shi [1e-05, 0.10]", "P-value"
   ]
   custom_p <- custom_result$tables$elliott[
-    custom_result$tables$elliott$Test == "Cox-Shi [0, 0.15]", "P-value"
+    custom_result$tables$elliott$Test == "Cox-Shi [1e-05, 0.15]", "P-value"
   ]
   # Both windows yield a numeric p-value and the support choice changes it:
   # the heap at p = 0.125 rejects only on the wider window.
@@ -204,21 +204,26 @@ test_that("elliott_p_min flows through and defaults to the canonical 1e-5", {
   default_result <- run_with_p_min()
   zero_result <- run_with_p_min(0)
 
-  obs_of <- function(result) {
+  # The window label carries the lower bound the run actually used, so the two
+  # runs are addressed by different rows.
+  obs_of <- function(result, window) {
     as.numeric(result$tables$elliott[
-      result$tables$elliott$Test == "Observations in [0, 0.1]", "P-value"
+      result$tables$elliott$Test == paste("Observations in", window), "P-value"
     ])
   }
-  expect_equal(obs_of(default_result), obs_of(zero_result) - 60)
+  expect_equal(obs_of(default_result, "[1e-05, 0.1]"), obs_of(zero_result, "[0, 0.1]") - 60)
 
-  binomial_of <- function(result) {
+  binomial_of <- function(result, window) {
     est <- result$estimates
-    as.numeric(est$p_value[est$model == "binomial" & est$term == "[0, 0.10]"])
+    as.numeric(est$p_value[est$model == "binomial" & est$term == window])
   }
   # Keeping the zeros piles 60 observations into the lower half of the window
   # and saturates the binomial statistic, so the answer moves materially.
-  expect_lt(binomial_of(default_result), 0.9)
-  expect_gt(binomial_of(zero_result) - binomial_of(default_result), 0.3)
+  expect_lt(binomial_of(default_result, "[1e-05, 0.10]"), 0.9)
+  expect_gt(
+    binomial_of(zero_result, "[0, 0.10]") - binomial_of(default_result, "[1e-05, 0.10]"),
+    0.3
+  )
 })
 
 test_that("p_hacking_tests surfaces the Cox-Shi skip reason in output and meta", {
@@ -243,17 +248,17 @@ test_that("p_hacking_tests surfaces the Cox-Shi skip reason in output and meta",
 
   # The summary table keeps NA in the p-value column.
   cox_rows <- result$tables$elliott[grepl("^Cox-Shi", result$tables$elliott$Test), ]
-  # One row per default support: [0, 0.05], [0, 0.10] and [0, 0.15].
+  # One row per default support: 0.05, 0.10 and 0.15.
   expect_equal(nrow(cox_rows), 3L)
   expect_true(all(grepl("NA", cox_rows$`P-value`)))
 
   # The reason lands in meta for programmatic consumers.
   expect_match(result$meta$skipped_models$cox_shi_005$reason, "singular")
-  expect_equal(result$meta$skipped_models$cox_shi_005$label, "Cox-Shi [0, 0.05]")
+  expect_equal(result$meta$skipped_models$cox_shi_005$label, "Cox-Shi [1e-05, 0.05]")
 
   # And it is printed after the summary table instead of a bare NA.
   expect_true(any(grepl("singular", messages)))
-  expect_true(any(grepl("Cox-Shi \\[0, 0.05\\]", messages)))
+  expect_true(any(grepl("Cox-Shi \\[1e-05, 0.05\\]", messages)))
 })
 
 # exogeneity_tests wrapper --------------------------------------------------
