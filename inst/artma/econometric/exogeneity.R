@@ -108,8 +108,10 @@ WEAK_INSTRUMENT_TIEBREAK <- "1/sqrt(n_obs)"
 #' a specification search: it favors whichever instrument happens to look
 #' strongest in sample and leaves the reported standard errors ignorant of the
 #' selection step. The default, `1/sqrt(n_obs)`, is fixed a priori on the
-#' grounds that an estimator's standard error scales with `1/sqrt(N)`, and is
-#' what the applied literature uses.
+#' grounds that an estimator's standard error scales with `1/sqrt(N)`.
+#' Published meta-analyses are not unanimous here: `sqrt(n_obs)` and
+#' `log(n_obs)` are both in common use and can be considerably stronger on a
+#' given dataset, so the candidate set includes them.
 #'
 #' R-squared, Wu-Hausman, and Sargan are deliberately not used
 #' for selection: IV R-squared is unbounded below and has no
@@ -187,10 +189,11 @@ find_best_instrument <- function(df, instruments, instruments_verbose) {
 #' @title Run IV regression with specified or automatic instrument
 #' @description
 #' Performs IV regression of effect on se using an instrumental variable.
-#' Defaults to `1/sqrt(n_obs)`, the instrument the applied literature uses and
-#' the one motivated by the estimator's standard error scaling with `1/sqrt(N)`.
-#' Can instead select from a predefined set by first-stage strength, which is an
-#' exploratory option rather than a sound default (see `find_best_instrument()`).
+#' Defaults to `1/sqrt(n_obs)`, motivated by the estimator's standard error
+#' scaling with `1/sqrt(N)`; `sqrt(n_obs)` and `log(n_obs)` are the other
+#' specifications common in the applied literature. Can instead select from a
+#' predefined set by first-stage strength, which is an exploratory option
+#' rather than a sound default (see `find_best_instrument()`).
 #' @param df *[data.frame]* Data frame with columns: effect, se, study_id, n_obs.
 #' @param iv_instrument *[character]* Instrument specification, or "automatic" to
 #'   select by first-stage strength.
@@ -214,9 +217,10 @@ run_iv_regression <- function(df, iv_instrument = "1/sqrt(n_obs)", add_significa
       1 / sqrt(df$n_obs),
       1 / df$n_obs,
       1 / df$n_obs^2,
+      sqrt(df$n_obs),
       log(df$n_obs)
     )
-    instruments_verbose <- c("1/sqrt(n_obs)", "1/n_obs", "1/n_obs^2", "log(n_obs)")
+    instruments_verbose <- c("1/sqrt(n_obs)", "1/n_obs", "1/n_obs^2", "sqrt(n_obs)", "log(n_obs)")
 
     best_instrument <- find_best_instrument(df, instruments, instruments_verbose)
 

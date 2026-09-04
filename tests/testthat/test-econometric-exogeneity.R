@@ -131,6 +131,34 @@ test_that("run_iv_regression still auto-selects when explicitly asked", {
   expect_equal(nrow(res$coefficients), 2L)
 })
 
+test_that("run_iv_regression accepts sqrt(n_obs) as an explicit instrument", {
+  skip_if_not_installed("AER")
+  local_options(artma.verbose = 1)
+
+  # sqrt(n_obs) is the specification used by Opatrny et al. (2025, JOLE) and
+  # several other published meta-analyses, so it has to be expressible.
+  df <- make_exogeneity_df()
+  res <- run_iv_regression(df, iv_instrument = "sqrt(n_obs)")
+
+  expect_equal(res$instrument_name, "sqrt(n_obs)")
+  expect_equal(nrow(res$coefficients), 2L)
+  expect_true(is.finite(res$first_stage_fstat))
+})
+
+test_that("the iv_instrument enum offers every candidate the automatic mode ranks", {
+  # A candidate that "automatic" can pick but the enum cannot express would be
+  # unreachable as an explicit choice.
+  tpl <- yaml::read_yaml(
+    system.file("artma/options/templates/options_template.yaml", package = "artma")
+  )
+  enum <- tpl$methods$exogeneity_tests$iv_instrument$type
+  allowed <- strsplit(sub("^enum:\\s*", "", enum), "|", fixed = TRUE)[[1]]
+
+  expect_true(all(
+    c("automatic", "1/sqrt(n_obs)", "1/n_obs", "1/n_obs^2", "sqrt(n_obs)", "log(n_obs)") %in% allowed
+  ))
+})
+
 test_that("run_iv_regression rejects an instrument without n_obs", {
   skip_if_not_installed("AER")
   df <- make_exogeneity_df()
