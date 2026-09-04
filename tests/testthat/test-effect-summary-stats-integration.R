@@ -45,6 +45,7 @@ test_that("effect_summary_stats defaults to the All Data row in non-interactive 
   df <- data.frame(
     effect = c(0.1, 0.2, 0.3),
     study_size = c(10, 20, 30),
+    study_id = c("a", "b", "c"),
     stringsAsFactors = FALSE
   )
 
@@ -91,6 +92,7 @@ test_that("effect_summary_stats processes configured variables correctly", {
   df <- data.frame(
     effect = c(0.1, 0.2, 0.3, 0.4, 0.5),
     study_size = c(10, 20, 30, 40, 50),
+    study_id = c("a", "a", "b", "b", "c"),
     year = c(2010, 2011, 2012, 2013, 2014),
     stringsAsFactors = FALSE
   )
@@ -153,11 +155,14 @@ test_that("effect_summary_stats computes the All Data row exactly", {
   #   sd     = 0.164 (rounded)        obs = 5
   #   z_0.95 = qnorm(0.975) = 1.959964
   #   se     = sd / sqrt(5); ci = mean +/- z * se -> [0.177, 0.463]
-  #   weighted mean with w = 1 / study_size -> 0.234, its CI from
-  #   se_w = sqrt(sum(w_norm^2 * (x - wm)^2)) -> [0.100, 0.369]
+  #   weighted mean with w = 1 / study_size -> 0.234, its CI from the CR1
+  #   cluster-robust SE over the studies a, b, c (G = 3):
+  #   se_w = sqrt(G / (G - 1) * sum_g (sum_{i in g} w_norm (x - wm))^2)
+  #   -> [0.064, 0.405]
   df <- data.frame(
     effect = c(0.10, 0.24, 0.30, 0.46, 0.50),
     study_size = c(10, 20, 30, 40, 50),
+    study_id = c("a", "a", "b", "b", "c"),
     stringsAsFactors = FALSE
   )
 
@@ -192,8 +197,8 @@ test_that("effect_summary_stats computes the All Data row exactly", {
   expect_equal(all_data$`CI lower`, 0.177)
   expect_equal(all_data$`CI upper`, 0.463)
   expect_equal(all_data$`Weighted Mean`, 0.234)
-  expect_equal(all_data$`WM CI lower`, 0.100)
-  expect_equal(all_data$`WM CI upper`, 0.369)
+  expect_equal(all_data$`WM CI lower`, 0.064)
+  expect_equal(all_data$`WM CI upper`, 0.405)
 })
 
 test_that("effect_summary_stats confidence interval widens with the confidence level", {
@@ -204,6 +209,7 @@ test_that("effect_summary_stats confidence interval widens with the confidence l
   df <- data.frame(
     effect = c(0.10, 0.24, 0.30, 0.46, 0.50),
     study_size = c(10, 20, 30, 40, 50),
+    study_id = c("a", "a", "b", "b", "c"),
     stringsAsFactors = FALSE
   )
 
@@ -248,6 +254,7 @@ test_that("update_config_with_selections integrates with effect_summary_stats", 
   df <- data.frame(
     effect = rnorm(20, 0.3, 0.1),
     study_size = sample(20:100, 20, replace = TRUE),
+    study_id = paste0("s", seq_len(20)),
     published = sample(c(0, 1), 20, replace = TRUE),
     stringsAsFactors = FALSE
   )
@@ -314,6 +321,7 @@ test_that("effect_summary_stats handles missing data gracefully", {
   df <- data.frame(
     effect = c(0.1, NA, 0.3),
     study_size = c(10, 20, 30),
+    study_id = c("a", "b", "c"),
     year = c(2010, 2011, 2012),
     stringsAsFactors = FALSE
   )
@@ -347,6 +355,7 @@ test_that("effect_summary_stats handles non-numeric variables correctly", {
   df <- data.frame(
     effect = c(0.1, 0.2, 0.3),
     study_size = c(10, 20, 30),
+    study_id = c("a", "b", "c"),
     category = c("A", "B", "C"),
     stringsAsFactors = FALSE
   )
@@ -390,6 +399,7 @@ test_that("full workflow: suggestion -> config -> analysis works end-to-end", {
   df <- data.frame(
     effect = rnorm(n, 0.3, 0.15),
     study_size = sample(20:100, n, replace = TRUE),
+    study_id = paste0("s", seq_len(n)),
     year = sample(2000:2020, n, replace = TRUE),
     published = sample(c(0, 1), n, replace = TRUE),
     quality = runif(n, 0, 1),
