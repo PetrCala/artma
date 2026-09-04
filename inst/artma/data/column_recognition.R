@@ -21,7 +21,10 @@ MATCH_THRESHOLDS <- list(
   required_confidence = 0.7,
   optional_confidence = 0.95,
   rename_suggest = 0.5,
-  rename_auto = 0.75
+  rename_auto = 0.75,
+  # Two rename candidates whose scores differ by at most this much are a tie:
+  # the better one is still suggested, but never applied without asking.
+  rename_tie_margin = 0.05
 )
 
 #' Roles whose values can be judged against the role itself (see
@@ -749,8 +752,47 @@ resolve_multiple_matches <- function(df, candidates, std_col, matches) {
 #'   stored name maps to, if any. Enables the pattern/value-analysis signal.
 #' @param df *\[data.frame, optional\]* The data frame, for value analysis.
 #' @return *\[numeric\]* Similarity score between 0 and 1.
+#' @title Name similarity for rename detection
+#' @description Like `string_similarity()`, but a substring match earns a
+#'   score that grows with how much of the longer name the shorter one covers,
+#'   instead of a flat `0.8`. The flat score sat above the auto-rename
+#'   threshold, so a removed `gdp` moderator was silently remapped onto
+#'   `gdp_growth`, and a one-letter column onto anything containing that
+#'   letter. Here `gdp` vs `gdp_growth` scores about `0.59`: enough to suggest,
+#'   not enough to apply unasked. Names shorter than three characters get no
+#'   substring credit at all. The keyword scoring in `score_name_for_role()`
+#'   keeps the flat rule; a keyword inside a column name means something
+#'   different from one column name inside another.
+#' @param stored_name *\[character\]* The column name that went missing.
+#' @param candidate *\[character\]* A column present in the data.
+#' @return *\[numeric\]* Similarity in `[0, 1]`.
+#' @keywords internal
+rename_similarity <- function(stored_name, candidate) {
+  str1 <- tolower(trimws(stored_name))
+  str2 <- tolower(trimws(candidate))
+
+  if (str1 == str2) {
+    return(1.0)
+  }
+
+  max_len <- max(nchar(str1), nchar(str2))
+  min_len <- min(nchar(str1), nchar(str2))
+  if (max_len == 0) {
+    return(0)
+  }
+
+  score <- 1 - (utils::adist(str1, str2)[1, 1] / max_len)
+
+  is_substring <- grepl(str2, str1, fixed = TRUE) || grepl(str1, str2, fixed = TRUE)
+  if (is_substring && min_len >= 3) {
+    score <- max(score, 0.5 + 0.3 * (min_len / max_len))
+  }
+
+  score
+}
+
 score_rename_candidate <- function(stored_name, candidate, std_name = NULL, df = NULL) {
-  score <- string_similarity(stored_name, candidate)
+  score <- rename_similarity(stored_name, candidate)
 
   patterns <- get_column_patterns()
   if (!is.null(std_name) && std_name %in% names(patterns)) {
@@ -1132,6 +1174,7 @@ box::export(
   check_mapping_completeness,
   score_rename_candidate,
   string_similarity,
+  rename_similarity,
   analyze_column_values,
   is_likely_numeric_id,
   is_likely_study_key,
