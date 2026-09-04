@@ -329,3 +329,130 @@ test_that("winsorize_data is a no-op when the level is zero", {
   df <- data.frame(effect = 1:20 / 1, se = 20:1 / 10)
   expect_equal(winsorize_data(df), df)
 })
+
+# -- numeric roles -------------------------------------------------------------
+
+test_that("enforce_data_types coerces a numeric role typed as category to numeric", {
+  box::use(artma / data / preprocess[enforce_data_types])
+
+  withr::local_options(list(
+    "artma.data.source_path" = NA,
+    "artma.data.columns" = list(
+      effect = list(var_name = "effect", data_type = "category"),
+      se = list(var_name = "se", data_type = "category"),
+      label = list(var_name = "label", data_type = "category")
+    ),
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(
+    effect = c("0.817", NA, "-9.846"),
+    se = factor(c("0.1", "0.2", "0.3")),
+    label = c("a", "b", "c"),
+    stringsAsFactors = FALSE
+  )
+  result <- enforce_data_types(df)
+
+  expect_equal(result$effect, c(0.817, NA, -9.846))
+  expect_equal(result$se, c(0.1, 0.2, 0.3))
+  expect_true(is.character(result$label))
+})
+
+test_that("enforce_data_types aborts on a numeric role that does not parse, naming the source column", {
+  box::use(artma / data / preprocess[enforce_data_types])
+
+  withr::local_options(list(
+    "artma.data.source_path" = NA,
+    "artma.data.columns" = list(
+      effect = list(var_name = "effect", source_name = "beta_estimate", data_type = "category"),
+      se = list(var_name = "se", data_type = "float")
+    ),
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(
+    effect = c("0,817", "0,794", "-9,846", "1,023"),
+    se = c("0.1", "0.2", "0.3", "0.4"),
+    stringsAsFactors = FALSE
+  )
+
+  err <- expect_error(enforce_data_types(df), class = "rlang_error")
+  msg <- cli::ansi_strip(conditionMessage(err))
+  expect_true(grepl('"effect"', msg, fixed = TRUE))
+  expect_true(grepl('mapped from "beta_estimate"', msg, fixed = TRUE))
+  expect_true(grepl("0,817", msg, fixed = TRUE))
+  expect_true(grepl("comma decimal separators", msg, fixed = TRUE))
+})
+
+test_that("enforce_data_types does not blame a decimal comma for arbitrary text", {
+  box::use(artma / data / preprocess[enforce_data_types])
+
+  withr::local_options(list(
+    "artma.data.source_path" = NA,
+    "artma.data.columns" = list(
+      n_obs = list(var_name = "n_obs", data_type = "category")
+    ),
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(n_obs = c("120", "n/a", "80 obs"), stringsAsFactors = FALSE)
+
+  err <- expect_error(enforce_data_types(df), class = "rlang_error")
+  msg <- cli::ansi_strip(conditionMessage(err))
+  expect_true(grepl('"n_obs"', msg, fixed = TRUE))
+  expect_true(grepl("n/a", msg, fixed = TRUE))
+  expect_true(grepl("80 obs", msg, fixed = TRUE))
+  expect_false(grepl("120", msg, fixed = TRUE))
+  expect_false(grepl("comma decimal", msg, fixed = TRUE))
+})
+
+test_that("assert_numeric_roles passes numeric frames through unchanged", {
+  box::use(artma / data / preprocess[assert_numeric_roles])
+
+  withr::local_options(list("artma.data.columns" = list()))
+
+  df <- data.frame(
+    study_id = c("a", "b"),
+    effect = c(1.5, 2.5),
+    se = 1:2,
+    n_obs = c(10L, 20L),
+    moderator = c("x", "y"),
+    stringsAsFactors = FALSE
+  )
+  expect_equal(assert_numeric_roles(df), df)
+})
+
+test_that("assert_numeric_roles aborts on a text numeric role", {
+  box::use(artma / data / preprocess[assert_numeric_roles])
+
+  withr::local_options(list("artma.data.columns" = list()))
+
+  df <- data.frame(effect = c(1, 2), se = c("0.1", "0.2"), stringsAsFactors = FALSE)
+
+  err <- expect_error(assert_numeric_roles(df), class = "rlang_error")
+  msg <- cli::ansi_strip(conditionMessage(err))
+  expect_true(grepl('"se"', msg, fixed = TRUE))
+  expect_true(grepl("0.1", msg, fixed = TRUE))
+  expect_false(grepl("mapped from", msg, fixed = TRUE))
+})
+
+test_that("winsorize_data refuses to clip a text column", {
+  box::use(artma / data / preprocess[winsorize_data])
+
+  withr::local_options(list(
+    "artma.data.winsorization_level" = 0.1,
+    "artma.data.columns" = list(),
+    "artma.verbose" = 1
+  ))
+
+  df <- data.frame(
+    effect = c("0,817", "0,057", "-9,846", "1,023"),
+    se = c(0.1, 0.2, 0.3, 0.4),
+    stringsAsFactors = FALSE
+  )
+
+  err <- expect_error(winsorize_data(df), class = "rlang_error")
+  msg <- cli::ansi_strip(conditionMessage(err))
+  expect_true(grepl('"effect"', msg, fixed = TRUE))
+  expect_true(grepl("is not numeric", msg, fixed = TRUE))
+})

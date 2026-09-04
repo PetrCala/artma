@@ -1,5 +1,5 @@
 box::use(
-  artma / data / utils[get_required_colnames],
+  artma / data / utils[get_colnames_map, get_numeric_colnames, get_required_colnames],
   artma / data_config / read[get_data_config],
   artma / data / smart_detection[normalize_whitespace_to_na]
 )
@@ -53,6 +53,81 @@ remove_empty_rows <- function(df) {
   df
 }
 
+#' @title Abort on a non-numeric standard column
+#' @description Name the role, its mapped source column and a few offending
+#'   values, so the failure points at the input rather than at the arithmetic
+#'   that would otherwise trip over it several steps later.
+#' @param role *\[character\]* The standard column name (e.g. `"effect"`).
+#' @param values *\[vector\]* The offending values; `NA`s are dropped.
+#' @keywords internal
+abort_non_numeric_role <- function(role, values) {
+  values <- unique(values[!is.na(values)])
+  examples <- utils::head(values, 3)
+  source_name <- get_colnames_map()[[role]]
+  mapped <- if (is.null(source_name) || identical(source_name, role)) {
+    ""
+  } else {
+    cli::format_inline(" (mapped from {.val {source_name}})")
+  }
+
+  bullets <- c(
+    "x" = "The column {.val {role}}{mapped} is not numeric.",
+    "i" = "Example values: {.val {examples}}."
+  )
+  looks_like_decimal_comma <- length(values) > 0 &&
+    all(grepl("^[-+]?[0-9]+,[0-9]+$", values))
+  if (looks_like_decimal_comma) {
+    bullets <- c(
+      bullets,
+      "i" = "These look like comma decimal separators. Re-export the file with {.val .} decimals."
+    )
+  }
+  cli::cli_abort(bullets)
+}
+
+#' @title Assert that the numeric standard columns hold numbers
+#' @description Every numeric standard column present in the frame must be
+#'   numeric. Text in one of these roles would otherwise travel through
+#'   winsorization (which sorts strings lexicographically) and only fail at
+#'   the first arithmetic downstream, with no column named.
+#' @param df *\[data.frame\]* The data frame to check.
+#' @return *\[data.frame\]* The unchanged data frame, so the call can sit in a pipe.
+#' @keywords internal
+assert_numeric_roles <- function(df) {
+  for (role in intersect(get_numeric_colnames(), colnames(df))) {
+    if (!is.numeric(df[[role]])) {
+      abort_non_numeric_role(role, df[[role]])
+    }
+  }
+  df
+}
+
+#' @title Coerce a numeric standard column
+#' @description Numeric roles are coerced to numbers whatever type the config
+#'   inferred for them. The base config classifies a column by its content, so
+#'   a text `effect` would be typed `category` and stay text; the role, not the
+#'   inferred type, decides here. Values that do not parse abort with the
+#'   offending examples instead of becoming `NA`.
+#' @param values *\[vector\]* The column values.
+#' @param role *\[character\]* The standard column name.
+#' @return *\[numeric\]* The coerced column.
+#' @keywords internal
+coerce_numeric_role <- function(values, role) {
+  if (is.numeric(values)) {
+    return(values)
+  }
+  if (is.factor(values)) {
+    # as.numeric() on a factor returns level codes, not the labels.
+    values <- as.character(values)
+  }
+  coerced <- suppressWarnings(as.numeric(values))
+  failed <- is.na(coerced) & !is.na(values)
+  if (any(failed)) {
+    abort_non_numeric_role(role, values[failed])
+  }
+  coerced
+}
+
 #' @title Enforce correct data types
 #' @description Enforce correct data types. Every column of the data frame
 #'   must have a corresponding data config entry; a missing entry means the
@@ -88,7 +163,11 @@ enforce_data_types <- function(df) {
       # there is nothing to coerce to in that case.
       next
     }
-    if (dtype %in% c("int", "dummy")) {
+    if (col_name %in% get_numeric_colnames() && !dtype %in% c("int", "dummy", "float", "perc")) {
+      # A numeric role never takes the category branch: the type was inferred
+      # from the same broken data it would be enforcing.
+      df[[col_name]] <- coerce_numeric_role(df[[col_name]], col_name)
+    } else if (dtype %in% c("int", "dummy")) {
       old_col <- df[[col_name]]
       new_col <- suppressWarnings(as.integer(old_col))
       n_coerced <- sum(is.na(new_col) & !is.na(old_col))
@@ -267,6 +346,10 @@ winsorize_data <- function(df) {
     cli::cli_alert_info("Winsorizing data at {.val {winsorization_level}} level...")
   }
 
+  # stats::quantile(type = 1) and pmin/pmax both accept character vectors and
+  # would clip them alphabetically, reporting the result as a success.
+  assert_numeric_roles(df[intersect(c("effect", "se"), colnames(df))])
+
   # Winsorize effect column
   if ("effect" %in% colnames(df)) {
     lower_q <- stats::quantile(df$effect, probs = winsorization_level, na.rm = TRUE, type = 1)
@@ -338,11 +421,13 @@ preprocess_data <- function(df) {
     handle_missing_values() |>
     enforce_data_types() |>
     apply_subset_conditions() |>
+    assert_numeric_roles() |>
     winsorize_data() |>
     enforce_correct_values()
 }
 
 box::export(
+  assert_numeric_roles,
   clean_data,
   enforce_data_types,
   enforce_correct_values,
