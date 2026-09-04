@@ -98,3 +98,6 @@ venv.bak/
 # testthat check-reporter debug artifacts
 tests/testthat/_problems/
 tests/testthat/testthat-problems.rds
+
+# JS tooling used only by CI (commitlint)
+node_modules/
