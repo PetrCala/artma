@@ -232,6 +232,39 @@ describe_tie <- function(prop) {
   }
 }
 
+#' @title Describe an unexpected menu answer for an error message
+#' @keywords internal
+describe_answer <- function(choice) {
+  if (is.character(choice) && length(choice) == 1L) {
+    return(cli::format_inline("{.val {choice}}"))
+  }
+  cli::format_inline("{.cls {class(choice)}} of length {length(choice)}")
+}
+
+#' @title Ask a menu question and check the answer against the offered choices
+#' @description The menu backend is injectable, so its return value is treated
+#'   as untrusted input rather than assumed to be one of the labels it was
+#'   handed. Anything other than `NULL` or an offered choice is a broken
+#'   backend, not a decision, and must not reach the configuration.
+#' @return *\[character or NULL\]* The chosen label, or `NULL` when the menu
+#'   was cancelled.
+#' @keywords internal
+select_checked <- function(select_fn, choices, prompt) {
+  choice <- select_fn(choices = choices, prompt = prompt)
+
+  if (is.null(choice)) {
+    return(NULL)
+  }
+  if (is.character(choice) && length(choice) == 1L && choice %in% choices) {
+    return(choice)
+  }
+
+  cli::cli_abort(c(
+    "x" = "The menu backend returned a value that was not offered: {describe_answer(choice)}.",
+    "i" = "It must return {.code NULL} or one of the offered choices: {.val {choices}}."
+  ))
+}
+
 #' @title Ask for reconciliation decisions interactively
 #' @description Shows menus for each drift item and collects user choices.
 #'   Columns already chosen for one record are withheld from the later menus,
@@ -262,7 +295,7 @@ ask_decisions <- function(drift, proposals_roles, proposals_optional, proposals_
 
   pick_manually <- function(prompt_text) {
     available <- setdiff(all_df_cols, taken)
-    choice <- select_fn(choices = available, prompt = prompt_text)
+    choice <- select_checked(select_fn, available, prompt_text)
     if (is.null(choice)) abort_by_user()
     choice
   }
@@ -280,7 +313,7 @@ ask_decisions <- function(drift, proposals_roles, proposals_optional, proposals_
       "Abort"
     )
 
-    choice <- select_fn(choices = choices, prompt = prompt_text)
+    choice <- select_checked(select_fn, choices, prompt_text)
 
     if (is.null(choice) || grepl("^Abort", choice)) abort_by_user()
 
@@ -309,7 +342,7 @@ ask_decisions <- function(drift, proposals_roles, proposals_optional, proposals_
       choices <- c("Map to a different column", "Abort")
     }
 
-    choice <- select_fn(choices = choices, prompt = prompt_text)
+    choice <- select_checked(select_fn, choices, prompt_text)
 
     if (is.null(choice) || grepl("^Abort", choice)) abort_by_user()
 
@@ -338,7 +371,7 @@ ask_decisions <- function(drift, proposals_roles, proposals_optional, proposals_
       "Abort"
     )
 
-    choice <- select_fn(choices = choices, prompt = prompt_text)
+    choice <- select_checked(select_fn, choices, prompt_text)
 
     if (is.null(choice) || grepl("^Abort", choice)) abort_by_user()
 
@@ -381,7 +414,7 @@ ask_decisions <- function(drift, proposals_roles, proposals_optional, proposals_
       )
     }
 
-    choice <- select_fn(choices = choices, prompt = prompt_text)
+    choice <- select_checked(select_fn, choices, prompt_text)
 
     if (is.null(choice) || grepl("^Abort", choice)) abort_by_user()
 
@@ -476,7 +509,8 @@ confirm_decisions <- function(decisions, drift, role_sources, select_fn = NULL) 
 
   cli::cli_rule()
 
-  choice <- select_fn(
+  choice <- select_checked(
+    select_fn,
     choices = c("Save changes and continue analysis", "Abort"),
     prompt  = "Apply these changes to your configuration file?"
   )
