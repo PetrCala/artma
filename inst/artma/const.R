@@ -33,6 +33,11 @@ CONST <- list(
     # nothing but a dot is a missing marker in every dataset we have seen, so
     # matching it does not risk swallowing a genuine category.
     STATA_MISSING_PATTERN = "^\\.[a-z]?$",
+    # A single number written with a decimal comma ("0,817"), the convention
+    # Excel, Stata and SPSS export under a European locale. Used by the CSV
+    # reader to pick `dec` (detect_decimal_separator) and by coerce_df_columns
+    # to re-parse text columns the other readers leave as character.
+    DECIMAL_COMMA_PATTERN = "^[-+]?[0-9]+,[0-9]+$",
     # Standard column names the pipeline recognizes. These keys identify the
     # role records in the unified per-column store (`data.columns`); every
     # other record key is a moderator variable. Accessors live in
