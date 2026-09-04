@@ -648,7 +648,9 @@ summarize_run <- function(results, context, run_files = character(), open_result
 #'   prepared without winsorization, or a function returning it, handed to
 #'   methods registered with `winsorize = FALSE` in place of `df`. Defaults to
 #'   `NULL`: such methods then run on `df`, with a warning when winsorization
-#'   is active.
+#'   is active. A build that fails (the frame reruns the data pipeline
+#'   unclipped, so it can abort where the winsorized pass did not) fails only
+#'   the methods that asked for it.
 #' @param ... *\[any\]* Additional arguments to pass to the methods.
 #' @return *\[list\]* Results of the invocations, indexed by method names.
 #'   Failed methods are omitted; their names and error messages are attached
@@ -797,9 +799,33 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, unwinsorized
     if (!is.null(unwinsorized_state$df)) {
       return(unwinsorized_state$df)
     }
+    if (!is.null(unwinsorized_state$error)) {
+      # Re-signalled verbatim: the reason is an already formatted message, and
+      # cli would glue-interpolate and rewrap it.
+      stop(unwinsorized_state$error, call. = FALSE) # nolint: undesirable_function_linter.
+    }
     frame <- df
     if (is_winsorization_active()) {
-      supplied <- if (is.function(unwinsorized_df)) unwinsorized_df() else unwinsorized_df
+      # Building the frame runs the data pipeline a second time with the
+      # clipping switched off, so values winsorization masked (a zero standard
+      # error lifted onto the 1st percentile, say) reach the data checks
+      # unclipped and can abort a pass the winsorized frame survived. That
+      # failure belongs to the methods that asked for the frame, not to the
+      # run, so it is trapped here, cached, and re-signalled for every later
+      # method needing the same frame; the caller reports it against the
+      # method and keeps the rest of the run going.
+      supplied <- tryCatch(
+        if (is.function(unwinsorized_df)) unwinsorized_df() else unwinsorized_df,
+        error = function(err) {
+          # Flattened to one line: the reason is replayed inline in the
+          # per-method warning and in the closing run summary.
+          unwinsorized_state$error <- paste0(
+            "could not prepare the data frame without winsorization: ",
+            gsub("[[:space:]]*\n[[:space:]]*", " ", conditionMessage(err))
+          )
+          stop(unwinsorized_state$error, call. = FALSE) # nolint: undesirable_function_linter.
+        }
+      )
       if (is.data.frame(supplied)) {
         frame <- supplied
       } else {
@@ -909,7 +935,26 @@ invoke_runtime_methods <- function(methods, df, modules_dir = NULL, unwinsorized
         next
       }
 
-      method_df <- if (isFALSE(meta$winsorize)) resolve_unwinsorized_df(method_name) else df
+      method_df <- df
+      if (isFALSE(meta$winsorize)) {
+        unwinsorized_error <- NULL
+        method_df <- tryCatch(
+          resolve_unwinsorized_df(method_name),
+          error = function(err) {
+            unwinsorized_error <<- conditionMessage(err)
+            NULL
+          }
+        )
+        if (!is.null(unwinsorized_error)) {
+          failed_methods[[method_name]] <- unwinsorized_error
+          if (get_verbosity() >= 2) {
+            cli::cli_warn(
+              "Method {.code {method_name}} failed and was skipped: {unwinsorized_error}"
+            )
+          }
+          next
+        }
+      }
       method_args <- c(list(df = method_df), extra_args)
 
       # Pass each upstream dependency's result to the dependent as

@@ -123,17 +123,19 @@ enforce_correct_values <- function(df) {
     cli::cli_inform("Checking for invalid values...")
   }
 
-  box::use(
-    artma / libs / core / validation[assert],
-    artma / options / typed_accessors[get_se_zero_handling]
-  )
+  box::use(artma / options / typed_accessors[get_se_zero_handling])
 
   se_zero_handling <- get_se_zero_handling()
 
   zero_se_rows <- which(df$se == 0)
 
   if (se_zero_handling == "stop") {
-    assert(length(zero_se_rows) == 0, "The 'se' column contains zero values")
+    if (length(zero_se_rows) > 0) {
+      cli::cli_abort(c(
+        "x" = "The 'se' column contains zero values in {length(zero_se_rows)} row{?s}.",
+        "i" = "Set {.field artma.calc.se_zero_handling} to {.val remove} to drop them instead."
+      ))
+    }
   } else if (se_zero_handling == "warn") {
     if (length(zero_se_rows) > 0) {
       if (get_verbosity() >= 3) {

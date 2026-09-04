@@ -23,7 +23,9 @@ invoke_runtime_methods(
 prepared without winsorization, or a function returning it, handed to
 methods registered with \code{winsorize = FALSE} in place of \code{df}. Defaults to
 \code{NULL}: such methods then run on \code{df}, with a warning when winsorization
-is active.}
+is active. A build that fails (the frame reruns the data pipeline
+unclipped, so it can abort where the winsorized pass did not) fails only
+the methods that asked for it.}
 
 \item{...}{\emph{[any]} Additional arguments to pass to the methods.}
 }

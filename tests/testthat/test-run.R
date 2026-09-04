@@ -6,6 +6,7 @@ box::use(
     expect_equal,
     expect_error,
     expect_false,
+    expect_length,
     expect_match,
     expect_named,
     expect_null,
@@ -491,6 +492,69 @@ test_that("invoke_runtime_methods warns when an opted-out method gets no unwinso
 
   expect_equal(results$raw, 3)
   expect_true(any(grepl("no unwinsorized data frame", messages)))
+})
+
+test_that("invoke_runtime_methods fails only the opted-out methods when the unwinsorized frame cannot be built", {
+  # The unwinsorized frame reruns the data pipeline with the clipping off, so it
+  # can abort (a zero standard error winsorization lifted, say) on data the
+  # winsorized frame survived. Only the methods that asked for it fail (#540).
+  fake_methods <- list(
+    clipped = list(run = function(df, ...) max(df$effect)),
+    raw = list(
+      run = function(df, ...) max(df$effect),
+      meta = list(winsorize = FALSE)
+    ),
+    raw_too = list(
+      run = function(df, ...) min(df$effect),
+      meta = list(winsorize = FALSE)
+    )
+  )
+  methods_dir <- local_mock_methods_dir(fake_methods)
+  withr::local_options(list(artma.verbose = 1, artma.data.winsorization_level = 0.05))
+  builds <- 0L
+
+  results <- artma:::invoke_runtime_methods(
+    methods = c("clipped", "raw", "raw_too"),
+    df = data.frame(effect = c(1, 2, 3), se = 1),
+    modules_dir = methods_dir,
+    unwinsorized_df = function() {
+      builds <<- builds + 1L
+      cli::cli_abort("The 'se' column contains zero values in 1 row.")
+    }
+  )
+
+  expect_equal(results$clipped, 3)
+  expect_setequal(names(results), "clipped")
+
+  failed <- attr(results, "failed_methods")
+  expect_setequal(names(failed), c("raw", "raw_too"))
+  expect_match(unname(failed[["raw"]]), "without winsorization")
+  expect_match(unname(failed[["raw"]]), "contains zero values")
+  expect_match(unname(failed[["raw_too"]]), "without winsorization")
+
+  # The failing build is attempted once and its reason reused.
+  expect_equal(builds, 1L)
+})
+
+test_that("invoke_runtime_methods warns about an unbuildable unwinsorized frame", {
+  fake_methods <- list(
+    raw = list(run = function(df, ...) max(df$effect), meta = list(winsorize = FALSE))
+  )
+  methods_dir <- local_mock_methods_dir(fake_methods)
+  withr::local_options(list(artma.verbose = 2, artma.data.winsorization_level = 0.05))
+
+  warnings <- capture_warnings(
+    results <- artma:::invoke_runtime_methods(
+      methods = "raw",
+      df = data.frame(effect = c(1, 2, 3), se = 1),
+      modules_dir = methods_dir,
+      unwinsorized_df = function() cli::cli_abort("no unwinsorized frame for you")
+    )
+  )
+
+  expect_length(results, 0L)
+  expect_true(any(grepl("without winsorization", warnings)))
+  expect_true(any(grepl("no unwinsorized frame for you", warnings)))
 })
 
 test_that("invoke_runtime_methods produces the same results in parallel and sequentially", {

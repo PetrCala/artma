@@ -239,7 +239,9 @@ test_that("enforce_correct_values 'stop' strategy aborts on zero SE", {
   ))
 
   df <- data.frame(se = c(0.1, 0))
-  expect_error(enforce_correct_values(df), "contains zero values")
+  expect_error(enforce_correct_values(df), "contains zero values in 1 row")
+  # The abort names the option that decides the policy (#540).
+  expect_error(enforce_correct_values(df), "se_zero_handling")
 })
 
 test_that("enforce_correct_values 'warn' strategy keeps rows but warns", {
