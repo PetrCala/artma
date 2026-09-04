@@ -134,3 +134,30 @@ test_that("read_file keeps lowercase 'na' as a category value read from a CSV", 
   expect_equal(out$discounting, c("na", "exponential", "na"))
   expect_false(anyNA(out$discounting))
 })
+
+
+# -- UTF-8 BOM (issue #556) ----------------------------------------------------
+# Excel's "CSV UTF-8" export prefixes the file with EF BB BF. Read naively, the
+# bytes become part of the first header name and make.names() renders it as
+# "X...obs_id", so the first column loses its identity.
+
+test_that("read_file reads a BOM-prefixed CSV's first column under its real name", {
+  withr::local_options(list(artma.verbose = 0))
+  plain <- withr::local_tempfile(fileext = ".csv")
+  with_bom <- withr::local_tempfile(fileext = ".csv")
+  lines <- c(
+    "obs_id;study_name;beta_estimate;beta_se",
+    "1;Smith (2020);0.5;0.1",
+    "2;Jones (2021);0.7;0.2"
+  )
+  writeLines(lines, plain)
+  con <- file(with_bom, open = "wb")
+  writeBin(as.raw(c(0xEF, 0xBB, 0xBF)), con)
+  writeBin(charToRaw(paste0(paste(lines, collapse = "\n"), "\n")), con)
+  close(con)
+
+  df <- read_file(with_bom)
+
+  expect_equal(names(df)[[1]], "obs_id")
+  expect_equal(df, read_file(plain))
+})
