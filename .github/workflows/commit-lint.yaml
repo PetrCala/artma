@@ -18,8 +18,16 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Restore commitlint dependencies
+        id: deps-cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: commitlint-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
       - name: Install commitlint
-        run: npm install --no-save commitlint@latest @commitlint/config-conventional
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        run: npm ci
 
       - name: Validate current commit (last commit) with commitlint
         if: github.event_name == 'push'
