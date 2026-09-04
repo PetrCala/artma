@@ -56,7 +56,7 @@ p_hacking_tests <- function(df) {
     caliper_cluster = opt_spec(default = TRUE, type = "logical"),
     include_elliott = opt_spec(default = TRUE, type = "logical"),
     elliott_supports = opt_spec(
-      default = c(0.05, 0.1), type = "numeric",
+      default = c(0.05, 0.1, 0.15), type = "numeric",
       constraint = function(x) {
         length(x) > 0 && all(is.finite(x) & x > 0 & x <= 1) &&
           !is.unsorted(x, strictly = TRUE)

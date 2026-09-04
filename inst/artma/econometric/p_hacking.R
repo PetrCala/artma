@@ -33,7 +33,7 @@ skip_reason <- function(value) {
   attr(value, "reason")
 }
 
-DEFAULT_ELLIOTT_SUPPORTS <- c(0.05, 0.1)
+DEFAULT_ELLIOTT_SUPPORTS <- c(0.05, 0.1, 0.15)
 
 #' @title Result-list key suffix for an Elliott support upper bound
 #' @param p_max *[numeric]* Support upper bound, e.g. `0.05`.

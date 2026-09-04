@@ -102,7 +102,7 @@ Method-specific parameters for each analysis method:
 - `burn`: Burn-in iterations (default: 10000)
 - `iter`: MCMC iterations (default: 50000)
 - `g`: Prior specification (default: "UIP")
-- `mprior`: Model prior (default: "uniform")
+- `mprior`: Model prior, one of "uniform", "random", "fixed", "dilut" (default: "uniform")
 - `nmodel`: Number of top models to retain
 - `mcmc`: Sampler type ("bd" or "rev.jump")
 - `use_vif_optimization`: Whether to use VIF optimization
