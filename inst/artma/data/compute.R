@@ -398,6 +398,7 @@ update_config_with_computed_columns <- function(df) {
     artma / data_config / read[get_data_config],
     artma / data_config / write[update_data_config],
     artma / data / derivation[pcc_derivation_active],
+    artma / data / derived_columns[derived_column_names],
     artma / data / utils[determine_vector_type],
     artma / const[CONST],
     artma / libs / core / string[make_verbose_name],
@@ -409,11 +410,15 @@ update_config_with_computed_columns <- function(df) {
 
   # List of computed columns to add. Under the (t, df) route effect and se are
   # derived rather than read, so they join the list and are recorded as
-  # computed instead of carrying a source_name.
+  # computed instead of carrying a source_name. User-defined derived columns
+  # join it too.
   computed_columns <- c("obs_id", "study_id", "study_label", "t_stat", "study_size", "reg_dof", "precision")
   if (pcc_derivation_active()) {
     computed_columns <- c(computed_columns, "effect", "se")
   }
+  # User-defined `data.derived` columns are registered the same way, so they
+  # carry a config entry (and can be given `bma` flags) like any other column.
+  computed_columns <- c(computed_columns, derived_column_names())
 
   # Add each computed column to config if it exists in df and not in config
   changes <- list()

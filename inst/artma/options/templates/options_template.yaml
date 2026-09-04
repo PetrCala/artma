@@ -1152,6 +1152,35 @@ data:
       All conditions must hold for a row to be kept (conditions are combined with AND).
       Leave unset (NA) to skip subsetting.
 
+  derived:
+    type: "list"
+    default: .na
+    allow_na: true
+    help: |
+      Optional user-defined columns built from the ones your dataset already has.
+      Each entry is named after the column it creates and holds an R expression
+      evaluated against the data, e.g.:
+        {cli::symbol$bullet} {.emph se_x_top_journal: se * top_journal} (an interaction)
+        {cli::symbol$bullet} {.emph preferred: estimate_category == 'preferred'} (an indicator)
+      Expressions are evaluated in the order written, so a later one can build on
+      an earlier one. Logical results become 0/1 integers, so the natural way of
+      writing an indicator yields the dummy a moderator set expects.
+      They run at the end of the data pipeline, after the standard computed
+      columns ({.field t_stat}, {.field precision}, {.field study_size}) exist and
+      after winsorization: an interaction with {.field se} therefore uses the same
+      winsorized values the rest of the analysis does. That also means derived
+      columns are not visible to {.strong data.subset_conditions}, which filters
+      rows earlier.
+      Each derived column is registered in {.strong data.columns} like any computed
+      column, so it can carry the usual analysis fields (including {.strong bma}).
+      A name that is not syntactic, repeats, shadows a standard column, or
+      already exists in the data is rejected, as is a column that turns out to be
+      a near-deterministic encoding of the effect or its standard error (the same
+      check BMA applies to helper columns shipped in the data file). Keep such a
+      column anyway by setting {.strong bma_allow_derived} to true on its
+      {.strong data.columns} entry.
+      Leave unset (NA) to add no derived columns.
+
 
 output:
   dir:
