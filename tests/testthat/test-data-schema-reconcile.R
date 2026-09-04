@@ -646,6 +646,74 @@ test_that("reconcile_schema ask aborts cleanly when the user declines to save", 
   )
 })
 
+# A menu backend is injected, so what it returns is input, not a given: only
+# `NULL` (cancelled) or one of the offered labels may reach the configuration.
+
+test_that("reconcile_schema ask rejects a menu answer that was never offered", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  garbage <- function(choices, prompt, ...) "this is not one of the choices at all"
+
+  withr::with_options(
+    ask_opts(list(
+      "artma.data.columns" = base_store(list(t_stat = list(source_name = "tstat"))),
+      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study", "n_obs", "tstat")
+    )),
+    {
+      expect_error(
+        reconcile_schema(base_df(), mode = "ask", is_interactive = TRUE, select_fn = garbage),
+        "not offered"
+      )
+      expect_equal(getOption("artma.data.columns")$t_stat$source_name, "tstat")
+    }
+  )
+})
+
+test_that("reconcile_schema ask does not map a role onto a column the manual menu never offered", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  # Asks for the manual column list, then answers it with a column that is not
+  # in the data at all.
+  invent_column <- function(choices, prompt, ...) {
+    hit <- grep("^Map to a different column", choices, value = TRUE)
+    if (length(hit) > 0) hit[[1]] else "no_such_column"
+  }
+
+  withr::with_options(
+    ask_opts(list(
+      "artma.data.columns" = base_store(list(t_stat = list(source_name = "tstat"))),
+      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study", "n_obs", "tstat")
+    )),
+    {
+      expect_error(
+        reconcile_schema(base_df(), mode = "ask", is_interactive = TRUE, select_fn = invent_column),
+        "not offered"
+      )
+      expect_equal(getOption("artma.data.columns")$t_stat$source_name, "tstat")
+    }
+  )
+})
+
+test_that("reconcile_schema ask rejects a menu answer that is not a single label", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  return_index <- function(choices, prompt, ...) 1L
+
+  withr::with_options(
+    ask_opts(list(
+      "artma.data.columns" = base_store(list(t_stat = list(source_name = "tstat"))),
+      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study", "n_obs", "tstat")
+    )),
+    {
+      expect_error(
+        reconcile_schema(base_df(), mode = "ask", is_interactive = TRUE, select_fn = return_index),
+        "not offered"
+      )
+      expect_equal(getOption("artma.data.columns")$t_stat$source_name, "tstat")
+    }
+  )
+})
+
 # Baseline upkeep
 #
 # Removing an unmapped column is not drift, but the baseline must still follow
