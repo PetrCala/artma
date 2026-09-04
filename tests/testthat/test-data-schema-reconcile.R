@@ -486,6 +486,67 @@ test_that("reconcile_schema auto never remaps two moderators onto one column", {
   )
 })
 
+# Priority across the buckets is by auto-acceptability first, bucket second: a
+# bucket withholds a candidate from lower-priority buckets only when it would
+# actually apply that rename unasked.
+
+test_that("award_renames hands a merely suggested candidate to a bucket that can auto-apply it", {
+  box::use(artma / data / schema_reconcile[award_renames])
+
+  # study_id scores the same on both new columns (a tie it would never apply
+  # unasked); the n_studies moderator is confident about "studies".
+  raw_df <- data.frame(studies = 1:3, studied = 4:6, se_col = 0.1, n_obs = 10L)
+  awarded <- award_renames(
+    list(
+      roles = list(missing = c(study_id = "study"), roles_known = TRUE),
+      moderators = list(missing = c(n_studies = "n_studies"))
+    ),
+    c("studies", "studied"),
+    raw_df
+  )
+
+  expect_equal(awarded$moderators$n_studies$candidate, "studies")
+  expect_equal(awarded$roles$study_id$candidate, "studied")
+})
+
+test_that("award_renames keeps a candidate with the higher bucket when both would auto-apply it", {
+  box::use(artma / data / schema_reconcile[award_renames])
+
+  raw_df <- data.frame(study_no = 1:3, se_col = 0.1, n_obs = 10L)
+  awarded <- award_renames(
+    list(
+      roles = list(missing = c(study_id = "study"), roles_known = TRUE),
+      moderators = list(missing = c(study_num = "study_num"))
+    ),
+    "study_no",
+    raw_df
+  )
+
+  expect_equal(awarded$roles$study_id$candidate, "study_no")
+  expect_true(is.na(awarded$moderators$study_num$candidate))
+})
+
+test_that("award_renames never proposes one column to two buckets", {
+  box::use(artma / data / schema_reconcile[award_renames])
+
+  raw_df <- data.frame(studies = 1:3, studied = 4:6, se_col = 0.1, n_obs = 10L)
+  awarded <- award_renames(
+    list(
+      roles = list(missing = c(study_id = "study"), roles_known = TRUE),
+      optional = list(missing = c(t_stat = "tstat"), roles_known = TRUE),
+      moderators = list(missing = c(n_studies = "n_studies"))
+    ),
+    c("studies", "studied"),
+    raw_df
+  )
+
+  claimed <- unlist(lapply(awarded, function(props) {
+    cands <- vapply(props, function(prop) prop$candidate, character(1))
+    cands[!is.na(cands)]
+  }), use.names = FALSE)
+  expect_equal(anyDuplicated(claimed), 0L)
+})
+
 test_that("reconcile_schema auto aborts on a tied required-role suggestion instead of picking by column order", {
   box::use(artma / data / schema_reconcile[reconcile_schema])
 
@@ -624,6 +685,34 @@ test_that("reconcile_schema ask withholds a column already chosen from later men
   expect_true(any(grepl("^Accept", offered[[1]])))
   expect_false(any(grepl("^Accept", offered[[3]])))
   expect_false("std_err" %in% offered[[4]])
+})
+
+test_that("reconcile_schema ask offers the confident record the candidate a required role only suggests", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  # "study" and "n_studies" both vanished, replaced by "studies" and "studied".
+  # study_id is equally unsure about the two, so "studies" goes to the
+  # moderator that is confident about it, and study_id keeps "studied".
+  menu <- scripted_menu(c("^Accept", "^Remap to", "^Save"))
+  df <- data.frame(effect_size = 1:3, se_col = 0.1, studies = 4:6, studied = 7:9, n_obs = 10L)
+
+  withr::with_options(
+    ask_opts(list(
+      "artma.data.columns" = base_store(list(n_studies = list(bma = TRUE))),
+      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study", "n_obs", "n_studies")
+    )),
+    {
+      reconcile_schema(df, mode = "ask", is_interactive = TRUE, select_fn = menu$fn)
+      store <- getOption("artma.data.columns")
+      expect_equal(store$study_id$source_name, "studied")
+      expect_true(isTRUE(store$studies$bma))
+      expect_null(store[["n_studies"]])
+    }
+  )
+
+  offered <- menu$state$offered
+  expect_true(any(grepl("studied", offered[[1]], fixed = TRUE)))
+  expect_true(any(grepl("studies", offered[[2]], fixed = TRUE)))
 })
 
 test_that("reconcile_schema ask aborts cleanly when the user declines to save", {

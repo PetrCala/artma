@@ -41,6 +41,63 @@ proposed_candidates <- function(proposals) {
   candidates[!is.na(candidates)]
 }
 
+#' @title Columns a set of proposals would apply without asking
+#' @keywords internal
+auto_candidates <- function(proposals) {
+  candidates <- unlist(
+    lapply(proposals, function(prop) if (proposal_is_auto(prop)) prop$candidate else NULL),
+    use.names = FALSE
+  )
+  if (is.null(candidates)) character(0) else candidates
+}
+
+#' @title Award rename proposals across the drift buckets
+#' @description Runs `propose_renames()` once per bucket (required roles,
+#'   optional roles, moderators) so that no column is ever proposed to two
+#'   records. Priority is by auto-acceptability first and bucket second: a
+#'   bucket withholds a candidate from lower-priority buckets only when it
+#'   would actually apply that rename unasked. A candidate a higher bucket
+#'   merely suggests stays in the pool for a lower bucket that can resolve it
+#'   with confidence, which would otherwise be starved of a candidate reserved
+#'   by a claim that is never applied. Bucket order still decides between two
+#'   claims of equal auto-acceptability.
+#' @param buckets *\[list\]* One named element per bucket, in priority order,
+#'   each `list(missing, roles_known)` as taken by `propose_renames()`.
+#' @param available_cols *\[character\]* Unmatched columns from the raw df.
+#' @param raw_df *\[data.frame\]* The raw dataframe, for value analysis.
+#' @return *\[list\]* One proposal list per bucket, named as `buckets`.
+#' @keywords internal
+award_renames <- function(buckets, available_cols, raw_df) {
+  propose <- function(bucket, pool) {
+    propose_renames(
+      bucket$missing, pool,
+      raw_df = raw_df, roles_known = isTRUE(bucket$roles_known)
+    )
+  }
+
+  # First round: find what each bucket would auto-apply, higher buckets first
+  # so that they keep a candidate a lower bucket is equally confident about.
+  pool <- available_cols
+  auto_claims <- list()
+  for (key in names(buckets)) {
+    auto_claims[[key]] <- auto_candidates(propose(buckets[[key]], pool))
+    pool <- setdiff(pool, auto_claims[[key]])
+  }
+
+  # Second round: the claims that count. A bucket sees everything except what a
+  # higher bucket actually took and what a lower bucket would auto-apply.
+  taken <- character(0)
+  proposals <- list()
+  for (i in seq_along(buckets)) {
+    key <- names(buckets)[[i]]
+    reserved <- unlist(auto_claims[names(buckets)[-seq_len(i)]], use.names = FALSE)
+    proposals[[key]] <- propose(buckets[[key]], setdiff(available_cols, c(taken, reserved)))
+    taken <- c(taken, proposed_candidates(proposals[[key]]))
+  }
+
+  proposals
+}
+
 #' @title Reconcile schema drift
 #' @description Detects changes between the current dataset columns and the
 #'   unified per-column store, then resolves them before the analysis pipeline
@@ -178,25 +235,22 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
   matched_cols <- setdiff(matched_cols, make.names(unname(missing_role_sources)))
   available_cols <- setdiff(make.names(colnames(raw_df)), matched_cols)
 
-  # Rename proposals via the shared matching engine. Each pass is exclusive
-  # within itself, and the passes run in priority order (required roles,
-  # optional roles, moderators) with earlier winners withheld from later
-  # passes, so no column is ever proposed to two records.
-  proposals_roles <- propose_renames(
-    drift$missing_roles, available_cols,
-    raw_df = raw_df, roles_known = TRUE
-  )
-  available_cols <- setdiff(available_cols, proposed_candidates(proposals_roles))
-  proposals_optional <- propose_renames(
-    drift$missing_optional_roles, available_cols,
-    raw_df = raw_df, roles_known = TRUE
-  )
-  available_cols <- setdiff(available_cols, proposed_candidates(proposals_optional))
-  proposals_moderators <- propose_renames(
-    stats::setNames(drift$missing_moderators, drift$missing_moderators),
+  # Rename proposals via the shared matching engine, exclusive both within and
+  # across the buckets; see `award_renames()` for how priority is settled.
+  proposals <- award_renames(
+    list(
+      roles = list(missing = drift$missing_roles, roles_known = TRUE),
+      optional = list(missing = drift$missing_optional_roles, roles_known = TRUE),
+      moderators = list(
+        missing = stats::setNames(drift$missing_moderators, drift$missing_moderators)
+      )
+    ),
     available_cols,
-    raw_df = raw_df
+    raw_df
   )
+  proposals_roles <- proposals$roles
+  proposals_optional <- proposals$optional
+  proposals_moderators <- proposals$moderators
 
   # Show unified diff. Unlike emit_reconcile_complete()'s plain success note,
   # this is drift detail worth a "Warnings + errors" gate rather than always
@@ -242,4 +296,4 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
   invisible(NULL)
 }
 
-box::export(reconcile_schema, detect_schema_drift)
+box::export(reconcile_schema, detect_schema_drift, award_renames)
