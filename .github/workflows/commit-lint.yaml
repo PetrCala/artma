@@ -4,6 +4,11 @@ on:
   workflow_call:
   pull_request:
     types: [opened, synchronize]
+  # Runs on master purely so the dependency cache gets written to the default
+  # branch, which is the only scope every PR can read from. Without this the
+  # cache below is per-PR and the first run of every new PR pays the install.
+  push:
+    branches: [master]
 
 jobs:
   commitlint:
@@ -19,8 +24,8 @@ jobs:
           node-version: '24'
 
       # Caches created on a PR branch are readable only by that branch; only
-      # default-branch caches are shared. So the first run on a new PR misses
-      # and pays the install, then restores from the master cache after that.
+      # default-branch caches are shared. The push trigger above keeps a master
+      # cache populated so PR runs restore from it instead of reinstalling.
       - name: Restore commitlint dependencies
         id: deps-cache
         uses: actions/cache@v4
