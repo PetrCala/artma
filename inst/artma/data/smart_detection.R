@@ -115,16 +115,65 @@ open_past_bom <- function(path) {
 }
 
 
+#' @title Detect the decimal separator in a delimited file
+#' @description Decide whether numbers in a delimited text file use a decimal
+#'   comma (\code{"0,817"}) or a decimal point. The header line is skipped and
+#'   the fields of the next \code{n_lines} lines are matched against the
+#'   comma-decimal shape (\code{CONST$DATA$DECIMAL_COMMA_PATTERN}) and its
+#'   dot-decimal counterpart. A comma wins when at least one field has the
+#'   comma shape and comma-shaped fields outnumber dot-shaped ones, so a file
+#'   with thousands separators next to dot decimals still reads with a point.
+#'   A comma-delimited file can never use comma decimals and always returns
+#'   \code{"."}.
+#' @param path *\[character\]* Path to the file
+#' @param delim *\[character\]* The field delimiter the file uses
+#' @param n_lines *\[integer\]* Number of data lines to sample after the header
+#' @return *\[character\]* \code{","} or \code{"."}
+detect_decimal_separator <- function(path, delim, n_lines = 20) {
+  box::use(
+    artma / const[CONST],
+    artma / libs / core / validation[validate]
+  )
+
+  validate(is.character(path), file.exists(path), is.character(delim))
+
+  if (delim == ",") {
+    return(".")
+  }
+
+  # Same raw-bytes reasoning as in detect_delimiter: the file has not been
+  # through encoding repair yet, and every character we match is ASCII.
+  lines <- readLines(path, n = n_lines + 1, warn = FALSE)
+  if (length(lines) < 2) {
+    return(".")
+  }
+
+  fields <- unlist(strsplit(lines[-1], delim, fixed = TRUE, useBytes = TRUE))
+  fields <- gsub("[ \t\r\"]", "", fields, useBytes = TRUE)
+  dot_pattern <- sub(",", "\\.", CONST$DATA$DECIMAL_COMMA_PATTERN, fixed = TRUE)
+
+  n_comma <- sum(grepl(CONST$DATA$DECIMAL_COMMA_PATTERN, fields, useBytes = TRUE))
+  n_dot <- sum(grepl(dot_pattern, fields, useBytes = TRUE))
+
+  if (n_comma > 0 && n_comma > n_dot) "," else "."
+}
+
+
 #' @title Smart read CSV with auto-detection
-#' @description Read CSV file with automatic delimiter detection
+#' @description Read CSV file with automatic delimiter and decimal separator
+#'   detection. A file written under a European locale (\code{;} between
+#'   fields, \code{,} inside numbers) reads its numeric columns as numeric
+#'   rather than as text.
 #' @param path *\[character\]* Path to the file
 #' @param delim *\[character, optional\]* Delimiter (auto-detected if NULL)
+#' @param dec *\[character, optional\]* Decimal separator (auto-detected if NULL)
 #' @return *\[data.frame\]* The data frame
-smart_read_csv <- function(path, delim = NULL) {
+smart_read_csv <- function(path, delim = NULL, dec = NULL) {
   box::use(
     artma / const[CONST],
     artma / libs / core / validation[validate],
-    artma / libs / core / utils[get_verbosity]
+    artma / libs / core / utils[get_verbosity],
+    artma / libs / core / log[log_info]
   )
 
   validate(is.character(path), file.exists(path))
@@ -133,6 +182,13 @@ smart_read_csv <- function(path, delim = NULL) {
     delim <- detect_delimiter(path)
     if (get_verbosity() >= 4) {
       cli::cli_inform("Auto-detected delimiter: {.val {delim}}")
+    }
+  }
+
+  if (is.null(dec)) {
+    dec <- detect_decimal_separator(path, delim)
+    if (dec == ",") {
+      log_info("Detected a comma decimal separator in {.path {path}}; reading numbers with {.code dec = \",\"}")
     }
   }
 
@@ -157,6 +213,7 @@ smart_read_csv <- function(path, delim = NULL) {
           input,
           header = TRUE,
           sep = delim,
+          dec = dec,
           stringsAsFactors = FALSE,
           na.strings = CONST$DATA$NA_STRINGS,
           strip.white = TRUE,
@@ -172,7 +229,7 @@ smart_read_csv <- function(path, delim = NULL) {
       }
       tryCatch(
         read_input(function(input) {
-          utils::read.csv(input, stringsAsFactors = FALSE, na.strings = CONST$DATA$NA_STRINGS)
+          utils::read.csv(input, dec = dec, stringsAsFactors = FALSE, na.strings = CONST$DATA$NA_STRINGS)
         }),
         error = function(e2) {
           cli::cli_abort(c(
@@ -288,6 +345,7 @@ validate_df_structure <- function(df, path) {
 box::export(
   detect_delimiter,
   has_utf8_bom,
+  detect_decimal_separator,
   smart_read_csv,
   validate_df_structure,
   normalize_whitespace_to_na

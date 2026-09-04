@@ -4,6 +4,7 @@ box::use(
     expect_error,
     expect_false,
     expect_identical,
+    expect_message,
     expect_no_error,
     expect_true,
     test_that
@@ -14,6 +15,7 @@ box::use(
   artma / data / smart_detection[
     detect_delimiter,
     has_utf8_bom,
+    detect_decimal_separator,
     smart_read_csv,
     validate_df_structure
   ]
@@ -119,6 +121,103 @@ test_that("detect_delimiter handles inconsistent delimiters by choosing most con
 
   delim <- detect_delimiter(tmp_file)
   expect_equal(delim, ";")
+})
+
+
+# -- Decimal comma detection (issue #554) --------------------------------------
+# A CSV exported under a European locale uses ";" between fields and "," inside
+# numbers. The delimiter was always detected, but nothing handled the decimal
+# comma, so every numeric column stayed character until effect / se aborted.
+
+european_csv <- c(
+  "study_name;sample_size;beta_estimate;beta_se",
+  "Abebe et al. (2021);1557;0,817;0,083",
+  "Abebe et al. (2021);1559;0,794;0,057",
+  "Berg (2019);320;-1,25;0,4"
+)
+
+test_that("detect_decimal_separator returns a comma for a semicolon file with comma decimals", {
+  tmp_file <- create_temp_csv(european_csv)
+  on.exit(unlink(tmp_file))
+
+  expect_equal(detect_decimal_separator(tmp_file, ";"), ",")
+})
+
+test_that("detect_decimal_separator returns a point for a semicolon file with point decimals", {
+  tmp_file <- create_temp_csv(c(
+    "study;effect;se",
+    "A;0.817;0.083",
+    "B;0.794;0.057"
+  ))
+  on.exit(unlink(tmp_file))
+
+  expect_equal(detect_decimal_separator(tmp_file, ";"), ".")
+})
+
+test_that("detect_decimal_separator never picks a comma for a comma-delimited file", {
+  tmp_file <- create_temp_csv(c(
+    "study,effect,se",
+    "A,0.817,0.083"
+  ))
+  on.exit(unlink(tmp_file))
+
+  expect_equal(detect_decimal_separator(tmp_file, ","), ".")
+})
+
+test_that("detect_decimal_separator keeps the point when comma fields are outnumbered by point decimals", {
+  # A thousands separator next to point decimals must not flip the whole file.
+  tmp_file <- create_temp_csv(c(
+    "study;n;effect;se;precision",
+    "A;1,557;0.817;0.083;12.05",
+    "B;1,559;0.794;0.057;17.54"
+  ))
+  on.exit(unlink(tmp_file))
+
+  expect_equal(detect_decimal_separator(tmp_file, ";"), ".")
+})
+
+test_that("detect_decimal_separator returns a point for a header-only or integer-only file", {
+  header_only <- create_temp_csv("study;effect;se")
+  integers <- create_temp_csv(c("study;n", "A;10", "B;20"))
+  on.exit(unlink(c(header_only, integers)))
+
+  expect_equal(detect_decimal_separator(header_only, ";"), ".")
+  expect_equal(detect_decimal_separator(integers, ";"), ".")
+})
+
+test_that("smart_read_csv reads a semicolon file with comma decimals as numeric", {
+  withr::local_options(list(artma.verbose = 0))
+  tmp_file <- create_temp_csv(european_csv)
+  on.exit(unlink(tmp_file))
+
+  df <- smart_read_csv(tmp_file)
+
+  expect_equal(names(df), c("study_name", "sample_size", "beta_estimate", "beta_se"))
+  expect_true(is.numeric(df$beta_estimate))
+  expect_true(is.numeric(df$beta_se))
+  expect_equal(df$beta_estimate, c(0.817, 0.794, -1.25))
+  expect_equal(df$beta_se, c(0.083, 0.057, 0.4))
+  expect_equal(df$sample_size, c(1557L, 1559L, 320L))
+  expect_true(is.character(df$study_name))
+})
+
+test_that("smart_read_csv honours an explicit decimal separator", {
+  withr::local_options(list(artma.verbose = 0))
+  tmp_file <- create_temp_csv(european_csv)
+  on.exit(unlink(tmp_file))
+
+  df <- smart_read_csv(tmp_file, dec = ".")
+
+  expect_true(is.character(df$beta_estimate))
+  expect_equal(df$beta_estimate[1], "0,817")
+})
+
+test_that("smart_read_csv announces a detected comma decimal separator at info level", {
+  withr::local_options(list(artma.verbose = 3))
+  tmp_file <- create_temp_csv(european_csv)
+  on.exit(unlink(tmp_file))
+
+  expect_message(smart_read_csv(tmp_file), "comma decimal separator")
 })
 
 

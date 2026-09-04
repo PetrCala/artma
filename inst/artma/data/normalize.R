@@ -165,18 +165,63 @@ replace_stata_missing <- function(df) {
 #'   the \code{determine_vector_type} classification used downstream when
 #'   building the data config. NA-string and whitespace normalization must run
 #'   first so blanks do not block coercion. Columns that are not uniformly
-#'   coercible stay character.
+#'   coercible stay character, with one exception: a column whose every
+#'   non-NA value is a number written with a decimal comma (\code{"0,817"},
+#'   see \code{CONST$DATA$DECIMAL_COMMA_PATTERN}, plain integers allowed) is
+#'   re-parsed with the comma swapped for a point. The CSV reader already
+#'   picks \code{dec} from the file, so this is the line of defence for the
+#'   Excel, JSON and Stata paths. Re-parsed columns are reported once at info
+#'   level so the choice stays visible.
 #' @param df *\[data.frame\]* The data frame whose character columns to coerce
 #' @return *\[data.frame\]* The data frame with columns coerced to natural types
 #' @keywords internal
 coerce_df_columns <- function(df) {
+  box::use(
+    artma / const[CONST],
+    artma / libs / core / log[log_info]
+  )
+
+  comma_decimal_cols <- character(0)
   for (col in colnames(df)) {
     x <- df[[col]]
-    if (is.character(x) && any(!is.na(x))) {
-      df[[col]] <- utils::type.convert(x, as.is = TRUE)
+    if (!is.character(x) || !any(!is.na(x))) next
+    converted <- utils::type.convert(x, as.is = TRUE)
+    if (is.character(converted) && is_comma_decimal_text(x, CONST$DATA$DECIMAL_COMMA_PATTERN)) {
+      retried <- utils::type.convert(gsub(",", ".", x, fixed = TRUE), as.is = TRUE)
+      if (is.numeric(retried)) {
+        converted <- retried
+        comma_decimal_cols <- c(comma_decimal_cols, col)
+      }
     }
+    df[[col]] <- converted
+  }
+
+  if (length(comma_decimal_cols) > 0) {
+    log_info(
+      "Parsed {length(comma_decimal_cols)} column{?s} written with comma decimals as numeric: {.val {comma_decimal_cols}}"
+    )
   }
   df
+}
+
+
+#' @title Is a text vector made of comma-decimal numbers?
+#' @description TRUE when every non-NA value is either a comma-decimal number
+#'   matching \code{pattern} or a plain integer, and at least one value has
+#'   the comma. A vector of plain integers alone returns FALSE because
+#'   \code{type.convert} already handles it.
+#' @param x *\[character\]* The values to inspect
+#' @param pattern *\[character\]* The comma-decimal regex
+#' @return *\[logical\]* Whether the vector should be re-parsed with \code{dec = ","}
+#' @keywords internal
+is_comma_decimal_text <- function(x, pattern) {
+  values <- trimws(x[!is.na(x)])
+  if (length(values) == 0) {
+    return(FALSE)
+  }
+  has_comma <- grepl(pattern, values)
+  is_integer <- grepl("^[-+]?[0-9]+$", values)
+  any(has_comma) && all(has_comma | is_integer)
 }
 
 
