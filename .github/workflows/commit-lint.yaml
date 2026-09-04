@@ -13,28 +13,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Git and Curl
-        run: |
-          sudo apt update
-          sudo apt install -y git curl
-
       - name: Set up Node.js 24
         uses: actions/setup-node@v7
         with:
           node-version: '24'
 
-      - name: Print versions
-        run: |
-          git --version
-          node --version
-          npm --version
-          npx commitlint --version
-
       - name: Install commitlint
-        run: |
-          npm install conventional-changelog-conventionalcommits
-          npm install commitlint@latest
-          npm install @commitlint/config-conventional
+        run: npm install --no-save commitlint@latest @commitlint/config-conventional
 
       - name: Validate current commit (last commit) with commitlint
         if: github.event_name == 'push'
