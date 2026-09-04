@@ -513,21 +513,15 @@ For more information about writing and organizing tests, refer to the
 
 # Release machinery status
 
-The package is currently distributed via r-universe, not CRAN. Some
-release automation in this repository anticipates a future CRAN
-submission and is not yet active:
-
-- **Active**: `build-and-tag.yaml` (tagging, version bump, r-universe
-  build), `scripts/R/get_cran_version.R`,
-  `scripts/R/generate_cran_comments.R`, `.chglog/` (changelog
-  generation).
-- **Dormant, kept for when CRAN submission happens**:
-  `submit-to-cran.yaml`, the reverse-dependency check step in
-  `build-and-tag.yaml` (commented out), `scripts/R/release.R`.
-
-When CRAN submission becomes real, re-enable the dormant workflow steps
-and recreate the `revdep/` directory (removed in a repository hygiene
-sweep) for `revdepcheck::revdep_check()` output.
+The package is distributed via both r-universe and CRAN. Merging a
+release PR to master runs `build-and-tag.yaml` (tagging, version bump,
+r-universe build, changelog generation via `.chglog/`) and then
+`submit-to-cran.yaml`, which uploads the built tarball via
+`scripts/R/release.R` and
+`scripts/R/generate_cran_comments.R`/`scripts/R/get_cran_version.R`. A
+submission still needs to clear CRAN’s own review before it’s live; add
+the `release:skip-cran` label to a release PR to build and tag without
+submitting.
 
 # Code of Conduct
 

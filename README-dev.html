@@ -424,12 +424,7 @@ Developer Documentation
 </div>
 <div class="section level1">
 <h1 id="release-machinery-status">Release machinery status<a class="anchor" aria-label="anchor" href="#release-machinery-status"></a></h1>
-<p>The package is currently distributed via r-universe, not CRAN. Some release automation in this repository anticipates a future CRAN submission and is not yet active:</p>
-<ul><li>
-<strong>Active</strong>: <code>build-and-tag.yaml</code> (tagging, version bump, r-universe build), <code>scripts/R/get_cran_version.R</code>, <code>scripts/R/generate_cran_comments.R</code>, <code>.chglog/</code> (changelog generation).</li>
-<li>
-<strong>Dormant, kept for when CRAN submission happens</strong>: <code>submit-to-cran.yaml</code>, the reverse-dependency check step in <code>build-and-tag.yaml</code> (commented out), <code>scripts/R/release.R</code>.</li>
-</ul><p>When CRAN submission becomes real, re-enable the dormant workflow steps and recreate the <code>revdep/</code> directory (removed in a repository hygiene sweep) for <code>revdepcheck::revdep_check()</code> output.</p>
+<p>The package is distributed via both r-universe and CRAN. Merging a release PR to master runs <code>build-and-tag.yaml</code> (tagging, version bump, r-universe build, changelog generation via <code>.chglog/</code>) and then <code>submit-to-cran.yaml</code>, which uploads the built tarball via <code>scripts/R/release.R</code> and <code>scripts/R/generate_cran_comments.R</code>/<code>scripts/R/get_cran_version.R</code>. A submission still needs to clear CRAN’s own review before it’s live; add the <code>release:skip-cran</code> label to a release PR to build and tag without submitting.</p>
 </div>
 <div class="section level1">
 <h1 id="code-of-conduct">Code of Conduct<a class="anchor" aria-label="anchor" href="#code-of-conduct"></a></h1>
