@@ -21,6 +21,16 @@ get_required_colnames <- function() {
   CONST$DATA$REQUIRED_COLNAMES
 }
 
+#' @title Get numeric column names
+#' @description Standard column names whose values must be numeric. Their
+#'   type is never inferred from the data: a text column in one of these
+#'   roles is an input error, not a category.
+#' @return *\[character\]* A vector of numeric standard column names.
+get_numeric_colnames <- function() {
+  box::use(artma / const[CONST])
+  CONST$DATA$NUMERIC_COLNAMES
+}
+
 #' @title Get the column name mapping from the unified column store
 #' @description Reads `artma.data.columns` and extracts the mapping from
 #'   standard column names to the source column names in the user's data file.
@@ -296,6 +306,7 @@ box::export(
   determine_vector_type,
   get_colnames_map,
   get_number_of_studies,
+  get_numeric_colnames,
   get_required_colnames,
   get_reserved_colnames,
   get_standardized_colnames,

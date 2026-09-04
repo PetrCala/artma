@@ -43,6 +43,10 @@ CONST <- list(
     ),
     # The subset of standard columns the analysis cannot run without.
     REQUIRED_COLNAMES = c("study_id", "effect", "se", "n_obs"),
+    # Standard columns that must hold numbers. Their type is asserted rather
+    # than inferred from the data, so a text column in one of these roles
+    # aborts with the offending values instead of surviving as a category.
+    NUMERIC_COLNAMES = c("effect", "se", "n_obs", "t_stat", "precision"),
     # Standard column names derived or computed by the data pipeline (never
     # user moderator variables).
     COMPUTED_COLNAMES = c("obs_id", "study_label", "t_stat", "study_size", "reg_dof", "precision")
