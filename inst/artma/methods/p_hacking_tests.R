@@ -195,7 +195,10 @@ p_hacking_tests <- function(df) {
       if (resolved$elliott_p_min > 0) {
         cli::cli_text(
           "Supports start at p = {resolved$elliott_p_min} (Elliott et al.'s lower bound), so p-values ",
-          "that underflowed to exactly zero are excluded from both the tests and the counts below."
+          "below it are excluded from both the tests and the counts below. That covers genuine ",
+          "small p-values as well as those that underflowed to exactly zero, so these counts run ",
+          "lower than a published figure counting from zero. Set ",
+          "{.field artma.methods.p_hacking_tests.elliott_p_min} to {.val 0} to count from zero."
         )
       }
 
@@ -247,7 +250,8 @@ p_hacking_tests <- function(df) {
 #'   in `note` together with the tail inspected.
 #' * Elliott. Each test is one row, `model` is the test family (`"binomial"`,
 #'   `"lcm"`, `"fisher"`, `"discontinuity"`, `"cox_shi"`) and `term` the
-#'   p-value support it was run on (`"[0, 0.05]"`). These tests report a
+#'   p-value support it was run on, lower bound included (`"[1e-05, 0.05]"`
+#'   at the default `elliott_p_min`). These tests report a
 #'   p-value and nothing else, so only `p_value` is filled; a test that could
 #'   not run keeps its `NA` and carries the reason in `note`.
 #'
