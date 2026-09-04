@@ -489,7 +489,12 @@ methods:
       default: "uniform"
       help: |
         Model prior specification for BMA.
-        Options: "uniform" (all models equally likely), "random", "fixed".
+        Options: "uniform" (all models equally likely), "random", "fixed",
+        "dilut" (George's dilution prior). The dilution prior downweights
+        models whose regressors are highly correlated (it scales the model
+        prior by the determinant of the regressor correlation matrix), which
+        addresses the collinearity typical of meta-regression; several
+        published meta-analyses use it in place of the uniform prior.
 
     nmodel:
       type: "integer"
@@ -778,14 +783,15 @@ methods:
 
     elliott_supports:
       type: "numeric"
-      default: [0.05, 0.1]
+      default: [0.05, 0.1, 0.15]
       help: |
         Upper bounds of the p-value supports [0, p_max] on which the Elliott
         et al. (2022) battery (Binomial, LCM, Fisher, Cox-Shi) runs. Each
         bound must lie in (0, 1] and the vector must be strictly increasing.
-        Published applications often extend the default with 0.15 or 0.2;
-        the support choice can flip the substantive conclusion, so report
-        which support a rejection comes from.
+        The default covers the three windows published applications report
+        most often; some extend it further with 0.2. The support choice can
+        flip the substantive conclusion, so report which support a rejection
+        comes from.
 
     simulate_cdfs:
       chunk_size:

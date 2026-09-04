@@ -24,6 +24,7 @@ box::use(
     caliper_direction,
     build_caliper_summary
   ],
+  artma / options / template[get_option_defs],
   artma / calc / methods / elliott[
     bound0,
     bound1,
@@ -459,10 +460,10 @@ test_that("run_p_hacking_tests runs the Elliott suite when requested", {
 # Elliott supports ------------------------------------------------------------
 
 # A realistic clustered p-curve (the cox_shi_panel(202) construction, which
-# respects the Elliott theoretical bounds so the default windows stay quiet),
-# plus a heap of p-values at 0.125. The heap is invisible to the default
-# supports but breaks monotonicity on a [0, 0.15] window, so widening the
-# support flips the Cox-Shi conclusion.
+# respects the Elliott theoretical bounds so the narrow windows stay quiet),
+# plus a heap of p-values at 0.125. The heap is invisible on [0, 0.10] but
+# breaks monotonicity on a [0, 0.15] window, so widening the support flips
+# the Cox-Shi conclusion.
 heap_bump_df <- function() {
   set.seed(202, kind = "Mersenne-Twister", normal.kind = "Inversion")
   panel_t <- abs(stats::rnorm(800, mean = 1.5, sd = 1))
@@ -498,7 +499,7 @@ test_that("run_p_hacking_tests honours custom Elliott supports", {
   expect_true("Binomial [0, 0.15]" %in% result$elliott$Test)
   expect_true("Fisher [0, 0.15]" %in% result$elliott$Test)
   expect_true("Observations in [0, 0.15]" %in% result$elliott$Test)
-  # The default [0, 0.10] rows are replaced, not appended.
+  # The [0, 0.10] rows are replaced, not appended.
   expect_false(any(grepl("[0, 0.10]", result$elliott$Test, fixed = TRUE)))
   expect_false(any(grepl("Observations in [0, 0.1]", result$elliott$Test, fixed = TRUE)))
   # The observation count matches the requested support window.
@@ -507,7 +508,7 @@ test_that("run_p_hacking_tests honours custom Elliott supports", {
   expect_equal(obs_row$`P-value`, as.character(expected_n))
 })
 
-test_that("a custom support changes the Cox-Shi result relative to the default supports", {
+test_that("a wider support changes the Cox-Shi result relative to a narrow one", {
   local_options(artma.verbose = 1, artma.cache.use_cache = FALSE)
   df <- heap_bump_df()
 
@@ -524,21 +525,47 @@ test_that("a custom support changes the Cox-Shi result relative to the default s
     )
   }
 
-  default_run <- run_with_supports(c(0.05, 0.1))
-  custom_run <- run_with_supports(c(0.05, 0.15))
+  narrow_run <- run_with_supports(c(0.05, 0.1))
+  wide_run <- run_with_supports(c(0.05, 0.15))
 
-  default_row <- default_run$elliott[default_run$elliott$Test == "Cox-Shi [0, 0.10]", ]
-  custom_row <- custom_run$elliott[custom_run$elliott$Test == "Cox-Shi [0, 0.15]", ]
-  expect_equal(nrow(default_row), 1L)
-  expect_equal(nrow(custom_row), 1L)
+  narrow_row <- narrow_run$elliott[narrow_run$elliott$Test == "Cox-Shi [0, 0.10]", ]
+  wide_row <- wide_run$elliott[wide_run$elliott$Test == "Cox-Shi [0, 0.15]", ]
+  expect_equal(nrow(narrow_row), 1L)
+  expect_equal(nrow(wide_row), 1L)
   # Both windows produce a numeric p-value.
-  expect_false(grepl("NA", default_row$`P-value`))
-  expect_false(grepl("NA", custom_row$`P-value`))
+  expect_false(grepl("NA", narrow_row$`P-value`))
+  expect_false(grepl("NA", wide_row$`P-value`))
   # The heap at p = 0.125 is invisible on [0, 0.10] but rejects on [0, 0.15],
   # so the support choice flips the substantive conclusion.
-  expect_true(formatted_p_to_num(default_row$`P-value`) > 0.05)
-  expect_true(formatted_p_to_num(custom_row$`P-value`) < 0.05)
-  expect_false(identical(default_row$`P-value`, custom_row$`P-value`))
+  expect_true(formatted_p_to_num(narrow_row$`P-value`) > 0.05)
+  expect_true(formatted_p_to_num(wide_row$`P-value`) < 0.05)
+  expect_false(identical(narrow_row$`P-value`, wide_row$`P-value`))
+})
+
+test_that("the built-in Elliott supports cover the 0.05, 0.10 and 0.15 windows", {
+  local_options(artma.verbose = 1, artma.cache.use_cache = FALSE)
+  df <- heap_bump_df()
+
+  # Dropping the option falls back to the package default supports.
+  result <- run_p_hacking_tests(
+    df,
+    base_p_hacking_options(
+      include_caliper = FALSE,
+      include_elliott = TRUE,
+      elliott_supports = NULL
+    )
+  )
+
+  for (window in c("[0, 0.05]", "[0, 0.10]", "[0, 0.15]")) {
+    expect_true(paste("Binomial", window) %in% result$elliott$Test)
+    expect_true(paste("Fisher", window) %in% result$elliott$Test)
+  }
+})
+
+test_that("the options template default matches the built-in Elliott supports", {
+  def <- get_option_defs(opt_path = "methods.p_hacking_tests.elliott_supports")[[1]]
+
+  expect_equal(def$default, c(0.05, 0.1, 0.15))
 })
 
 test_that("run_p_hacking_tests rejects invalid Elliott supports", {

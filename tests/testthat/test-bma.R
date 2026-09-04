@@ -26,7 +26,8 @@ box::use(
     run_bma,
     unscale_bma_coefs
   ],
-  artma / methods / bma[bma, prepare_bma_inputs]
+  artma / methods / bma[bma, prepare_bma_inputs],
+  artma / options / template[get_option_defs]
 )
 
 make_demo_bma_data <- function() {
@@ -316,6 +317,42 @@ test_that("run_bma executes without errors", {
 
   expect_true(inherits(result, "bma"))
   expect_true(!is.null(result$topmod))
+})
+
+test_that("run_bma accepts the documented dilut model prior", {
+  skip_if_not_installed("BMS")
+
+  df <- make_demo_bma_data()
+  bma_data <- df[c("effect", "se", "moderator1", "moderator2")]
+  params <- list(
+    burn = 10L,
+    iter = 100L,
+    nmodel = 8L,
+    g = "UIP",
+    mprior = "dilut",
+    mcmc = "enumerate"
+  )
+
+  local_options("artma.verbose" = 1)
+
+  dilut_model <- run_bma(bma_data, params)
+  uniform_model <- run_bma(bma_data, utils::modifyList(params, list(mprior = "uniform")))
+
+  expect_true(inherits(dilut_model, "bma"))
+  expect_equal(dilut_model$mprior.info$origargs$mpmode, "dilut")
+  # The dilution prior downweights collinear models, so the posterior
+  # inclusion probabilities move away from the uniform ones.
+  dilut_pip <- stats::coef(dilut_model, order.by.pip = FALSE)[, "PIP"]
+  uniform_pip <- stats::coef(uniform_model, order.by.pip = FALSE)[, "PIP"]
+  expect_false(isTRUE(all.equal(dilut_pip, uniform_pip)))
+})
+
+test_that("the mprior help lists every model prior artma passes to bms", {
+  def <- get_option_defs(opt_path = "methods.bma.mprior")[[1]]
+
+  for (prior in c("uniform", "random", "fixed", "dilut")) {
+    expect_match(def$help, prior, fixed = TRUE)
+  }
 })
 
 test_that("run_bma leaves the graphics device untouched", {

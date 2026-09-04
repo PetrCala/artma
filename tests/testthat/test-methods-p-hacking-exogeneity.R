@@ -122,9 +122,9 @@ elliott_base_options <- function() {
 }
 
 # A realistic clustered p-curve (it respects the Elliott theoretical bounds,
-# so the default Cox-Shi windows stay quiet), plus a heap of p-values at
-# 0.125. The heap is invisible to the default supports but breaks monotonicity
-# on a [0, 0.15] window, so widening the support flips the conclusion.
+# so the narrow Cox-Shi windows stay quiet), plus a heap of p-values at
+# 0.125. The heap is invisible on [0, 0.10] but breaks monotonicity on a
+# [0, 0.15] window, so widening the support flips the conclusion.
 make_heap_bump_df <- function() {
   set.seed(202, kind = "Mersenne-Twister", normal.kind = "Inversion")
   panel_t <- abs(stats::rnorm(800, mean = 1.5, sd = 1))
@@ -156,25 +156,25 @@ test_that("a custom elliott_supports option flows through to the Cox-Shi call", 
     with_options(opts, p_hacking_tests(df))
   }
 
-  default_result <- run_with_supports(c(0.05, 0.1))
+  narrow_result <- run_with_supports(c(0.05, 0.1))
   custom_result <- run_with_supports(c(0.05, 0.15))
 
   expect_true("Cox-Shi [0, 0.15]" %in% custom_result$tables$elliott$Test)
   expect_false(any(grepl("[0, 0.10]", custom_result$tables$elliott$Test, fixed = TRUE)))
 
-  default_p <- default_result$tables$elliott[
-    default_result$tables$elliott$Test == "Cox-Shi [0, 0.10]", "P-value"
+  narrow_p <- narrow_result$tables$elliott[
+    narrow_result$tables$elliott$Test == "Cox-Shi [0, 0.10]", "P-value"
   ]
   custom_p <- custom_result$tables$elliott[
     custom_result$tables$elliott$Test == "Cox-Shi [0, 0.15]", "P-value"
   ]
   # Both windows yield a numeric p-value and the support choice changes it:
   # the heap at p = 0.125 rejects only on the wider window.
-  expect_false(grepl("NA", default_p))
+  expect_false(grepl("NA", narrow_p))
   expect_false(grepl("NA", custom_p))
-  expect_true(formatted_p_to_num(default_p) > 0.05)
+  expect_true(formatted_p_to_num(narrow_p) > 0.05)
   expect_true(formatted_p_to_num(custom_p) < 0.05)
-  expect_false(identical(default_p, custom_p))
+  expect_false(identical(narrow_p, custom_p))
 })
 
 test_that("p_hacking_tests surfaces the Cox-Shi skip reason in output and meta", {
@@ -199,7 +199,8 @@ test_that("p_hacking_tests surfaces the Cox-Shi skip reason in output and meta",
 
   # The summary table keeps NA in the p-value column.
   cox_rows <- result$tables$elliott[grepl("^Cox-Shi", result$tables$elliott$Test), ]
-  expect_equal(nrow(cox_rows), 2L)
+  # One row per default support: [0, 0.05], [0, 0.10] and [0, 0.15].
+  expect_equal(nrow(cox_rows), 3L)
   expect_true(all(grepl("NA", cox_rows$`P-value`)))
 
   # The reason lands in meta for programmatic consumers.
