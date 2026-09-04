@@ -269,12 +269,17 @@ select_checked <- function(select_fn, choices, prompt) {
 #' @description Shows menus for each drift item and collects user choices.
 #'   Columns already chosen for one record are withheld from the later menus,
 #'   so two records never end up on the same column.
+#' @param available_cols *\[character, optional\]* Raw columns the manual picker
+#'   may offer: the dataset columns that no untouched record already backs, the
+#'   same pool the rename proposals draw from. Defaults to every column of
+#'   `raw_df`.
 #' @param select_fn *\[function, optional\]* Menu backend with the signature
 #'   of `climenu::select(choices, prompt)`, returning the chosen label or
 #'   `NULL`. Defaults to `climenu::select`; injectable for tests.
 #' @keywords internal
-ask_decisions <- function(drift, proposals_roles, proposals_optional, proposals_moderators, raw_df, select_fn = NULL) {
+ask_decisions <- function(drift, proposals_roles, proposals_optional, proposals_moderators, raw_df, available_cols = NULL, select_fn = NULL) {
   if (is.null(select_fn)) select_fn <- climenu::select
+  if (is.null(available_cols)) available_cols <- make.names(colnames(raw_df))
 
   renames <- list()
   unmaps <- character(0)
@@ -282,7 +287,6 @@ ask_decisions <- function(drift, proposals_roles, proposals_optional, proposals_
   remaps <- list()
   conflicts <- list()
 
-  all_df_cols <- make.names(colnames(raw_df))
   taken <- character(0)
 
   abort_by_user <- function() cli::cli_abort("Reconciliation aborted by user.")
@@ -293,8 +297,19 @@ ask_decisions <- function(drift, proposals_roles, proposals_optional, proposals_
     proposal_has_candidate(prop) && !prop$candidate %in% taken
   }
 
-  pick_manually <- function(prompt_text) {
-    available <- setdiff(all_df_cols, taken)
+  # The pool is narrowed the same way the proposals are: a column an untouched
+  # record already backs is never on offer. Two records mapped to one raw
+  # column collapse silently in `standardize_column_names()`, and the abort
+  # that follows names neither the duplicate nor this menu.
+  pick_manually <- function(prompt_text, target) {
+    available <- setdiff(available_cols, taken)
+    if (length(available) == 0) {
+      cli::cli_abort(c(
+        "x" = "No unclaimed column is left to map {.val {target}} to.",
+        "i" = "Every column of the dataset already backs another configured column.",
+        "i" = "Edit {.code data.columns} in the options file to free one up."
+      ))
+    }
     choice <- select_checked(select_fn, available, prompt_text)
     if (is.null(choice)) abort_by_user()
     choice
@@ -349,7 +364,7 @@ ask_decisions <- function(drift, proposals_roles, proposals_optional, proposals_
     picked <- if (has_proposal && grepl("^Accept", choice)) {
       prop$candidate
     } else {
-      pick_manually(cli::format_inline("Select the column to use for {.val {std}}:"))
+      pick_manually(cli::format_inline("Select the column to use for {.val {std}}:"), std)
     }
     renames[[std]] <- picked
     taken <- c(taken, picked)
@@ -382,7 +397,7 @@ ask_decisions <- function(drift, proposals_roles, proposals_optional, proposals_
     picked <- if (has_proposal && grepl("^Remap", choice)) {
       prop$candidate
     } else {
-      pick_manually(cli::format_inline("Select the column to use for {.field {std}}:"))
+      pick_manually(cli::format_inline("Select the column to use for {.field {std}}:"), std)
     }
     renames[[std]] <- picked
     taken <- c(taken, picked)
@@ -425,7 +440,7 @@ ask_decisions <- function(drift, proposals_roles, proposals_optional, proposals_
     picked <- if (has_proposal && grepl("^Remap", choice)) {
       prop$candidate
     } else {
-      pick_manually(cli::format_inline("Select the column to remap {.val {mod}} to:"))
+      pick_manually(cli::format_inline("Select the column to remap {.val {mod}} to:"), mod)
     }
     remaps[[mod]] <- picked
     taken <- c(taken, picked)
