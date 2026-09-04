@@ -489,3 +489,72 @@ test_that("detect_missing_values ignores the requested columns", {
   expect_true("mod" %in% names(summary$optional_cols_with_na))
   expect_equal(summary$rows_with_any_na, 1)
 })
+
+
+# -- t_stat is rebuilt from winsorized data too (#538) -------------------------
+
+make_recomputed_t_stat_df <- function() {
+  df <- make_df()
+  df$t_stat <- c(10, NA, 10)
+  df$mod <- c(1, NA, 3)
+  df
+}
+
+test_that("imputation leaves a t_stat column alone when winsorization will rebuild it", {
+  box::use(artma / data / na_handling[handle_missing_values])
+
+  local_options(list(
+    "artma.data.na_handling" = "median",
+    "artma.data.winsorization_level" = 0.01,
+    "artma.verbose" = 1
+  ))
+
+  result <- handle_missing_values(make_recomputed_t_stat_df())
+
+  expect_true(is.na(result$t_stat[2]))
+  expect_false(anyNA(result$mod))
+})
+
+test_that("imputation still fills a t_stat column when winsorization is off", {
+  box::use(artma / data / na_handling[handle_missing_values])
+
+  local_options(list(
+    "artma.data.na_handling" = "median",
+    "artma.data.winsorization_level" = 0,
+    "artma.verbose" = 1
+  ))
+
+  result <- handle_missing_values(make_recomputed_t_stat_df())
+
+  expect_false(anyNA(result$t_stat))
+})
+
+test_that("a t_stat column about to be rebuilt is not counted in the imputation message", {
+  box::use(artma / data / na_handling[handle_missing_values])
+
+  local_options(list(
+    "artma.data.na_handling" = "median",
+    "artma.data.winsorization_level" = 0.01,
+    "artma.verbose" = 3
+  ))
+
+  expect_message(handle_missing_values(make_recomputed_t_stat_df()), "recalculated from winsorized data")
+  expect_message(handle_missing_values(make_recomputed_t_stat_df()), "Imputed 1 missing value")
+  expect_no_message(handle_missing_values(make_recomputed_t_stat_df()), message = "optional columns: t_stat")
+})
+
+test_that("'remove' does not drop rows over a t_stat column about to be rebuilt", {
+  box::use(artma / data / na_handling[handle_missing_values])
+
+  local_options(list(
+    "artma.data.na_handling" = "remove",
+    "artma.data.winsorization_level" = 0.01,
+    "artma.verbose" = 1
+  ))
+
+  df <- make_df()
+  df$t_stat <- c(10, NA, 10)
+  result <- handle_missing_values(df)
+
+  expect_equal(nrow(result), 3)
+})

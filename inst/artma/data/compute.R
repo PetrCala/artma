@@ -212,35 +212,53 @@ add_study_id_column <- function(df) {
 #'   column is kept as reported (it may carry inference the meta-analyst cannot
 #'   rebuild from `effect`/`se`, such as clustered standard errors) unless
 #'   winsorization clipped `effect`/`se` upstream, in which case it is
-#'   recomputed from the clipped values so the three columns stay consistent,
-#'   mirroring `add_precision_column()`. Without a mapped column it is
-#'   computed as `effect / se`.
+#'   recomputed from the clipped values so the three columns stay consistent;
+#'   because that discards the user's mapped values, the overwrite is reported
+#'   as a warning that names the mapping (issue #538), exactly like
+#'   `add_precision_column()`. The completeness check only runs when the mapped
+#'   column is actually kept. Without a mapped column `t_stat` is computed as
+#'   `effect / se`.
 #' @param df *\[data.frame\]* The data frame to add the t-statistic column to.
 #' @return *\[data.frame\]* The data frame with the t-statistic column.
 #' @keywords internal
 add_t_stat_column <- function(df) {
   box::use(
     calc = artma / calc / index,
-    artma / libs / core / utils[get_verbosity],
-    artma / options / typed_accessors[is_winsorization_active]
+    artma / data / utils[get_colnames_map, get_winsorization_recomputed_cols],
+    artma / libs / core / utils[get_verbosity]
   )
 
   if ("t_stat" %in% colnames(df)) {
-    if (any(is.na(df$t_stat))) {
-      n_missing <- sum(is.na(df$t_stat))
-      cli::cli_abort(c(
-        "!" = "Found {n_missing} missing t-statistics in the column {.val t_stat}.",
-        "i" = "Please add these to your data frame, or remove the {.val t_stat} column mapping so they are computed automatically.",
-        "i" = "You can remove the mapping by running {.code artma::config_set('t_stat', source_name = NA)}."
-      ))
-    }
+    if ("t_stat" %in% get_winsorization_recomputed_cols(df)) {
+      # effect/se were winsorized upstream; recompute t_stat from the clipped
+      # values so the three columns stay consistent instead of keeping stale
+      # pre-winsorization values. The values are discarded either way, so a
+      # missing one is not worth aborting over here.
+      if (get_verbosity() >= 2) {
+        source_name <- get_colnames_map()[["t_stat"]]
+        if (is.null(source_name)) {
+          cli::cli_alert_warning(c(
+            "!" = "Winsorization is active: overwriting the {.field t_stat} column of the data with values recalculated from the winsorized data.",
+            "i" = "Set {.field data.winsorization_level} to {.val 0} to keep the original values."
+          ))
+        } else {
+          cli::cli_alert_warning(c(
+            "!" = "Winsorization is active: overwriting the mapped column {.val {source_name}} ({.field data.columns.t_stat.source_name}) with {.field t_stat} recalculated from the winsorized data.",
+            "i" = "Set {.field data.winsorization_level} to {.val 0} to keep the mapped values, or clear the mapping with {.code artma::config_set('t_stat', source_name = NA)} to compute {.field t_stat} automatically without this warning."
+          ))
+        }
+      }
+    } else {
+      if (any(is.na(df$t_stat))) {
+        n_missing <- sum(is.na(df$t_stat))
+        cli::cli_abort(c(
+          "!" = "Found {n_missing} missing t-statistics in the column {.val t_stat}.",
+          "i" = "Please add these to your data frame, or remove the {.val t_stat} column mapping so they are computed automatically.",
+          "i" = "You can remove the mapping by running {.code artma::config_set('t_stat', source_name = NA)}."
+        ))
+      }
 
-    if (!is_winsorization_active()) {
       return(df)
-    }
-
-    if (get_verbosity() >= 3) {
-      cli::cli_alert_info("Recalculating {.field t_stat} from winsorized data.")
     }
   }
 
