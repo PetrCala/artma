@@ -644,3 +644,53 @@ test_that("reconcile_schema ask aborts cleanly when the user declines to save", 
     }
   )
 })
+
+# Baseline upkeep
+#
+# Removing an unmapped column is not drift, but the baseline must still follow
+# the data: otherwise the column would never register as new if it came back.
+
+test_that("reconcile_schema refreshes the baseline when an unmapped column disappears without drift", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  withr::with_options(
+    base_reconcile_opts(list(
+      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study", "n_obs", "region")
+    )),
+    {
+      expect_null(reconcile_schema(base_df(), mode = "strict"))
+      expect_equal(
+        sort(getOption("artma.data.expected_schema_columns")),
+        sort(c("effect_size", "se_col", "study", "n_obs"))
+      )
+    }
+  )
+})
+
+test_that("a column that was removed and later restored is reported as new again", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  withr::with_options(
+    base_reconcile_opts(list(
+      "artma.data.expected_schema_columns" = c("effect_size", "se_col", "study", "n_obs", "region")
+    )),
+    {
+      reconcile_schema(base_df(), mode = "auto") # region gone: no drift, baseline shrinks
+      expect_error(reconcile_schema(base_df(region = "EU"), mode = "strict"), "region")
+    }
+  )
+})
+
+test_that("reconcile_schema leaves an up-to-date baseline alone", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  baseline <- c("n_obs", "study", "se_col", "effect_size") # same set, different order
+
+  withr::with_options(
+    base_reconcile_opts(list("artma.data.expected_schema_columns" = baseline)),
+    {
+      reconcile_schema(base_df(), mode = "auto")
+      expect_identical(getOption("artma.data.expected_schema_columns"), baseline)
+    }
+  )
+})
