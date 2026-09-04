@@ -26,6 +26,11 @@ is_valid_colname <- function(x) {
 #'   [resolve_hard_required_colnames]`. A column outside this set that goes
 #'   missing is reported as a missing moderator instead of a missing role, so
 #'   it never forces schema reconciliation to abort or prompt.
+#' @param derived *\[character, optional\]* Column names the compute phase will
+#'   create from `data.derived` expressions. They are configured like any other
+#'   moderator but do not exist in the raw data yet, so they must not be
+#'   reported as missing. Defaults to `NULL`, which reads the names from the
+#'   `data.derived` option.
 #' @return *\[list\]* Drift report with fields: `missing_roles` (named character
 #'   vector, names = standard names, values = the stored source columns that
 #'   vanished), `missing_moderators`, `added`, `conflicts` (named character
@@ -33,9 +38,10 @@ is_valid_colname <- function(x) {
 #'   different raw column of the same name, values = the mapped source
 #'   columns), and `has_drift`.
 #' @keywords internal
-detect_schema_drift <- function(raw_df, columns_store, required = NULL) {
+detect_schema_drift <- function(raw_df, columns_store, required = NULL, derived = NULL) {
   box::use(
     artma / data / utils[get_required_colnames, get_standardized_colnames],
+    artma / data / derived_columns[derived_column_names],
     artma / const[CONST]
   )
 
@@ -44,6 +50,10 @@ detect_schema_drift <- function(raw_df, columns_store, required = NULL) {
   if (is.null(required)) {
     required <- get_required_colnames()
   }
+  if (is.null(derived)) {
+    derived <- derived_column_names()
+  }
+  derived_norm <- make.names(derived)
 
   if (!is.list(columns_store)) columns_store <- list()
   store_keys <- names(columns_store)
@@ -97,8 +107,12 @@ detect_schema_drift <- function(raw_df, columns_store, required = NULL) {
   # --- Moderator columns (non-role record keys) ---
   # Computed columns are added by the pipeline, not by the user's data, so they
   # will never be present in the raw df and must not be flagged as missing.
+  # `data.derived` columns are the user-defined case of the same thing: they are
+  # created at the end of the compute phase, one step after reconciliation, so a
+  # config entry naming one (typically to give it `bma: yes`) is not drift.
   moderator_keys <- store_keys[
     !store_keys %in% std_names &
+      !make.names(store_keys) %in% derived_norm &
       !vapply(columns_store, entry_is_computed, logical(1))
   ]
   moderator_keys_norm <- stats::setNames(make.names(moderator_keys), moderator_keys)
@@ -111,6 +125,7 @@ detect_schema_drift <- function(raw_df, columns_store, required = NULL) {
     unname(role_values),
     store_keys,
     std_names,
+    derived,
     CONST$DATA$COMPUTED_COLNAMES
   )))
   added <- df_cols[!df_cols %in% referenced]
