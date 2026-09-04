@@ -108,7 +108,12 @@ reconcile_schema <- function(raw_df, mode = NULL, required_colnames = NULL, is_i
   drift$has_drift <- any(lengths(drift[drift_fields]) > 0)
 
   if (!drift$has_drift) {
-    if (first_run) persist_expected_schema_cols(current_schema_cols)
+    # Not every column change is drift: an unmapped baseline column that was
+    # removed is nothing to resolve. The baseline still has to follow the data,
+    # or that column would never register as new if it came back later.
+    if (!setequal(current_schema_cols, expected_schema_cols)) {
+      persist_expected_schema_cols(current_schema_cols)
+    }
     emit_reconcile_complete()
     return(invisible(NULL))
   }
