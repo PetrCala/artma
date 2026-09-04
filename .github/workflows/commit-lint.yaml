@@ -18,6 +18,9 @@ jobs:
         with:
           node-version: '24'
 
+      # Caches created on a PR branch are readable only by that branch; only
+      # default-branch caches are shared. So the first run on a new PR misses
+      # and pays the install, then restores from the master cache after that.
       - name: Restore commitlint dependencies
         id: deps-cache
         uses: actions/cache@v4
