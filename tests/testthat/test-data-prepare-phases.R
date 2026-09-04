@@ -124,3 +124,26 @@ test_that("non-interactive prepare is identical run to run with cache hits from 
   expect_equal(runner$compute_runs(), 1L) # run 2 hits the cache
   expect_identical(first, second)
 })
+
+test_that("data.derived columns are computed and registered in the data config", {
+  FIXTURES$local_cli_silence()
+
+  withr::local_options(shared_runtime_options)
+  withr::local_options(list(
+    "artma.data.derived" = list(
+      large_sample = "n_obs > 500",
+      se_x_large_sample = "se * large_sample"
+    )
+  ))
+
+  runner <- local_phase_runner()
+  df <- runner$run()
+
+  expect_true(all(c("large_sample", "se_x_large_sample") %in% names(df)))
+  expect_identical(df$large_sample, as.integer(df$n_obs > 500))
+  expect_equal(df$se_x_large_sample, df$se * as.integer(df$n_obs > 500))
+
+  config <- getOption("artma.data.columns")
+  expect_true(all(c("large_sample", "se_x_large_sample") %in% names(config)))
+  expect_true(isTRUE(config$se_x_large_sample$is_computed))
+})

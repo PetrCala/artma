@@ -111,7 +111,8 @@ compute_data_impl <- function() {
     artma / data_config / resolve[prime_df_for_config_cache],
     artma / data / preprocess[preprocess_data],
     artma / data / compute[compute_optional_columns],
-    artma / data / derivation[derive_pcc_columns]
+    artma / data / derivation[derive_pcc_columns],
+    artma / data / derived_columns[apply_derived_columns]
   )
 
   df_raw <- .raw_env$df_raw
@@ -130,7 +131,12 @@ compute_data_impl <- function() {
 
   prime_df_for_config_cache(df)
   df <- preprocess_data(df)
-  compute_optional_columns(df)
+  df <- compute_optional_columns(df)
+
+  # Last, so a user-defined expression sees every standard column (`t_stat`,
+  # `precision`, `study_size`) and the winsorized `effect`/`se`: an interaction
+  # with the standard error then uses the same values the analysis does.
+  apply_derived_columns(df)
 }
 
 compute_data <- cache_cli_runner(
