@@ -74,7 +74,7 @@ method.
 
 | Method | What it does | Required columns |
 |----|----|----|
-| `effect_summary_stats` | Summary statistics (mean, weighted mean, CIs, median, SD) of the main effect, grouped by variables flagged in the data config | `effect`, `study_size` |
+| `effect_summary_stats` | Summary statistics (mean, weighted mean, CIs, median, SD) of the main effect, grouped by variables flagged in the data config | `effect`, `study_size`, `study_id` |
 | `variable_summary_stats` | Descriptive statistics (mean, median, min, max, SD, missingness) for each variable flagged for summary in the data config | none |
 | `funnel_plot` | Funnel plot of effect against precision, for spotting publication bias/asymmetry, with configurable outlier filtering | `effect`, `precision` |
 | `box_plot` | Box plots of the effect grouped by a categorical variable, auto-splitting into multiple plots when there are many groups | `effect` |
