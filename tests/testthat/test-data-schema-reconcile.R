@@ -297,3 +297,60 @@ test_that("reconcile_schema in strict mode passes when no drift exists", {
 
   expect_null(result)
 })
+
+# Derived columns
+#
+# `data.derived` columns are created at the end of the compute phase, one step
+# after reconciliation runs, so a config entry naming one is not drift (#541).
+
+test_that("detect_schema_drift ignores configured data.derived columns", {
+  box::use(artma / data / schema_reconcile[detect_schema_drift])
+
+  store <- base_store(list(se_top5_journal = list(bma = TRUE)))
+
+  result <- withr::with_options(
+    list("artma.data.derived" = list(se_top5_journal = "se * top5_journal")),
+    detect_schema_drift(base_df(), store)
+  )
+
+  expect_false(result$has_drift)
+  expect_equal(length(result$missing_moderators), 0L)
+})
+
+test_that("detect_schema_drift accepts an explicit derived set", {
+  box::use(artma / data / schema_reconcile[detect_schema_drift])
+
+  store <- base_store(list(se_top5_journal = list(bma = TRUE)))
+
+  result <- detect_schema_drift(
+    base_df(), store,
+    derived = "se_top5_journal"
+  )
+
+  expect_equal(length(result$missing_moderators), 0L)
+
+  # Without it, the same entry is the missing moderator it used to be.
+  plain <- withr::with_options(
+    list("artma.data.derived" = NULL),
+    detect_schema_drift(base_df(), store)
+  )
+  expect_true("se_top5_journal" %in% plain$missing_moderators)
+})
+
+test_that("reconcile_schema auto keeps a derived moderator in the config", {
+  box::use(artma / data / schema_reconcile[reconcile_schema])
+
+  withr::with_options(
+    base_reconcile_opts(list(
+      "artma.data.columns" = base_store(list(se_top5_journal = list(bma = TRUE))),
+      "artma.data.derived" = list(se_top5_journal = "se * top5_journal")
+    )),
+    {
+      reconcile_schema(base_df(), mode = "auto")
+
+      store <- getOption("artma.data.columns")
+      expect_true("se_top5_journal" %in% names(store))
+      expect_true(isTRUE(store$se_top5_journal$bma))
+    }
+  )
+})

@@ -254,3 +254,61 @@ test_that("an interaction of the standard error with a dummy is not flagged", {
     c("effect", "se", "top_journal", "estimate_category", "se_x_top_journal")
   )
 })
+
+
+# --- Schema reconciliation (#541) -------------------------------------------
+
+#' A raw frame with everything the data pipeline treats as a required role,
+#' plus one moderator to derive from.
+raw_regression_df <- function(n = 40) {
+  set.seed(541)
+  data.frame(
+    effect = stats::rnorm(n),
+    se = abs(stats::rnorm(n)) + 0.1,
+    study_id = rep(paste0("S", 1:8), length.out = n),
+    n_obs = 100L,
+    top5_journal = rep(c(0, 1), length.out = n),
+    stringsAsFactors = FALSE
+  )
+}
+
+test_that("a derived column configured with bma reaches the BMA moderator set", {
+  box::use(
+    artma / data / schema_reconcile[reconcile_schema],
+    artma / methods / bma[prepare_bma_inputs]
+  )
+
+  raw_df <- raw_regression_df()
+
+  withr::local_options(list(
+    "artma.data.derived" = list(se_top5_journal = "se * top5_journal"),
+    "artma.data.columns" = list(
+      effect = list(source_name = "effect"),
+      se = list(source_name = "se"),
+      study_id = list(source_name = "study_id"),
+      top5_journal = list(var_name = "top5_journal", bma = TRUE),
+      se_top5_journal = list(var_name = "se_top5_journal", bma = TRUE)
+    ),
+    "artma.data.expected_schema_columns" = colnames(raw_df),
+    "artma.temp.file_name" = NULL,
+    "artma.temp.dir_name" = NULL,
+    "artma.verbose" = 1
+  ))
+
+  reconcile_schema(raw_df, mode = "auto")
+
+  config <- getOption("artma.data.columns")
+  expect_true(isTRUE(config$se_top5_journal$bma))
+
+  df <- apply_derived_columns(raw_df)
+  expect_true("se_top5_journal" %in% names(df))
+
+  prepared <- prepare_bma_inputs(
+    df, config,
+    use_vif_optimization = FALSE,
+    max_groups_to_remove = 3,
+    verbosity = 1
+  )
+
+  expect_true("se_top5_journal" %in% colnames(prepared$bma_data))
+})
