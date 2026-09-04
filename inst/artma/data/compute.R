@@ -334,32 +334,46 @@ add_reg_dof_column <- function(df) {
 
 #' @title Add precision column
 #' @description Add a precision column to the data frame if missing.
-#'   Calculates based on precision_type option: 1/SE or sqrt(DoF).
+#'   Calculates based on precision_type option: 1/SE or sqrt(DoF). A mapped
+#'   `precision` column is kept unless winsorization clipped `effect`/`se`
+#'   upstream, in which case it is recalculated from the clipped values so it
+#'   stays consistent with them; because that discards the user's mapped
+#'   values, the overwrite is reported as a warning that names the mapping
+#'   (issue #522). `get_winsorization_recomputed_cols()` lists the columns
+#'   this applies to so upstream steps can skip them.
 #' @param df *\[data.frame\]* The data frame to add the precision column to.
 #' @return *\[data.frame\]* The data frame with the precision column.
 #' @keywords internal
 add_precision_column <- function(df) {
   box::use(
     calc = artma / calc / index,
+    artma / data / utils[get_colnames_map, get_winsorization_recomputed_cols],
     artma / libs / core / utils[get_verbosity],
-    artma / options / typed_accessors[get_precision_type, get_winsorization_level]
+    artma / options / typed_accessors[get_precision_type]
   )
-
-  winsorization_level <- get_winsorization_level()
-  winsorization_active <- !is.null(winsorization_level) &&
-    !is.na(winsorization_level) && winsorization_level != 0
 
   if ("precision" %in% colnames(df)) {
     if (!is.numeric(df$precision)) {
       cli::cli_abort("The column {.val precision} must be numeric.")
     }
 
-    if (winsorization_active) {
+    if ("precision" %in% get_winsorization_recomputed_cols(df)) {
       # se (and thus precision) was winsorized upstream; recompute precision
       # from the winsorized se/reg_dof so it stays consistent with
       # effect/se/t_stat instead of keeping stale pre-winsorization values.
-      if (get_verbosity() >= 3) {
-        cli::cli_alert_info("Recalculating {.field precision} from winsorized data.")
+      if (get_verbosity() >= 2) {
+        source_name <- get_colnames_map()[["precision"]]
+        if (is.null(source_name)) {
+          cli::cli_alert_warning(c(
+            "!" = "Winsorization is active: overwriting the {.field precision} column of the data with values recalculated from the winsorized data.",
+            "i" = "Set {.field data.winsorization_level} to {.val 0} to keep the original values."
+          ))
+        } else {
+          cli::cli_alert_warning(c(
+            "!" = "Winsorization is active: overwriting the mapped column {.val {source_name}} ({.field data.columns.precision.source_name}) with {.field precision} recalculated from the winsorized data.",
+            "i" = "Set {.field data.winsorization_level} to {.val 0} to keep the mapped values, or clear the mapping with {.code artma::config_set('precision', source_name = NA)} to compute {.field precision} automatically without this warning."
+          ))
+        }
       }
       df$precision <- calc$precision(se = df$se, reg_dof = df$reg_dof)
     } else if (any(is.na(df$precision))) {
