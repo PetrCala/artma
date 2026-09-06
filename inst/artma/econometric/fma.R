@@ -64,6 +64,77 @@ resolve_fma_predictors <- function(bma_data, bma_model) {
   predictors
 }
 
+#' @title Move averaged FMA coefficients back onto the data scale
+#' @description
+#' `run_fma()` is fitted on the frame produced by `get_bma_data()`, which
+#' z-scores every non-binary column, the effect included. The averaged
+#' coefficients and standard errors therefore come out in y-SD-per-x-SD units
+#' (y-SD units for the unscaled dummies). This function inverts the transform
+#' using the centers and scales stored on the frame, mirroring
+#' `unscale_bma_coefs()`:
+#'
+#' - slopes and their SEs: multiplied by `sd(y) / sd(x_j)` (`sd(x_j) = 1` for
+#'   columns that were never scaled);
+#' - the intercept: rescaled by `sd(y)`, shifted by `mean(y)`, and corrected
+#'   for the centering of every scaled regressor; its SE is rescaled by `sd(y)`.
+#'
+#' The inputs are returned unchanged when the frame carries no scaling
+#' attributes.
+#'
+#' @param coefficient *\[numeric\]* Averaged coefficients, in `var_names` order.
+#' @param se *\[numeric\]* Their standard errors, in `var_names` order.
+#' @param var_names *\[character\]* The raw column names behind each row, with
+#'   the intercept named `(Intercept)` or `Intercept`.
+#' @param bma_data *\[data.frame\]* The frame the models were fitted on,
+#'   carrying the `bpe_scale_centers` / `bpe_scale_scales` attributes set by
+#'   `get_bma_data()` (identity when absent).
+#' @return *\[list\]* `list(coefficient=, se=)` on the data scale.
+#' @export
+unscale_fma_coefs <- function(coefficient, se, var_names, bma_data) {
+  box::use(
+    artma / libs / core / validation[validate]
+  )
+
+  validate(
+    is.numeric(coefficient),
+    is.numeric(se),
+    is.character(var_names),
+    length(coefficient) == length(var_names),
+    length(se) == length(var_names),
+    is.data.frame(bma_data)
+  )
+
+  centers <- attr(bma_data, "bpe_scale_centers")
+  scales <- attr(bma_data, "bpe_scale_scales")
+  if (is.null(centers) || is.null(scales)) {
+    return(list(coefficient = coefficient, se = se))
+  }
+
+  center_of <- function(name) if (name %in% names(centers)) centers[[name]] else 0
+  scale_of <- function(name) if (name %in% names(scales)) scales[[name]] else 1
+
+  is_intercept <- var_names %in% c("(Intercept)", "Intercept")
+  slope_rows <- which(!is_intercept)
+  slope_names <- var_names[slope_rows]
+
+  y_center <- center_of("effect")
+  y_scale <- scale_of("effect")
+
+  factors <- vapply(slope_names, function(name) y_scale / scale_of(name), numeric(1))
+  coefficient[slope_rows] <- coefficient[slope_rows] * factors
+  se[slope_rows] <- se[slope_rows] * factors
+
+  if (any(is_intercept)) {
+    x_centers <- vapply(slope_names, center_of, numeric(1))
+    coefficient[is_intercept] <- y_center +
+      y_scale * coefficient[is_intercept] -
+      sum(coefficient[slope_rows] * x_centers)
+    se[is_intercept] <- y_scale * se[is_intercept]
+  }
+
+  list(coefficient = unname(coefficient), se = unname(se))
+}
+
 #' @title Run frequentist model averaging
 #' @param bma_data *\[data.frame\]* Data used for BMA estimation (effect in first column).
 #' @param bma_model *\[bma\]* BMA model used to order predictors.
@@ -195,6 +266,18 @@ run_fma <- function(bma_data, bma_model, input_var_list, cluster_ids = NULL, rou
   p_values[!is.finite(p_values)] <- NA_real_
 
   var_names <- colnames(x_data)
+
+  # The frame handed in is normally z-scored (`get_bma_data(scale_data = TRUE)`),
+  # so the fit above is in y-SD-per-x-SD units; report in the units of the
+  # input columns instead. The p-values are computed before the back-transform:
+  # a slope and its SE pick up the same factor, so the slope tests are
+  # unchanged, and the intercept keeps the test of the fitted (centered)
+  # parameterization, matching the BMA convention where the intercept SD is a
+  # plain rescale carrying no correction for the centering shift.
+  unscaled <- unscale_fma_coefs(final_beta, final_std, var_names, bma_data)
+  final_beta <- unscaled$coefficient
+  final_std <- unscaled$se
+
   display_names <- var_names
   intercept_mask <- var_names %in% c("(Intercept)", "Intercept")
   display_names[intercept_mask] <- "Intercept"
@@ -246,5 +329,6 @@ run_fma <- function(bma_data, bma_model, input_var_list, cluster_ids = NULL, rou
 }
 
 box::export(
-  run_fma
+  run_fma,
+  unscale_fma_coefs
 )

@@ -8,13 +8,14 @@ box::use(
     expect_true,
     skip_if_not_installed,
     test_that
-  ]
+  ],
+  withr[local_options]
 )
 
 box::use(
   artma / econometric / bma[get_bma_data, run_bma],
-  artma / econometric / fma[run_fma],
-  artma / methods / fma[resolve_fma_cluster_ids]
+  artma / econometric / fma[run_fma, unscale_fma_coefs],
+  artma / methods / fma[fma, resolve_fma_cluster_ids]
 )
 
 make_demo_fma_data <- function() {
@@ -320,4 +321,131 @@ test_that("resolve_fma_cluster_ids downgrades to NULL on unusable clusters", {
   expect_null(resolve_fma_cluster_ids(single_cluster, bma_data))
   expect_null(resolve_fma_cluster_ids(na_ids, bma_data))
   expect_null(resolve_fma_cluster_ids(foreign_rows, bma_data))
+})
+
+test_that("unscale_fma_coefs inverts the z-scoring of slopes and intercept", {
+  bma_data <- data.frame(effect = 1:4, x_cont = c(1, 3, 5, 9), x_bin = c(0, 1, 0, 1))
+  attr(bma_data, "bpe_scale_centers") <- c(effect = 2.5, x_cont = 4.5, x_bin = 0)
+  attr(bma_data, "bpe_scale_scales") <- c(effect = 2, x_cont = 4, x_bin = 1)
+
+  var_names <- c("(Intercept)", "x_cont", "x_bin")
+  coefficient <- c(0.3, 0.5, -0.25)
+  se <- c(0.2, 0.1, 0.05)
+
+  out <- unscale_fma_coefs(coefficient, se, var_names, bma_data)
+
+  # Slopes: b * sd(y) / sd(x); the dummy only picks up sd(y).
+  expect_equal(out$coefficient[2], 0.5 * 2 / 4)
+  expect_equal(out$se[2], 0.1 * 2 / 4)
+  expect_equal(out$coefficient[3], -0.25 * 2)
+  expect_equal(out$se[3], 0.05 * 2)
+  # Intercept: mean(y) + sd(y) * a - sum(raw slope * mean(x)).
+  expect_equal(out$coefficient[1], 2.5 + 2 * 0.3 - 0.25 * 4.5)
+  expect_equal(out$se[1], 2 * 0.2)
+
+  # A frame that was never scaled is passed through unchanged.
+  plain <- unscale_fma_coefs(coefficient, se, var_names, data.frame(effect = 1:4))
+  expect_equal(plain$coefficient, coefficient)
+  expect_equal(plain$se, se)
+})
+
+test_that("run_fma on the z-scored frame matches a fit on the raw data", {
+  skip_if_not_installed("BMS")
+  skip_if_not_installed("quadprog")
+
+  df <- make_demo_fma_data()
+  vars <- c("effect", "se", "moderator1", "moderator2")
+  var_list <- data.frame(
+    var_name = vars,
+    var_name_verbose = vars,
+    bma = rep(TRUE, 4L),
+    to_log_for_bma = rep(FALSE, 4L),
+    bma_reference_var = rep(FALSE, 4L),
+    stringsAsFactors = FALSE
+  )
+
+  raw <- get_bma_data(df, var_list, vars, scale_data = FALSE, from_vector = TRUE, include_reference_groups = FALSE)
+  scaled <- get_bma_data(df, var_list, vars, scale_data = TRUE, from_vector = TRUE, include_reference_groups = FALSE)
+
+  # One model for both runs: it only supplies the predictor ordering, so the
+  # two FMA fits average over the same nested sequence.
+  bma_model <- run_bma(raw, list(
+    burn = 100L, iter = 500L, nmodel = 10L, g = "UIP", mprior = "uniform", mcmc = "bd"
+  ))
+
+  from_raw <- run_fma(raw, bma_model, var_list, print_results = "none")
+  from_scaled <- run_fma(scaled, bma_model, var_list, print_results = "none")
+
+  expect_equal(from_scaled$coefficients$variable, from_raw$coefficients$variable)
+  expect_equal(from_scaled$weights, from_raw$weights, tolerance = 1e-6)
+  # The back-transform is exact: the averaging weights are shared and the
+  # rescaling is linear, so both the slopes and the corrected intercept land
+  # on the raw-data numbers.
+  expect_equal(from_scaled$coefficients$coefficient, from_raw$coefficients$coefficient, tolerance = 1e-6)
+  # Slope SEs are invariant to centering the regressors; the intercept SE is a
+  # plain rescale that carries no correction for the shift, as in BMA.
+  slopes <- from_raw$coefficients$variable != "Intercept"
+  expect_equal(from_scaled$coefficients$se[slopes], from_raw$coefficients$se[slopes], tolerance = 1e-6)
+  # p-values are scale invariant for the slopes.
+  expect_equal(from_scaled$coefficients$p_value[slopes], from_raw$coefficients$p_value[slopes], tolerance = 1e-6)
+
+  # The test only means something if the fit on the z-scored frame really did
+  # land somewhere else: dropping the attributes reproduces the pre-fix
+  # y-SD-per-x-SD reporting.
+  bare <- scaled
+  attr(bare, "bpe_scale_centers") <- NULL
+  attr(bare, "bpe_scale_scales") <- NULL
+  standardized <- run_fma(bare, bma_model, var_list, print_results = "none")
+  expect_false(isTRUE(all.equal(
+    standardized$coefficients$coefficient, from_raw$coefficients$coefficient
+  )))
+})
+
+test_that("fma reports coefficients on the data scale", {
+  skip_if_not_installed("BMS")
+  skip_if_not_installed("quadprog")
+
+  df <- make_demo_fma_data()
+  vars <- c("effect", "se", "moderator1", "moderator2")
+  var_list <- data.frame(
+    var_name = vars,
+    var_name_verbose = vars,
+    bma = rep(TRUE, 4L),
+    to_log_for_bma = rep(FALSE, 4L),
+    bma_reference_var = rep(FALSE, 4L),
+    stringsAsFactors = FALSE
+  )
+
+  local_options(list(
+    artma.verbose = 0,
+    artma.autonomy.level = "autonomous",
+    artma.data.columns = list(
+      effect = list(var_name = "effect", var_name_verbose = "effect", bma = FALSE),
+      se = list(var_name = "se", var_name_verbose = "se", bma = TRUE),
+      moderator1 = list(var_name = "moderator1", var_name_verbose = "moderator1", bma = TRUE),
+      moderator2 = list(var_name = "moderator2", var_name_verbose = "moderator2", bma = TRUE)
+    ),
+    artma.output.save_results = FALSE,
+    artma.visualization.export_graphics = FALSE,
+    artma.methods.bma.burn = 100L,
+    artma.methods.bma.iter = 500L,
+    artma.methods.bma.nmodel = 10L,
+    artma.methods.bma.g = "UIP",
+    artma.methods.bma.mprior = "uniform",
+    artma.methods.bma.mcmc = "bd",
+    artma.methods.fma.cluster = FALSE
+  ))
+
+  result <- fma(df)
+
+  raw <- get_bma_data(df, var_list, vars, scale_data = FALSE, from_vector = TRUE, include_reference_groups = FALSE)
+  reference <- run_fma(raw, result$meta$model, var_list, print_results = "none")
+
+  # The models still ran on the z-scored frame ...
+  expect_true(abs(mean(result$meta$data$effect)) < 1e-10)
+  # ... but the reported numbers are on the data scale, intercept included.
+  expected <- stats::setNames(reference$coefficients$coefficient, reference$coefficients$variable)
+  reported <- stats::setNames(result$estimates$estimate, result$estimates$term)
+  expect_equal(reported[names(expected)], expected, tolerance = 1e-6)
+  expect_equal(result$tables$coefficients$coefficient, result$estimates$estimate)
 })
