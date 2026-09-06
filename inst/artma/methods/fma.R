@@ -2,6 +2,13 @@
 #' @description
 #' Run frequentist model averaging for heterogeneity analysis, using a BMA
 #' model to order predictors. Reuses a provided BMA result when available.
+#'
+#' The models are fitted on the z-scored frame the BMA step produced (see
+#' `get_bma_data()`), but `unscale_fma_coefs()` moves the averaged coefficients
+#' and standard errors back onto the data scale, so `tables$coefficients`,
+#' `estimates`, and the printed table read in the units of the input columns,
+#' the same as the BMA columns they sit next to in the joint MA table.
+#' `meta$data` stays the standardized frame the models were fitted on.
 fma <- function(df, bma_result = NULL) {
   box::use(
     artma / data_config / read[get_data_config],
