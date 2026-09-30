@@ -330,16 +330,17 @@ reorderable.
 
 ## 8. covr and R CMD check implications
 
-**covr.** `covr::package_coverage()` (Makefile:165,
-`.github/workflows/test-coverage.yaml`) instruments the package
-namespace. Box modules are sourced at runtime from installed data files
-and are invisible to it, so today’s coverage number measures the ~2.4k
-lines of `R/` wrappers plus `src/`, not the 25.9k lines that do the
-work. After migration all of it is instrumented. Consequences: the
-reported percentage will change discontinuously (in either direction)
-and codecov.yml thresholds need a one-time reset; the coverage CI job
-gets slower (instrumentation across 95 more files); coverage-guided work
-becomes meaningful for the first time.
+**covr.**
+[`covr::package_coverage()`](http://covr.r-lib.org/reference/package_coverage.md)
+(Makefile:165, `.github/workflows/test-coverage.yaml`) instruments the
+package namespace. Box modules are sourced at runtime from installed
+data files and are invisible to it, so today’s coverage number measures
+the ~2.4k lines of `R/` wrappers plus `src/`, not the 25.9k lines that
+do the work. After migration all of it is instrumented. Consequences:
+the reported percentage will change discontinuously (in either
+direction) and codecov.yml thresholds need a one-time reset; the
+coverage CI job gets slower (instrumentation across 95 more files);
+coverage-guided work becomes meaningful for the first time.
 
 **R CMD check.** Gains, which are the point of the exercise: codetools
 sees every symbol (undefined names, unused locals, wrong-arity calls in

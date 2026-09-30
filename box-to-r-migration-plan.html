@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">artma</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -294,7 +294,7 @@
 </ul></div>
 <div class="section level2">
 <h2 id="id_8-covr-and-r-cmd-check-implications">8. covr and R CMD check implications<a class="anchor" aria-label="anchor" href="#id_8-covr-and-r-cmd-check-implications"></a></h2>
-<p><strong>covr.</strong> <code>covr::package_coverage()</code> (Makefile:165, <code>.github/workflows/test-coverage.yaml</code>) instruments the package namespace. Box modules are sourced at runtime from installed data files and are invisible to it, so today’s coverage number measures the ~2.4k lines of <code>R/</code> wrappers plus <code>src/</code>, not the 25.9k lines that do the work. After migration all of it is instrumented. Consequences: the reported percentage will change discontinuously (in either direction) and codecov.yml thresholds need a one-time reset; the coverage CI job gets slower (instrumentation across 95 more files); coverage-guided work becomes meaningful for the first time.</p>
+<p><strong>covr.</strong> <code><a href="http://covr.r-lib.org/reference/package_coverage.html" class="external-link">covr::package_coverage()</a></code> (Makefile:165, <code>.github/workflows/test-coverage.yaml</code>) instruments the package namespace. Box modules are sourced at runtime from installed data files and are invisible to it, so today’s coverage number measures the ~2.4k lines of <code>R/</code> wrappers plus <code>src/</code>, not the 25.9k lines that do the work. After migration all of it is instrumented. Consequences: the reported percentage will change discontinuously (in either direction) and codecov.yml thresholds need a one-time reset; the coverage CI job gets slower (instrumentation across 95 more files); coverage-guided work becomes meaningful for the first time.</p>
 <p><strong>R CMD check.</strong> Gains, which are the point of the exercise: codetools sees every symbol (undefined names, unused locals, wrong-arity calls in dead branches), Imports usage is checked for real (the keep-alive hack dies), Rd cross-checks apply. Costs: an initial wave of NOTEs from code that has never been statically analyzed; a small hand-maintained <code><a href="https://rdrr.io/r/utils/globalVariables.html" class="external-link">globalVariables()</a></code> for <code>.data</code> if not imported from rlang (ggplot calls already use the <code>.data$</code> pronoun consistently, so the NSE exposure is minimal, verified in the six plotting files that call <code>aes()</code>); install time grows (byte-compiling 26k more lines) while load time shrinks (no box crawling and <code>eval</code> at first use). CRAN posture strictly improves: shipping the implementation as loose scripts under inst is unusual and hides everything from check.</p>
 </div>
 <div class="section level2">
