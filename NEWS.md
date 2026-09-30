@@ -1,4 +1,91 @@
 
+<a name="v0.5.0"></a>
+
+## [v0.5.0](https://github.com/PetrCala/artma/compare/v0.4.1...v0.5.0)
+
+> 2026-09-30
+
+### Bug Fixes
+
+* probe suggested packages without loading them and gate RoBMA on 4.0.0
+* **bma:** report posterior means and SDs on the data scale, not the z-scored one
+* **bma:** stop BMS plotting so forked workers survive on macOS
+* **data:** tighten keyword matching, joint-role conflicts, missing markers
+* **data:** reject schema reconcile menu answers that were never offered
+* **data:** assert numeric roles before winsorization and never coerce them as categories
+* **data:** keep the manual reconcile picker off columns another record backs
+* **data:** keep data.derived columns out of schema drift reconciliation
+* **data:** let a confident later pass reclaim a schema rename candidate
+* **data:** drop vanished optional mappings and refuse ambiguous auto-renames in schema drift
+* **data:** gate triple witnesses, discount sparse columns, veto implausible n_obs
+* **data:** skip absent required columns in missing-value detection
+* **data:** detect comma decimal separators when reading text data
+* **data:** recompute a mapped t_stat under winsorization without imputing it
+* **data:** warn when winsorization overwrites a mapped precision column and skip imputing it
+* **data:** repair non-UTF-8 input and reconcile missing required columns on first run
+* **data:** treat Stata missing markers as NA at read time
+* **data:** refresh the schema baseline when an unmapped column disappears without drift
+* **data:** read past a UTF-8 BOM so the first CSV column keeps its name
+* **docs:** dedent README header so pkgdown renders HTML, not a code block
+* **docs:** regenerate package Rd under UTF-8 locale
+* **effect_summary_stats:** cluster the weighted-mean CI on study_id
+* **exogeneity:** fit p-uniform* on all studies and add puniform_side option
+* **fma:** report averaged coefficients on the data scale, not the z-scored one
+* **interactive:** stop preselecting methods checkbox on hub Run methods
+* **interactive:** add missing [@return](https://github.com/return) tag and dedupe checkbox labels
+* **nonlinear:** clarify selection model publication-probability rows
+* **options:** never guess a required column mapping in non-interactive sessions
+* **options:** use a native file picker instead of crash-prone tcltk
+* **options:** coerce numeric strings for integer options
+* **p_hacking_tests:** run on unwinsorized data and add t_stat_source option
+* **p_hacking_tests:** label Elliott rows with the support bound actually used
+* **p_hacking_tests:** bound the Elliott battery at the canonical p_min = 1e-5
+* **preprocess:** winsorize to order statistics (quantile type 1), not interpolated quantiles
+* **replication:** restore the gitignore-swallowed lib layer and harden the runner
+* **run:** skip forking method layers when the BLAS threading runtime is fork-hostile
+* **run:** isolate unwinsorized-frame build failures to the methods that need it
+* **tests:** keep the robma skip probe from loading RoBMA in-process
+* **visualization:** open exported PNGs for plot previews in macOS terminal sessions
+* **visualization:** render plain axis ticks and reject identifier effect columns
+* **visualization:** clip the funnel plot x-axis to the estimates, not the contours
+* **viz:** handle cancelled theme selection in viz_set
+
+### Code Refactoring
+
+* split artma() main() into composable pipeline steps
+* migrate yes/no and menu call sites to ask_yes_no and ask_select
+* migrate ad-hoc readline prompts to ask_text
+* **options:** rewrite custom option prompts on ask_select
+* **options:** rebuild option value prompt on ask_text and export it
+* **options:** drop unreachable template prompt wiring for na and se-zero handling
+
+### Features
+
+* **data:** add data.derived for user-defined interaction and indicator columns
+* **data:** score column roles on value evidence with joint core-role assignment
+* **data:** confirm sub-threshold column candidates interactively
+* **data:** derive effect and se from (t, df) and detect wide-format sheets
+* **data:** opt-in external column-mapping hook with verified proposals
+* **exogeneity:** add sqrt(n_obs) to the IV instrument enum and candidate set
+* **hub:** preview submenu with health panel, column and study profiles
+* **hub:** guided create or file picker on unbound entry
+* **hub:** persist and auto-restore the last used options file
+* **hub:** pick and manage the options file from the session hub
+* **interactive:** add hub adjust-options item with staleness-aware data rebuild
+* **interactive:** add session hub menu loop for interactive artma() runs
+* **interactive:** decorate method picker with metadata and preflight status
+* **interactive:** add ask_checkbox helper to the prompt contract
+* **interactive:** add ask_select and ask_yes_no menu helpers
+* **interactive:** add validate and sanitize hooks to ask_text
+* **interactive:** add hub settings, switch options file, and help submenus
+* **interactive:** adopt climenu 0.2.0 named choices and description columns
+* **options:** add ask_text prompt helper and compact the options file name prompt
+* **options:** add options_remove as an alias of options_delete
+* **options:** document the dilut mprior and add 0.15 to the default Elliott supports
+* **output:** add opt-in timestamped run subdirectories
+* **replication:** add flagship manifests replicating three published meta-analyses
+
+
 <a name="v0.4.1"></a>
 
 ## [v0.4.1](https://github.com/PetrCala/artma/compare/v0.4.0...v0.4.1)
