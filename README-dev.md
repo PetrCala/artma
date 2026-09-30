@@ -282,7 +282,7 @@ To denote the expected type of a function argument, use the following syntax in 
 
 # Creating a new package version
 
-A new version of the package can be created upon merging a pull request to the master branch with the tag `release:new-version`. For details, read through the [release cycle vignette](https://cran.r-project.org/web/packages/artma/vignettes/release-cycle.html).
+A new version of the package can be created upon merging a pull request to the master branch with the tag `release:next-version`. For details, read through the [release cycle vignette](https://cran.r-project.org/web/packages/artma/vignettes/release-cycle.html).
 
 # Generating package news
 
