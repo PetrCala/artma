@@ -109,7 +109,7 @@
 <ul><li>
 <code>R/zzz.R:7-28</code> (<code>get_valid_boxpath</code>) and the <code>options(box.path = ...)</code> call in <code>.onLoad</code> (<code>R/zzz.R:47</code>).</li>
 <li>The box.path shim in <code>tests/testthat/setup.R</code> (prepends the checkout’s <code>inst/</code> and <code>tests/testthat/modules</code> so tests exercise the code they sit next to).</li>
-<li>The box.path override in <code>.lintr.R:26</code> and the <code><a href="https://appsilon.github.io/box.linters/reference/box_usage_linter.html" class="external-link">box.linters::box_usage_linter</a></code> wiring (<code>.lintr.R:78</code>) including the tests/ exemption (<code>.lintr.R:88</code>).</li>
+<li>The box.path override in <code>.lintr.R:26</code> and the <code>box.linters::box_usage_linter</code> wiring (<code>.lintr.R:78</code>) including the tests/ exemption (<code>.lintr.R:88</code>).</li>
 <li>The developer requirement to set <code>options(box.path = ...)</code> in <code>.Rprofile</code> (documented in CLAUDE.md/README-dev). This is a recurring worktree footgun today: an <code>.Rprofile</code> pinned to the main checkout silently serves stale modules to ad-hoc scripts run in a worktree.</li>
 </ul></div>
 <div class="section level3">
@@ -197,7 +197,7 @@
 <div class="section level3">
 <h3 id="id_43-cache-fingerprints">4.3 Cache fingerprints<a class="anchor" aria-label="anchor" href="#id_43-cache-fingerprints"></a></h3>
 <p><code>package_source_fingerprint()</code> (<code>inst/artma/libs/infrastructure/source_fingerprint.R</code>) hashes every <code>.R</code> file under <code>PATHS$PROJECT_ROOT</code>; <code>method_source_hash()</code> hashes <code>DIR_METHODS/&lt;stage&gt;.R</code>. Installed packages do not ship those files, so both break.</p>
-<p>Replacement: hash deparsed function bodies from the namespace. <code>package_source_fingerprint()</code> becomes a hash over <code><a href="https://rdrr.io/r/base/deparse.html" class="external-link">deparse()</a></code> of all namespace functions sorted by name; <code>method_source_hash(stage)</code> hashes the registry entry’s implementation (plus its declared helpers if we want precision). This works identically under <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> and an installed package, and is more precise than today: comment-only edits stop invalidating caches. <code>elliott_cache.R</code> additionally fingerprints the C++ kernel’s source file; <code>src/</code> is also absent from installed packages, so that entry folds in <code><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion()</a></code> plus the deparsed R wrapper of <code>simulate_cdfs_block_cpp</code> instead. Every existing user cache invalidates once when the fingerprint scheme changes; that is the safe direction.</p>
+<p>Replacement: hash deparsed function bodies from the namespace. <code>package_source_fingerprint()</code> becomes a hash over <code><a href="https://rdrr.io/r/base/deparse.html" class="external-link">deparse()</a></code> of all namespace functions sorted by name; <code>method_source_hash(stage)</code> hashes the registry entry’s implementation (plus its declared helpers if we want precision). This works identically under <code>devtools::load_all()</code> and an installed package, and is more precise than today: comment-only edits stop invalidating caches. <code>elliott_cache.R</code> additionally fingerprints the C++ kernel’s source file; <code>src/</code> is also absent from installed packages, so that entry folds in <code><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion()</a></code> plus the deparsed R wrapper of <code>simulate_cdfs_block_cpp</code> instead. Every existing user cache invalidates once when the fingerprint scheme changes; that is the safe direction.</p>
 </div>
 <div class="section level3">
 <h3 id="id_44-roxygen-exposure">4.4 roxygen exposure<a class="anchor" aria-label="anchor" href="#id_44-roxygen-exposure"></a></h3>
@@ -205,7 +205,7 @@
 </div>
 <div class="section level3">
 <h3 id="id_45-lint-and-style-toolchain">4.5 Lint and style toolchain<a class="anchor" aria-label="anchor" href="#id_45-lint-and-style-toolchain"></a></h3>
-<p><code>object_usage_linter</code> is disabled today as incompatible with box (<code>.lintr.R:43</code>) and replaced by <code>box_usage_linter</code>. Post-migration the default linter comes back on, giving real usage analysis over all 26k lines for the first time; expect an initial wave of findings (unused arguments, misspelled variables in rarely-hit branches) that today nothing can catch. Budgeted in the estimate. Also: <code><a href="https://styler.r-lib.org/reference/style_pkg.html" class="external-link">styler::style_pkg()</a></code> finally covers everything (today it skips inst/artma, a documented footgun requiring per-file <code>style_file</code> calls).</p>
+<p><code>object_usage_linter</code> is disabled today as incompatible with box (<code>.lintr.R:43</code>) and replaced by <code>box_usage_linter</code>. Post-migration the default linter comes back on, giving real usage analysis over all 26k lines for the first time; expect an initial wave of findings (unused arguments, misspelled variables in rarely-hit branches) that today nothing can catch. Budgeted in the estimate. Also: <code>styler::style_pkg()</code> finally covers everything (today it skips inst/artma, a documented footgun requiring per-file <code>style_file</code> calls).</p>
 </div>
 </div>
 <div class="section level2">
@@ -285,7 +285,7 @@
 </div>
 <div class="section level2">
 <h2 id="id_7-testthat-implications">7. testthat implications<a class="anchor" aria-label="anchor" href="#id_7-testthat-implications"></a></h2>
-<ul><li>77 of 78 test files import internal modules via <code><a href="https://klmr.me/box/reference/use.html" class="external-link">box::use()</a></code>. Until tranche 9 they keep working through the shims; tranche 9 rewrites headers to <code>artma:::</code> bindings (works under both <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> and the installed package that R CMD check tests against). Parallel testthat (<code>Config/testthat/parallel: TRUE</code>) is unaffected.</li>
+<ul><li>77 of 78 test files import internal modules via <code><a href="https://klmr.me/box/reference/use.html" class="external-link">box::use()</a></code>. Until tranche 9 they keep working through the shims; tranche 9 rewrites headers to <code>artma:::</code> bindings (works under both <code>devtools::load_all()</code> and the installed package that R CMD check tests against). Parallel testthat (<code>Config/testthat/parallel: TRUE</code>) is unaffected.</li>
 <li>Tests that exercise the crawler by writing temp method files (<code>test-run.R</code>, <code>test-runtime-methods.R</code>) are rewritten against registry injection; they get simpler (no <code>eval</code>, no <code><a href="https://klmr.me/box/reference/unload.html" class="external-link">box::unload</a></code> cache surgery).</li>
 <li>The test-only scaffolding (<code>tests/testthat/modules/testing/</code>: fixtures, mocks) becomes plain <code>helper-*.R</code> files, the standard testthat mechanism; that removes the second box.path root the current <code>setup.R</code> maintains.</li>
 <li>
@@ -294,7 +294,7 @@
 </ul></div>
 <div class="section level2">
 <h2 id="id_8-covr-and-r-cmd-check-implications">8. covr and R CMD check implications<a class="anchor" aria-label="anchor" href="#id_8-covr-and-r-cmd-check-implications"></a></h2>
-<p><strong>covr.</strong> <code><a href="http://covr.r-lib.org/reference/package_coverage.html" class="external-link">covr::package_coverage()</a></code> (Makefile:165, <code>.github/workflows/test-coverage.yaml</code>) instruments the package namespace. Box modules are sourced at runtime from installed data files and are invisible to it, so today’s coverage number measures the ~2.4k lines of <code>R/</code> wrappers plus <code>src/</code>, not the 25.9k lines that do the work. After migration all of it is instrumented. Consequences: the reported percentage will change discontinuously (in either direction) and codecov.yml thresholds need a one-time reset; the coverage CI job gets slower (instrumentation across 95 more files); coverage-guided work becomes meaningful for the first time.</p>
+<p><strong>covr.</strong> <code>covr::package_coverage()</code> (Makefile:165, <code>.github/workflows/test-coverage.yaml</code>) instruments the package namespace. Box modules are sourced at runtime from installed data files and are invisible to it, so today’s coverage number measures the ~2.4k lines of <code>R/</code> wrappers plus <code>src/</code>, not the 25.9k lines that do the work. After migration all of it is instrumented. Consequences: the reported percentage will change discontinuously (in either direction) and codecov.yml thresholds need a one-time reset; the coverage CI job gets slower (instrumentation across 95 more files); coverage-guided work becomes meaningful for the first time.</p>
 <p><strong>R CMD check.</strong> Gains, which are the point of the exercise: codetools sees every symbol (undefined names, unused locals, wrong-arity calls in dead branches), Imports usage is checked for real (the keep-alive hack dies), Rd cross-checks apply. Costs: an initial wave of NOTEs from code that has never been statically analyzed; a small hand-maintained <code><a href="https://rdrr.io/r/utils/globalVariables.html" class="external-link">globalVariables()</a></code> for <code>.data</code> if not imported from rlang (ggplot calls already use the <code>.data$</code> pronoun consistently, so the NSE exposure is minimal, verified in the six plotting files that call <code>aes()</code>); install time grows (byte-compiling 26k more lines) while load time shrinks (no box crawling and <code>eval</code> at first use). CRAN posture strictly improves: shipping the implementation as loose scripts under inst is unusual and hides everything from check.</p>
 </div>
 <div class="section level2">
@@ -339,7 +339,7 @@
 <td>Certain</td>
 <td>Low</td>
 <td>
-<code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> covers reload; the worktree box.path footgun class disappears entirely, a net win</td>
+<code>devtools::load_all()</code> covers reload; the worktree box.path footgun class disappears entirely, a net win</td>
 </tr><tr><td>R8</td>
 <td>Install-time baking of filesystem state (section 4.2)</td>
 <td>Medium</td>

@@ -58,7 +58,7 @@
 <span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="fu">make</span> check                        <span class="co"># R CMD check via devtools</span></span>
 <span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="fu">make</span> document                     <span class="co"># Regenerate docs and the check manifest</span></span>
 <span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="fu">make</span> quick                        <span class="co"># Quick dev cycle (document + test)</span></span></code></pre></div>
-<p>For interactive development, <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> loads the package into an R session.</p>
+<p>For interactive development, <code>devtools::load_all()</code> loads the package into an R session.</p>
 </div>
 <div class="section level2">
 <h2 id="architecture">Architecture<a class="anchor" aria-label="anchor" href="#architecture"></a></h2>
@@ -177,7 +177,7 @@
 <h2 id="pre-commit-checklist">Pre-commit Checklist<a class="anchor" aria-label="anchor" href="#pre-commit-checklist"></a></h2>
 <p>Run <code>make hooks</code> once per clone; it installs git hooks (<code>.githooks/</code>) that then style, lint, and validate commit messages automatically on every commit.</p>
 <ol style="list-style-type: decimal"><li>
-<code><a href="https://styler.r-lib.org/reference/style_pkg.html" class="external-link">styler::style_pkg()</a></code> (or style the changed files).</li>
+<code>styler::style_pkg()</code> (or style the changed files).</li>
 <li>If you changed <code><a href="https://klmr.me/box/reference/use.html" class="external-link">box::use()</a></code> imports in <code>R/*.R</code> or added an Imports package used only in <code>inst/artma</code>: <code>make document</code> (see Generated Check Manifest).</li>
 <li>
 <code>make lint</code> and <code>make test</code>.</li>

@@ -379,7 +379,7 @@ syntax in the function docstring:
 # Creating a new package version
 
 A new version of the package can be created upon merging a pull request
-to the master branch with the tag `release:new-version`. For details,
+to the master branch with the tag `release:next-version`. For details,
 read through the [release cycle
 vignette](https://cran.r-project.org/web/packages/artma/vignettes/release-cycle.html).
 
@@ -492,9 +492,8 @@ Tests can be run in several ways depending on your needs:
     This will run only the tests that match the specified filter
     pattern.
 
-The test script uses
-[`devtools::test()`](https://devtools.r-lib.org/reference/test.html)
-under the hood, which means you can also run tests directly from R:
+The test script uses `devtools::test()` under the hood, which means you
+can also run tests directly from R:
 
 ``` r
 

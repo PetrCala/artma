@@ -33,9 +33,8 @@ make document                     # Regenerate docs and the check manifest
 make quick                        # Quick dev cycle (document + test)
 ```
 
-For interactive development,
-[`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
-loads the package into an R session.
+For interactive development, `devtools::load_all()` loads the package
+into an R session.
 
 ## Architecture
 
@@ -257,8 +256,7 @@ Run `make hooks` once per clone; it installs git hooks (`.githooks/`)
 that then style, lint, and validate commit messages automatically on
 every commit.
 
-1.  [`styler::style_pkg()`](https://styler.r-lib.org/reference/style_pkg.html)
-    (or style the changed files).
+1.  `styler::style_pkg()` (or style the changed files).
 2.  If you changed
     [`box::use()`](https://klmr.me/box/reference/use.html) imports in
     `R/*.R` or added an Imports package used only in `inst/artma`:
