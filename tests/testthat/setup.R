@@ -23,6 +23,20 @@ local({
   }
 })
 
+# Render every PNG export in the suite with grDevices::png() instead of ragg.
+# ragg's process-wide font cache evicts entries with an overlapping memcpy()
+# once more than 32 font configurations have been drawn, and AddressSanitizer
+# aborts on it. One worker draws far more than that across the suite, which
+# crashed CRAN's clang-ASAN check. Scoped to the test run so `make test-file`
+# does not leave it set in the calling session.
+local({
+  box::use(artma / visualization / export[BASE_PNG_DEVICE_OPTION])
+  withr::local_options(
+    stats::setNames(list(TRUE), BASE_PNG_DEVICE_OPTION),
+    .local_envir = testthat::teardown_env()
+  )
+})
+
 # Suppress incidental console output for the whole parallel test run (`make
 # test`), so it shows only testthat's own per-file/per-run summary - no
 # interleaved `> file: text` lines. Every genuine test signal survives this
