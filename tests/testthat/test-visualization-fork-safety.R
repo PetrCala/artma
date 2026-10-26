@@ -32,6 +32,20 @@ png_dim <- function(path) {
   ))
 }
 
+# The suite renders PNGs on grDevices::png() (see setup.R), but a forked child
+# must not: with recent pango, a child that lays out text through cairo waits on
+# the parent's font-matching thread, which fork() does not copy, and hangs. The
+# children here draw on ragg instead, the production default on this path. The
+# parent never draws with ragg, so each child's font cache starts empty and
+# stays far below the 32 entries that trip AddressSanitizer.
+local_ragg_in_forks <- function(.local_envir = parent.frame()) {
+  box::use(artma / visualization / export[BASE_PNG_DEVICE_OPTION])
+  withr::local_options(
+    stats::setNames(list(FALSE), BASE_PNG_DEVICE_OPTION),
+    .local_envir = .local_envir
+  )
+}
+
 # The regression this file guards: on macOS the Objective-C runtime aborts a
 # forked child that opens a ragg or quartz PNG device, so every method exporting
 # graphics died silently under `artma.general.parallel = TRUE`. The worker was
@@ -46,6 +60,7 @@ test_that("save_plot writes a valid PNG from inside a forked worker", {
 
   skip_if(!can_fork(), "forking is unavailable")
   skip_if(!fork_safe_png_available(), "no fork-safe graphics device on this platform")
+  local_ragg_in_forks()
 
   export_dir <- withr::local_tempdir()
   plot <- ggplot2::ggplot(data.frame(x = 1:10, y = 1:10), ggplot2::aes(x, y)) +
@@ -83,6 +98,7 @@ test_that("open_png_device writes a valid PNG from inside a forked worker", {
 
   skip_if(!can_fork(), "forking is unavailable")
   skip_if(!fork_safe_png_available(), "no fork-safe graphics device on this platform")
+  local_ragg_in_forks()
 
   export_dir <- withr::local_tempdir()
 
@@ -150,6 +166,18 @@ test_that("fork_safe_png_device sizes the raster in inches", {
 
   # `ggsave()` resolves the size to inches before handing it to the device.
   fork_safe_png_device(path, width = 4, height = 3, res = 100)
+  graphics::plot(1:10)
+  grDevices::dev.off()
+
+  expect_equal(png_dim(path), c(400L, 300L))
+})
+
+test_that("base_png_device sizes the raster in inches", {
+  box::use(artma / visualization / export[base_png_device])
+
+  path <- withr::local_tempfile(fileext = ".png")
+
+  base_png_device(path, width = 4, height = 3, res = 100)
   graphics::plot(1:10)
   grDevices::dev.off()
 
