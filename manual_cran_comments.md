@@ -8,6 +8,8 @@
   `memcpy()` once more than 32 font configurations have been drawn, and a
   test worker that exports many plots goes past that limit.
 
-* The test suite now renders every PNG export with `grDevices::png()`
-  instead of 'ragg', so the tests no longer reach that code. 'ragg' stays in
-  Suggests and is still preferred for exports outside the tests.
+* The test suite now renders PNG exports with `grDevices::png()` instead of
+  'ragg'. The two tests that draw inside forked child processes still use
+  'ragg', but the parent never draws with it, so each child's font cache
+  stays well below that limit. 'ragg' stays in Suggests and is still
+  preferred for exports outside the tests.
