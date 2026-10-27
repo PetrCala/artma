@@ -78,8 +78,8 @@ Each entry verified against the file named.
   `inst/` and `tests/testthat/modules` so tests exercise the code they
   sit next to).
 - The box.path override in `.lintr.R:26` and the
-  `box.linters::box_usage_linter` wiring (`.lintr.R:78`) including the
-  tests/ exemption (`.lintr.R:88`).
+  [`box.linters::box_usage_linter`](https://appsilon.github.io/box.linters/reference/box_usage_linter.html)
+  wiring (`.lintr.R:78`) including the tests/ exemption (`.lintr.R:88`).
 - The developer requirement to set `options(box.path = ...)` in
   `.Rprofile` (documented in CLAUDE.md/README-dev). This is a recurring
   worktree footgun today: an `.Rprofile` pinned to the main checkout
@@ -216,11 +216,12 @@ Replacement: hash deparsed function bodies from the namespace.
 [`deparse()`](https://rdrr.io/r/base/deparse.html) of all namespace
 functions sorted by name; `method_source_hash(stage)` hashes the
 registry entry’s implementation (plus its declared helpers if we want
-precision). This works identically under `devtools::load_all()` and an
-installed package, and is more precise than today: comment-only edits
-stop invalidating caches. `elliott_cache.R` additionally fingerprints
-the C++ kernel’s source file; `src/` is also absent from installed
-packages, so that entry folds in
+precision). This works identically under
+[`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
+and an installed package, and is more precise than today: comment-only
+edits stop invalidating caches. `elliott_cache.R` additionally
+fingerprints the C++ kernel’s source file; `src/` is also absent from
+installed packages, so that entry folds in
 [`packageVersion()`](https://rdrr.io/r/utils/packageDescription.html)
 plus the deparsed R wrapper of `simulate_cdfs_block_cpp` instead. Every
 existing user cache invalidates once when the fingerprint scheme
@@ -309,9 +310,10 @@ reorderable.
 - 77 of 78 test files import internal modules via
   [`box::use()`](https://klmr.me/box/reference/use.html). Until tranche
   9 they keep working through the shims; tranche 9 rewrites headers to
-  `artma:::` bindings (works under both `devtools::load_all()` and the
-  installed package that R CMD check tests against). Parallel testthat
-  (`Config/testthat/parallel: TRUE`) is unaffected.
+  `artma:::` bindings (works under both
+  [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
+  and the installed package that R CMD check tests against). Parallel
+  testthat (`Config/testthat/parallel: TRUE`) is unaffected.
 - Tests that exercise the crawler by writing temp method files
   (`test-run.R`, `test-runtime-methods.R`) are rewritten against
   registry injection; they get simpler (no `eval`, no
@@ -366,7 +368,7 @@ everything from check.
 | R4 | Accidental API widening via the 42 stray `@export` tags or roxygen processing | Medium | Medium | Mechanical `@export` scrub + `@noRd` mass-add in the move script; NAMESPACE snapshot test |
 | R5 | Long-running migration collides with parallel feature work | Medium | Medium | Tranche PRs merge within days; per-directory freeze during that directory’s tranche; sequencing condition 1 |
 | R6 | Loss of module-boundary information (box::export lists documented intended visibility) | Certain | Low | Dot-prefix convention for private helpers during the move; the measured coupling (section 5) shows boundaries carry little load today |
-| R7 | Dev-ergonomics regressions: no per-module [`box::reload`](https://klmr.me/box/reference/unload.html), worktree box.path habits invalidated | Certain | Low | `devtools::load_all()` covers reload; the worktree box.path footgun class disappears entirely, a net win |
+| R7 | Dev-ergonomics regressions: no per-module [`box::reload`](https://klmr.me/box/reference/unload.html), worktree box.path habits invalidated | Certain | Low | [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html) covers reload; the worktree box.path footgun class disappears entirely, a net win |
 | R8 | Install-time baking of filesystem state (section 4.2) | Medium | High | Top-level-state scan as a gate test; the three known offenders redesigned in tranches 2 and 5 |
 | R9 | Coverage/check NOTE churn destabilizes CI for a while | High | Low | Threshold resets and the lint/NOTE cleanup are explicit tranche-10 work items, not surprises |
 | R10 | Estimate blows up on unknown box semantics deep in options/interactive code | Low | Medium | The prep tranche’s rewrite scripts surface exotic constructs (dynamic import, aliases) before any move; the full-tree grep in this document found one dynamic import and two aliases |

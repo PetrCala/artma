@@ -492,8 +492,9 @@ Tests can be run in several ways depending on your needs:
     This will run only the tests that match the specified filter
     pattern.
 
-The test script uses `devtools::test()` under the hood, which means you
-can also run tests directly from R:
+The test script uses
+[`devtools::test()`](https://devtools.r-lib.org/reference/test.html)
+under the hood, which means you can also run tests directly from R:
 
 ``` r
 

@@ -44,7 +44,8 @@ remotes::install_github("PetrCala/artma")
 
 For local development, clone the repository (see
 [README-dev.md](https://petrcala.github.io/artma/README-dev.md)) and
-load it with `devtools::load_all()`.
+load it with
+[`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html).
 
 # Quick start
 

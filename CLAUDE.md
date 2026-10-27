@@ -33,8 +33,9 @@ make document                     # Regenerate docs and the check manifest
 make quick                        # Quick dev cycle (document + test)
 ```
 
-For interactive development, `devtools::load_all()` loads the package
-into an R session.
+For interactive development,
+[`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
+loads the package into an R session.
 
 ## Architecture
 
