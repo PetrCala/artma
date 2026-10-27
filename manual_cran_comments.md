@@ -1,17 +1,18 @@
 # NA
 
-- This is a regular feature and bug-fix release. There are no reverse
-  dependencies.
+- This patch release fixes the clang-ASAN test failure that CRAN
+  reported on 2026-10-13. There are no reverse dependencies.
 
-- The minimum `climenu` version in Imports is raised to 0.2.0, which is
-  on CRAN. `puniform` is added to Suggests and is only used when it is
-  installed.
+- The AddressSanitizer report was a `memcpy-param-overlap` in
+  `agg::font_cache_pool::font()` (`agg_font_cache_manager.h:176`), which
+  is part of ‘ragg’, not artma’s own compiled code. ragg 1.5.2 evicts
+  the oldest entry of its process-wide font cache with an overlapping
+  `memcpy()` once more than 32 font configurations have been drawn, and
+  a test worker that exports many plots goes past that limit.
 
-- A contributor (Matyáš Tvrz, ctb) is added to <Authors@R> for the
-  cluster-robust standard errors in frequentist model averaging.
-
-- Some reported numbers change by design. Bayesian and frequentist model
-  averaging now report coefficients on the data scale rather than the
-  standardized one, winsorization uses order statistics instead of
-  interpolated quantiles, and the p-hacking tests run on unwinsorized
-  data.
+- The test suite now renders PNG exports with
+  [`grDevices::png()`](https://rdrr.io/r/grDevices/png.html) instead of
+  ‘ragg’. The two tests that draw inside forked child processes still
+  use ‘ragg’, but the parent never draws with it, so each child’s font
+  cache stays well below that limit. ‘ragg’ stays in Suggests and is
+  still preferred for exports outside the tests.

@@ -39,10 +39,9 @@
       <small class="dont-index">Source: <a href="https://github.com/PetrCala/artma/blob/master/manual_cran_comments.md" class="external-link"><code>manual_cran_comments.md</code></a></small>
     </div>
 
-<ul><li><p>This is a regular feature and bug-fix release. There are no reverse dependencies.</p></li>
-<li><p>The minimum <code>climenu</code> version in Imports is raised to 0.2.0, which is on CRAN. <code>puniform</code> is added to Suggests and is only used when it is installed.</p></li>
-<li><p>A contributor (Matyáš Tvrz, ctb) is added to <a href="mailto:Authors@R" class="email">Authors@R</a> for the cluster-robust standard errors in frequentist model averaging.</p></li>
-<li><p>Some reported numbers change by design. Bayesian and frequentist model averaging now report coefficients on the data scale rather than the standardized one, winsorization uses order statistics instead of interpolated quantiles, and the p-hacking tests run on unwinsorized data.</p></li>
+<ul><li><p>This patch release fixes the clang-ASAN test failure that CRAN reported on 2026-10-13. There are no reverse dependencies.</p></li>
+<li><p>The AddressSanitizer report was a <code>memcpy-param-overlap</code> in <code>agg::font_cache_pool::font()</code> (<code>agg_font_cache_manager.h:176</code>), which is part of ‘ragg’, not artma’s own compiled code. ragg 1.5.2 evicts the oldest entry of its process-wide font cache with an overlapping <code>memcpy()</code> once more than 32 font configurations have been drawn, and a test worker that exports many plots goes past that limit.</p></li>
+<li><p>The test suite now renders PNG exports with <code><a href="https://rdrr.io/r/grDevices/png.html" class="external-link">grDevices::png()</a></code> instead of ‘ragg’. The two tests that draw inside forked child processes still use ‘ragg’, but the parent never draws with it, so each child’s font cache stays well below that limit. ‘ragg’ stays in Suggests and is still preferred for exports outside the tests.</p></li>
 </ul></main></div>
 
 
