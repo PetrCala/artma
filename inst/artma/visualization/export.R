@@ -105,12 +105,76 @@ base_plot_device_size <- function(width_in, height_in, graph_scale = 1) {
 }
 
 
+#' Option that keeps PNG exports off the ragg device
+#'
+#' @description
+#' When `TRUE`, PNG exports go through `grDevices::png()` even when `ragg` is
+#' installed. The test suite sets it. ragg's font cache (as of ragg 1.5.2)
+#' evicts its oldest entry with an overlapping `memcpy()` once a process has
+#' drawn text in more than 32 font configurations, and AddressSanitizer aborts
+#' on that. A test worker renders far more than 32, which crashed CRAN's
+#' clang-ASAN check inside ragg.
+#' @keywords internal
+BASE_PNG_DEVICE_OPTION <- "artma.temp.base_png_device"
+
+
+#' Whether PNG exports should use ragg
+#'
+#' @return *\[logical\]* `TRUE` when `ragg` is installed and
+#'   `BASE_PNG_DEVICE_OPTION` is not set.
+#' @keywords internal
+use_ragg_png_device <- function() {
+  !isTRUE(getOption(BASE_PNG_DEVICE_OPTION, FALSE)) && requireNamespace("ragg", quietly = TRUE)
+}
+
+
+#' A `grDevices::png()` device usable as a `ggsave()` device
+#'
+#' @description
+#' `save_plot()` cannot reach the base device by passing `device = NULL`:
+#' `ggplot2::ggsave()` picks ragg for a PNG by itself whenever ragg is
+#' installed. As with `fork_safe_png_device()`, `ggsave()` hands over the size
+#' in inches, so `units` is pinned to match.
+#'
+#' @param filename *\[character\]* Output path.
+#' @param width *\[numeric\]* Width, in inches.
+#' @param height *\[numeric\]* Height, in inches.
+#' @param res *\[numeric, optional\]* Resolution in pixels per inch.
+#' @param bg *\[character, optional\]* Background colour, as resolved by
+#'   `ggsave()` from the plot theme.
+#' @param ... Ignored; absorbs arguments `ggsave()` passes to other devices.
+#' @return NULL (invisibly). Called for its side effect of opening a device.
+#' @keywords internal
+base_png_device <- function(filename, width, height, res = BASE_PLOT_DPI, bg = "white", ...) {
+  box::use(artma / libs / core / validation[validate])
+
+  validate(
+    is.character(filename),
+    is.numeric(width), width > 0,
+    is.numeric(height), height > 0,
+    is.numeric(res), res > 0
+  )
+
+  grDevices::png(
+    filename = filename,
+    width = width,
+    height = height,
+    units = "in",
+    res = res,
+    bg = bg
+  )
+
+  invisible(NULL)
+}
+
+
 #' Open a raster graphics device for writing a PNG file
 #'
 #' @description
 #' Opens `ragg::agg_png` when the `ragg` package is available, since it renders
 #' substantially faster than the base `grDevices::png` device. Falls back to
-#' `grDevices::png` when `ragg` is not installed.
+#' `grDevices::png` when `ragg` is not installed or `BASE_PNG_DEVICE_OPTION`
+#' is set.
 #'
 #' Inside a forked method worker on a platform where those devices would abort
 #' the child, a cairo-backed device is used instead. See
@@ -149,7 +213,7 @@ open_png_device <- function(path, width, height, units = "px", res = BASE_PLOT_D
       filename = path, width = width, height = height,
       units = units, res = res, type = "cairo"
     )
-  } else if (requireNamespace("ragg", quietly = TRUE)) {
+  } else if (use_ragg_png_device()) {
     ragg::agg_png(filename = path, width = width, height = height, units = units, res = res)
   } else {
     grDevices::png(filename = path, width = width, height = height, units = units, res = res)
@@ -340,10 +404,10 @@ save_plot <- function(plot, path, width = 800, height = 1100, scale = 1, units =
 
   device <- if (use_fork_safe_png_device()) {
     fork_safe_png_device
-  } else if (requireNamespace("ragg", quietly = TRUE)) {
+  } else if (use_ragg_png_device()) {
     ragg::agg_png
   } else {
-    NULL
+    base_png_device
   }
 
   ggplot2::ggsave(
@@ -588,7 +652,9 @@ export_named_plots <- function(plots,
 
 box::export(
   BASE_PLOT_DPI,
+  BASE_PNG_DEVICE_OPTION,
   base_plot_device_size,
+  base_png_device,
   ensure_export_dir,
   build_export_filename,
   open_png_device,
@@ -598,5 +664,6 @@ box::export(
   save_plot_html,
   export_base_plot,
   export_named_plots,
-  use_file_preview
+  use_file_preview,
+  use_ragg_png_device
 )

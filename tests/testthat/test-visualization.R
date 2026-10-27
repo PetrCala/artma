@@ -3,6 +3,7 @@ box::use(
     expect_equal,
     expect_error,
     expect_false,
+    expect_identical,
     expect_message,
     expect_null,
     expect_true,
@@ -21,10 +22,13 @@ box::use(
   ],
   artma / visualization / theme[get_theme],
   artma / visualization / export[
+    BASE_PNG_DEVICE_OPTION,
+    base_png_device,
     ensure_export_dir,
     build_export_filename,
     save_plot,
-    save_plot_html
+    save_plot_html,
+    use_ragg_png_device
   ],
   artma / visualization / options[
     get_visualization_options,
@@ -194,6 +198,46 @@ test_that("save_plot scales resolution alongside the dimensions", {
   expect_equal(captured$width, 800)
   expect_equal(captured$height, 600)
   expect_equal(captured$dpi, 300)
+})
+
+test_that("the test suite renders PNGs without ragg", {
+  # Set in setup.R: ragg's font cache trips AddressSanitizer once a worker has
+  # drawn text in more than 32 font configurations.
+  expect_true(isTRUE(getOption(BASE_PNG_DEVICE_OPTION)))
+  expect_false(use_ragg_png_device())
+})
+
+test_that("ragg is used only when installed and not switched off", {
+  local_options(stats::setNames(list(FALSE), BASE_PNG_DEVICE_OPTION))
+  expect_equal(use_ragg_png_device(), requireNamespace("ragg", quietly = TRUE))
+
+  local_options(stats::setNames(list(TRUE), BASE_PNG_DEVICE_OPTION))
+  expect_false(use_ragg_png_device())
+})
+
+test_that("save_plot hands ggsave the base device when ragg is switched off", {
+  # Leaving `device = NULL` would not do: ggsave() picks ragg for a PNG by
+  # itself whenever ragg is installed.
+  captured <- NULL
+  testthat::local_mocked_bindings(
+    ggsave = function(...) {
+      captured <<- list(...)
+      invisible(NULL)
+    },
+    .package = "ggplot2"
+  )
+  local_options(
+    stats::setNames(list(TRUE), BASE_PNG_DEVICE_OPTION),
+    artma.verbose = 1,
+    artma.visualization.export_html = FALSE
+  )
+  dir <- local_tempdir()
+  plot <- ggplot2::ggplot(mtcars, ggplot2::aes(x = mpg, y = hp)) +
+    ggplot2::geom_point()
+
+  save_plot(plot, file.path(dir, "plot.png"), width = 400, height = 300)
+
+  expect_identical(captured$device, base_png_device)
 })
 
 test_that("save_plot rejects non-ggplot input", {
