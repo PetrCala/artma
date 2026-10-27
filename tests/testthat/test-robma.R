@@ -1,7 +1,7 @@
 box::use(
   testthat[
     expect_equal, expect_false, expect_null, expect_s3_class, expect_true,
-    skip, test_that
+    skip, skip_on_cran, test_that
   ],
   withr[local_options]
 )
@@ -82,6 +82,16 @@ test_that("robma skips when too few usable observations remain", {
 })
 
 test_that("robma fits the ensemble and returns estimates and components", {
+  # Not on CRAN. The fit loads rjags into this process, and rjags registers
+  # `SEXP clear_console(SEXP)` as a `void (*)(SEXP)` C finalizer for its JAGS
+  # console pointer. When R later runs that finalizer (at a garbage collection,
+  # possibly while another test file is running on the same worker), the
+  # function-type sanitizer in CRAN's clang-san check reports the mismatch in
+  # the test log, and CRAN's post-processing of that log rejects the
+  # submission. That is rjags's bug, not artma's, so this test stays on in CI
+  # and only steps aside on CRAN. The probe below loads rjags in a disposable
+  # subprocess whose output is discarded, so it never leaves such a trace.
+  skip_on_cran()
   skip_if_no_jags()
 
   df <- make_demo_robma_data()
