@@ -1,4 +1,15 @@
 
+<a name="v0.5.1"></a>
+
+## [v0.5.1](https://github.com/PetrCala/artma/compare/v0.5.0...v0.5.1)
+
+> 2026-10-27
+
+### Bug Fixes
+
+* **visualization:** keep test-suite PNG exports off ragg for CRAN's ASAN check ([#569](https://github.com/PetrCala/artma/issues/569))
+
+
 <a name="v0.5.0"></a>
 
 ## [v0.5.0](https://github.com/PetrCala/artma/compare/v0.4.1...v0.5.0)
